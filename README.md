@@ -83,7 +83,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 📴 Courses ride offline on any computer · ⚖️ realistic physics, adjustable difficulty ·
 🎛️ a HUD your way · 🌍 English and German · 🖥️ macOS, Windows and Linux
 
-**Planned:** Street View / Mapillary rides, uploads to Strava, intervals.icu and others, ANT+
+**Planned:** Mapillary street-imagery rides, uploads to Strava, intervals.icu and others, ANT+
 FE-C, hardware video decoding — see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Using Torqa

@@ -76,7 +76,8 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   rider's distance sets the video time (matched like ghosts); Godot blends the previous and
   next frame in a shader. GPS from GoPro GPMF; Incyclist route videos (GPX + `.xml`); any other video added to a
   GPX course by its start and end marks.
-- **Street imagery** (later): Street View Static API + Mapillary API v4, crossfade shader.
+- **Street imagery** (later): Mapillary API v4, images fetched when a course is prepared,
+  crossfade shader (Google Street View dropped, R18).
 - **Development environment**: everything runs in Docker / devcontainer. Docker on macOS has no
   Bluetooth or Metal, so macOS builds come from GitHub Actions macOS runners and only the
   portable Godot editor and built Torqa app run natively.
@@ -166,7 +167,9 @@ Built in rideable steps:
 - **Exit:** ride a GoPro recording of a real climb on the KICKR, video in step with the effort
 
 ### Phase 6 — Street imagery
-- [ ] Google Street View (user key) + Mapillary with crossfades
+- [ ] Mapillary imagery, fetched when a course is prepared, ridden offline with crossfades
+- [ ] ~~Google Street View~~ — dropped (R18): its terms forbid storing the images and showing
+  them on the same screen as the OpenStreetMap minimap
 
 ### Phase 7 — Extras
 - [x] Virtual gears + shift inputs (R59: keyboard and Shimano Di2; no Zwift Click):
