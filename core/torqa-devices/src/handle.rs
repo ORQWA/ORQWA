@@ -39,6 +39,12 @@ pub enum DeviceError {
     /// The device lacks a service the driver needs, by its full UUID.
     #[error("device lacks service {0}")]
     MissingService(&'static str),
+    /// The device could not be found again after it dropped, e.g. out of reach.
+    #[error("device not found")]
+    NotFound,
+    /// Connecting to the device took too long.
+    #[error("connecting timed out")]
+    Timeout,
     /// The Bluetooth stack reported an error.
     #[error("Bluetooth error: {0}")]
     Bluetooth(#[from] btleplug::Error),

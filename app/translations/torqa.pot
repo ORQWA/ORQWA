@@ -35,7 +35,7 @@ msgstr ""
 msgid "%d steps  ·  %s"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:511
+#: app/scenes/ride_screen.gd:513
 msgid "%s  ·  climb %d of %d"
 msgstr ""
 
@@ -47,19 +47,19 @@ msgstr ""
 msgid "%s (copy)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:478
+#: app/scenes/ride_screen.gd:480
 msgid "%s ahead"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:478
+#: app/scenes/ride_screen.gd:480
 msgid "%s behind"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:51 app/scenes/ride_screen.gd:645
+#: app/scenes/devices_tab.gd:51 app/scenes/ride_screen.gd:647
 msgid "%s connected"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:649
+#: app/scenes/ride_screen.gd:651
 msgid "%s disconnected — reconnecting…"
 msgstr ""
 
@@ -71,15 +71,23 @@ msgstr ""
 msgid "%s no longer accepts the account: connect it again."
 msgstr ""
 
+#: app/scenes/ride_screen.gd:657
+msgid "%s not found"
+msgstr ""
+
 #: app/scenes/devices_tab.gd:316
 msgid "%s not found — wake it by pedalling (or put on the strap), then scan."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:519
+#: app/ui/ride_devices.gd:104
+msgid "%s not found — wake it, then reconnect again."
+msgstr ""
+
+#: app/scenes/ride_screen.gd:521
 msgid "%s to go  ·  %.1f %%"
 msgstr ""
 
-#: app/scenes/course_detail.gd:271 app/scenes/ride_screen.gd:559
+#: app/scenes/course_detail.gd:271 app/scenes/ride_screen.gd:561
 msgid "(best %s)"
 msgstr ""
 
@@ -135,15 +143,15 @@ msgstr ""
 msgid "API key"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:42
+#: app/scenes/ride_settings_dialog.gd:45
 msgid "Abort ride"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:40
+#: app/scenes/ride_settings_dialog.gd:43
 msgid "Abort ride?"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:36
+#: app/scenes/ride_settings_dialog.gd:39
 msgid "Abort without saving"
 msgstr ""
 
@@ -283,7 +291,7 @@ msgstr ""
 msgid "Back to the whole ride screen (O or Esc)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:572
+#: app/scenes/ride_screen.gd:574
 msgid "Below 60 fps: a lower graphics quality (Devices & Settings) runs smoother."
 msgstr ""
 
@@ -307,7 +315,7 @@ msgstr ""
 msgid "Camera, difficulty, weather, HUD; finish or abort (keyboard: S)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:615
+#: app/scenes/ride_screen.gd:617
 msgid "Camera: %s"
 msgstr ""
 
@@ -399,7 +407,7 @@ msgstr ""
 msgid "Climb %d  ·  %.1f km from km %.1f"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:531
+#: app/scenes/ride_screen.gd:533
 msgid "Climb done in %s"
 msgstr ""
 
@@ -437,6 +445,10 @@ msgstr ""
 
 #: app/scenes/history_screen.gd:560
 msgid "Connect %s and upload…"
+msgstr ""
+
+#: app/ui/ride_devices.gd:68
+msgid "Connected"
 msgstr ""
 
 #: app/scenes/profile_tab.gd:209
@@ -543,7 +555,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:97
+#: app/scenes/devices_tab.gd:97 app/scenes/ride_settings_dialog.gd:33
 msgid "Devices"
 msgstr ""
 
@@ -563,7 +575,7 @@ msgstr ""
 msgid "Distance"
 msgstr ""
 
-#: app/scenes/history_screen.gd:299 app/scenes/ride_settings_dialog.gd:24
+#: app/scenes/history_screen.gd:299 app/scenes/ride_settings_dialog.gd:25
 msgid "Done"
 msgstr ""
 
@@ -723,15 +735,15 @@ msgstr ""
 msgid "Finding the countries"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:37
+#: app/scenes/ride_settings_dialog.gd:40
 msgid "Finish & save"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:472
+#: app/scenes/ride_screen.gd:474
 msgid "Finished"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:540
+#: app/scenes/ride_screen.gd:542
 msgid "Finished in %s"
 msgstr ""
 
@@ -819,7 +831,7 @@ msgstr ""
 msgid "Gear"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:326
+#: app/scenes/ride_screen.gd:328
 msgid "Gear %d of %d"
 msgstr ""
 
@@ -843,7 +855,7 @@ msgstr ""
 msgid "HC"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:122 app/scenes/profile_tab.gd:294 app/scenes/ride_settings_dialog.gd:30
+#: app/scenes/profile_dialog.gd:122 app/scenes/profile_tab.gd:294 app/scenes/ride_settings_dialog.gd:31
 msgid "HUD"
 msgstr ""
 
@@ -859,7 +871,7 @@ msgstr ""
 msgid "Hazy"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:117 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:415 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
+#: app/scenes/devices_tab.gd:117 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:417 app/ui/ride_devices.gd:48 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
 msgid "Heart rate"
 msgstr ""
 
@@ -1015,6 +1027,10 @@ msgstr ""
 msgid "Log in to %s in your browser and let Torqa upload your rides. Then come back here."
 msgstr ""
 
+#: app/ui/ride_devices.gd:86
+msgid "Looking for your devices… wake them by pedalling or putting on the strap."
+msgstr ""
+
 #: app/scenes/devices_tab.gd:259
 msgid "Low"
 msgstr ""
@@ -1163,6 +1179,10 @@ msgstr ""
 msgid "No courses yet. Import a GPX route or a video to prepare your first course."
 msgstr ""
 
+#: app/ui/ride_devices.gd:74
+msgid "No devices connected yet: connect them in Devices & Settings."
+msgstr ""
+
 #: app/scenes/analysis_tab.gd:127
 msgid "No rides with power yet: your best efforts show here once you ride with power."
 msgstr ""
@@ -1199,7 +1219,7 @@ msgstr ""
 msgid "Normalized power"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:209
+#: app/scenes/profile_tab.gd:209 app/ui/ride_devices.gd:68
 msgid "Not connected"
 msgstr ""
 
@@ -1211,7 +1231,7 @@ msgstr ""
 msgid "Nothing in your library matches this search and these filters."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:673
+#: app/scenes/ride_screen.gd:681
 msgid "Nothing recorded."
 msgstr ""
 
@@ -1291,7 +1311,7 @@ msgstr ""
 msgid "Pause the ride: the clock and the trainer wait (P)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:629
+#: app/scenes/ride_screen.gd:631
 msgid "Paused"
 msgstr ""
 
@@ -1319,7 +1339,7 @@ msgstr ""
 msgid "Position on the route"
 msgstr ""
 
-#: app/scenes/history_screen.gd:252 app/scenes/ride_screen.gd:415 app/ui/workout_editor.gd:348 app/ui/workout_options.gd:72 core/torqa-app/src/hud.rs:67
+#: app/scenes/history_screen.gd:252 app/scenes/ride_screen.gd:417 app/ui/workout_editor.gd:348 app/ui/workout_options.gd:72 core/torqa-app/src/hud.rs:67
 msgid "Power"
 msgstr ""
 
@@ -1403,6 +1423,10 @@ msgstr ""
 msgid "Reading route"
 msgstr ""
 
+#: app/ui/ride_devices.gd:21
+msgid "Reconnect devices"
+msgstr ""
+
 #: app/scenes/devices_tab.gd:71
 msgid "Reconnecting your devices…"
 msgstr ""
@@ -1435,7 +1459,7 @@ msgstr ""
 msgid "Resume"
 msgstr ""
 
-#: app/scenes/course_detail.gd:163 app/scenes/ride_settings_dialog.gd:28
+#: app/scenes/course_detail.gd:163 app/scenes/ride_settings_dialog.gd:29
 msgid "Ride"
 msgstr ""
 
@@ -1451,7 +1475,7 @@ msgstr ""
 msgid "Ride options"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:23
+#: app/scenes/ride_settings_dialog.gd:24
 msgid "Ride settings"
 msgstr ""
 
@@ -1507,7 +1531,7 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:686
+#: app/scenes/ride_screen.gd:694
 msgid "Saved %s"
 msgstr ""
 
@@ -1559,6 +1583,10 @@ msgstr ""
 msgid "Shift up two gears"
 msgstr ""
 
+#: app/ui/ride_devices.gd:49
+msgid "Shifter"
+msgstr ""
+
 #: app/scenes/devices_tab.gd:118
 msgid "Shifter (Di2)"
 msgstr ""
@@ -1579,7 +1607,7 @@ msgstr ""
 msgid "Simulation speed"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:584
+#: app/scenes/ride_screen.gd:586
 msgid "Simulation: %d×"
 msgstr ""
 
@@ -1695,7 +1723,7 @@ msgstr ""
 msgid "The ride and its FIT file are deleted."
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:41
+#: app/scenes/ride_settings_dialog.gd:44
 msgid "The ride ends and nothing is saved."
 msgstr ""
 
@@ -1763,7 +1791,7 @@ msgstr ""
 msgid "Torqa is connected. You can close this page."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:116
+#: app/scenes/devices_tab.gd:116 app/ui/ride_devices.gd:47
 msgid "Trainer"
 msgstr ""
 
@@ -1875,7 +1903,7 @@ msgstr ""
 msgid "W/kg"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:143
+#: app/scenes/ride_screen.gd:145
 msgid "Waiting for the trainer…"
 msgstr ""
 
@@ -1927,7 +1955,7 @@ msgstr ""
 msgid "Work"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:26 app/scenes/workouts_tab.gd:114 app/ui/workout_editor.gd:74 app/ui/workout_options.gd:71
+#: app/scenes/ride_settings_dialog.gd:27 app/scenes/workouts_tab.gd:114 app/ui/workout_editor.gd:74 app/ui/workout_options.gd:71
 msgid "Workout"
 msgstr ""
 
@@ -1995,7 +2023,7 @@ msgstr ""
 msgid "and above"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:523
+#: app/scenes/ride_screen.gd:525
 msgid "best %s"
 msgstr ""
 
@@ -2015,7 +2043,7 @@ msgstr ""
 msgid "kJ"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:555
+#: app/scenes/ride_screen.gd:557
 msgid "new record, %s faster!"
 msgstr ""
 

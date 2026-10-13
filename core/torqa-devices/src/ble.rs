@@ -6,11 +6,11 @@ use std::time::Duration;
 use btleplug::api::bleuuid::uuid_from_u16;
 use btleplug::api::{
     Central, CentralEvent, CharPropFlags, Characteristic, Manager as _, Peripheral as _,
-    ScanFilter, ValueNotification, WriteType,
+    RetrievePeripheralsOptions, ScanFilter, ValueNotification, WriteType,
 };
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use futures::StreamExt;
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 use torqa_domain::telemetry::{Telemetry, TrainerControl};
 use tracing::{debug, info, warn};
 
@@ -20,6 +20,10 @@ use crate::handle::{DeviceError, DeviceEvent, DeviceHandle, DriverChannels};
 use crate::heart_rate;
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(2);
+/// How long a reconnect scans for a device the system no longer knows.
+const RECONNECT_SCAN: Duration = Duration::from_secs(5);
+/// How long connecting and setting up may take before the attempt starts over.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// What a discovered device can do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,6 +146,8 @@ impl Bluetooth {
     }
 }
 
+type Notifications = std::pin::Pin<Box<dyn futures::Stream<Item = ValueNotification> + Send>>;
+
 enum SessionEnd {
     HandleDropped,
     Disconnected,
@@ -159,8 +165,21 @@ struct Driver {
 
 impl Driver {
     async fn run(mut self) {
+        let closed = self.channels.events.clone();
+        let mut first = true;
         loop {
-            match self.session().await {
+            let attempt = async {
+                // The device found by the scan is fresh; after a drop it must be found again.
+                if !std::mem::take(&mut first) {
+                    self.find_again().await?;
+                }
+                self.session().await
+            };
+            let end = tokio::select! {
+                end = attempt => end,
+                () = closed.closed() => break,
+            };
+            match end {
                 Ok(SessionEnd::HandleDropped) => break,
                 Ok(SessionEnd::Disconnected) => info!(device = %self.device.name, "disconnected"),
                 Err(error) => warn!(device = %self.device.name, %error, "connection failed"),
@@ -184,50 +203,61 @@ impl Driver {
         }
     }
 
+    /// Looks the device up again after it dropped. The Bluetooth stack may have forgotten the
+    /// old peripheral (macOS does at once), so connecting it again would fail forever: ask the
+    /// system for it by identifier, else scan for it.
+    async fn find_again(&mut self) -> Result<(), DeviceError> {
+        let id = self.device.peripheral.id();
+        let options = RetrievePeripheralsOptions {
+            identifiers: Some(vec![id.clone()]),
+            services: None,
+        };
+        // Not every platform can retrieve; scanning finds the device there.
+        let retrieved = self
+            .adapter
+            .retrieve_peripherals(options)
+            .await
+            .inspect_err(|error| debug!(device = %self.device.name, %error, "cannot retrieve"))
+            .unwrap_or_default()
+            .into_iter()
+            .find(|p| p.id() == id);
+        if let Some(peripheral) = retrieved {
+            self.device.peripheral = peripheral;
+            return Ok(());
+        }
+        if let Ok(peripheral) = self.adapter.peripheral(&id).await {
+            self.device.peripheral = peripheral;
+            return Ok(());
+        }
+        debug!(device = %self.device.name, "scanning for the device");
+        self.adapter.start_scan(ScanFilter::default()).await?;
+        sleep(RECONNECT_SCAN).await;
+        self.adapter.stop_scan().await?;
+        self.device.peripheral = self
+            .adapter
+            .peripheral(&id)
+            .await
+            .map_err(|_| DeviceError::NotFound)?;
+        Ok(())
+    }
+
     /// One connection, from connecting until it drops or the handle goes away.
     async fn session(&mut self) -> Result<SessionEnd, DeviceError> {
         let peripheral = self.device.peripheral.clone();
         let mut central_events = self.adapter.events().await?;
-
-        info!(device = %self.device.name, "connecting");
-        peripheral.connect().await?;
-        peripheral.discover_services().await?;
-        let mut notifications = peripheral.notifications().await?;
         // A separate sender, so waiting for closure does not borrow `channels` during `next_control`.
         let events = self.channels.events.clone();
 
-        let control_point = match self.device.kind {
-            DeviceKind::Trainer => Some(self.set_up_trainer(&peripheral).await?),
-            DeviceKind::HeartRateSensor => {
-                let measurement = characteristic(&peripheral, heart_rate::MEASUREMENT)?;
-                peripheral.subscribe(&measurement).await?;
-                None
-            }
-            DeviceKind::Controller => {
-                // Indications; the system asks to pair the unit first if it is not yet.
-                let buttons = peripheral
-                    .characteristics()
-                    .into_iter()
-                    .find(|c| {
-                        c.service_uuid.to_string() == di2::SERVICE
-                            && c.uuid.to_string().starts_with(di2::BUTTONS_PREFIX)
-                    })
-                    .ok_or(DeviceError::MissingService(di2::SERVICE))?;
-                self.buttons = di2::Buttons::default();
-                // Otherwise the first press after connecting only shows where the channels stand.
-                if buttons.properties.contains(CharPropFlags::READ) {
-                    let name = &self.device.name;
-                    match peripheral.read(&buttons).await {
-                        Ok(value) => {
-                            if let Err(error) = self.buttons.start_from(&value) {
-                                debug!(device = %name, %error, "unreadable D-Fly buttons");
-                            }
-                        }
-                        Err(error) => debug!(device = %name, %error, "cannot read D-Fly buttons"),
-                    }
-                }
-                peripheral.subscribe(&buttons).await?;
-                None
+        info!(device = %self.device.name, "connecting");
+        let set_up = timeout(CONNECT_TIMEOUT, self.set_up(&peripheral)).await;
+        let (mut notifications, control_point) = match set_up {
+            Ok(Ok(set_up)) => set_up,
+            Ok(Err(error)) => return Err(error),
+            Err(_) => {
+                // Otherwise the pending connection may complete later, with no one listening.
+                // Bounded: not every stack confirms cancelling a connection never made.
+                let _ = timeout(RECONNECT_DELAY, peripheral.disconnect()).await;
+                return Err(DeviceError::Timeout);
             }
         };
         info!(device = %self.device.name, "connected");
@@ -267,6 +297,53 @@ impl Driver {
                 () = events.closed() => return Ok(SessionEnd::HandleDropped),
             }
         }
+    }
+
+    /// Connects, finds the services and subscribes to what the device reports; returns its
+    /// notifications and, for a trainer, its control point.
+    async fn set_up(
+        &mut self,
+        peripheral: &Peripheral,
+    ) -> Result<(Notifications, Option<Characteristic>), DeviceError> {
+        peripheral.connect().await?;
+        peripheral.discover_services().await?;
+        let notifications = peripheral.notifications().await?;
+
+        let control_point = match self.device.kind {
+            DeviceKind::Trainer => Some(self.set_up_trainer(peripheral).await?),
+            DeviceKind::HeartRateSensor => {
+                let measurement = characteristic(peripheral, heart_rate::MEASUREMENT)?;
+                peripheral.subscribe(&measurement).await?;
+                None
+            }
+            DeviceKind::Controller => {
+                // Indications; the system asks to pair the unit first if it is not yet.
+                let buttons = peripheral
+                    .characteristics()
+                    .into_iter()
+                    .find(|c| {
+                        c.service_uuid.to_string() == di2::SERVICE
+                            && c.uuid.to_string().starts_with(di2::BUTTONS_PREFIX)
+                    })
+                    .ok_or(DeviceError::MissingService(di2::SERVICE))?;
+                self.buttons = di2::Buttons::default();
+                // Otherwise the first press after connecting only shows where the channels stand.
+                if buttons.properties.contains(CharPropFlags::READ) {
+                    let name = &self.device.name;
+                    match peripheral.read(&buttons).await {
+                        Ok(value) => {
+                            if let Err(error) = self.buttons.start_from(&value) {
+                                debug!(device = %name, %error, "unreadable D-Fly buttons");
+                            }
+                        }
+                        Err(error) => debug!(device = %name, %error, "cannot read D-Fly buttons"),
+                    }
+                }
+                peripheral.subscribe(&buttons).await?;
+                None
+            }
+        };
+        Ok((notifications, control_point))
     }
 
     /// Subscribes to trainer data, takes control and restores the last control after a reconnect.

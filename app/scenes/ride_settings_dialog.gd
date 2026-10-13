@@ -2,8 +2,8 @@ class_name RideSettingsDialog
 extends AcceptDialog
 ## Everything that can be changed during a ride, in one place (R48): the workout (R56), the
 ## ride options (camera, difficulty, descents, time of day, weather) and the rider's HUD,
-## applied as they change; plus finishing and saving, or aborting without saving after a
-## confirmation (R49).
+## applied as they change; the devices, to reconnect them (R69); plus finishing and saving,
+## or aborting without saving after a confirmation (R49).
 
 signal options_changed(options: Dictionary)
 signal workout_changed(workout: Dictionary)
@@ -15,6 +15,7 @@ var _tabs: TabContainer = TabContainer.new()
 var _workout: WorkoutOptions = WorkoutOptions.new()
 var _options: RideOptions = RideOptions.new()
 var _hud: HudEditor = HudEditor.new()
+var _devices: RideDevices = RideDevices.new()
 var _confirm_abort: ConfirmationDialog = ConfirmationDialog.new()
 
 
@@ -29,6 +30,8 @@ func _ready() -> void:
 	_tabs.add_child(_options)
 	_hud.name = tr("HUD")
 	_tabs.add_child(_hud)
+	_devices.name = tr("Devices")
+	_tabs.add_child(_devices)
 	add_child(_tabs)
 	_workout.changed.connect(_on_workout_changed)
 	_options.changed.connect(func() -> void: options_changed.emit(_options.options()))
@@ -42,6 +45,11 @@ func _ready() -> void:
 	_confirm_abort.ok_button_text = tr("Abort ride")
 	_confirm_abort.confirmed.connect(func() -> void: abort_requested.emit())
 	add_child(_confirm_abort)
+
+
+## Shows the devices of `torqa` and reconnects them (R69).
+func bind(torqa: TorqaApp) -> void:
+	_devices.bind(torqa)
 
 
 ## The rider's heart-rate zones, FTP and structured workouts, for changing a workout (see
@@ -69,6 +77,7 @@ func edit(
 	_options.set_options(options)
 	_options.show_option_groups(world_options, not world_options, workout.is_empty())
 	_hud.edit(layout, imperial)
+	_devices.refresh()
 	popup_centered(Vector2i(960, 600))
 
 

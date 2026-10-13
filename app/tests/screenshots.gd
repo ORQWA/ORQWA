@@ -125,7 +125,8 @@ func _run() -> void:
 			var tabs: TabContainer = (
 				settings_dialog.find_children("*", "TabContainer", true, false)[0]
 			)
-			tabs.current_tab = tabs.get_tab_count() - 1
+			var hud_editor: Node = settings_dialog.find_children("*", "HudEditor", true, false)[0]
+			tabs.current_tab = hud_editor.get_index()
 			await process_frame
 			# Hover a figure over the HUD's grid, so the drop indicator shows.
 			var preview: HudPanel = settings_dialog.find_children("*", "HudPanel", true, false)[0]
@@ -136,6 +137,12 @@ func _run() -> void:
 			await create_timer(0.5).timeout
 			root.get_texture().get_image().save_png(out_dir.path_join("hud-settings_dialog.png"))
 			print("saved hud settings_dialog")
+			# The devices, to reconnect them (R69).
+			var devices: Node = settings_dialog.find_children("*", "RideDevices", true, false)[0]
+			tabs.current_tab = devices.get_index()
+			await create_timer(0.5).timeout
+			root.get_texture().get_image().save_png(out_dir.path_join("ride-devices.png"))
+			print("saved ride devices")
 			settings_dialog.hide()
 
 	# The ride's summary (R42), then the history.

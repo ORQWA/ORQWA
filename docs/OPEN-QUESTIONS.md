@@ -2,6 +2,25 @@
 
 Things to review or decide together. Newest first; remove entries once settled.
 
+## 2026-10-13 — Devices that drop (R69)
+
+### Needs your hardware
+
+- **Strap after a pause**: ride with the Polar H9, pause, take the strap off (or walk out of
+  reach) until Torqa says it disconnected, put it back on and resume. It should connect again
+  by itself within a few seconds, without opening the settings. The same goes for the KICKR
+  when it sleeps. On macOS the system forgot dropped devices at once, so before this they
+  never came back; the fix is only tested against the Bluetooth stack's code, not a device.
+- **Garmin Venu 3**: please tell what went wrong — not found by the scan, connected without a
+  heart rate, or dropped and never came back (the last is the bug fixed here). Broadcast the
+  heart rate from the watch (*Broadcast Heart Rate*) before scanning.
+
+### Decisions I took (say if you want them otherwise)
+
+- **Reconnect devices** in the ride settings drops only the devices that are not connected
+  and scans for the remembered ones, as at start; connected devices keep their link.
+- **A strap that drops records no heart rate** until it is back, rather than its last value.
+
 ## 2026-10-12 — Uploads (R29, R60)
 
 ### Needs your accounts

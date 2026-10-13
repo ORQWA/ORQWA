@@ -205,6 +205,29 @@ impl TorqaApp {
         self.app.as_mut().is_some_and(App::reconnect_remembered)
     }
 
+    /// Reconnects the devices not connected now, e.g. during a ride (R69), as
+    /// `reconnect_remembered` does at start; connected devices keep their link. False if none
+    /// is remembered.
+    #[func]
+    fn reconnect_devices(&mut self) -> bool {
+        self.app.as_mut().is_some_and(App::reconnect_devices)
+    }
+
+    /// The trainer, heart-rate sensor and shifter in use or used last, as
+    /// `[{name, kind, connected}]` with `kind` as in `devices_found` (R69).
+    #[func]
+    fn devices(&self) -> VarArray {
+        let mut array = VarArray::new();
+        for device in self.app.as_ref().map(App::devices).unwrap_or_default() {
+            array.push(&vdict! {
+                "name" => device.name.as_str(),
+                "kind" => kind_name(device.kind),
+                "connected" => device.connected,
+            });
+        }
+        array
+    }
+
     /// Scans for trainers and heart-rate sensors.
     #[func]
     fn scan(&mut self, seconds: f64) {
@@ -2863,15 +2886,20 @@ fn points(points: &[[f32; 2]]) -> PackedVector2Array {
     points.iter().map(|&[x, y]| Vector2::new(x, y)).collect()
 }
 
+/// A device kind as GDScript knows it.
+fn kind_name(kind: DeviceKind) -> &'static str {
+    match kind {
+        DeviceKind::Trainer => "trainer",
+        DeviceKind::HeartRateSensor => "heart_rate",
+        DeviceKind::Controller => "controller",
+    }
+}
+
 /// Scanned devices as `[{index, name, kind, rssi}]` for `devices_found`.
 fn device_array(devices: Vec<torqa_app::DeviceInfo>) -> VarArray {
     let mut array = VarArray::new();
     for device in devices {
-        let kind = match device.kind {
-            DeviceKind::Trainer => "trainer",
-            DeviceKind::HeartRateSensor => "heart_rate",
-            DeviceKind::Controller => "controller",
-        };
+        let kind = kind_name(device.kind);
         let rssi = device
             .rssi
             .map_or_else(Variant::nil, |rssi| i64::from(rssi).to_variant());
