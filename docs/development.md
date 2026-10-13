@@ -85,8 +85,8 @@ and `python3 -m unittest discover -s scripts/wiki -p 'test_*.py'` directly.
    `https://raw.githubusercontent.com/bossm8/Torqa/main/docs/images/<file>` for shared images.
    Check wiki references before deleting an image from the application repository.
 3. Run `make wiki-prepare BRANCH=docs/my-change`. It validates, commits wiki changes and
-   pushes only the preparation branch; it never updates published pages. Keep that remote
-   branch available until publication and pointer reconciliation finish.
+   pushes only the preparation branch; it never updates published pages. Name it `docs/<change>`
+   and keep it until publication: the publisher then deletes it.
 4. Explicitly stage `git add wiki` in the application PR and include the comparison link
    printed by preparation. Wiki commits are separate from application commits; review both.
 5. After merge into application `main`, the **Wiki** workflow publishes the pinned wiki
@@ -121,4 +121,6 @@ For transient failures or a failed PR creation after successful publication, rer
 using **Run workflow**. Each attempt reads the latest application `main`, publishes only its
 pinned history, and reuses one pointer PR. A retry creates no changes when both repositories
 are synchronized. The only branch automation may replace with a lease is its own
-`automation/wiki-sync` branch; it never replaces user preparation branches.
+`automation/wiki-sync` branch; it never replaces user preparation branches. After publishing,
+it deletes `docs/*` wiki branches whose commits are all published, so their commits stay
+reachable from the published branch; a branch that gained commits meanwhile is kept.

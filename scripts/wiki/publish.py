@@ -51,6 +51,20 @@ def publish_history(wiki, target, published_branch):
     return before, git(wiki, "rev-parse", "HEAD")
 
 
+def prune_branches(wiki, published):
+    """Delete preparation branches whose history is published; their commits stay reachable."""
+    refs = git(wiki, "for-each-ref", "--format=%(refname:strip=3) %(objectname)", "refs/remotes/origin/docs")
+    for line in refs.splitlines():
+        name, revision = line.split()
+        if not ancestor(wiki, revision, published):
+            continue
+        try:
+            # The lease keeps a branch that received new commits since the fetch.
+            git(wiki, "push", f"--force-with-lease=refs/heads/{name}:{revision}", "origin", f":refs/heads/{name}")
+        except subprocess.CalledProcessError:
+            print(f"Kept wiki branch {name}: it changed during publication")
+
+
 class GitHub:
     def __init__(self, repository, token):
         self.repository = repository
@@ -101,7 +115,7 @@ def publish(application_remote, api):
             if not (wiki / ".git").exists():
                 git(app, "clone", remote, str(wiki))
                 identity(wiki)
-            git(wiki, "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*")
+            git(wiki, "fetch", "--prune", "origin", "+refs/heads/*:refs/remotes/origin/*")
             published_branch = git(wiki, "symbolic-ref", "--short", "refs/remotes/origin/HEAD").removeprefix("origin/")
             git(wiki, "cat-file", "-e", f"{target}^{{commit}}")
             before, published = publish_history(wiki, target, published_branch)
@@ -114,6 +128,7 @@ def publish(application_remote, api):
             if published != before:
                 git(wiki, "push", "origin", f"HEAD:refs/heads/{published_branch}")
             print(f"Published wiki {published} for application {main}")
+            prune_branches(wiki, published)
             # Main may advance during the push; re-read it before constructing the pointer PR.
             git(app, "fetch", "origin", "+refs/heads/main:refs/remotes/origin/main")
             if git(app, "rev-parse", "origin/main") != main:

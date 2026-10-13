@@ -179,6 +179,37 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(self.published(), second)
         self.assertEqual(self.api.created, 0)
 
+    def branches(self):
+        return git(self.wiki_remote, "for-each-ref", "--format=%(refname:short)", "refs/heads").split()
+
+    def test_published_preparation_branches_are_deleted(self):
+        target = self.prepare()
+        git(self.wiki, "checkout", "-B", "docs/pending", self.base)
+        (self.wiki / "Guide.md").write_text("# Guide\n\nNot merged yet.\n")
+        self.commit(self.wiki, "Pending usage", "docs/pending")
+        git(self.wiki, "push", "origin", f"{target}:refs/heads/personal")
+        self.pin(target)
+        publish(str(self.app_remote), self.api)
+        self.assertEqual(sorted(self.branches()), ["docs/pending", "master", "personal"])
+        clone = self.root / "recursive"
+        git(self.root, "-c", "protocol.file.allow=always", "clone", "--recurse-submodules", str(self.app_remote), str(clone))
+        self.assertEqual(git(clone / "wiki", "rev-parse", "HEAD"), target)
+
+    def test_branch_advanced_during_publication_is_kept(self):
+        target = self.prepare()
+        self.pin(target)
+        original = publisher.prune_branches
+
+        def advance(wiki, published):
+            (self.wiki / "Guide.md").write_text("# Guide\n\nFollow-up usage.\n")
+            self.commit(self.wiki, "Follow-up", "docs/change")
+            original(wiki, published)
+
+        with patch.object(publisher, "prune_branches", side_effect=advance):
+            publish(str(self.app_remote), self.api)
+        self.assertIn("docs/change", self.branches())
+        self.assertEqual(self.published(), target)
+
     def test_rejected_wiki_push_preserves_remote_edits(self):
         target = self.prepare()
         self.pin(target)

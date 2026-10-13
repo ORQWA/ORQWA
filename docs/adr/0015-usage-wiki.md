@@ -26,8 +26,9 @@ does not share the application's PR lifecycle.
 
 ## Consequences
 
-- Wiki preparation and publication require separate Git commits and pushes. Remote preparation
-  branches must remain available until publication and pointer reconciliation finish.
+- Wiki preparation and publication require separate Git commits and pushes. Remote `docs/*`
+  preparation branches must remain available until publication; the publisher then deletes
+  those whose commits are all published, which keeps every pinned revision reachable.
 - Publication is not atomic with the application merge. Failures are visible in the Wiki
   workflow, and manual retries read current application `main` without reverting wiki history.
 - Recursive cloning retrieves the reviewed documentation revision. The published wiki may
