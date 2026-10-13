@@ -1,6 +1,7 @@
 """Check wiki links against the local wiki and application checkout, without network access."""
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -62,8 +63,10 @@ def check(root):
                 elif parsed.fragment and target.suffix == ".md" and unquote(parsed.fragment) not in anchors(target.read_text()):
                     errors.append(f"{path}: missing heading {link}")
     # Search tracked text only, excluding the checker and its fixtures, for obsolete usage paths.
-    import subprocess
-    tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0")
+    # CI mounts the checkout under another user's UID; git would refuse it as dubious ownership.
+    tracked = subprocess.check_output(
+        ["git", "-c", f"safe.directory={root}", "ls-files", "-z"], cwd=root
+    ).decode().split("\0")
     pattern = re.compile(r"docs/(?:" + "|".join(MOVED) + r")\.md")
     for name in tracked:
         path = root / name
