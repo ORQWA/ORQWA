@@ -37,6 +37,9 @@ func _ready() -> void:
 	_ride.overlay_zoom_requested.connect(_overlay.zoom)
 	get_window().size_changed.connect(_on_window_resized)
 	_summary.closed.connect(_back_home)
+	# As the rider left it (#218).
+	if _torqa.fullscreen():
+		get_window().mode = Window.MODE_FULLSCREEN
 
 
 func _on_ride_started(options: Dictionary) -> void:
@@ -88,10 +91,28 @@ func _on_window_resized() -> void:
 		_overlay.set_clickable(_ride.overlay_outline())
 
 
+## F11, or Alt+Enter, fills the screen or puts Torqa back in a window (#218), from any page.
+func _shortcut_input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	if key.keycode != KEY_F11 and not (key.keycode == KEY_ENTER and key.alt_pressed):
+		return
+	# The overlay is a small window of its own; leaving it brings full screen back.
+	if not _overlay.active:
+		FullScreen.set_on(get_window(), _torqa, not FullScreen.is_on(get_window()))
+	get_viewport().set_input_as_handled()
+
+
 func _notification(what: int) -> void:
-	# Quit from the overlay: it opens there next time.
-	if what == NOTIFICATION_WM_CLOSE_REQUEST and _overlay != null and _overlay.active:
+	if what != NOTIFICATION_WM_CLOSE_REQUEST or _overlay == null:
+		return
+	if _overlay.active:
+		# Quit from the overlay: it opens there next time.
 		_torqa.set_overlay_window(_overlay.geometry(), _overlay.scale)
+	else:
+		# Full screen may also have been turned on or off by the system (macOS's green button).
+		_torqa.set_fullscreen(FullScreen.is_on(get_window()))
 
 
 ## The summary of the ride just saved (R42); closing it returns to the start page.

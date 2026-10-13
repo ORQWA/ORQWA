@@ -1436,6 +1436,21 @@ impl App {
             .map_err(|e| AppError::Storage(e.to_string()))
     }
 
+    /// Whether the app fills the screen (#218).
+    #[must_use]
+    pub fn fullscreen(&self) -> bool {
+        profiles::fullscreen(&self.data_dir)
+    }
+
+    /// Remembers whether the app fills the screen, to start that way next time.
+    ///
+    /// # Errors
+    /// [`AppError::Storage`] if it cannot be saved.
+    pub fn set_fullscreen(&mut self, fullscreen: bool) -> Result<(), AppError> {
+        profiles::set_fullscreen(&self.data_dir, fullscreen)
+            .map_err(|e| AppError::Storage(e.to_string()))
+    }
+
     /// Whether rides are simulated: with the fake trainer, which can be sped up and jumped
     /// along the route (#53).
     #[must_use]

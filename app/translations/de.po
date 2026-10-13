@@ -808,6 +808,12 @@ msgstr "Ultra"
 msgid "Applies from the next ride."
 msgstr "Gilt ab der nächsten Fahrt."
 
+msgid "Screen"
+msgstr "Bildschirm"
+
+msgid "Full screen (F11)"
+msgstr "Vollbild (F11)"
+
 msgid "For weaker computers: shorter view, simpler shadows and sky."
 msgstr "Für schwächere Computer: kürzere Sicht, einfachere Schatten und Himmel."
 

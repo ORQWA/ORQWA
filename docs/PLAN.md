@@ -229,6 +229,8 @@ Built in rideable steps:
 - [x] Ride names: default course + date, set on the summary, rename in history (R50)
 - [x] Export a ride's FIT file from the history or summary to a place the rider picks (R28)
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
+- [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Devices & Settings → Graphics;
+  the choice is kept and Torqa starts that way
 - [ ] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
   - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)

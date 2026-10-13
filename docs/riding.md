@@ -150,3 +150,11 @@ since that heart beats in real time.
 | Ultra | fast GPUs | larger shadow maps to 900 m, grass to 180 m, detailed buildings within 900 m, 80 % more view distance |
 
 If a ride stays well below 60 fps, Torqa suggests a lower preset once.
+
+## Full screen
+
+On a TV or a second screen by the trainer, Torqa can fill the whole screen, without a title bar
+or taskbar (R25): **F11** or **Alt** + **Enter** switches between full screen and a window on
+any page, and so does **Devices & Settings → Graphics → Full screen**. Torqa remembers the
+choice and starts that way next time. The overlay is always a small window of its own; leaving
+it brings full screen back.

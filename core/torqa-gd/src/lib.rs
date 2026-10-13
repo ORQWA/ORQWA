@@ -1175,6 +1175,18 @@ impl TorqaApp {
         self.command(|app| app.set_ride_bar_folded(folded));
     }
 
+    /// Whether the app fills the screen (#218).
+    #[func]
+    fn fullscreen(&self) -> bool {
+        self.app.as_ref().is_some_and(App::fullscreen)
+    }
+
+    /// Remembers whether the app fills the screen, to start that way next time.
+    #[func]
+    fn set_fullscreen(&mut self, fullscreen: bool) {
+        self.command(|app| app.set_fullscreen(fullscreen));
+    }
+
     /// Whether rides are simulated (fake trainer): they can be sped up and jumped (#53).
     #[func]
     fn simulating(&self) -> bool {
