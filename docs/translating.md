@@ -3,7 +3,7 @@
 Torqa is written in English and translated with gettext files in `app/translations/`
 (R24). German (`de.po`, Swiss spelling) is the first translation.
 
-Rider language selection is described in the [wiki](https://github.com/bossm8/Torqa/wiki/Language).
+Rider language selection is described in the [wiki](https://github.com/bossm8/Torqa/wiki/Riders#profile).
 
 ## Adding or updating a language
 

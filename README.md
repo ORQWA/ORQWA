@@ -90,25 +90,9 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 
 ## Using Torqa
 
-The [usage wiki](https://github.com/bossm8/Torqa/wiki) covers riding and application features.
-
-| Topic | Doc |
-|---|---|
-| Start page, course gallery and course pages | [Start page](https://github.com/bossm8/Torqa/wiki/Start-page) |
-| Courses: finding, offline riding and sharing | [Courses](https://github.com/bossm8/Torqa/wiki/Courses) |
-| Video courses | [Video courses](https://github.com/bossm8/Torqa/wiki/Video-courses) |
-| Devices, riding and in-ride settings | [Devices and riding](https://github.com/bossm8/Torqa/wiki/Devices-and-riding) |
-| Riders, zones | [Riders](https://github.com/bossm8/Torqa/wiki/Riders) |
-| Ride HUD | [Ride HUD](https://github.com/bossm8/Torqa/wiki/Ride-HUD) |
-| Workouts and FTP tests | [Workouts](https://github.com/bossm8/Torqa/wiki/Workouts) |
-| Overlay over other apps | [Overlay](https://github.com/bossm8/Torqa/wiki/Overlay) |
-| Uploading rides to intervals.icu and Strava | [Uploading rides](https://github.com/bossm8/Torqa/wiki/Uploading-rides) |
-| Ghosts and pacers | [Ghosts and pacers](https://github.com/bossm8/Torqa/wiki/Ghosts-and-pacers) |
-| Ride history, climbs and records | [Ride history](https://github.com/bossm8/Torqa/wiki/Ride-history) |
-| Analysis across rides: power curve and profile, fitness, weeks, progress | [Analysis](https://github.com/bossm8/Torqa/wiki/Analysis) |
-| Music control | [Sound](https://github.com/bossm8/Torqa/wiki/Sound) |
-| Language | [Language](https://github.com/bossm8/Torqa/wiki/Language) |
-| Command-line tool for testing trainers | [Command line tool](https://github.com/bossm8/Torqa/wiki/Command-line-tool) |
+The [usage wiki](https://github.com/bossm8/Torqa/wiki) covers riding and every feature. Start
+with [Getting started](https://github.com/bossm8/Torqa/wiki/Getting-started); testers can ride a
+trainer without the app with the [command-line tool](https://github.com/bossm8/Torqa/wiki/Command-line-tool).
 
 ## Download
 
