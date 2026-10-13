@@ -15,11 +15,11 @@ msgstr ""
 msgid "%d h"
 msgstr ""
 
-#: app/ui/course_card.gd:139
+#: app/ui/course_card.gd:140
 msgid "%d h %02d"
 msgstr ""
 
-#: app/ui/course_card.gd:138 app/ui/power_curve_chart.gd:39
+#: app/ui/course_card.gd:139 app/ui/power_curve_chart.gd:39
 msgid "%d min"
 msgstr ""
 
@@ -407,7 +407,7 @@ msgstr ""
 msgid "Climbed"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd:23 app/scenes/courses_tab.gd:26 app/scenes/history_screen.gd:364 app/ui/course_card.gd:156
+#: app/scenes/analysis_tab.gd:23 app/scenes/courses_tab.gd:26 app/scenes/history_screen.gd:364 app/ui/course_card.gd:157
 msgid "Climbing"
 msgstr ""
 
@@ -995,7 +995,7 @@ msgstr ""
 msgid "Last ridden"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:369 app/scenes/courses_tab.gd:25 app/scenes/courses_tab.gd:35 app/ui/course_card.gd:155
+#: app/scenes/courses_tab.gd:369 app/scenes/courses_tab.gd:25 app/scenes/courses_tab.gd:35 app/ui/course_card.gd:156
 msgid "Length"
 msgstr ""
 
@@ -1619,7 +1619,7 @@ msgstr ""
 msgid "Steady"
 msgstr ""
 
-#: app/ui/course_card.gd:157
+#: app/ui/course_card.gd:158
 msgid "Steepest"
 msgstr ""
 
@@ -1715,12 +1715,16 @@ msgstr ""
 msgid "Thu"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd:21 app/scenes/history_screen.gd:357 app/ui/course_card.gd:44 core/torqa-app/src/hud.rs:119
+#: app/scenes/analysis_tab.gd:21 app/scenes/history_screen.gd:357 core/torqa-app/src/hud.rs:119
 msgid "Time"
 msgstr ""
 
 #: app/scenes/course_detail.gd:213
 msgid "Time at %d %% FTP"
+msgstr ""
+
+#: app/ui/course_card.gd:44
+msgid "Time estimate"
 msgstr ""
 
 #: app/scenes/analysis_tab.gd:27 app/scenes/history_screen.gd:271

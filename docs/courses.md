@@ -50,10 +50,10 @@ The bar above the cards finds a course in a large library:
 
 The length bands meet at 25, 50 and 100 km, or at 15, 30 and 60 miles with imperial units.
 
-Each card's **Time** is about how long the course takes you at 75 % of your FTP, with your
-weight, coasting the descents. It comes from the elevation profile the course file keeps for
-its card, so it may differ by a few minutes from the course page's **Time at 75 % FTP**, which
-rides the whole route.
+Each card's **Time estimate** is about how long the course takes you at 75 % of your FTP, with
+your weight, coasting the descents, to the nearest 5 minutes (as on the course page). It comes
+from the elevation profile the course file keeps for its card, so it may differ by a few
+minutes from the course page's **Time at 75 % FTP**, which rides the whole route.
 
 Torqa remembers the order and grouping; the search and chips start empty each time.
 

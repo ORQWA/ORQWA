@@ -38,10 +38,10 @@ func _init(course: Dictionary, imperial: bool) -> void:
 		heading.add_child(video_badge())
 	rows.add_child(heading)
 	var grid: GridContainer = figure_rows(course, imperial)
-	# The gallery's rough estimate (R67); the course page works out the exact one.
+	# From the profile the course file keeps (R67); the course page rides the whole route.
 	if course.get("estimated_s") != null:
 		var seconds: float = course["estimated_s"]
-		add_figure(grid, TranslationServer.translate("Time"), rough_duration(seconds))
+		add_figure(grid, TranslationServer.translate("Time estimate"), estimate(seconds))
 	var countries: Array = course.get("countries", [])
 	_add_countries(grid, countries)
 	rows.add_child(grid)
@@ -131,12 +131,13 @@ static func _add_countries(grid: GridContainer, countries: Array) -> void:
 	value.mouse_filter = Control.MOUSE_FILTER_PASS
 
 
-## A duration to the minute, marked as estimated: "≈ 1 h 05" or "≈ 45 min".
-static func rough_duration(seconds: float) -> String:
-	var minutes: int = roundi(seconds / 60.0)
+## An estimated time to the nearest 5 minutes, which is all an estimate can tell (R66, R67):
+## "1 h 05" or "45 min", and "5 min" at the least.
+static func estimate(seconds: float) -> String:
+	var minutes: int = maxi(5, roundi(seconds / 300.0) * 5)
 	if minutes < 60:
-		return "≈ " + TranslationServer.translate("%d min") % minutes
-	return "≈ " + TranslationServer.translate("%d h %02d") % [minutes / 60, minutes % 60]
+		return TranslationServer.translate("%d min") % minutes
+	return TranslationServer.translate("%d h %02d") % [minutes / 60, minutes % 60]
 
 
 ## `[caption, value]` pairs: length, climbing and steepest gradient, in the rider's units.

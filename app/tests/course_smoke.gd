@@ -15,6 +15,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_course_page()
 	_edit_dialog()
+	_estimates()
 	_card_countries()
 	_course_gallery()
 	if not _failed:
@@ -247,6 +248,17 @@ func _course_gallery() -> void:
 	torqa.set_courses_view("name", false, "none")
 	tab.free()
 	torqa.free()
+
+
+## Estimated times show to the nearest 5 minutes, on the course page and the cards (R66, R67).
+func _estimates() -> void:
+	var shown: PackedStringArray = PackedStringArray()
+	for seconds: float in [60.0, 1000.0, 3540.0, 6300.0, 7650.0]:
+		shown.append(CourseCard.estimate(seconds))
+	_check(
+		shown == PackedStringArray(["5 min", "15 min", "1 h 00", "1 h 45", "2 h 10"]),
+		"estimates to 5 minutes: %s" % shown
+	)
 
 
 func _check(condition: bool, what: String) -> void:

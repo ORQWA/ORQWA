@@ -1541,3 +1541,6 @@ msgstr "Kein Land"
 
 msgid "Finding the countries"
 msgstr "Länder bestimmen"
+
+msgid "Time estimate"
+msgstr "Zeitschätzung"
