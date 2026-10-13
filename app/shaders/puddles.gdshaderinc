@@ -12,14 +12,26 @@ uniform float puddles : hint_range(0.0, 1.0) = 0.0;
 const float PUDDLE_CELL = 1.6;
 const float PUDDLE_SHARE = 0.12;
 
+// Two numbers in [0, 1) for the cell at whole-metre-cell `p`. An integer hash (PCG 2D): the usual
+// fract(sin(…)) loses all precision tens of kilometres from the origin, where some GPUs return 0
+// for every cell, and every cell held water on dry roads (#229).
 vec2 puddle_hash(vec2 p) {
-	p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-	return fract(sin(p) * 43758.5453);
+	uvec2 v = uvec2(ivec2(p)) * 1664525u + 1013904223u;
+	v.x += v.y * 1664525u;
+	v.y += v.x * 1664525u;
+	v ^= v >> 16u;
+	v.x += v.y * 1664525u;
+	v.y += v.x * 1664525u;
+	v ^= v >> 16u;
+	return vec2(v >> 8u) / 16777216.0;
 }
 
 // 1 in a puddle at `xz` on a surface whose world normal is `normal`, else 0, edges a pixel soft.
 // `edge` is 0 along a way's middle and 1 at its edges, where water collects.
 float puddle(vec2 xz, vec3 normal, float edge) {
+	if (puddles <= 0.0) {
+		return 0.0;
+	}
 	vec2 scaled = xz / PUDDLE_CELL;
 	vec2 cell = floor(scaled);
 	vec2 local = scaled - cell;
@@ -40,7 +52,7 @@ float puddle(vec2 xz, vec3 normal, float edge) {
 		}
 	}
 	float share = PUDDLE_SHARE * puddles * mix(0.3, 1.7, edge);
-	float wet = step(puddle_hash(owner + 17.0).x, share);
+	float wet = puddle_hash(owner + 17.0).x < share ? 1.0 : 0.0;
 	// Inset from the cells' edges, so neighbouring puddles stay apart.
 	float gap = second - nearest;
 	float soft = fwidth(gap) + 1e-4;
