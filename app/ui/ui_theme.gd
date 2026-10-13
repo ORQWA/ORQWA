@@ -193,6 +193,47 @@ static func chip(highlighted: bool) -> StyleBoxFlat:
 	return box
 
 
+## A chip that turns on and off, e.g. a filter (R67): highlighted while on. `text` is shown as
+## given and translated by the button.
+static func toggle_chip(text: String) -> Button:
+	var button: Button = Button.new()
+	button.text = text
+	button.toggle_mode = true
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# Its own height, not that of a taller neighbour in its row.
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.add_theme_font_size_override("font_size", 13)
+	var hover: StyleBoxFlat = chip(false)
+	hover.bg_color = Color(1, 1, 1, 0.12)
+	button.add_theme_stylebox_override("normal", chip(false))
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", chip(true))
+	button.add_theme_stylebox_override("hover_pressed", chip(true))
+	return button
+
+
+## A plain button as large as a `toggle_chip`, for an action in a row of chips: `text` in
+## the accent colour, with `icon`.
+static func chip_action(text: String, icon: String) -> Button:
+	var button: Button = Button.new()
+	button.text = text
+	button.icon = UiIcons.texture(icon, 16, ACCENT)
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_color_override("font_color", ACCENT)
+	button.add_theme_color_override("font_hover_color", TEXT)
+	button.add_theme_color_override("font_pressed_color", TEXT)
+	var plain: StyleBoxFlat = chip(false)
+	plain.bg_color = Color(0, 0, 0, 0)
+	plain.border_color = Color(0, 0, 0, 0)
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		button.add_theme_stylebox_override(state, plain)
+	return button
+
+
 ## A highlighted chip as large as a button, for a mark in a row of buttons (the active rider).
 static func button_chip() -> StyleBoxFlat:
 	var box: StyleBoxFlat = _button_box(Color(ACCENT, 0.22))

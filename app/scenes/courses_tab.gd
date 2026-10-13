@@ -1,9 +1,10 @@
 class_name CoursesTab
 extends VBoxContainer
-## The course library as a gallery (R39). Importing a GPX, a GoPro video with GPS or an
-## Incyclist route video (R17) prepares a new course here: it is built, added to the library
-## and opened. A video without GPS cannot become a course by itself: a dialog explains how to
-## add it to the course of its GPX route instead.
+## The course library as a gallery (R39), searched, filtered, sorted and grouped (R67): the
+## core picks and orders the courses, this tab shows its choices and the courses it returns.
+## Importing a GPX, a GoPro video with GPS or an Incyclist route video (R17) prepares a new
+## course here: it is built, added to the library and opened. A video without GPS cannot become
+## a course by itself: a dialog explains how to add it to the course of its GPX route instead.
 
 ## Open the detail page of `course` (from `TorqaApp.courses()`).
 signal course_opened(course: Dictionary)
@@ -15,10 +16,57 @@ const STEP_WEIGHTS: Dictionary[String, Vector2] = {
 	"Downloading the course map": Vector2(0.75, 0.8),
 	"Building 3D world": Vector2(0.8, 1.0),
 }
+## The gallery's choices by the names the core knows them by; items and labels are
+## translated as they are shown.
+# i18n-begin
+const SORT_LABELS: Dictionary[String, String] = {
+	"name": "Name",
+	"length": "Length",
+	"climbing": "Climbing",
+	"time": "Estimated time",
+	"added": "Date added",
+	"ridden": "Last ridden",
+}
+const GROUP_LABELS: Dictionary[String, String] = {
+	"none": "None",
+	"type": "Type",
+	"terrain": "Terrain",
+	"length": "Length",
+}
+const KIND_LABELS: Dictionary[String, String] = {"3d": "3D", "video": "Video"}
+const TERRAIN_LABELS: Dictionary[String, String] = {
+	"flat": "Flat",
+	"rolling": "Rolling",
+	"hilly": "Hilly",
+	"mountainous": "Mountainous",
+}
+# i18n-end
+const METERS_PER_MILE: float = 1609.344
 
 var _torqa: TorqaApp
-var _gallery: HFlowContainer = HFlowContainer.new()
+var _toolbar: HBoxContainer = HBoxContainer.new()
+var _search: LineEdit = LineEdit.new()
+var _sort: OptionButton = OptionButton.new()
+var _direction: Button = Button.new()
+var _group: OptionButton = OptionButton.new()
+var _chips: HFlowContainer = HFlowContainer.new()
+var _clear: Button = UiTheme.chip_action(tr("Clear filters"), "cross")
+## What the core offers to choose from (`TorqaApp.course_library_choices()`); the length bands
+## follow the rider's units.
+var _choices: Dictionary = {}
+## The chips turned on, by kind (`kinds`, `terrains`, `lengths`): the names the core knows.
+var _chosen: Dictionary[String, PackedStringArray] = {
+	"kinds": PackedStringArray(),
+	"terrains": PackedStringArray(),
+	"lengths": PackedStringArray(),
+}
+var _descending: bool = false
+## The groups shown, each a header and its cards.
+var _gallery: VBoxContainer = VBoxContainer.new()
 var _empty: Label = Label.new()
+var _no_match: VBoxContainer = VBoxContainer.new()
+## Each course's map picture by path, read once from its file rather than on every keystroke.
+var _maps: Dictionary[String, PackedByteArray] = {}
 var _import_button: Button = Button.new()
 var _loading: HBoxContainer = HBoxContainer.new()
 var _loading_bar: ProgressBar = ProgressBar.new()
@@ -44,22 +92,81 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa.loading_progress.connect(_on_loading_progress)
 	_torqa.course_added.connect(_on_course_added)
 	_torqa.failed.connect(_on_failed)
+	_choices = _torqa.course_library_choices()
+	_build_menus()
+	_build_chips()
+	var view: Dictionary = _torqa.courses_view()
+	var sort: String = view["sort"]
+	var group: String = view["group"]
+	_select(_sort, sort)
+	_select(_group, group)
+	_descending = view["descending"]
+	_show_direction()
 	refresh()
 
 
-## Rebuilds the gallery from the library.
+## Rebuilds the gallery from the library as the toolbar and chips ask for it.
 func refresh() -> void:
+	var choices: Dictionary = _torqa.course_library_choices()
+	if choices != _choices:
+		# The rider changed units: the length bands have other edges.
+		_choices = choices
+		_build_chips()
 	for child: Node in _gallery.get_children():
 		child.queue_free()
-	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
-	var courses: Array = _torqa.courses()
-	for course: Dictionary in courses:
-		var card: CourseCard = CourseCard.new(course, imperial)
-		var course_path: String = course["path"]
-		card.set_map(_torqa.course_preview(course_path))
-		card.pressed.connect(func() -> void: course_opened.emit(course))
-		_gallery.add_child(card)
-	_empty.visible = courses.is_empty()
+	var library: Dictionary = _torqa.course_library(query())
+	var total: int = library["total"]
+	var groups: Array = library["groups"]
+	for group: Dictionary in groups:
+		_add_group(group)
+	_empty.visible = total == 0
+	_toolbar.visible = total > 0
+	_chips.visible = total > 0
+	_no_match.visible = total > 0 and groups.is_empty()
+	_show_clear(filtered())
+
+
+## Clear filters keeps its place among the chips while there is nothing to clear, so that
+## choosing a chip neither moves nor wraps the others.
+func _show_clear(active: bool) -> void:
+	_clear.modulate.a = 1.0 if active else 0.0
+	_clear.disabled = not active
+	_clear.mouse_filter = Control.MOUSE_FILTER_STOP if active else Control.MOUSE_FILTER_IGNORE
+
+
+## What the toolbar and chips ask the library for, as `TorqaApp.course_library()` takes it.
+func query() -> Dictionary:
+	return {
+		"search": _search.text,
+		"sort": _selected(_sort),
+		"descending": _descending,
+		"group": _selected(_group),
+		"kinds": _chosen["kinds"],
+		"terrains": _chosen["terrains"],
+		"lengths": _chosen["lengths"],
+	}
+
+
+## Whether a search or a chip hides courses.
+func filtered() -> bool:
+	if not _search.text.strip_edges().is_empty():
+		return true
+	for names: PackedStringArray in _chosen.values():
+		if not names.is_empty():
+			return true
+	return false
+
+
+## Empties the search and turns every chip off; the order and groups stay.
+func clear_filters() -> void:
+	_search.text = ""
+	for kind: String in _chosen:
+		_chosen[kind] = PackedStringArray()
+	for chip: Node in _chips.get_children():
+		var button: Button = chip as Button
+		if button != null and button.toggle_mode:
+			button.set_pressed_no_signal(false)
+	refresh()
 
 
 func _init() -> void:
@@ -95,15 +202,23 @@ func _init() -> void:
 	_status.hide()
 	add_child(_status)
 
+	_build_toolbar()
+	add_child(_toolbar)
+	_chips.add_theme_constant_override("h_separation", 8)
+	_chips.add_theme_constant_override("v_separation", 8)
+	_clear.pressed.connect(clear_filters)
+	_chips.add_child(_clear)
+	add_child(_chips)
 	_empty.text = tr("No courses yet. Import a GPX route or a video to prepare your first course.")
 	_empty.add_theme_color_override("font_color", UiTheme.MUTED)
 	add_child(_empty)
+	_build_no_match()
+	add_child(_no_match)
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_gallery.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_gallery.add_theme_constant_override("h_separation", 20)
-	_gallery.add_theme_constant_override("v_separation", 20)
+	_gallery.add_theme_constant_override("separation", 16)
 	scroll.add_child(_gallery)
 	add_child(scroll)
 
@@ -149,6 +264,242 @@ func _init() -> void:
 	_no_gps_dialog.dialog_autowrap = true
 	_no_gps_dialog.min_size = Vector2i(560, 0)
 	add_child(_no_gps_dialog)
+
+
+## Search, sort and group above the gallery.
+func _build_toolbar() -> void:
+	_toolbar.add_theme_constant_override("separation", 12)
+	_search.placeholder_text = tr("Search courses")
+	_search.clear_button_enabled = true
+	_search.right_icon = UiIcons.texture("search", 18, UiTheme.MUTED)
+	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_search.custom_minimum_size = Vector2(240, 40)
+	_search.text_changed.connect(func(_text: String) -> void: refresh())
+	_toolbar.add_child(_search)
+	_toolbar.add_child(_toolbar_label(tr("Sort")))
+	_sort.custom_minimum_size = Vector2(180, 40)
+	_sort.item_selected.connect(_on_sort_selected)
+	_toolbar.add_child(_sort)
+	_direction.custom_minimum_size = Vector2(40, 40)
+	_direction.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_direction.pressed.connect(_on_direction_pressed)
+	_toolbar.add_child(_direction)
+	_toolbar.add_child(_toolbar_label(tr("Group")))
+	_group.custom_minimum_size = Vector2(140, 40)
+	_group.item_selected.connect(func(_index: int) -> void: _view_changed())
+	_toolbar.add_child(_group)
+
+
+func _toolbar_label(text: String) -> Label:
+	var label: Label = Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", UiTheme.MUTED)
+	return label
+
+
+## Nothing in the library matches: say so, with a way back to all courses.
+func _build_no_match() -> void:
+	_no_match.alignment = BoxContainer.ALIGNMENT_CENTER
+	_no_match.add_theme_constant_override("separation", 12)
+	var title: Label = Label.new()
+	title.text = tr("No courses match")
+	title.add_theme_font_size_override("font_size", 18)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_no_match.add_child(title)
+	var hint: Label = Label.new()
+	hint.text = tr("Nothing in your library matches this search and these filters.")
+	hint.add_theme_color_override("font_color", UiTheme.MUTED)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_no_match.add_child(hint)
+	var clear: Button = Button.new()
+	clear.text = tr("Clear filters")
+	clear.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	clear.pressed.connect(clear_filters)
+	_no_match.add_child(clear)
+	_no_match.hide()
+
+
+## The sort and group menus, in the core's order; items are named by the core's names.
+func _build_menus() -> void:
+	for sort: Dictionary in _choices["sorts"]:
+		var sort_name: String = sort["name"]
+		var sort_label: String = SORT_LABELS.get(sort_name, sort_name)
+		_sort.add_item(sort_label)
+		_sort.set_item_metadata(_sort.item_count - 1, sort_name)
+	for group_name: String in _choices["groups"]:
+		var group_label: String = GROUP_LABELS.get(group_name, group_name)
+		_group.add_item(group_label)
+		_group.set_item_metadata(_group.item_count - 1, group_name)
+
+
+## One row of chips: type | terrain | length, and a way to turn them all off.
+func _build_chips() -> void:
+	for child: Node in _chips.get_children():
+		if child != _clear:
+			_chips.remove_child(child)
+			child.queue_free()
+	var kinds: PackedStringArray = _choices["kinds"]
+	var terrains: PackedStringArray = _choices["terrains"]
+	var lengths: PackedStringArray = PackedStringArray()
+	for band: Dictionary in _choices["lengths"]:
+		var band_name: String = band["name"]
+		lengths.append(band_name)
+	# A band the rider chose stays chosen only if it still exists.
+	var kept: PackedStringArray = PackedStringArray()
+	for chosen: String in _chosen["lengths"]:
+		if chosen in lengths:
+			kept.append(chosen)
+	_chosen["lengths"] = kept
+	_add_chips(tr("Type"), "kinds", kinds, false)
+	_add_chips(tr("Terrain"), "terrains", terrains, true)
+	_add_chips(tr("Length"), "lengths", lengths, true)
+	_chips.move_child(_clear, -1)
+
+
+func _add_chips(caption: String, kind: String, names: PackedStringArray, divided: bool) -> void:
+	if divided:
+		var divider: VSeparator = VSeparator.new()
+		divider.custom_minimum_size = Vector2(16, 0)
+		_chips.add_child(divider)
+	var label: Label = _toolbar_label(caption)
+	label.add_theme_font_size_override("font_size", 13)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_chips.add_child(label)
+	for chip_name: String in names:
+		var chip: Button = UiTheme.toggle_chip(_choice_label(kind, chip_name))
+		chip.set_pressed_no_signal(chip_name in _chosen[kind])
+		chip.toggled.connect(_on_chip_toggled.bind(kind, chip_name))
+		_chips.add_child(chip)
+
+
+## The label of chip or group `choice` of `kind` (`kinds`, `terrains` or `lengths`),
+## untranslated where it is a word: the button or label translates itself.
+func _choice_label(kind: String, choice: String) -> String:
+	var label: String = choice
+	match kind:
+		"kinds":
+			label = KIND_LABELS.get(choice, choice)
+		"terrains":
+			label = TERRAIN_LABELS.get(choice, choice)
+		_:
+			label = _length_label(choice)
+	return label
+
+
+## A length band in the rider's units, e.g. "< 25 km", "25–50 km" or "≥ 100 km".
+func _length_label(band_name: String) -> String:
+	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
+	var unit: String = "mi" if imperial else "km"
+	var per_unit: float = METERS_PER_MILE if imperial else 1000.0
+	for band: Dictionary in _choices["lengths"]:
+		if band["name"] != band_name:
+			continue
+		var from_m: float = band["from_m"]
+		var to_m: float = band["to_m"]
+		var from: int = roundi(from_m / per_unit)
+		var to: int = roundi(to_m / per_unit)
+		if from == 0:
+			return "< %d %s" % [to, unit]
+		if to == 0:
+			return "≥ %d %s" % [from, unit]
+		return "%d–%d %s" % [from, to, unit]
+	return band_name
+
+
+## A group's header and its cards.
+func _add_group(group: Dictionary) -> void:
+	var group_name: String = group["group"]
+	var courses: Array = group["courses"]
+	if not group_name.is_empty():
+		var header: HBoxContainer = HBoxContainer.new()
+		header.add_theme_constant_override("separation", 10)
+		var title: Label = Label.new()
+		title.text = _choice_label(_group_kind(), group_name)
+		title.add_theme_font_size_override("font_size", 18)
+		header.add_child(title)
+		var count: Label = Label.new()
+		count.text = str(courses.size())
+		count.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		count.add_theme_color_override("font_color", UiTheme.MUTED)
+		count.size_flags_vertical = Control.SIZE_SHRINK_END
+		header.add_child(count)
+		_gallery.add_child(header)
+	var cards: HFlowContainer = HFlowContainer.new()
+	cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cards.add_theme_constant_override("h_separation", 20)
+	cards.add_theme_constant_override("v_separation", 20)
+	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
+	for course: Dictionary in courses:
+		var card: CourseCard = CourseCard.new(course, imperial)
+		var course_path: String = course["path"]
+		if not _maps.has(course_path):
+			_maps[course_path] = _torqa.course_preview(course_path)
+		card.set_map(_maps[course_path])
+		card.pressed.connect(func() -> void: course_opened.emit(course))
+		cards.add_child(card)
+	_gallery.add_child(cards)
+
+
+## The kind of chip the groups are of.
+func _group_kind() -> String:
+	match _selected(_group):
+		"type":
+			return "kinds"
+		"terrain":
+			return "terrains"
+		_:
+			return "lengths"
+
+
+func _on_chip_toggled(on: bool, kind: String, chip_name: String) -> void:
+	var names: PackedStringArray = _chosen[kind]
+	if on and not chip_name in names:
+		names.append(chip_name)
+	elif not on and chip_name in names:
+		names.remove_at(names.find(chip_name))
+	_chosen[kind] = names
+	refresh()
+
+
+## Another order starts in its own direction: the latest courses first, the rest from A,
+## short, flat or quick.
+func _on_sort_selected(_index: int) -> void:
+	for sort: Dictionary in _choices["sorts"]:
+		if sort["name"] == _selected(_sort):
+			_descending = sort["descending"]
+	_show_direction()
+	_view_changed()
+
+
+func _on_direction_pressed() -> void:
+	_descending = not _descending
+	_show_direction()
+	_view_changed()
+
+
+func _show_direction() -> void:
+	_direction.icon = UiIcons.texture("descending" if _descending else "ascending", 20)
+	_direction.tooltip_text = tr("Descending") if _descending else tr("Ascending")
+
+
+func _view_changed() -> void:
+	_torqa.set_courses_view(_selected(_sort), _descending, _selected(_group))
+	refresh()
+
+
+## The core's name of the item chosen in `option`.
+static func _selected(option: OptionButton) -> String:
+	if option.selected < 0:
+		return ""
+	var choice: String = option.get_item_metadata(option.selected)
+	return choice
+
+
+static func _select(option: OptionButton, choice: String) -> void:
+	for i: int in option.item_count:
+		if option.get_item_metadata(i) == choice:
+			option.select(i)
+			return
 
 
 func _on_file_selected(path: String) -> void:
@@ -259,6 +610,8 @@ func _on_course_added(path: String) -> void:
 		)
 		if not png.is_empty():
 			_torqa.set_course_preview(path, png)
+	# A course replaced under the same name has another picture.
+	_maps.erase(path)
 	refresh()
 	if importing.is_empty():
 		return

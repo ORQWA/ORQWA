@@ -15,8 +15,8 @@ use godot::prelude::*;
 use torqa_app::analysis::{BestEffort, Comparison};
 use torqa_app::hud::MetricKind;
 use torqa_app::media::MediaCommand;
-use torqa_app::view;
 use torqa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
+use torqa_app::{library, view};
 use torqa_devices::ble::DeviceKind;
 use torqa_devices::fake::{FakeHeart, FakeRider};
 use torqa_domain::profile::{Avatar, Drivetrain, Profile, UnitSystem};
@@ -494,37 +494,166 @@ impl TorqaApp {
     }
 
     /// The courses in the library: `[{path, name, length_m, elevation_gain_m, max_grade,
-    /// created_unix_s, track, profile, video}]`; `track` (metres east/north of the start) and
-    /// `profile` (distance, elevation) are thinned for cards and empty for older courses;
-    /// `video` is the video's file name for video courses, else empty.
+    /// created_unix_s, track, profile, video, located}]`; `track` (metres east/north of the
+    /// start) and `profile` (distance, elevation) are thinned for cards and empty for older
+    /// courses; `video` is the video's file name for video courses, else empty; `located` is
+    /// false for courses known only by distance and slope (Tacx RLV).
     #[func]
     fn courses(&self) -> VarArray {
         let mut array = VarArray::new();
         for course in self.app.as_ref().map(App::courses).unwrap_or_default() {
-            let path = course.path.display().to_string();
-            let video = course
-                .manifest
-                .video
-                .as_ref()
-                .map_or("", |v| v.file_name.as_str());
-            array.push(
+            array.push(&course_dict(&course).to_variant());
+        }
+        array
+    }
+
+    /// The library as the Courses tab shows it (R67), for `query` `{search, sort, descending,
+    /// group, kinds, terrains, lengths}`: the names of `course_library_choices()`, the chips
+    /// as `PackedStringArray`s (empty for all). Returns `{total, groups: [{group, courses}]}`:
+    /// how many courses the library holds, and the groups shown, `group` the name of their
+    /// kind, terrain or length band (empty when not grouped). Courses are as in `courses()`,
+    /// with `estimated_s` at the planned share of FTP (R66, from the card's profile; `null`
+    /// out of reach), `last_ridden_unix_s` (`null` if never) and `terrain`.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn course_library(&mut self, query: VarDictionary) -> VarDictionary {
+        let text = |key: &str| {
+            query
+                .get(key)
+                .and_then(|v| v.try_to::<GString>().ok())
+                .map(|s| s.to_string())
+                .unwrap_or_default()
+        };
+        let chips = |key: &str| -> Vec<String> {
+            query
+                .get(key)
+                .and_then(|v| v.try_to::<PackedStringArray>().ok())
+                .map(|names| names.as_slice().iter().map(ToString::to_string).collect())
+                .unwrap_or_default()
+        };
+        let query = library::CourseQuery {
+            view: library::View {
+                sort: library::SortKey::from_name(&text("sort")).unwrap_or_default(),
+                descending: query
+                    .get("descending")
+                    .and_then(|v| v.try_to::<bool>().ok())
+                    .unwrap_or(false),
+                group: library::GroupKey::from_name(&text("group")).unwrap_or_default(),
+            },
+            search: text("search"),
+            kinds: chips("kinds")
+                .iter()
+                .filter_map(|n| library::CourseKind::from_name(n))
+                .collect(),
+            terrains: chips("terrains")
+                .iter()
+                .filter_map(|n| library::Terrain::from_name(n))
+                .collect(),
+            lengths: chips("lengths")
+                .iter()
+                .filter_map(|n| library::LengthBand::from_name(n))
+                .collect(),
+        };
+        let gallery = self
+            .app
+            .as_mut()
+            .map(|app| app.course_library(&query))
+            .unwrap_or_default();
+        let mut groups = VarArray::new();
+        for group in &gallery.groups {
+            let mut courses = VarArray::new();
+            for course in &group.courses {
+                let mut dict = course_dict(&course.entry);
+                let estimated = course
+                    .estimated
+                    .map_or_else(Variant::nil, |t| t.as_secs_f64().to_variant());
+                let ridden = course
+                    .last_ridden
+                    .map_or_else(Variant::nil, |t| unix_seconds(t).to_variant());
+                dict.set("estimated_s", &estimated);
+                dict.set("last_ridden_unix_s", &ridden);
+                dict.set("terrain", course.terrain().name());
+                courses.push(&dict.to_variant());
+            }
+            groups.push(
                 &vdict! {
-                    "path" => path.as_str(),
-                    "name" => course.manifest.name.as_str(),
-                    "length_m" => course.manifest.length_m,
-                    "elevation_gain_m" => course.manifest.elevation_gain_m,
-                    "max_grade" => course.manifest.max_grade_percent,
-                    "created_unix_s" => i64::try_from(course.manifest.created_unix_s).unwrap_or(0),
-                    "track" => &points(&course.manifest.track),
-                    "profile" => &points(&course.manifest.profile),
-                    "video" => video,
-                    // Tacx RLV courses are known only by distance and slope: no 3D world.
-                    "located" => course.manifest.video.as_ref().is_none_or(|v| v.located),
+                    "group" => group.group.name(),
+                    "courses" => &courses,
                 }
                 .to_variant(),
             );
         }
-        array
+        vdict! {
+            "total" => i64::try_from(gallery.total).unwrap_or(i64::MAX),
+            "groups" => &groups,
+        }
+    }
+
+    /// What the Courses tab offers (R67), in the order to list it: `sorts` as `[{name,
+    /// descending}]` with the direction each starts in, `groups`, `kinds` and `terrains` as
+    /// names, and `lengths` as `[{name, from_m, to_m}]` with edges in the active rider's units
+    /// (`to_m` 0 for the last, open band).
+    #[func]
+    fn course_library_choices(&self) -> VarDictionary {
+        let mut sorts = VarArray::new();
+        for &sort in library::SortKey::ALL {
+            sorts.push(
+                &vdict! {
+                    "name" => sort.name(),
+                    "descending" => sort.natural_descending(),
+                }
+                .to_variant(),
+            );
+        }
+        let units = self
+            .app
+            .as_ref()
+            .map_or(UnitSystem::Metric, |app| app.profile().profile.units);
+        let edges = library::LengthBand::edges(units);
+        let mut lengths = VarArray::new();
+        for (index, &band) in library::LengthBand::ALL.iter().enumerate() {
+            let from = index.checked_sub(1).map_or(0.0, |i| edges[i].0);
+            let to = edges.get(index).map_or(0.0, |edge| edge.0);
+            lengths.push(
+                &vdict! {
+                    "name" => band.name(),
+                    "from_m" => from,
+                    "to_m" => to,
+                }
+                .to_variant(),
+            );
+        }
+        vdict! {
+            "sorts" => &sorts,
+            "groups" => &name_array(library::GroupKey::ALL.iter().map(|g| g.name())),
+            "kinds" => &name_array(library::CourseKind::ALL.iter().map(|k| k.name())),
+            "terrains" => &name_array(library::Terrain::ALL.iter().map(|t| t.name())),
+            "lengths" => &lengths,
+        }
+    }
+
+    /// How the Courses tab was left (R67): `{sort, descending, group}`.
+    #[func]
+    fn courses_view(&self) -> VarDictionary {
+        let view = self.app.as_ref().map(App::courses_view).unwrap_or_default();
+        vdict! {
+            "sort" => view.sort.name(),
+            "descending" => view.descending,
+            "group" => view.group.name(),
+        }
+    }
+
+    /// Remembers how the Courses tab orders and groups the library; names it does not know
+    /// are taken as the defaults.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn set_courses_view(&mut self, sort: GString, descending: bool, group: GString) {
+        let view = library::View {
+            sort: library::SortKey::from_name(&sort.to_string()).unwrap_or_default(),
+            descending,
+            group: library::GroupKey::from_name(&group.to_string()).unwrap_or_default(),
+        };
+        self.command(|app| app.set_courses_view(view));
     }
 
     /// The active rider's rides, newest first: `[{path, route, name, start_unix_s, elapsed_s,
@@ -2616,6 +2745,34 @@ fn plan_steps(plan: &Plan, ftp: Watts, test: bool) -> VarArray {
         start = end;
     }
     steps
+}
+
+/// Names of choices for the front end.
+fn name_array(names: impl Iterator<Item = &'static str>) -> PackedStringArray {
+    names.map(GString::from).collect()
+}
+
+/// A course for the front end, as `TorqaApp.courses()` lists it.
+fn course_dict(course: &torqa_app::CourseEntry) -> VarDictionary {
+    let path = course.path.display().to_string();
+    let video = course
+        .manifest
+        .video
+        .as_ref()
+        .map_or("", |v| v.file_name.as_str());
+    vdict! {
+        "path" => path.as_str(),
+        "name" => course.manifest.name.as_str(),
+        "length_m" => course.manifest.length_m,
+        "elevation_gain_m" => course.manifest.elevation_gain_m,
+        "max_grade" => course.manifest.max_grade_percent,
+        "created_unix_s" => i64::try_from(course.manifest.created_unix_s).unwrap_or(0),
+        "track" => &points(&course.manifest.track),
+        "profile" => &points(&course.manifest.profile),
+        "video" => video,
+        // Tacx RLV courses are known only by distance and slope: no 3D world.
+        "located" => course.manifest.video.as_ref().is_none_or(|v| v.located),
+    }
 }
 
 fn points(points: &[[f32; 2]]) -> PackedVector2Array {

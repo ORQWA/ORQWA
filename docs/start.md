@@ -3,15 +3,17 @@
 Torqa opens on the start page with six tabs:
 
 - **Courses** — your course library as cards: each shows the route on a map of its
-  surroundings (a video course without a place on black), then length, climbing and steepest
-  gradient; video courses are marked **Video**. **Import** prepares a GPX route (terrain, map,
+  surroundings (a video course without a place on black), then length, climbing, steepest
+  gradient and about how long it takes you; video courses are marked **Video**. The bar above
+  the cards searches, sorts, filters and groups the library
+  ([courses.md](courses.md#find-a-course)). **Import** prepares a GPX route (terrain, map,
   3D world) or a video with GPS ([video.md](video.md)) and adds it to the library, or adds a
   `.tqc` course file ([courses.md](courses.md)). Click a card for the course page: route, key
   figures, elevation profile with its climbs, your best times there, the ride options (camera,
   difficulty, descents, time of day, weather), who to race ([ghosts.md](ghosts.md)) and
   **Ride**. Among the figures, **Time at 75 % FTP** estimates how long the course takes you
   holding three quarters of your FTP, with your weight, climbs and descents included (ridden
-  flat if you choose so in the options). It is a steady endurance pace; for a harder ride, a
+  flat if you choose so in the options), to the nearest 5 minutes. It is a steady endurance pace; for a harder ride, a
   [pacer](ghosts.md) at the power you have in mind shows where it gets you. The 3D world is built when you press **Ride**, so looking around the library stays
   quick.
   On the course page, the pencil beside the name opens **Edit course**: rename it, or add a

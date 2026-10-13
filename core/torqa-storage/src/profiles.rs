@@ -193,6 +193,21 @@ struct Settings {
     ride_bar_folded: Option<bool>,
     /// Whether the app fills the screen (#218).
     fullscreen: Option<bool>,
+    /// How the Courses tab orders and groups the library (R67).
+    courses_view: Option<CoursesView>,
+}
+
+/// How the Courses tab orders and groups the library (R67), by the names the app gives its
+/// choices; empty names for the app's defaults.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CoursesView {
+    /// What the gallery is sorted by.
+    pub sort: String,
+    /// Whether from the largest, latest or last letter down.
+    pub descending: bool,
+    /// What it is grouped by.
+    pub group: String,
 }
 
 /// What the Di2 shifter's buttons do (#139): for each D-Fly channel, the action of each kind
@@ -605,6 +620,22 @@ pub fn set_fullscreen(data_dir: &Path, fullscreen: bool) -> Result<(), ProfileEr
     save_settings(data_dir, &settings)
 }
 
+/// How the Courses tab was left (R67); the defaults until it is changed.
+#[must_use]
+pub fn courses_view(data_dir: &Path) -> CoursesView {
+    settings(data_dir).courses_view.unwrap_or_default()
+}
+
+/// Remembers how the Courses tab orders and groups the library.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_courses_view(data_dir: &Path, view: &CoursesView) -> Result<(), ProfileError> {
+    let mut settings = settings(data_dir);
+    settings.courses_view = Some(view.clone());
+    save_settings(data_dir, &settings)
+}
+
 fn settings(data_dir: &Path) -> Settings {
     std::fs::read_to_string(data_dir.join(SETTINGS_FILE))
         .ok()
@@ -768,6 +799,23 @@ mod tests {
         assert_eq!(graphics_quality(&dir), GraphicsQuality::High);
         set_fullscreen(&dir, false).unwrap();
         assert!(!fullscreen(&dir));
+    }
+
+    #[test]
+    fn the_courses_view_is_remembered_with_the_other_settings() {
+        let dir = temp_dir("courses-view");
+        assert_eq!(courses_view(&dir), CoursesView::default());
+        set_ride_bar_folded(&dir, true).unwrap();
+        let view = CoursesView {
+            sort: "added".to_owned(),
+            descending: true,
+            group: "terrain".to_owned(),
+        };
+
+        set_courses_view(&dir, &view).unwrap();
+
+        assert_eq!(courses_view(&dir), view);
+        assert!(ride_bar_folded(&dir));
     }
 
     #[test]

@@ -93,7 +93,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 | Topic | Doc |
 |---|---|
 | Start page, course gallery and course pages | [docs/start.md](docs/start.md) |
-| Courses: offline riding and sharing | [docs/courses.md](docs/courses.md) |
+| Courses: finding, offline riding and sharing | [docs/courses.md](docs/courses.md) |
 | Video courses | [docs/video.md](docs/video.md) |
 | Devices, riding and in-ride settings | [docs/riding.md](docs/riding.md) |
 | Riders, zones | [docs/riders.md](docs/riders.md) |

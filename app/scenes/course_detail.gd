@@ -211,7 +211,7 @@ func _add_estimate(grid: GridContainer) -> void:
 	var seconds: float = estimate["time_s"]
 	var share: float = estimate["ftp_share_pct"]
 	var caption: String = tr("Time at %d %% FTP") % roundi(share)
-	CourseCard.add_figure(grid, caption, UiTheme.duration(seconds))
+	CourseCard.add_figure(grid, caption, CourseCard.estimate(seconds))
 
 
 func _on_options_changed() -> void:

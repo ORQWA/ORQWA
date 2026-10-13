@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use torqa_domain::units::{Meters, MetersPerSecond, Watts};
 use torqa_physics::{DescentMode, Motion, RiderSetup};
-use torqa_routes::Route;
+use torqa_routes::Gradients;
 
 /// Share of FTP a ride is planned at: a steady endurance pace, the top of zone 2, that a rider
 /// holds for hours rather than the hour FTP itself lasts.
@@ -44,10 +44,11 @@ pub fn expected_power(ftp: Watts, average: Option<Watts>, elapsed: Duration) -> 
 
 /// How long a rider with `setup` holding `power` takes from `from` along `route`, rolling at
 /// `speed` there, to its finish; `None` if that power would not get them there (none on the
-/// flat, or too little for a wall).
+/// flat, or too little for a wall). `route` is the full route, or the profile a course file
+/// keeps for a quicker, rougher estimate.
 #[must_use]
-pub fn time_to_finish(
-    route: &Route,
+pub fn time_to_finish<G: Gradients + ?Sized>(
+    route: &G,
     setup: &RiderSetup,
     descent: DescentMode,
     from: Meters,
@@ -93,8 +94,8 @@ impl TimeToGo {
 
 /// Where a rider holding `power` is after each simulation step, starting at `from` with
 /// `speed`: `(distance along the route, time since)`, until the finish or [`MAX_TIME`].
-pub(crate) fn steady_ride<'a>(
-    route: &'a Route,
+pub(crate) fn steady_ride<'a, G: Gradients + ?Sized>(
+    route: &'a G,
     setup: &'a RiderSetup,
     descent: DescentMode,
     power: Watts,
@@ -122,6 +123,7 @@ mod tests {
     use std::fmt::Write as _;
 
     use torqa_domain::telemetry::Telemetry;
+    use torqa_routes::{ElevationProfile, Route};
 
     use super::*;
     use crate::{Ride, RideConfig};
@@ -200,6 +202,50 @@ mod tests {
             "{rest:?} of {whole:?}"
         );
         assert_eq!(estimate(&route, 4_000.0, 10.3, 250.0), Some(Duration::ZERO));
+    }
+
+    #[tokio::test]
+    async fn the_profile_a_course_file_keeps_estimates_close_to_its_route() {
+        // 40 km of rolling hills: long climbs of a hundred metres and more, with short
+        // ramps of up to 10 % on them.
+        let mut xml = String::from("<gpx><trk><trkseg>");
+        for i in 0..=400 {
+            let lat = 46.0 + f64::from(i) * 100.0 / 111_195.0;
+            let x = f64::from(i);
+            let ele = 500.0 + 120.0 * (x / 25.0).sin() + 40.0 * (x / 4.0).sin();
+            let _ = write!(
+                xml,
+                r#"<trkpt lat="{lat}" lon="7"><ele>{ele}</ele></trkpt>"#
+            );
+        }
+        xml.push_str("</trkseg></trk></gpx>");
+        let route = Route::from_gpx(&xml, None).await.unwrap();
+        // Thinned as for a course card: at most 200 points, the last one kept.
+        let points = route.points();
+        let step = points.len().div_ceil(200);
+        let mut picked: Vec<_> = points.iter().step_by(step).collect();
+        if (points.len() - 1) % step != 0 {
+            picked.extend(points.last());
+        }
+        let profile =
+            ElevationProfile::new(picked.iter().map(|p| (p.distance, p.elevation))).unwrap();
+
+        let exact = estimate(&route, 0.0, 0.0, 200.0).unwrap().as_secs_f64();
+        let rough = time_to_finish(
+            &profile,
+            &RiderSetup::default(),
+            DescentMode::Coast,
+            Meters(0.0),
+            MetersPerSecond(0.0),
+            Watts(200.0),
+        )
+        .unwrap()
+        .as_secs_f64();
+
+        assert!(
+            (rough - exact).abs() < exact * 0.03,
+            "profile {rough} s, route {exact} s"
+        );
     }
 
     #[tokio::test]

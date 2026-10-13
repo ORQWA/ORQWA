@@ -1,8 +1,8 @@
 class_name CourseCard
 extends PanelContainer
-## A course in the gallery (R39): its path card, name and key figures in rows, marked if it is
-## ridden along a video (R17); click to open it. The elevation profile is left to the course
-## page.
+## A course in the gallery (R39): its path card, name and key figures in rows, with the time
+## the rider is estimated to take (R67), marked if it is ridden along a video (R17); click to
+## open it. The elevation profile is left to the course page.
 
 signal pressed
 
@@ -37,7 +37,12 @@ func _init(course: Dictionary, imperial: bool) -> void:
 	if not str(course.get("video", "")).is_empty():
 		heading.add_child(video_badge())
 	rows.add_child(heading)
-	rows.add_child(figure_rows(course, imperial))
+	var grid: GridContainer = figure_rows(course, imperial)
+	# From the profile the course file keeps (R67); the course page rides the whole route.
+	if course.get("estimated_s") != null:
+		var seconds: float = course["estimated_s"]
+		add_figure(grid, TranslationServer.translate("Time estimate"), estimate(seconds))
+	rows.add_child(grid)
 	add_child(rows)
 
 
@@ -97,6 +102,15 @@ static func add_figure(grid: GridContainer, caption: String, value: String) -> v
 	value_label.text = value
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	grid.add_child(value_label)
+
+
+## An estimated time to the nearest 5 minutes, which is all an estimate can tell (R66, R67):
+## "1 h 05" or "45 min", and "5 min" at the least.
+static func estimate(seconds: float) -> String:
+	var minutes: int = maxi(5, roundi(seconds / 300.0) * 5)
+	if minutes < 60:
+		return TranslationServer.translate("%d min") % minutes
+	return TranslationServer.translate("%d h %02d") % [minutes / 60, minutes % 60]
 
 
 ## `[caption, value]` pairs: length, climbing and steepest gradient, in the rider's units.

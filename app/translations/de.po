@@ -1475,3 +1475,60 @@ msgstr "Deine besten 20 Minuten der letzten 90 Tage ergeben eine FTP von etwa %d
 
 msgid "Your last 90 days show an FTP of about %d W: critical power, W′ %.1f kJ. Now %d W."
 msgstr "Deine letzten 90 Tage ergeben eine FTP von etwa %d W: kritische Leistung, W′ %.1f kJ. Jetzt %d W."
+
+msgid "Search courses"
+msgstr "Strecken suchen"
+
+msgid "Sort"
+msgstr "Sortieren"
+
+msgid "Group"
+msgstr "Gruppieren"
+
+msgid "Ascending"
+msgstr "Aufsteigend"
+
+msgid "Descending"
+msgstr "Absteigend"
+
+msgid "Estimated time"
+msgstr "Geschätzte Zeit"
+
+msgid "Date added"
+msgstr "Hinzugefügt"
+
+msgid "Last ridden"
+msgstr "Zuletzt gefahren"
+
+msgid "Type"
+msgstr "Art"
+
+msgid "Terrain"
+msgstr "Gelände"
+
+msgid "Flat"
+msgstr "Flach"
+
+msgid "Rolling"
+msgstr "Wellig"
+
+msgid "Hilly"
+msgstr "Hügelig"
+
+msgid "Mountainous"
+msgstr "Bergig"
+
+msgid "Clear filters"
+msgstr "Filter zurücksetzen"
+
+msgid "No courses match"
+msgstr "Keine passenden Strecken"
+
+msgid "Nothing in your library matches this search and these filters."
+msgstr "Keine deiner Strecken passt zu dieser Suche und diesen Filtern."
+
+msgid "%d h %02d"
+msgstr "%d h %02d"
+
+msgid "Time estimate"
+msgstr "Zeitschätzung"
