@@ -7,11 +7,15 @@ use std::time::{Duration, SystemTime};
 
 use torqa_domain::profile::UnitSystem;
 use torqa_domain::units::Meters;
+pub use torqa_storage::course::CourseCountry;
 
 use crate::CourseEntry;
 
 /// Metres in a mile.
 const MILE: f64 = 1_609.344;
+/// The country chip and group of the courses whose countries are not known: ISO codes are
+/// two capital letters, so it cannot name a country.
+pub const NO_COUNTRY: &str = "none";
 
 /// Gives an enum `ALL`, `name` and `from_name`: the names the front end and the settings file
 /// know its values by.
@@ -183,6 +187,8 @@ pub enum GroupKey {
     Terrain,
     /// Length bands.
     Length,
+    /// The countries passed (#230); a course passing several is in each of their groups.
+    Country,
 }
 
 named!(GroupKey {
@@ -190,6 +196,7 @@ named!(GroupKey {
     Kind => "type",
     Terrain => "terrain",
     Length => "length",
+    Country => "country",
 });
 
 /// How the gallery is ordered and grouped, remembered between starts.
@@ -217,6 +224,12 @@ pub struct CourseQuery {
     pub terrains: Vec<Terrain>,
     /// The length bands shown.
     pub lengths: Vec<LengthBand>,
+    /// The countries shown, by code, [`NO_COUNTRY`] for courses whose countries are not
+    /// known; a course passing any of them is shown.
+    pub countries: Vec<String>,
+    /// The language to name countries in, e.g. `de` or `de_CH`; their names are searched
+    /// and sorted in it.
+    pub locale: String,
 }
 
 /// A course with what the gallery sorts and filters it by beyond its manifest.
@@ -256,10 +269,36 @@ impl LibraryCourse {
     pub fn length_band(&self, units: UnitSystem) -> LengthBand {
         LengthBand::of(Meters(self.entry.manifest.length_m), units)
     }
+
+    /// The countries it passes, as far as known.
+    #[must_use]
+    pub fn countries(&self) -> &[CourseCountry] {
+        self.entry.manifest.countries.as_deref().unwrap_or_default()
+    }
+}
+
+/// The name of `country` in `locale` (e.g. `de_CH`, then `de`), else in English, else in its
+/// own language, else its code.
+#[must_use]
+pub fn country_name<'a>(country: &'a CourseCountry, locale: &str) -> &'a str {
+    let language = locale.split(['_', '-']).next().unwrap_or_default();
+    [locale, language, "en", ""]
+        .iter()
+        .find_map(|key| country.names.get(*key))
+        .map_or(country.code.as_str(), String::as_str)
+}
+
+/// A country to choose among the library's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CountryChoice {
+    /// Its code, or [`NO_COUNTRY`].
+    pub code: String,
+    /// Its name in the query's language; empty for [`NO_COUNTRY`].
+    pub name: String,
 }
 
 /// One group of the gallery.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Group {
     /// Every course shown, when not grouped.
     All,
@@ -269,17 +308,22 @@ pub enum Group {
     Terrain(Terrain),
     /// The courses of one length band.
     Length(LengthBand),
+    /// The courses passing one country, by code; `None` for those whose countries are not
+    /// known.
+    Country(Option<String>),
 }
 
 impl Group {
-    /// The name of the kind, terrain or band it holds; empty for [`Group::All`].
+    /// The name of the kind, terrain or band it holds, the country's code or [`NO_COUNTRY`];
+    /// empty for [`Group::All`].
     #[must_use]
-    pub fn name(self) -> &'static str {
+    pub fn name(&self) -> &str {
         match self {
             Self::All => "",
             Self::Kind(kind) => kind.name(),
             Self::Terrain(terrain) => terrain.name(),
             Self::Length(band) => band.name(),
+            Self::Country(code) => code.as_deref().unwrap_or(NO_COUNTRY),
         }
     }
 }
@@ -289,6 +333,8 @@ impl Group {
 pub struct CourseGroup {
     /// Which group.
     pub group: Group,
+    /// The country's name in the query's language, for a country's group; else empty.
+    pub label: String,
     /// Its courses, sorted as asked.
     pub courses: Vec<LibraryCourse>,
 }
@@ -299,21 +345,26 @@ pub struct Gallery {
     /// How many courses the library holds, shown or not.
     pub total: usize,
     /// The groups with courses shown, in their own order (3D before video, flat to
-    /// mountainous, short to long).
+    /// mountainous, short to long, countries by name and those not known last).
     pub groups: Vec<CourseGroup>,
+    /// The countries the library's courses pass, shown or not, by name, then
+    /// [`NO_COUNTRY`] if some courses' countries are not known.
+    pub countries: Vec<CountryChoice>,
 }
 
 /// The gallery of `courses` that `query` asks for, length bands in `units`.
 #[must_use]
 pub fn gallery(courses: Vec<LibraryCourse>, query: &CourseQuery, units: UnitSystem) -> Gallery {
     let total = courses.len();
+    let countries = country_choices(&courses, &query.locale);
     let search = query.search.trim().to_lowercase();
     let mut groups: BTreeMap<Group, Vec<LibraryCourse>> = BTreeMap::new();
     for course in courses {
-        let shown = course.entry.manifest.name.to_lowercase().contains(&search)
+        let shown = found(&course, &search, &query.locale)
             && allows(&query.kinds, &course.kind())
             && allows(&query.terrains, &course.terrain())
-            && allows(&query.lengths, &course.length_band(units));
+            && allows(&query.lengths, &course.length_band(units))
+            && passes(&course, &query.countries);
         if !shown {
             continue;
         }
@@ -322,17 +373,94 @@ pub fn gallery(courses: Vec<LibraryCourse>, query: &CourseQuery, units: UnitSyst
             GroupKey::Kind => Group::Kind(course.kind()),
             GroupKey::Terrain => Group::Terrain(course.terrain()),
             GroupKey::Length => Group::Length(course.length_band(units)),
+            GroupKey::Country => {
+                for country in course.countries() {
+                    let group = Group::Country(Some(country.code.clone()));
+                    groups.entry(group).or_default().push(course.clone());
+                }
+                if !course.countries().is_empty() {
+                    continue;
+                }
+                Group::Country(None)
+            }
         };
         groups.entry(group).or_default().push(course);
     }
-    let groups = groups
+    let mut groups: Vec<CourseGroup> = groups
         .into_iter()
         .map(|(group, mut courses)| {
             courses.sort_by(|a, b| order(a, b, query.view));
-            CourseGroup { group, courses }
+            let label = match &group {
+                Group::Country(Some(code)) => countries
+                    .iter()
+                    .find(|c| &c.code == code)
+                    .map(|c| c.name.clone())
+                    .unwrap_or_default(),
+                _ => String::new(),
+            };
+            CourseGroup {
+                group,
+                label,
+                courses,
+            }
         })
         .collect();
-    Gallery { total, groups }
+    // Countries by their names in the rider's language, those not known last.
+    if query.view.group == GroupKey::Country {
+        groups.sort_by_cached_key(|g| (g.group == Group::Country(None), g.label.to_lowercase()));
+    }
+    Gallery {
+        total,
+        groups,
+        countries,
+    }
+}
+
+/// Whether the search finds `course`: in its name, or in the name of a country it passes in
+/// the rider's language, in English or in the country's own.
+fn found(course: &LibraryCourse, search: &str, locale: &str) -> bool {
+    course.entry.manifest.name.to_lowercase().contains(search)
+        || course.countries().iter().any(|country| {
+            let in_english = country.names.get("en").map(String::as_str);
+            let own = country.names.get("").map(String::as_str);
+            [Some(country_name(country, locale)), in_english, own]
+                .into_iter()
+                .flatten()
+                .any(|name| name.to_lowercase().contains(search))
+        })
+}
+
+/// Whether `course` passes one of the countries `chosen` (codes or [`NO_COUNTRY`]); all
+/// courses do when none is chosen.
+fn passes(course: &LibraryCourse, chosen: &[String]) -> bool {
+    chosen.is_empty()
+        || (course.countries().is_empty() && chosen.iter().any(|c| c == NO_COUNTRY))
+        || course
+            .countries()
+            .iter()
+            .any(|country| chosen.contains(&country.code))
+}
+
+/// The countries `courses` pass, by name in `locale`, then [`NO_COUNTRY`] if some courses'
+/// countries are not known.
+fn country_choices(courses: &[LibraryCourse], locale: &str) -> Vec<CountryChoice> {
+    let mut choices: Vec<CountryChoice> = Vec::new();
+    for country in courses.iter().flat_map(LibraryCourse::countries) {
+        if !choices.iter().any(|c| c.code == country.code) {
+            choices.push(CountryChoice {
+                code: country.code.clone(),
+                name: country_name(country, locale).to_owned(),
+            });
+        }
+    }
+    choices.sort_by_cached_key(|c| c.name.to_lowercase());
+    if courses.iter().any(|c| c.countries().is_empty()) {
+        choices.push(CountryChoice {
+            code: NO_COUNTRY.to_owned(),
+            name: String::new(),
+        });
+    }
+    choices
 }
 
 /// Whether chips `chosen` let `value` through: all of them do when none is chosen.
@@ -413,6 +541,7 @@ mod tests {
                     track: Vec::new(),
                     profile: Vec::new(),
                     video: None,
+                    countries: None,
                 },
             },
             estimated: None,
@@ -431,6 +560,59 @@ mod tests {
             located: true,
         });
         course
+    }
+
+    fn country(code: &str, names: &[(&str, &str)]) -> CourseCountry {
+        CourseCountry {
+            code: code.to_owned(),
+            names: names
+                .iter()
+                .map(|&(language, name)| (language.to_owned(), name.to_owned()))
+                .collect(),
+        }
+    }
+
+    fn switzerland() -> CourseCountry {
+        country(
+            "CH",
+            &[
+                ("", "Schweiz/Suisse/Svizzera/Svizra"),
+                ("de", "Schweiz"),
+                ("en", "Switzerland"),
+                ("fr", "Suisse"),
+            ],
+        )
+    }
+
+    fn passing(mut course: LibraryCourse, countries: Option<Vec<CourseCountry>>) -> LibraryCourse {
+        course.entry.manifest.countries = countries;
+        course
+    }
+
+    /// Bern, a ride from Basel into France and Germany, and two whose countries are not
+    /// known: one looked up, one not yet.
+    fn countries_library() -> Vec<LibraryCourse> {
+        let france = country("FR", &[("de", "Frankreich"), ("en", "France")]);
+        let germany = country("DE", &[("de", "Deutschland"), ("en", "Germany")]);
+        vec![
+            passing(
+                course("Gurten loop", 31.0, 380.0),
+                Some(vec![switzerland()]),
+            ),
+            passing(
+                course("Dreiländer loop", 54.0, 420.0),
+                Some(vec![switzerland(), france, germany]),
+            ),
+            passing(course("Somewhere", 20.0, 100.0), Some(Vec::new())),
+            passing(course("Old course", 25.0, 100.0), None),
+        ]
+    }
+
+    fn query_in(locale: &str) -> CourseQuery {
+        CourseQuery {
+            locale: locale.to_owned(),
+            ..CourseQuery::default()
+        }
     }
 
     fn added(mut course: LibraryCourse, unix_s: u64) -> LibraryCourse {
@@ -654,7 +836,11 @@ mod tests {
 
         let terrains = gallery(library(), &by(GroupKey::Terrain), UnitSystem::Metric);
         assert_eq!(
-            terrains.groups.iter().map(|g| g.group).collect::<Vec<_>>(),
+            terrains
+                .groups
+                .iter()
+                .map(|g| g.group.clone())
+                .collect::<Vec<_>>(),
             [
                 Group::Terrain(Terrain::Flat),
                 Group::Terrain(Terrain::Hilly),
@@ -688,6 +874,101 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["medium", "very_long"]
         );
+    }
+
+    #[test]
+    fn countries_are_named_in_the_riders_language_else_in_english_or_their_own() {
+        let swiss = switzerland();
+        assert_eq!(country_name(&swiss, "de_CH"), "Schweiz");
+        assert_eq!(country_name(&swiss, "fr"), "Suisse");
+        assert_eq!(country_name(&swiss, "it"), "Switzerland");
+        let local_only = country("LI", &[("", "Liechtenstein")]);
+        assert_eq!(country_name(&local_only, "de"), "Liechtenstein");
+        assert_eq!(country_name(&country("XK", &[]), "de"), "XK");
+    }
+
+    #[test]
+    fn a_course_is_grouped_under_every_country_it_passes() {
+        let query = CourseQuery {
+            view: View {
+                group: GroupKey::Country,
+                ..View::default()
+            },
+            ..query_in("de")
+        };
+
+        let grouped = gallery(countries_library(), &query, UnitSystem::Metric);
+
+        let labels: Vec<&str> = grouped.groups.iter().map(|g| g.label.as_str()).collect();
+        assert_eq!(labels, ["Deutschland", "Frankreich", "Schweiz", ""]);
+        assert_eq!(grouped.groups[3].group, Group::Country(None));
+        assert_eq!(grouped.groups[3].group.name(), NO_COUNTRY);
+        assert_eq!(
+            names(&grouped),
+            [
+                vec!["Dreiländer loop"],
+                vec!["Dreiländer loop"],
+                vec!["Dreiländer loop", "Gurten loop"],
+                vec!["Old course", "Somewhere"],
+            ]
+        );
+        // In English the order follows the English names.
+        let english = CourseQuery {
+            locale: "en".to_owned(),
+            ..query
+        };
+        let english = gallery(countries_library(), &english, UnitSystem::Metric);
+        let labels: Vec<&str> = english.groups.iter().map(|g| g.label.as_str()).collect();
+        assert_eq!(labels, ["France", "Germany", "Switzerland", ""]);
+    }
+
+    #[test]
+    fn country_chips_show_the_courses_passing_them() {
+        let chosen = |codes: &[&str]| CourseQuery {
+            countries: codes.iter().map(|&c| c.to_owned()).collect(),
+            ..query_in("de")
+        };
+        let shown = |codes: &[&str]| {
+            names(&gallery(
+                countries_library(),
+                &chosen(codes),
+                UnitSystem::Metric,
+            ))
+            .concat()
+            .into_iter()
+            .map(ToOwned::to_owned)
+            .collect::<Vec<String>>()
+        };
+
+        assert_eq!(shown(&["FR"]), ["Dreiländer loop"]);
+        assert_eq!(shown(&["FR", "CH"]), ["Dreiländer loop", "Gurten loop"]);
+        assert_eq!(shown(&[NO_COUNTRY]), ["Old course", "Somewhere"]);
+        // The library's countries to choose from, by name, then those not known.
+        let choices = gallery(countries_library(), &chosen(&[]), UnitSystem::Metric).countries;
+        let codes: Vec<&str> = choices.iter().map(|c| c.code.as_str()).collect();
+        assert_eq!(codes, ["DE", "FR", "CH", NO_COUNTRY]);
+    }
+
+    #[test]
+    fn the_search_finds_countries_by_name() {
+        let searching = |search: &str| CourseQuery {
+            search: search.to_owned(),
+            ..query_in("de")
+        };
+        let found = |search: &str| {
+            names(&gallery(
+                countries_library(),
+                &searching(search),
+                UnitSystem::Metric,
+            ))
+            .concat()
+            .len()
+        };
+
+        assert_eq!(found("schweiz"), 2);
+        assert_eq!(found("Switzerland"), 2, "in English too");
+        assert_eq!(found("frankreich"), 1);
+        assert_eq!(found("suisse"), 2, "in its own languages");
     }
 
     #[test]

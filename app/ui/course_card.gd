@@ -42,6 +42,8 @@ func _init(course: Dictionary, imperial: bool) -> void:
 	if course.get("estimated_s") != null:
 		var seconds: float = course["estimated_s"]
 		add_figure(grid, TranslationServer.translate("Time"), rough_duration(seconds))
+	var countries: Array = course.get("countries", [])
+	_add_countries(grid, countries)
 	rows.add_child(grid)
 	add_child(rows)
 
@@ -102,6 +104,31 @@ static func add_figure(grid: GridContainer, caption: String, value: String) -> v
 	value_label.text = value
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	grid.add_child(value_label)
+
+
+## The countries the course passes (#230) by their codes, e.g. "CH · DE · FR", their names
+## on hover; nothing where they are not known.
+static func _add_countries(grid: GridContainer, countries: Array) -> void:
+	if countries.is_empty():
+		return
+	var codes: PackedStringArray = PackedStringArray()
+	var names: PackedStringArray = PackedStringArray()
+	for country: Dictionary in countries:
+		var code: String = country["code"]
+		var country_name: String = country["name"]
+		codes.append(code)
+		names.append(country_name)
+	var caption: String = (
+		TranslationServer.translate("Country")
+		if countries.size() == 1
+		else TranslationServer.translate("Countries")
+	)
+	add_figure(grid, caption, " · ".join(codes))
+	var value: Label = grid.get_child(grid.get_child_count() - 1) as Label
+	value.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	value.tooltip_text = ", ".join(names)
+	# Sees the mouse for its tooltip; the click still reaches the card.
+	value.mouse_filter = Control.MOUSE_FILTER_PASS
 
 
 ## A duration to the minute, marked as estimated: "≈ 1 h 05" or "≈ 45 min".

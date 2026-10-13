@@ -12,7 +12,7 @@ pub mod uploads;
 pub mod video;
 pub mod view;
 
-pub use import::{Imported, LoadStage, Progress, course_map, import_gpx, import_route};
+pub use import::{Imported, LoadStage, Progress, countries, course_map, import_gpx, import_route};
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -37,7 +37,7 @@ use torqa_session::estimate;
 use torqa_session::ghost::Ghost;
 use torqa_session::workout::Workout;
 use torqa_session::{Ride, RideConfig, RideState};
-use torqa_storage::course::{self, Manifest};
+use torqa_storage::course::{self, CourseCountry, Manifest};
 use torqa_storage::profiles::{self, DeviceRole, StoredProfile};
 pub use torqa_storage::profiles::{
     GraphicsQuality, OverlayWindow, button_action_from_name, button_action_name,
@@ -288,6 +288,8 @@ pub enum AppEvent {
     RideSaved(PathBuf),
     /// A course was saved or imported into the library.
     CourseAdded(PathBuf),
+    /// Courses in the library learned their countries (#230).
+    CoursesChanged,
     /// The rider reached the top of a climb.
     ClimbCompleted {
         /// Index in [`Route::climbs`].
@@ -372,6 +374,9 @@ enum JobResult {
     /// The course at the first path has its own copy of its video at the second (#165).
     VideoKept(PathBuf, PathBuf),
     Upload(Box<uploads::Done>),
+    /// The countries of the course at the path, prepared at the given time, were found
+    /// (#230); `None` once the lookup is over.
+    Countries(Option<(PathBuf, u64, Vec<CourseCountry>)>),
     Failed(String),
 }
 
@@ -506,6 +511,10 @@ pub struct App {
     route: Option<Route>,
     /// The map for the loaded course's picture, if it is to get one (#203).
     course_map: Option<Box<torqa_world::course_map::CourseMap>>,
+    /// The countries the loaded route passes, if looked up (#230).
+    countries: Option<Vec<CourseCountry>>,
+    /// Whether the courses' countries are being looked up, and how many were found so far.
+    filling_countries: Option<usize>,
     /// The gallery's estimated times (R67) by course, for the rider setup and power they
     /// were worked out for: a search refreshes the gallery on every key, too often to ride
     /// every course again.
@@ -571,6 +580,8 @@ impl App {
             preview: None,
             route: None,
             course_map: None,
+            countries: None,
+            filling_countries: None,
             estimates: Estimates::default(),
             world: None,
             offline: false,
@@ -706,6 +717,9 @@ impl App {
                 Ok(mut imported) => {
                     imported.course_map =
                         course_map(&imported.route, &cache, offline, &mut report).await;
+                    imported.countries =
+                        countries(&route_points(&imported.route), &cache, offline, &mut report)
+                            .await;
                     Ok(Box::new(imported))
                 }
                 Err(message) => Err(message),
@@ -844,10 +858,16 @@ impl App {
                 .await
                 {
                     Ok(mut imported) => {
-                        // Nor does it get a map: there is no land around a drawn line.
+                        // Nor does it get a map or countries: there is no land around a drawn
+                        // line.
                         if source.located {
                             imported.course_map =
                                 course_map(&imported.route, &cache, offline, &mut report).await;
+                            let points = route_points(&imported.route);
+                            imported.countries =
+                                countries(&points, &cache, offline, &mut report).await;
+                        } else {
+                            imported.countries = Some(Vec::new());
                         }
                         Ok(Box::new((imported, source)))
                     }
@@ -1105,6 +1125,7 @@ impl App {
             track: thin(&view::track(route, PREVIEW_POINTS)),
             profile: thin(&view::elevation_profile(route, PREVIEW_POINTS)),
             video: self.video.as_ref().map(|v| video_reference(v, route)),
+            countries: self.countries.clone(),
         };
         // Preparing the same course again must not fill the library with copies; one still
         // being written reports itself when done. A course named on import is the rider's
@@ -1415,6 +1436,59 @@ impl App {
         last
     }
 
+    /// Looks up in the background the countries of the courses that do not know them yet
+    /// (#230): those prepared before Torqa knew countries, offline, or while the map tiles were
+    /// out of reach. Each course's file learns its countries as they are found, and
+    /// [`AppEvent::CoursesChanged`] follows once all were looked up. `offline` uses cached map
+    /// tiles only. Does nothing while a lookup is under way.
+    pub fn fill_in_countries(&mut self, offline: bool) {
+        if self.filling_countries.is_some() {
+            return;
+        }
+        let missing: Vec<(PathBuf, u64, bool)> = self
+            .courses()
+            .into_iter()
+            .filter(|c| c.manifest.countries.is_none())
+            .map(|c| {
+                let located = c.manifest.video.as_ref().is_none_or(|v| v.located);
+                (c.path, c.manifest.created_unix_s, located)
+            })
+            .collect();
+        if missing.is_empty() {
+            return;
+        }
+        self.filling_countries = Some(0);
+        let tx = self.jobs_tx.clone();
+        let cache = self.cache_dir.clone();
+        self.runtime.spawn(async move {
+            for (path, created, located) in missing {
+                let found = if located {
+                    let file = path.clone();
+                    let points = tokio::task::spawn_blocking(move || {
+                        let gpx = course::route_gpx(&file).ok()?;
+                        torqa_routes::track_points(&gpx).ok()
+                    })
+                    .await
+                    .ok()
+                    .flatten();
+                    match points {
+                        Some(points) => {
+                            countries(&points, &cache, offline, &mut |_, _, _| {}).await
+                        }
+                        None => None,
+                    }
+                } else {
+                    // Known only by distance and slope: no land, no country.
+                    Some(Vec::new())
+                };
+                if let Some(found) = found {
+                    let _ = tx.send(JobResult::Countries(Some((path, created, found))));
+                }
+            }
+            let _ = tx.send(JobResult::Countries(None));
+        });
+    }
+
     /// The map picture of the course at `path` (#192), the PNG the app drew when the course
     /// was prepared; `None` without one.
     #[must_use]
@@ -1528,6 +1602,7 @@ impl App {
         self.world = None;
         self.route = None;
         self.course_map = None;
+        self.countries = None;
         self.loaded = None;
         self.used = UsedFiles::default();
         self.used.clone()
@@ -2838,6 +2913,7 @@ impl App {
                     }
                 }
                 JobResult::Upload(done) => events.push(self.upload_work_done(*done)),
+                JobResult::Countries(found) => self.countries_found(found, events),
                 JobResult::Scan(Err(message))
                 | JobResult::Route(_, Err(message))
                 | JobResult::Video(_, Err(message))
@@ -2849,6 +2925,26 @@ impl App {
         }
     }
 
+    /// Keeps the countries found for a course in its file, and reports the courses changed
+    /// once the lookup is over.
+    fn countries_found(
+        &mut self,
+        found: Option<(PathBuf, u64, Vec<CourseCountry>)>,
+        events: &mut Vec<AppEvent>,
+    ) {
+        let Some((path, created, countries)) = found else {
+            if self.filling_countries.take().is_some_and(|kept| kept > 0) {
+                events.push(AppEvent::CoursesChanged);
+            }
+            return;
+        };
+        if keep_countries(&path, created, countries)
+            && let Some(kept) = &mut self.filling_countries
+        {
+            *kept += 1;
+        }
+    }
+
     /// Takes a loaded route as the current one and reports it.
     fn route_loaded(&mut self, imported: Imported, events: &mut Vec<AppEvent>) {
         let Imported {
@@ -2856,10 +2952,12 @@ impl App {
             name,
             gpx,
             course_map,
+            countries,
             ..
         } = imported;
         self.loaded = Some((name.clone(), gpx));
         self.course_map = course_map;
+        self.countries = countries;
         events.push(AppEvent::RouteLoaded(RouteSummary {
             name,
             length: route.length().0,
@@ -3078,6 +3176,27 @@ fn refer_to_kept_video(path: &Path, kept: &Path) -> Result<(), AppError> {
             video.path = kept.display().to_string();
         }
     })
+}
+
+/// The positions of `route` as (latitude, longitude).
+fn route_points(route: &Route) -> Vec<(f64, f64)> {
+    route.points().iter().map(|p| (p.lat, p.lon)).collect()
+}
+
+/// Gives the course at `path` the `countries` found for it while it was the one prepared at
+/// `created`, unless it knows them already; true if it was given them. A course replaced or
+/// deleted meanwhile is left alone.
+fn keep_countries(path: &Path, created: u64, countries: Vec<CourseCountry>) -> bool {
+    let Ok(mut manifest) = course::read_manifest(path) else {
+        return false;
+    };
+    if manifest.created_unix_s != created || manifest.countries.is_some() {
+        return false;
+    }
+    manifest.countries = Some(countries);
+    course::rewrite_manifest(path, &manifest)
+        .inspect_err(|error| warn!(path = %path.display(), %error, "cannot keep the countries"))
+        .is_ok()
 }
 
 fn update_manifest(path: &Path, change: impl FnOnce(&mut Manifest)) -> Result<(), AppError> {
@@ -4049,6 +4168,67 @@ mod tests {
             after < before,
             "{after:?} with more power, {before:?} before"
         );
+    }
+
+    /// 400 m due north through Bern, far from any border, with elevations.
+    fn write_bern_route(dir: &std::path::Path) -> PathBuf {
+        let mut xml = String::from("<gpx><trk><name>Bern</name><trkseg>");
+        for i in 0..=40 {
+            let lat = 46.948 + f64::from(i) * 10.0 / 111_195.0;
+            let _ = write!(
+                xml,
+                r#"<trkpt lat="{lat}" lon="7.447"><ele>540</ele></trkpt>"#
+            );
+        }
+        xml.push_str("</trkseg></trk></gpx>");
+        let path = dir.join("bern.gpx");
+        std::fs::write(&path, xml).unwrap();
+        path
+    }
+
+    #[test]
+    fn courses_learn_their_countries_once_the_map_tiles_are_at_hand() {
+        let dir = temp_dir("countries");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        // Prepared offline without the tiles: its countries are not known yet.
+        app.load_route(write_bern_route(&dir), true);
+        let events = run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        let Some(AppEvent::CourseAdded(path)) = events.last().cloned() else {
+            unreachable!()
+        };
+        assert_eq!(course::read_manifest(&path).unwrap().countries, None);
+
+        // The tile with Switzerland's borders and label arrives in the cache.
+        let tile = torqa_osm::tile_path(&dir.join("cache/osm"), 6, (33, 22));
+        std::fs::create_dir_all(tile.parent().unwrap()).unwrap();
+        std::fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/countries/6/33/22.pbf"),
+            &tile,
+        )
+        .unwrap();
+        app.rename_course(&path, "Bärn").unwrap();
+        app.fill_in_countries(true);
+        run_until(&mut app, |e| matches!(e, AppEvent::CoursesChanged));
+
+        let manifest = course::read_manifest(&path).unwrap();
+        let countries = manifest.countries.unwrap();
+        assert_eq!(countries.len(), 1);
+        assert_eq!(countries[0].code, "CH");
+        assert_eq!(countries[0].names["de"], "Schweiz");
+        assert_eq!(manifest.name, "Bärn", "the rename made meanwhile is kept");
+        // Nothing left to look up: no lookup, no event.
+        app.fill_in_countries(true);
+        assert!(app.filling_countries.is_none());
+
+        // A course prepared with the tiles at hand knows its countries at once.
+        app.name_next_import("Bern again", false);
+        app.load_route(write_bern_route(&dir), true);
+        let events = run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        let Some(AppEvent::CourseAdded(again)) = events.last().cloned() else {
+            unreachable!()
+        };
+        let known = course::read_manifest(&again).unwrap().countries.unwrap();
+        assert_eq!(known[0].code, "CH");
     }
 
     #[test]

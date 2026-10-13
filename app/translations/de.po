@@ -1529,3 +1529,15 @@ msgstr "Keine deiner Strecken passt zu dieser Suche und diesen Filtern."
 
 msgid "%d h %02d"
 msgstr "%d h %02d"
+
+msgid "Country"
+msgstr "Land"
+
+msgid "Countries"
+msgstr "Länder"
+
+msgid "No country"
+msgstr "Kein Land"
+
+msgid "Finding the countries"
+msgstr "Länder bestimmen"
