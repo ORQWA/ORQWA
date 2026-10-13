@@ -225,6 +225,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_cycle_camera()
 	elif key.keycode == KEY_S and not _finished:
 		_open_settings()
+	elif key.keycode in [KEY_H, KEY_E]:
+		_step_difficulty(1 if key.keycode == KEY_H else -1)
+	elif key.keycode in [KEY_I, KEY_L]:
+		_step_intensity(1 if key.keycode == KEY_I else -1)
+	elif key.keycode == KEY_N:
+		_skip_step()
 	elif _simulating and key.keycode in [KEY_EQUAL, KEY_PLUS, KEY_KP_ADD]:
 		_step_time_scale(1)
 	elif _simulating and key.keycode in [KEY_MINUS, KEY_KP_SUBTRACT]:
@@ -614,15 +620,15 @@ func _on_control_requested(control: String) -> void:
 	elif control in ["intensity_up", "intensity_down"]:
 		_step_intensity(1 if control == "intensity_up" else -1)
 	elif control == "skip_step":
-		if _torqa.skip_step():
-			_show_toast(tr("Workout: next step"))
+		_skip_step()
 	else:
 		for music: Array in MUSIC_KEYS.values():
 			if music[0] == control:
 				_control_music(music)
 
 
-## Makes the trainer difficulty a step harder or easier (#139), as the ride settings would.
+## Makes the trainer difficulty a step harder or easier (#139, H / E), as the ride settings
+## would.
 func _step_difficulty(step: int) -> void:
 	if _finished:
 		return
@@ -633,13 +639,19 @@ func _step_difficulty(step: int) -> void:
 	_show_toast(tr("Trainer difficulty: %d %%") % roundi(difficulty))
 
 
-## Makes the workout's powers a step harder or easier (#139); other rides keep theirs.
+## Makes the workout's powers a step harder or easier (#139, I / L); other rides keep theirs.
 func _step_intensity(step: int) -> void:
 	if _finished:
 		return
 	var intensity: float = _torqa.step_intensity(step)
 	if intensity >= 0.0:
 		_show_toast(tr("Workout intensity: %d %%") % roundi(intensity))
+
+
+## On with the next step of a structured workout (#139, N).
+func _skip_step() -> void:
+	if _torqa.skip_step():
+		_show_toast(tr("Workout: next step"))
 
 
 ## Plays, pauses or skips the music: `music` is a command and its message, as in MUSIC_KEYS.

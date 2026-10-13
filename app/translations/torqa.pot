@@ -35,7 +35,7 @@ msgstr ""
 msgid "%d steps  ·  %s"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:523
+#: app/scenes/ride_screen.gd:529
 msgid "%s  ·  climb %d of %d"
 msgstr ""
 
@@ -47,19 +47,19 @@ msgstr ""
 msgid "%s (copy)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:490
+#: app/scenes/ride_screen.gd:496
 msgid "%s ahead"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:490
+#: app/scenes/ride_screen.gd:496
 msgid "%s behind"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:57 app/scenes/ride_screen.gd:686
+#: app/scenes/devices_tab.gd:57 app/scenes/ride_screen.gd:698
 msgid "%s connected"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:690
+#: app/scenes/ride_screen.gd:702
 msgid "%s disconnected — reconnecting…"
 msgstr ""
 
@@ -71,7 +71,7 @@ msgstr ""
 msgid "%s no longer accepts the account: connect it again."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:696
+#: app/scenes/ride_screen.gd:708
 msgid "%s not found"
 msgstr ""
 
@@ -83,11 +83,11 @@ msgstr ""
 msgid "%s not found — wake it, then reconnect again."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:531
+#: app/scenes/ride_screen.gd:537
 msgid "%s to go  ·  %.1f %%"
 msgstr ""
 
-#: app/scenes/course_detail.gd:271 app/scenes/ride_screen.gd:571
+#: app/scenes/course_detail.gd:271 app/scenes/ride_screen.gd:577
 msgid "(best %s)"
 msgstr ""
 
@@ -291,7 +291,7 @@ msgstr ""
 msgid "Back to the whole ride screen (O or Esc)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:584
+#: app/scenes/ride_screen.gd:590
 msgid "Below 60 fps: a lower graphics quality (Devices & Settings) runs smoother."
 msgstr ""
 
@@ -315,7 +315,7 @@ msgstr ""
 msgid "Camera, difficulty, weather, HUD; finish or abort (keyboard: S)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:656
+#: app/scenes/ride_screen.gd:668
 msgid "Camera: %s"
 msgstr ""
 
@@ -407,7 +407,7 @@ msgstr ""
 msgid "Climb %d  ·  %.1f km from km %.1f"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:543
+#: app/scenes/ride_screen.gd:549
 msgid "Climb done in %s"
 msgstr ""
 
@@ -739,11 +739,11 @@ msgstr ""
 msgid "Finish & save"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:484
+#: app/scenes/ride_screen.gd:490
 msgid "Finished"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:552
+#: app/scenes/ride_screen.gd:558
 msgid "Finished in %s"
 msgstr ""
 
@@ -831,7 +831,7 @@ msgstr ""
 msgid "Gear"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:328
+#: app/scenes/ride_screen.gd:334
 msgid "Gear %d of %d"
 msgstr ""
 
@@ -871,7 +871,7 @@ msgstr ""
 msgid "Hazy"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:123 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:427 app/ui/ride_devices.gd:48 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
+#: app/scenes/devices_tab.gd:123 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:433 app/ui/ride_devices.gd:48 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
 msgid "Heart rate"
 msgstr ""
 
@@ -1231,7 +1231,7 @@ msgstr ""
 msgid "Nothing in your library matches this search and these filters."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:720
+#: app/scenes/ride_screen.gd:732
 msgid "Nothing recorded."
 msgstr ""
 
@@ -1315,7 +1315,7 @@ msgstr ""
 msgid "Pause the ride: the clock and the trainer wait (P)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:670
+#: app/scenes/ride_screen.gd:682
 msgid "Paused"
 msgstr ""
 
@@ -1343,7 +1343,7 @@ msgstr ""
 msgid "Position on the route"
 msgstr ""
 
-#: app/scenes/history_screen.gd:252 app/scenes/ride_screen.gd:427 app/ui/workout_editor.gd:348 app/ui/workout_options.gd:72 core/torqa-app/src/hud.rs:67
+#: app/scenes/history_screen.gd:252 app/scenes/ride_screen.gd:433 app/ui/workout_editor.gd:348 app/ui/workout_options.gd:72 core/torqa-app/src/hud.rs:67
 msgid "Power"
 msgstr ""
 
@@ -1535,7 +1535,7 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:733
+#: app/scenes/ride_screen.gd:745
 msgid "Saved %s"
 msgstr ""
 
@@ -1611,7 +1611,7 @@ msgstr ""
 msgid "Simulation speed"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:596
+#: app/scenes/ride_screen.gd:602
 msgid "Simulation: %d×"
 msgstr ""
 
@@ -1811,7 +1811,7 @@ msgstr ""
 msgid "Trainer difficulty −10 %"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:633
+#: app/scenes/ride_screen.gd:639
 msgid "Trainer difficulty: %d %%"
 msgstr ""
 
@@ -1987,11 +1987,11 @@ msgstr ""
 msgid "Workout intensity −5 %"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:642
+#: app/scenes/ride_screen.gd:648
 msgid "Workout intensity: %d %%"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:618
+#: app/scenes/ride_screen.gd:654
 msgid "Workout: next step"
 msgstr ""
 
@@ -2059,7 +2059,7 @@ msgstr ""
 msgid "and above"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:535
+#: app/scenes/ride_screen.gd:541
 msgid "best %s"
 msgstr ""
 
@@ -2079,7 +2079,7 @@ msgstr ""
 msgid "kJ"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:567
+#: app/scenes/ride_screen.gd:573
 msgid "new record, %s faster!"
 msgstr ""
 
