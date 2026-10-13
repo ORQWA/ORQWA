@@ -13,7 +13,7 @@ Torqa opens on the start page with six tabs:
   difficulty, descents, time of day, weather), who to race ([ghosts.md](ghosts.md)) and
   **Ride**. Among the figures, **Time at 75 % FTP** estimates how long the course takes you
   holding three quarters of your FTP, with your weight, climbs and descents included (ridden
-  flat if you choose so in the options). It is a steady endurance pace; for a harder ride, a
+  flat if you choose so in the options), to the nearest 5 minutes. It is a steady endurance pace; for a harder ride, a
   [pacer](ghosts.md) at the power you have in mind shows where it gets you. The 3D world is built when you press **Ride**, so looking around the library stays
   quick.
   On the course page, the pencil beside the name opens **Edit course**: rename it, or add a

@@ -1529,3 +1529,6 @@ msgstr "Keine deiner Strecken passt zu dieser Suche und diesen Filtern."
 
 msgid "%d h %02d"
 msgstr "%d h %02d"
+
+msgid "Time estimate"
+msgstr "Zeitschätzung"
