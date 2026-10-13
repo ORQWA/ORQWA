@@ -27,6 +27,18 @@ pub enum Control {
     NextTrack,
     /// The previous track.
     PreviousTrack,
+    /// Pauses the ride, or goes on with it.
+    Pause,
+    /// A harder trainer difficulty: more of the road's gradient.
+    DifficultyUp,
+    /// An easier trainer difficulty.
+    DifficultyDown,
+    /// A workout's powers a little harder.
+    IntensityUp,
+    /// A workout's powers a little easier.
+    IntensityDown,
+    /// On to the next step of a structured workout.
+    SkipStep,
 }
 
 /// What a button press does (#139).
@@ -46,7 +58,7 @@ pub enum ButtonAction {
 
 impl ButtonAction {
     /// Every action a button can be given, in the order to offer them.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 15] = [
         Self::ShiftUp,
         Self::ShiftDown,
         Self::ShiftUpTwo,
@@ -56,6 +68,12 @@ impl ButtonAction {
         Self::Control(Control::PlayPause),
         Self::Control(Control::NextTrack),
         Self::Control(Control::PreviousTrack),
+        Self::Control(Control::Pause),
+        Self::Control(Control::DifficultyUp),
+        Self::Control(Control::DifficultyDown),
+        Self::Control(Control::IntensityUp),
+        Self::Control(Control::IntensityDown),
+        Self::Control(Control::SkipStep),
     ];
 
     /// The shifts it asks for; none for a control.

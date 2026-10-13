@@ -193,6 +193,8 @@ func _run() -> void:
 	var third: PackedStringArray = buttons[2]
 	_check(third[1] == "next_camera" and third[0] == "", "assigned: %s" % [buttons])
 	_check(not _torqa.assign_button(3, 1, "fly"), "unknown actions are refused")
+	_check(_torqa.assign_button(4, 0, "pause"), "channel 4 pauses the ride")
+	_torqa.assign_button(4, 0, "")
 	_torqa.assign_button(3, 1, "")
 	DirAccess.remove_absolute(course_path)
 	print("RIDE SMOKE TEST PASSED (%s)" % _saved_path)
@@ -235,6 +237,15 @@ func _workout() -> void:
 	var steps: int = progress["steps"]
 	var plan_steps: Array = plan["steps"]
 	_check(steps == plan_steps.size(), "as many steps as listed: %s" % progress)
+	# A shifter's buttons (#139) skip a step and change the workout's powers and difficulty.
+	_check(_torqa.skip_step(), "a step skipped")
+	var skipped: Dictionary = _torqa.ride_state()["workout"]["progress"]
+	var skipped_to: int = skipped["step"]
+	_check(skipped_to == 1, "on with the next step: %s" % skipped)
+	_check(is_equal_approx(_torqa.step_intensity(1), 105.0), "5 % harder")
+	var harder: float = _torqa.ride_state()["workout"]["intensity_pct"]
+	_check(is_equal_approx(harder, 105.0), "the intensity shows: %s" % harder)
+	_check(_torqa.step_difficulty(-10) == 0.0, "no easier than flat")
 	_check(
 		not _torqa.start_workout({"kind": "plan", "id": "builtin:none"}, false, false), "unknown"
 	)
@@ -247,6 +258,8 @@ func _workout() -> void:
 	var test_progress: Dictionary = test["progress"]
 	var open_ended: int = test_progress["steps"]
 	_check(open_ended == 0, "the FTP test goes on until the rider gives way: %s" % test)
+	_check(not _torqa.skip_step(), "the test's steps cannot be skipped")
+	_check(_torqa.step_intensity(1) < 0.0, "nor its powers changed")
 	var preview: Array = _torqa.ftp_test_steps("ramp")
 	_check(preview.size() > 10, "a preview of its steps: %d" % preview.size())
 	_torqa.abort_ride()

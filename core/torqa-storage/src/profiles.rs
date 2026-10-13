@@ -294,6 +294,12 @@ pub fn button_action_name(action: ButtonAction) -> &'static str {
         ButtonAction::Control(Control::PlayPause) => "play_pause",
         ButtonAction::Control(Control::NextTrack) => "next_track",
         ButtonAction::Control(Control::PreviousTrack) => "previous_track",
+        ButtonAction::Control(Control::Pause) => "pause",
+        ButtonAction::Control(Control::DifficultyUp) => "difficulty_up",
+        ButtonAction::Control(Control::DifficultyDown) => "difficulty_down",
+        ButtonAction::Control(Control::IntensityUp) => "intensity_up",
+        ButtonAction::Control(Control::IntensityDown) => "intensity_down",
+        ButtonAction::Control(Control::SkipStep) => "skip_step",
     }
 }
 

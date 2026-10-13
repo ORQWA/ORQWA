@@ -51,7 +51,8 @@ Implemented in `torqa_physics::VirtualGears`:
   every flagged channel of a new indication — on a real RD-R8150 that miscounted presses on
   the other channel. Each channel's press, hold and double press do what the rider gives
   them (#139): shift one or two gears, or a ride control the front end carries out as its key
-  (next camera, overlay, music). `ShiftInput::controls` passes the controls on beside the
+  (next camera, overlay, music, pause) or through the core (R66: trainer difficulty ±10 %,
+  workout intensity ±5 %, skip a structured workout's step). `ShiftInput::controls` passes the controls on beside the
   shifts. Until assigned, the channels chosen to shift up and down do so, one gear a press or
   hold and two a double press.
   The Zwift Click is not supported: its protocol is encrypted, the v2 must be unlocked in

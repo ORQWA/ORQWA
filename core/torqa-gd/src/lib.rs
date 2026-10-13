@@ -193,7 +193,8 @@ impl TorqaApp {
     fn upload_failed(path: GString, platform: GString, message: GString, reconnect: bool);
 
     /// A shifter's button asked for a ride control (#139), to be carried out as its key is:
-    /// `next_camera`, `overlay`, or the music's `play_pause`, `next` and `previous`.
+    /// `next_camera`, `overlay`, the music's `play_pause`, `next` and `previous`, `pause`,
+    /// `difficulty_up` and `_down`, the workout's `intensity_up` and `_down`, or `skip_step`.
     #[signal]
     fn control_requested(control: GString);
 
@@ -1853,6 +1854,35 @@ impl TorqaApp {
         }
     }
 
+    /// Makes the ride's trainer difficulty `steps` steps of 10 % harder (easier if negative),
+    /// within 0–100 %. Returns the new difficulty in percent, or -1 when not riding.
+    #[func]
+    fn step_difficulty(&mut self, steps: i64) -> f64 {
+        let steps = i32::try_from(steps).unwrap_or_default();
+        self.app
+            .as_mut()
+            .and_then(|app| app.step_difficulty(steps))
+            .map_or(-1.0, |difficulty| difficulty.0)
+    }
+
+    /// Makes the workout's powers `steps` steps of 5 % harder (easier if negative), within
+    /// 50–150 % of the plan. Returns the new share in percent, or -1 when not in a constant
+    /// power or structured workout.
+    #[func]
+    fn step_intensity(&mut self, steps: i64) -> f64 {
+        let steps = i32::try_from(steps).unwrap_or_default();
+        self.app
+            .as_mut()
+            .and_then(|app| app.step_intensity(steps))
+            .map_or(-1.0, |intensity| intensity.0)
+    }
+
+    /// Goes on with the next step of a structured workout; false if there is none to skip.
+    #[func]
+    fn skip_step(&mut self) -> bool {
+        self.app.as_mut().is_some_and(App::skip_step)
+    }
+
     /// Ends the current ride without saving it.
     #[func]
     fn abort_ride(&mut self) {
@@ -2026,13 +2056,15 @@ impl TorqaApp {
     /// watts_per_kg, power_zone, heart_rate_zone, metrics, workout}`, and on a route also
     /// `{remaining_m, grade, elevation_m, x, y, heading, curvature, ghost, climb}`; sensor
     /// values and what derives from them are `null` when unknown. Empty when not riding.
-    /// `workout` is `{target_power_w, target_heart_rate, progress}` in a workout, else `null`:
-    /// the power `null` in a free step, the heart rate `null` but in a heart-rate hold, and
-    /// `progress` of a structured workout `{step, steps, step_left_s, left_s, cadence, next:
-    /// {power_w, duration_s, all_out}, cue, all_out}` (`next` `null` in the last step; `all_out`
-    /// in the free steps of an FTP test), else `null`. `x`/`y` are metres east/north of the route start, as in
-    /// `track()`; `heading` is the direction of travel in radians clockwise from north,
-    /// `curvature` how sharply the road bends there (1 / radius, positive to the right).
+    /// `workout` is `{target_power_w, target_heart_rate, intensity_pct, progress}` in a
+    /// workout, else `null`: the power `null` in a free step, the heart rate `null` but in a
+    /// heart-rate hold, the intensity the share of the planned powers asked for, and
+    /// `progress` of a structured workout `{step, steps, elapsed_s, step_left_s, left_s,
+    /// cadence, next: {power_w, duration_s, all_out}, cue, all_out}` (`elapsed_s` the time into
+    /// the workout, `next` `null` in the last step, `all_out` in the free steps of an FTP
+    /// test), else `null`. `x`/`y` are metres east/north of the route start, as in `track()`;
+    /// `heading` is the direction of travel in radians clockwise from north, `curvature` how
+    /// sharply the road bends there (1 / radius, positive to the right).
     #[func]
     fn ride_state(&self) -> VarDictionary {
         let Some(app) = self.app.as_ref() else {
@@ -2594,6 +2626,12 @@ fn control_name(control: Control) -> &'static str {
         Control::PlayPause => "play_pause",
         Control::NextTrack => "next",
         Control::PreviousTrack => "previous",
+        Control::Pause => "pause",
+        Control::DifficultyUp => "difficulty_up",
+        Control::DifficultyDown => "difficulty_down",
+        Control::IntensityUp => "intensity_up",
+        Control::IntensityDown => "intensity_down",
+        Control::SkipStep => "skip_step",
     }
 }
 
@@ -2626,10 +2664,12 @@ fn workout_state(w: &torqa_session::workout::WorkoutState) -> Variant {
     vdict! {
         "target_power_w" => &optional(w.target_power.map(|p| p.0)),
         "target_heart_rate" => &optional(w.target_heart_rate.map(|h| h.0)),
+        "intensity_pct" => w.intensity.0,
         "progress" => &w.progress.as_ref().map_or_else(Variant::nil, |p| {
             vdict! {
                 "step" => i64::try_from(p.step).unwrap_or(0),
                 "steps" => i64::try_from(p.steps).unwrap_or(0),
+                "elapsed_s" => p.elapsed.as_secs_f64(),
                 "step_left_s" => p.step_left.as_secs_f64(),
                 "left_s" => p.left.as_secs_f64(),
                 "cadence" => &optional(p.cadence.map(|c| c.0)),
