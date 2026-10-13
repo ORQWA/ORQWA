@@ -516,7 +516,7 @@ impl TorqaApp {
     /// out of reach), `last_ridden_unix_s` (`null` if never) and `terrain`.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
-    fn course_library(&self, query: VarDictionary) -> VarDictionary {
+    fn course_library(&mut self, query: VarDictionary) -> VarDictionary {
         let text = |key: &str| {
             query
                 .get(key)
@@ -556,7 +556,7 @@ impl TorqaApp {
         };
         let gallery = self
             .app
-            .as_ref()
+            .as_mut()
             .map(|app| app.course_library(&query))
             .unwrap_or_default();
         let mut groups = VarArray::new();

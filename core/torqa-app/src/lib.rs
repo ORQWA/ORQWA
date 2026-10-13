@@ -175,6 +175,32 @@ pub struct CourseEntry {
     pub manifest: Manifest,
 }
 
+/// A course as its estimated time depends on it: its file, and when and how long it was
+/// prepared, which a course replaced under the same name changes.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct EstimateKey {
+    path: PathBuf,
+    created_unix_s: u64,
+    length_bits: u64,
+}
+
+/// The gallery's estimated times by course, and the rider setup and power they are for.
+#[derive(Debug, Default)]
+struct Estimates {
+    basis: Option<(RiderSetup, Watts)>,
+    times: HashMap<EstimateKey, Option<Duration>>,
+}
+
+impl EstimateKey {
+    fn of(course: &CourseEntry) -> Self {
+        Self {
+            path: course.path.clone(),
+            created_unix_s: course.manifest.created_unix_s,
+            length_bits: course.manifest.length_m.to_bits(),
+        }
+    }
+}
+
 /// A ride in the history.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HistoryEntry {
@@ -480,6 +506,10 @@ pub struct App {
     route: Option<Route>,
     /// The map for the loaded course's picture, if it is to get one (#203).
     course_map: Option<Box<torqa_world::course_map::CourseMap>>,
+    /// The gallery's estimated times (R67) by course, for the rider setup and power they
+    /// were worked out for: a search refreshes the gallery on every key, too often to ride
+    /// every course again.
+    estimates: Estimates,
     world: Option<Arc<World>>,
     offline: bool,
     /// Name and GPX of the loaded route, for saving it as a course.
@@ -541,6 +571,7 @@ impl App {
             preview: None,
             route: None,
             course_map: None,
+            estimates: Estimates::default(),
             world: None,
             offline: false,
             loaded: None,
@@ -1288,29 +1319,44 @@ impl App {
     /// the profile its file keeps (R66, coasting the descents as the course page does until
     /// asked otherwise) and when they last rode it.
     #[must_use]
-    pub fn course_library(&self, query: &library::CourseQuery) -> library::Gallery {
+    pub fn course_library(&mut self, query: &library::CourseQuery) -> library::Gallery {
         let ridden = self.last_ridden();
-        let setup = self.rider_setup();
-        let power = estimate::planned_power(self.profile.profile.ftp);
-        let courses = self
-            .courses()
+        let basis = (
+            self.rider_setup(),
+            estimate::planned_power(self.profile.profile.ftp),
+        );
+        if self.estimates.basis != Some(basis) {
+            self.estimates = Estimates {
+                basis: Some(basis),
+                times: HashMap::new(),
+            };
+        }
+        let (setup, power) = basis;
+        let courses: Vec<CourseEntry> = self.courses();
+        let courses = courses
             .into_iter()
             .map(|entry| {
-                let profile = entry
-                    .manifest
-                    .profile
-                    .iter()
-                    .map(|&[d, e]| (Meters(f64::from(d)), Meters(f64::from(e))));
-                let estimated = ElevationProfile::new(profile).and_then(|profile| {
-                    estimate::time_to_finish(
-                        &profile,
-                        &setup,
-                        DescentMode::Coast,
-                        Meters(0.0),
-                        MetersPerSecond(0.0),
-                        power,
-                    )
-                });
+                let estimated = *self
+                    .estimates
+                    .times
+                    .entry(EstimateKey::of(&entry))
+                    .or_insert_with(|| {
+                        let profile = entry
+                            .manifest
+                            .profile
+                            .iter()
+                            .map(|&[d, e]| (Meters(f64::from(d)), Meters(f64::from(e))));
+                        ElevationProfile::new(profile).and_then(|profile| {
+                            estimate::time_to_finish(
+                                &profile,
+                                &setup,
+                                DescentMode::Coast,
+                                Meters(0.0),
+                                MetersPerSecond(0.0),
+                                power,
+                            )
+                        })
+                    });
                 let last_ridden = entry
                     .manifest
                     .route_key
@@ -3987,6 +4033,22 @@ mod tests {
         // 1.2 km with a climb takes longer than 400 m on the flat.
         assert!(courses[1].estimated.is_some());
         assert!(courses[0].estimated > courses[1].estimated);
+
+        // A stronger rider is quicker: the estimates follow the rider's figures.
+        let before = courses[0].estimated.unwrap();
+        let id = app.profile().id.clone();
+        let stronger = Profile {
+            ftp: Watts(app.profile().profile.ftp.0 * 1.5),
+            ..app.profile().profile.clone()
+        };
+        app.save_profile(Some(&id), stronger).unwrap();
+        let after = app.course_library(&query).groups[0].courses[0]
+            .estimated
+            .unwrap();
+        assert!(
+            after < before,
+            "{after:?} with more power, {before:?} before"
+        );
     }
 
     #[test]
