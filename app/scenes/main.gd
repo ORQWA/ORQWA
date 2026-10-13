@@ -5,6 +5,9 @@ extends Control
 ## Video courses are ridden along their video instead of the 3D world (R17).
 var _video: VideoView = VideoView.new()
 var _overlay: OverlayWindow
+## Over everything, the window opaque but the overlay's: other windows showed through the sky
+## on Windows (#220, see opaque.gdshader).
+var _opaque: ColorRect = ColorRect.new()
 
 @onready var _torqa: TorqaApp = $Torqa
 @onready var _world: RideWorld = $World
@@ -31,6 +34,12 @@ func _ready() -> void:
 	# overlay does.
 	get_window().transparent = false
 	get_window().transparent_bg = false
+	var opaque: ShaderMaterial = ShaderMaterial.new()
+	opaque.shader = preload("res://shaders/opaque.gdshader")
+	_opaque.material = opaque
+	_opaque.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_opaque.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_opaque)
 	_ride.closed.connect(_back_home)
 	_ride.summary_requested.connect(_show_summary)
 	_ride.overlay_requested.connect(_set_overlay)
@@ -67,6 +76,7 @@ func _set_overlay(on: bool) -> void:
 	if on:
 		_ride.set_overlay(true)
 		_video.hide()
+		_opaque.hide()
 		# One frame for the overlay's content to take its size.
 		await get_tree().process_frame
 		_overlay.enter(
@@ -80,6 +90,7 @@ func _set_overlay(on: bool) -> void:
 		_torqa.set_overlay_window(_overlay.leave(), chosen)
 		_ride.set_overlay(false)
 		_video.visible = _ride.visible and _torqa.riding_along_video()
+		_opaque.show()
 
 
 func _on_window_resized() -> void:

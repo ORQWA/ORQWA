@@ -45,6 +45,11 @@ Things to review or decide together. Newest first; remove entries once settled.
   of a browser playing a video while Torqa is not the active app. **Full view** should bring
   the window back as it was, full screen included. Allowing see-through windows is a project
   setting now; check that a normal 3D ride keeps its frame rate.
+- **Opaque ride view on Windows** (#220 PR): other windows showed through the sky and the
+  figures card of the full ride view. Torqa now makes the whole window opaque at the end of
+  every frame, except in the overlay. Software rendering on Linux never showed the problem,
+  so please check on Windows (RTX, Vulkan): the sky and the cards solid right after start, and
+  after the overlay was on and off; the overlay itself still see-through.
 
 ### Decisions I took (say if you want them otherwise)
 
