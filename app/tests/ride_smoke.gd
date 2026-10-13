@@ -27,6 +27,15 @@ func _run() -> void:
 	_check(not route.is_empty(), "route loaded")
 	var profile: PackedVector2Array = _torqa.elevation_profile(100)
 	_check(profile.size() >= 2, "elevation profile available")
+	# How long the rider would take (R66): at a share of their FTP, no quicker with descents
+	# ridden flat.
+	var estimate: Dictionary = _torqa.estimated_time(false)
+	var flat_estimate: Dictionary = _torqa.estimated_time(true)
+	var share: float = estimate["ftp_share_pct"]
+	_check(estimate["time_s"] != null and share == 75.0, "estimated time: %s" % estimate)
+	var estimated_s: float = estimate["time_s"]
+	var flat_s: float = flat_estimate["time_s"]
+	_check(flat_s >= estimated_s, "flat descents: %s" % flat_estimate)
 	await _wait_for(_torqa.world_ready)
 
 	_check(_torqa.save_course(), "course saving started")
@@ -38,6 +47,9 @@ func _run() -> void:
 		var path: String = course["path"]
 		listed = listed or path == course_path
 	_check(listed, "course listed in the library")
+	var first: Dictionary = _torqa.courses()[0]
+	var first_countries: Variant = first.get("countries")
+	_check(first_countries is Array, "the courses list their countries: %s" % first)
 
 	_check(_torqa.connect_fake_trainer(250.0, 90.0), "fake trainer connected")
 	_check(_torqa.start_ride(50.0, false, {"kind": "none"}), "ride started")
@@ -47,6 +59,21 @@ func _run() -> void:
 	var power: float = state.get("power", 0.0)
 	_check(distance_m > 0.5, "rider moves: %s" % state)
 	_check(is_equal_approx(power, 250.0), "power arrives: %s" % state)
+	var metrics: Dictionary = state.get("metrics", {})
+	_check(metrics.get("time_remaining") != null, "time to go on the HUD: %s" % metrics)
+	# The ride settings show the devices, and the connected trainer needs no reconnect (R69).
+	var devices: Array = _torqa.devices()
+	var trainer: Dictionary = devices[0] if devices.size() == 1 else {}
+	var trainer_connected: bool = trainer.get("connected", false)
+	var kind: String = trainer.get("kind", "")
+	_check(kind == "trainer" and trainer_connected, "devices during the ride: %s" % [devices])
+	var ride_devices: RideDevices = RideDevices.new()
+	ride_devices.bind(_torqa)
+	root.add_child(ride_devices)
+	ride_devices.refresh()
+	var reconnect: Button = ride_devices.find_children("*", "Button", true, false)[0]
+	_check(reconnect.disabled, "nothing to reconnect with every device connected")
+	ride_devices.free()
 
 	_torqa.finish_ride()
 	_check(_saved_path.ends_with(".fit"), "ride saved: %s" % _saved_path)
@@ -84,6 +111,26 @@ func _run() -> void:
 	var curves: Dictionary = _torqa.power_curves(0, false, false)
 	var bests: Array = curves.get("period", [])
 	_check(not bests.is_empty(), "the rider's power curve: %s" % curves)
+	# The gallery (R67): the course found by its name, with the rider's estimated time and
+	# the ride just saved; a search that matches nothing shows no group.
+	var library: Dictionary = _torqa.course_library(
+		{"search": "SMO", "sort": "ridden", "descending": true, "group": "terrain"}
+	)
+	var found: Dictionary = {}
+	var groups: Array = library["groups"]
+	for group: Dictionary in groups:
+		var group_courses: Array = group["courses"]
+		for course: Dictionary in group_courses:
+			if course["path"] == course_path:
+				found = course
+	_check(
+		found.get("estimated_s") != null and found.get("last_ridden_unix_s") != null,
+		"the course in the gallery: %s" % found
+	)
+	var nothing: Dictionary = _torqa.course_library({"search": "no such course"})
+	var no_groups: Array = nothing["groups"]
+	var total: int = nothing["total"]
+	_check(no_groups.is_empty() and total > 0, "a search matching nothing: %s" % nothing)
 
 	await _workout()
 
@@ -146,6 +193,8 @@ func _run() -> void:
 	var third: PackedStringArray = buttons[2]
 	_check(third[1] == "next_camera" and third[0] == "", "assigned: %s" % [buttons])
 	_check(not _torqa.assign_button(3, 1, "fly"), "unknown actions are refused")
+	_check(_torqa.assign_button(4, 0, "pause"), "channel 4 pauses the ride")
+	_torqa.assign_button(4, 0, "")
 	_torqa.assign_button(3, 1, "")
 	DirAccess.remove_absolute(course_path)
 	print("RIDE SMOKE TEST PASSED (%s)" % _saved_path)
@@ -188,6 +237,15 @@ func _workout() -> void:
 	var steps: int = progress["steps"]
 	var plan_steps: Array = plan["steps"]
 	_check(steps == plan_steps.size(), "as many steps as listed: %s" % progress)
+	# A shifter's buttons (#139) skip a step and change the workout's powers and difficulty.
+	_check(_torqa.skip_step(), "a step skipped")
+	var skipped: Dictionary = _torqa.ride_state()["workout"]["progress"]
+	var skipped_to: int = skipped["step"]
+	_check(skipped_to == 1, "on with the next step: %s" % skipped)
+	_check(is_equal_approx(_torqa.step_intensity(1), 105.0), "5 % harder")
+	var harder: float = _torqa.ride_state()["workout"]["intensity_pct"]
+	_check(is_equal_approx(harder, 105.0), "the intensity shows: %s" % harder)
+	_check(_torqa.step_difficulty(-10) == 0.0, "no easier than flat")
 	_check(
 		not _torqa.start_workout({"kind": "plan", "id": "builtin:none"}, false, false), "unknown"
 	)
@@ -200,6 +258,8 @@ func _workout() -> void:
 	var test_progress: Dictionary = test["progress"]
 	var open_ended: int = test_progress["steps"]
 	_check(open_ended == 0, "the FTP test goes on until the rider gives way: %s" % test)
+	_check(not _torqa.skip_step(), "the test's steps cannot be skipped")
+	_check(_torqa.step_intensity(1) < 0.0, "nor its powers changed")
 	var preview: Array = _torqa.ftp_test_steps("ramp")
 	_check(preview.size() > 10, "a preview of its steps: %d" % preview.size())
 	_torqa.abort_ride()

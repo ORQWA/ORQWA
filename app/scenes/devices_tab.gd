@@ -19,6 +19,12 @@ const ACTION_LABELS: Dictionary[String, String] = {
 	"play_pause": "Music: play / pause",
 	"next_track": "Music: next track",
 	"previous_track": "Music: previous track",
+	"pause": "Pause / resume",
+	"difficulty_up": "Trainer difficulty +10 %",
+	"difficulty_down": "Trainer difficulty −10 %",
+	"intensity_up": "Workout intensity +5 %",
+	"intensity_down": "Workout intensity −5 %",
+	"skip_step": "Workout: skip step",
 }
 ## The kinds of press, in the core's order.
 const PRESSES: Array[String] = ["Press", "Hold", "Double press"]
@@ -40,6 +46,8 @@ var _status: Label = Label.new()
 ## How detailed the 3D world is drawn on this computer (R43).
 var _quality: OptionButton = OptionButton.new()
 var _quality_note: Label = Label.new()
+## Full screen or a window (#218), as F11 switches it too.
+var _fullscreen: CheckBox = CheckBox.new()
 
 
 func bind(torqa: TorqaApp) -> void:
@@ -268,6 +276,24 @@ func _build_graphics() -> void:
 	_quality_note.add_theme_color_override("font_color", UiTheme.MUTED)
 	_quality_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_quality_note)
+	var screen_row: HBoxContainer = HBoxContainer.new()
+	screen_row.add_theme_constant_override("separation", 16)
+	var screen_caption: Label = Label.new()
+	screen_caption.text = tr("Screen")
+	screen_caption.custom_minimum_size = Vector2(180, 0)
+	screen_row.add_child(screen_caption)
+	_fullscreen.text = tr("Full screen (F11)")
+	_fullscreen.toggled.connect(func(on: bool) -> void: FullScreen.set_on(get_window(), _torqa, on))
+	screen_row.add_child(_fullscreen)
+	add_child(screen_row)
+
+
+func _ready() -> void:
+	# F11 or the system may switch it while this page is open.
+	get_window().size_changed.connect(
+		func() -> void: _fullscreen.set_pressed_no_signal(FullScreen.is_on(get_window()))
+	)
+	_fullscreen.set_pressed_no_signal(FullScreen.is_on(get_window()))
 
 
 func _on_quality_selected(index: int) -> void:

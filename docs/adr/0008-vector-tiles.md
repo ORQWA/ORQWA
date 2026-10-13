@@ -33,3 +33,11 @@ Measured on a 36 km test line: 344 s, 6 of 20 tiles failed.
   it comes from the same tiles at a lower zoom (4–14, as detailed as the picture needs, a few
   tiles per course), downloaded once when the course is prepared. They are cached but not
   bundled into the course file, which keeps the picture instead.
+- The countries a course passes (R68, #230) come from the same tiles: the `boundary` layer's
+  borders between countries name the country on either side (`adm0_l`, `adm0_r`, ISO
+  alpha-3), and the `place` layer's country labels give the two-letter code and names in many
+  languages. A route is placed with a few tiles at zoom 6 (borders within about 300 m of where
+  they are, measured at Basel), near a border with zoom 10, and named from one zoom-4 tile.
+  OpenMapTiles leaves a side's country out where it could not tell it, often for large
+  countries (in 2026 Germany, Austria and Poland); such stretches are in no known country
+  rather than guessed from other data.

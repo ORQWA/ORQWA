@@ -6,7 +6,9 @@ settings, ride names, per-rider HUD layouts, UI quality and direct HUD placement
 plus overlay mode and constant-power / heart-rate workouts (R55–R56), refined 2026-10-06: an
 overlay over normal windows only, a Workouts tab and Di2 shifting (R57–R59), extended 2026-10-12
 with uploads by one click or automatically (R60) and the analysis of a rider's power across
-their rides (R61–R65, #217).
+their rides (R61–R65, #217), and 2026-10-13 with an estimated time to the finish (R66, #231)
+and a searchable, sortable and grouped course gallery with the countries courses pass
+(R67–R68, #230).
 Requirement IDs (`R<n>`) are referenced from code, tests and ADRs. The list is **append-only**:
 existing requirements are never reworded or renumbered; changes are new requirements that state
 what they supersede, and the old entry only gets a short pointer.
@@ -68,11 +70,12 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 |---|---|
 | R21 | Structured workouts later, but architected for now: ZWO, ERG/MRC, FIT workouts, built-in editor. No multi-week training plans. *(Constant-power and heart-rate workouts: R56.)* |
 | R22 | Rider profile: weight, FTP, max HR, power and HR zones, built-in FTP test. **Multiple user profiles** per installation. |
-| R23 | Fully customizable HUD widgets: power (instant/3 s/10 s), cadence, HR, speed, distance, time, elevation gain, current & upcoming gradient, W/kg, NP, TSS, kJ, zone. *(Per-rider layout and editor: R51.)* |
+| R23 | Fully customizable HUD widgets: power (instant/3 s/10 s), cadence, HR, speed, distance, time, elevation gain, current & upcoming gradient, W/kg, NP, TSS, kJ, zone. *(Per-rider layout and editor: R51. Estimated time to go: R66.)* |
 | R24 | Metric and imperial units. English UI first, i18n-ready from day one. |
 | R25 | Single window / fullscreen, external monitor / TV. Phone companion app is a possible future extension. *(Overlay mode: R55.)* |
 | R26 | Audio, selectable per ride: ambient sounds, original video audio, music app control. |
 | R27 | Auto-detected climbs with personal KOM-style times; personal records per route. Multiplayer possibly later — keep simulation state separable from rendering. |
+| R66 | Extends R23 and R40 (2026-10-13, #231): an **estimated time to the finish**. The course page shows how long the route takes the rider at 75 % of their FTP, with their weight and the descents as chosen in the ride options; the HUD can show the **time to go**, which follows the rider's average power so far (moving over to it from 75 % of FTP during the first ten minutes). Both ride the rest of the route with the ride's own physics, so climbs and descents count as they will. *(Shown to the nearest 5 minutes: R67.)* |
 
 ## Data
 
@@ -101,7 +104,7 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | ID | Requirement |
 |---|---|
 | R38 | A real **start page** separate from the ride view, with a top tab bar: **Courses**, **History**, **Profile**, **Devices & Settings**. The ride view only shows the ride. *(Workouts tab: R58; Analysis tab: R61.)* |
-| R39 | **Courses tab**: gallery overview of the course library (R34) — each card shows the cover or path card, distance, elevation gain, a small map, the course type (3D / video) and other key stats. Importing a GPX / preparing a new course starts here. |
+| R39 | **Courses tab**: gallery overview of the course library (R34) — each card shows the cover or path card, distance, elevation gain, a small map, the course type (3D / video) and other key stats. Importing a GPX / preparing a new course starts here. *(Search, sort, filters and groups: R67.)* |
 | R40 | **Course detail page** (opened from a card): screenshot gallery, path card, map, elevation profile, stats, personal records on the course, and the per-ride options (difficulty, descent mode, weather, time of day, camera, ghost) → **Ride**. |
 | R41 | The last-used trainer and sensors **reconnect automatically** in the background at app start; the user is only prompted if that fails when a ride starts. |
 | R42 | At the end of a ride a **summary screen** (stats, charts, PRs, save/discard, upload) is shown, then the app returns to the start page. |
@@ -112,6 +115,9 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | R52 | **Modern, coherent UI** in a *sleek minimal* style: slim typography, thin translucent panels, generous spacing, few controls visible at once; during a ride the 3D view dominates. All screens and dialogs share one design system (type scale, spacing, colours, corner radii, control styles); no unstyled stock widgets. Course summaries (course cards, detail page, the loaded-course panel) are designed as polished cards with a clear hierarchy of name, path card (R37), key stats and elevation profile. |
 | R53 | **Stable, responsive layouts**: loading a course or other content never changes font sizes or lets the layout grow or jump. Resizable windows and dialogs (e.g. rider settings) reflow and resize their inputs with the window instead of leaving them fixed in the middle. Layouts work from 1280×720 up to 4K / TV (R25). |
 | R54 | Refines R51: HUD widgets are arranged **directly in the HUD preview**, not only in a list. A widget is dragged from the widget list straight to the position where it should appear, moved around within the HUD, and dragged out to remove it; a drop-position indicator shows where it will land. |
+| R67 | Extends R39 (2026-10-13, #230): the Courses tab **searches** courses by name, **sorts** them by name, length, climbing, estimated time (R66), date added or last ridden (each order starting in its natural direction, which a button turns round), **filters** them with chips for the type (3D / video), the terrain (flat, rolling, hilly, mountainous by climbing per km: under 5, 5–10, 10–20, from 20 m) and length bands with round edges in the rider's units (25 / 50 / 100 km or 15 / 30 / 60 mi), and **groups** them by type, terrain or length. Chips of one kind add up, different kinds narrow down. Each card shows the rider's **time estimate** at 75 % of their FTP, worked out from the profile the course file keeps (so it may differ a little from the course page's); both show it to the nearest 5 minutes, which supersedes R66's exact figure on the course page. The order and grouping are remembered; search and chips are not. *(Countries: R68.)* |
+| R68 | Extends R67 (2026-10-13, #230): every course knows the **countries its route passes**, in the order it reaches them, from the OpenStreetMap map tiles Torqa already uses (OpenFreeMap): which side of the nearest border between countries the route lies on, a country counting only for at least 200 m of route. Their names come from the tiles' country labels and are kept in the course file, so shared courses name them offline, in the rider's language. Where the tiles leave a border's side without its country (in 2026 often for Germany, Austria and Poland), that stretch is in no known country; a video without a place has none. The gallery **groups** by country (a course under each of its countries), offers **country chips** once the library spans two or more (plus "No country"), **searches** country names, and each card lists the countries by code with their names on hover. Courses prepared before, or offline, learn their countries in the background when Torqa starts. |
+| R69 | Extends R41 and R48 (2026-10-13): devices that drop **reconnect by themselves** once back in reach, also after a long pause — on every platform, the device is looked up again rather than its stale link retried. The in-ride settings dialog gets a **Devices** tab: the trainer, heart-rate strap and shifter, each connected or not, and a **Reconnect** for those that are not (e.g. a strap not found at start); connected devices keep their link. A strap that is gone records no heart rate rather than its last value. |
 
 ## Graphics
 
@@ -148,6 +154,7 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | R63 | **Power profile** (the "power spider" of #217): a radar of the rider's best 5 s, 1, 5, 20 and 60 min of the chosen period (R62), each as a share of their best of all rides — the rim is the rider's own best, so no age, sex or reference tables are needed. |
 | R64 | **Fitness, fatigue and form** over the days of the chosen period, from the rides' TSS (the performance management chart: 42- and 7-day exponentially weighted averages, form the day before's fitness minus fatigue, with form's bands), computed in Torqa offline; and **weekly bars** of the period: time, distance, climbing, TSS, number of rides, and the time in each power and heart-rate zone of the rider's zones today, as the summary counts it. |
 | R65 | **Progress** over the chosen period, week by week (month by month for periods over 13 weeks): the best 1, 5 and 20 min of each, the FTP the rides were saved with and the FTP tests. And an **FTP estimated** from the best efforts of the last 90 days (the critical power of Morton's three-parameter model, or 95 % of the best 20 min where the model does not fit), shown beside the rider's FTP with a button to take it — **never applied without asking**. |
+| R66 | Extends R59 (2026-10-13): a Di2 channel's press, hold or double press can also **pause and resume** the ride, make the **trainer difficulty** 10 % harder or easier (within 0–100 %, as the ride settings show), and in a workout make its **intensity** 5 % harder or easier (50–150 % of every planned power, for constant-power and structured workouts) or **skip to the next step** of a structured workout (the last one ends it). The keyboard does the same: H / E harder and easier, I / L more and less intensity, N the next step. Heart-rate holds and FTP tests keep their powers and steps: a hold would undo the change, and a test's FTP comes from its protocol. |
 
 ## MVP definition
 

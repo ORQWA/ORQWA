@@ -10,13 +10,13 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use godot::classes::image::Format as ImageFormat;
-use godot::classes::{Engine, INode, Image, Node};
+use godot::classes::{Engine, INode, Image, Node, TranslationServer};
 use godot::prelude::*;
 use torqa_app::analysis::{BestEffort, Comparison};
 use torqa_app::hud::MetricKind;
 use torqa_app::media::MediaCommand;
-use torqa_app::view;
 use torqa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
+use torqa_app::{library, view};
 use torqa_devices::ble::DeviceKind;
 use torqa_devices::fake::{FakeHeart, FakeRider};
 use torqa_domain::profile::{Avatar, Drivetrain, Profile, UnitSystem};
@@ -27,6 +27,7 @@ use torqa_domain::units::{
 use torqa_domain::workout::{Cue, Intensity, Plan, Step, Target};
 use torqa_physics::{DescentMode, lean_angle};
 use torqa_routes::{ElevationSource, LocalProjection};
+use torqa_session::estimate;
 use torqa_session::workout::{EffortTest, HeartRateHold, RampTest, Workout};
 
 mod log;
@@ -77,11 +78,22 @@ impl INode for TorqaApp {
         Self { base, app }
     }
 
+    fn ready(&mut self) {
+        // Courses from before Torqa knew countries, or prepared offline, learn them (#230).
+        if let Some(app) = self.app.as_mut() {
+            app.fill_in_countries(false);
+        }
+    }
+
     fn process(&mut self, delta: f64) {
         let Some(app) = self.app.as_mut() else {
             return;
         };
         let events = app.update(Duration::from_secs_f64(delta.max(0.0)));
+        // A course imported from a file, or prepared offline, may not know its countries yet.
+        if events.iter().any(|e| matches!(e, AppEvent::CourseAdded(_))) {
+            app.fill_in_countries(false);
+        }
         for event in events {
             self.emit(event);
         }
@@ -142,6 +154,11 @@ impl TorqaApp {
     #[signal]
     fn course_added(path: GString);
 
+    /// Courses in the library learned their countries (#230): the gallery is to be shown
+    /// again.
+    #[signal]
+    fn courses_changed();
+
     /// Devices used last that the reconnect at start did not find, by name.
     #[signal]
     fn remembered_missing(names: PackedStringArray);
@@ -176,7 +193,8 @@ impl TorqaApp {
     fn upload_failed(path: GString, platform: GString, message: GString, reconnect: bool);
 
     /// A shifter's button asked for a ride control (#139), to be carried out as its key is:
-    /// `next_camera`, `overlay`, or the music's `play_pause`, `next` and `previous`.
+    /// `next_camera`, `overlay`, the music's `play_pause`, `next` and `previous`, `pause`,
+    /// `difficulty_up` and `_down`, the workout's `intensity_up` and `_down`, or `skip_step`.
     #[signal]
     fn control_requested(control: GString);
 
@@ -186,6 +204,29 @@ impl TorqaApp {
     #[func]
     fn reconnect_remembered(&mut self) -> bool {
         self.app.as_mut().is_some_and(App::reconnect_remembered)
+    }
+
+    /// Reconnects the devices not connected now, e.g. during a ride (R69), as
+    /// `reconnect_remembered` does at start; connected devices keep their link. False if none
+    /// is remembered.
+    #[func]
+    fn reconnect_devices(&mut self) -> bool {
+        self.app.as_mut().is_some_and(App::reconnect_devices)
+    }
+
+    /// The trainer, heart-rate sensor and shifter in use or used last, as
+    /// `[{name, kind, connected}]` with `kind` as in `devices_found` (R69).
+    #[func]
+    fn devices(&self) -> VarArray {
+        let mut array = VarArray::new();
+        for device in self.app.as_ref().map(App::devices).unwrap_or_default() {
+            array.push(&vdict! {
+                "name" => device.name.as_str(),
+                "kind" => kind_name(device.kind),
+                "connected" => device.connected,
+            });
+        }
+        array
     }
 
     /// Scans for trainers and heart-rate sensors.
@@ -212,6 +253,15 @@ impl TorqaApp {
     fn load_video(&mut self, path: GString, offline: bool) {
         if let Some(app) = self.app.as_mut() {
             app.load_video(PathBuf::from(path.to_string()), offline);
+        }
+    }
+
+    /// Stops preparing the route, video or world being loaded (#219); nothing more is emitted
+    /// for it.
+    #[func]
+    fn cancel_loading(&mut self) {
+        if let Some(app) = self.app.as_mut() {
+            app.cancel_loading();
         }
     }
 
@@ -484,37 +534,197 @@ impl TorqaApp {
     }
 
     /// The courses in the library: `[{path, name, length_m, elevation_gain_m, max_grade,
-    /// created_unix_s, track, profile, video}]`; `track` (metres east/north of the start) and
-    /// `profile` (distance, elevation) are thinned for cards and empty for older courses;
-    /// `video` is the video's file name for video courses, else empty.
+    /// created_unix_s, track, profile, video, located}]`; `track` (metres east/north of the
+    /// start) and `profile` (distance, elevation) are thinned for cards and empty for older
+    /// courses; `video` is the video's file name for video courses, else empty; `located` is
+    /// false for courses known only by distance and slope (Tacx RLV); `countries` are those
+    /// the route passes as `[{code, name}]`, named in the interface language (#230), empty
+    /// where not known.
     #[func]
     fn courses(&self) -> VarArray {
+        let locale = locale();
         let mut array = VarArray::new();
         for course in self.app.as_ref().map(App::courses).unwrap_or_default() {
-            let path = course.path.display().to_string();
-            let video = course
-                .manifest
-                .video
-                .as_ref()
-                .map_or("", |v| v.file_name.as_str());
-            array.push(
+            array.push(&course_dict(&course, &locale).to_variant());
+        }
+        array
+    }
+
+    /// The library as the Courses tab shows it (R67), for `query` `{search, sort, descending,
+    /// group, kinds, terrains, lengths, countries}`: the names of `course_library_choices()`,
+    /// the chips as `PackedStringArray`s (empty for all), countries by code or `none` for
+    /// those not known. Returns `{total, groups: [{group, label, courses}], countries}`: how
+    /// many courses the library holds; the groups shown, `group` the name of their kind,
+    /// terrain or length band, or a country's code or `none` (empty when not grouped) and
+    /// `label` a country's name; and the countries the library's courses pass as `[{code,
+    /// name}]` (#230). Countries are named and searched in the interface language. Courses are
+    /// as in `courses()`, with `estimated_s` at the planned share of FTP (R66, from the card's
+    /// profile; `null` out of reach), `last_ridden_unix_s` (`null` if never) and `terrain`.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn course_library(&mut self, query: VarDictionary) -> VarDictionary {
+        let text = |key: &str| {
+            query
+                .get(key)
+                .and_then(|v| v.try_to::<GString>().ok())
+                .map(|s| s.to_string())
+                .unwrap_or_default()
+        };
+        let chips = |key: &str| -> Vec<String> {
+            query
+                .get(key)
+                .and_then(|v| v.try_to::<PackedStringArray>().ok())
+                .map(|names| names.as_slice().iter().map(ToString::to_string).collect())
+                .unwrap_or_default()
+        };
+        let query = library::CourseQuery {
+            view: library::View {
+                sort: library::SortKey::from_name(&text("sort")).unwrap_or_default(),
+                descending: query
+                    .get("descending")
+                    .and_then(|v| v.try_to::<bool>().ok())
+                    .unwrap_or(false),
+                group: library::GroupKey::from_name(&text("group")).unwrap_or_default(),
+            },
+            search: text("search"),
+            kinds: chips("kinds")
+                .iter()
+                .filter_map(|n| library::CourseKind::from_name(n))
+                .collect(),
+            terrains: chips("terrains")
+                .iter()
+                .filter_map(|n| library::Terrain::from_name(n))
+                .collect(),
+            lengths: chips("lengths")
+                .iter()
+                .filter_map(|n| library::LengthBand::from_name(n))
+                .collect(),
+            countries: chips("countries"),
+            locale: locale(),
+        };
+        let gallery = self
+            .app
+            .as_mut()
+            .map(|app| app.course_library(&query))
+            .unwrap_or_default();
+        let mut groups = VarArray::new();
+        for group in &gallery.groups {
+            let mut courses = VarArray::new();
+            for course in &group.courses {
+                let mut dict = course_dict(&course.entry, &query.locale);
+                let estimated = course
+                    .estimated
+                    .map_or_else(Variant::nil, |t| t.as_secs_f64().to_variant());
+                let ridden = course
+                    .last_ridden
+                    .map_or_else(Variant::nil, |t| unix_seconds(t).to_variant());
+                dict.set("estimated_s", &estimated);
+                dict.set("last_ridden_unix_s", &ridden);
+                dict.set("terrain", course.terrain().name());
+                courses.push(&dict.to_variant());
+            }
+            let label = if group.label == group.group.name() {
+                // A country the map named only by its code.
+                country_name_or_godots(&group.label)
+            } else {
+                group.label.clone()
+            };
+            groups.push(
                 &vdict! {
-                    "path" => path.as_str(),
-                    "name" => course.manifest.name.as_str(),
-                    "length_m" => course.manifest.length_m,
-                    "elevation_gain_m" => course.manifest.elevation_gain_m,
-                    "max_grade" => course.manifest.max_grade_percent,
-                    "created_unix_s" => i64::try_from(course.manifest.created_unix_s).unwrap_or(0),
-                    "track" => &points(&course.manifest.track),
-                    "profile" => &points(&course.manifest.profile),
-                    "video" => video,
-                    // Tacx RLV courses are known only by distance and slope: no 3D world.
-                    "located" => course.manifest.video.as_ref().is_none_or(|v| v.located),
+                    "group" => group.group.name(),
+                    "label" => label.as_str(),
+                    "courses" => &courses,
                 }
                 .to_variant(),
             );
         }
-        array
+        let mut countries = VarArray::new();
+        for choice in &gallery.countries {
+            let name = if choice.name == choice.code {
+                country_name_or_godots(&choice.code)
+            } else {
+                choice.name.clone()
+            };
+            countries.push(
+                &vdict! {
+                    "code" => choice.code.as_str(),
+                    "name" => name.as_str(),
+                }
+                .to_variant(),
+            );
+        }
+        vdict! {
+            "total" => i64::try_from(gallery.total).unwrap_or(i64::MAX),
+            "groups" => &groups,
+            "countries" => &countries,
+        }
+    }
+
+    /// What the Courses tab offers (R67), in the order to list it: `sorts` as `[{name,
+    /// descending}]` with the direction each starts in, `groups`, `kinds` and `terrains` as
+    /// names, and `lengths` as `[{name, from_m, to_m}]` with edges in the active rider's units
+    /// (`to_m` 0 for the last, open band).
+    #[func]
+    fn course_library_choices(&self) -> VarDictionary {
+        let mut sorts = VarArray::new();
+        for &sort in library::SortKey::ALL {
+            sorts.push(
+                &vdict! {
+                    "name" => sort.name(),
+                    "descending" => sort.natural_descending(),
+                }
+                .to_variant(),
+            );
+        }
+        let units = self
+            .app
+            .as_ref()
+            .map_or(UnitSystem::Metric, |app| app.profile().profile.units);
+        let edges = library::LengthBand::edges(units);
+        let mut lengths = VarArray::new();
+        for (index, &band) in library::LengthBand::ALL.iter().enumerate() {
+            let from = index.checked_sub(1).map_or(0.0, |i| edges[i].0);
+            let to = edges.get(index).map_or(0.0, |edge| edge.0);
+            lengths.push(
+                &vdict! {
+                    "name" => band.name(),
+                    "from_m" => from,
+                    "to_m" => to,
+                }
+                .to_variant(),
+            );
+        }
+        vdict! {
+            "sorts" => &sorts,
+            "groups" => &name_array(library::GroupKey::ALL.iter().map(|g| g.name())),
+            "kinds" => &name_array(library::CourseKind::ALL.iter().map(|k| k.name())),
+            "terrains" => &name_array(library::Terrain::ALL.iter().map(|t| t.name())),
+            "lengths" => &lengths,
+        }
+    }
+
+    /// How the Courses tab was left (R67): `{sort, descending, group}`.
+    #[func]
+    fn courses_view(&self) -> VarDictionary {
+        let view = self.app.as_ref().map(App::courses_view).unwrap_or_default();
+        vdict! {
+            "sort" => view.sort.name(),
+            "descending" => view.descending,
+            "group" => view.group.name(),
+        }
+    }
+
+    /// Remembers how the Courses tab orders and groups the library; names it does not know
+    /// are taken as the defaults.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn set_courses_view(&mut self, sort: GString, descending: bool, group: GString) {
+        let view = library::View {
+            sort: library::SortKey::from_name(&sort.to_string()).unwrap_or_default(),
+            descending,
+            group: library::GroupKey::from_name(&group.to_string()).unwrap_or_default(),
+        };
+        self.command(|app| app.set_courses_view(view));
     }
 
     /// The active rider's rides, newest first: `[{path, route, name, start_unix_s, elapsed_s,
@@ -1175,6 +1385,18 @@ impl TorqaApp {
         self.command(|app| app.set_ride_bar_folded(folded));
     }
 
+    /// Whether the app fills the screen (#218).
+    #[func]
+    fn fullscreen(&self) -> bool {
+        self.app.as_ref().is_some_and(App::fullscreen)
+    }
+
+    /// Remembers whether the app fills the screen, to start that way next time.
+    #[func]
+    fn set_fullscreen(&mut self, fullscreen: bool) {
+        self.command(|app| app.set_fullscreen(fullscreen));
+    }
+
     /// Whether rides are simulated (fake trainer): they can be sped up and jumped (#53).
     #[func]
     fn simulating(&self) -> bool {
@@ -1632,6 +1854,35 @@ impl TorqaApp {
         }
     }
 
+    /// Makes the ride's trainer difficulty `steps` steps of 10 % harder (easier if negative),
+    /// within 0–100 %. Returns the new difficulty in percent, or -1 when not riding.
+    #[func]
+    fn step_difficulty(&mut self, steps: i64) -> f64 {
+        let steps = i32::try_from(steps).unwrap_or_default();
+        self.app
+            .as_mut()
+            .and_then(|app| app.step_difficulty(steps))
+            .map_or(-1.0, |difficulty| difficulty.0)
+    }
+
+    /// Makes the workout's powers `steps` steps of 5 % harder (easier if negative), within
+    /// 50–150 % of the plan. Returns the new share in percent, or -1 when not in a constant
+    /// power or structured workout.
+    #[func]
+    fn step_intensity(&mut self, steps: i64) -> f64 {
+        let steps = i32::try_from(steps).unwrap_or_default();
+        self.app
+            .as_mut()
+            .and_then(|app| app.step_intensity(steps))
+            .map_or(-1.0, |intensity| intensity.0)
+    }
+
+    /// Goes on with the next step of a structured workout; false if there is none to skip.
+    #[func]
+    fn skip_step(&mut self) -> bool {
+        self.app.as_mut().is_some_and(App::skip_step)
+    }
+
     /// Ends the current ride without saving it.
     #[func]
     fn abort_ride(&mut self) {
@@ -1805,13 +2056,15 @@ impl TorqaApp {
     /// watts_per_kg, power_zone, heart_rate_zone, metrics, workout}`, and on a route also
     /// `{remaining_m, grade, elevation_m, x, y, heading, curvature, ghost, climb}`; sensor
     /// values and what derives from them are `null` when unknown. Empty when not riding.
-    /// `workout` is `{target_power_w, target_heart_rate, progress}` in a workout, else `null`:
-    /// the power `null` in a free step, the heart rate `null` but in a heart-rate hold, and
-    /// `progress` of a structured workout `{step, steps, step_left_s, left_s, cadence, next:
-    /// {power_w, duration_s, all_out}, cue, all_out}` (`next` `null` in the last step; `all_out`
-    /// in the free steps of an FTP test), else `null`. `x`/`y` are metres east/north of the route start, as in
-    /// `track()`; `heading` is the direction of travel in radians clockwise from north,
-    /// `curvature` how sharply the road bends there (1 / radius, positive to the right).
+    /// `workout` is `{target_power_w, target_heart_rate, intensity_pct, progress}` in a
+    /// workout, else `null`: the power `null` in a free step, the heart rate `null` but in a
+    /// heart-rate hold, the intensity the share of the planned powers asked for, and
+    /// `progress` of a structured workout `{step, steps, elapsed_s, step_left_s, left_s,
+    /// cadence, next: {power_w, duration_s, all_out}, cue, all_out}` (`elapsed_s` the time into
+    /// the workout, `next` `null` in the last step, `all_out` in the free steps of an FTP
+    /// test), else `null`. `x`/`y` are metres east/north of the route start, as in `track()`;
+    /// `heading` is the direction of travel in radians clockwise from north, `curvature` how
+    /// sharply the road bends there (1 / radius, positive to the right).
     #[func]
     fn ride_state(&self) -> VarDictionary {
         let Some(app) = self.app.as_ref() else {
@@ -2019,6 +2272,26 @@ impl TorqaApp {
         vdict! {
             "route_best_s" => &optional(records.route),
             "climbs" => &climbs,
+        }
+    }
+
+    /// How long the active rider would take for the loaded route (R66), with descents ridden
+    /// flat or not: `{time_s, ftp_share_pct}`, at that share of their FTP; `time_s` is `null`
+    /// without a route, or where that power would not get them to the finish.
+    #[func]
+    fn estimated_time(&self, flat_descents: bool) -> VarDictionary {
+        let descent = if flat_descents {
+            DescentMode::Flat
+        } else {
+            DescentMode::Coast
+        };
+        let time = self
+            .app
+            .as_ref()
+            .and_then(|app| app.estimated_time(descent));
+        vdict! {
+            "time_s" => &time.map_or_else(Variant::nil, |t| t.as_secs_f64().to_variant()),
+            "ftp_share_pct" => estimate::FTP_SHARE * 100.0,
         }
     }
 
@@ -2258,20 +2531,7 @@ impl TorqaApp {
             AppEvent::DevicesFound(devices) => {
                 self.signals().devices_found().emit(&device_array(devices));
             }
-            AppEvent::RouteLoaded(route) => {
-                let source = match route.elevation_source {
-                    ElevationSource::Terrain => "terrain",
-                    ElevationSource::File => "file",
-                };
-                let info = vdict! {
-                    "name" => route.name.as_str(),
-                    "length_m" => route.length,
-                    "elevation_gain_m" => route.elevation_gain,
-                    "max_grade" => route.max_grade,
-                    "elevation_source" => source,
-                };
-                self.signals().route_loaded().emit(&info);
-            }
+            AppEvent::RouteLoaded(route) => self.signals().route_loaded().emit(&route_dict(&route)),
             AppEvent::LoadProgress { stage, done, total } => {
                 self.signals().loading_progress().emit(
                     &GString::from(stage.label()),
@@ -2318,6 +2578,7 @@ impl TorqaApp {
                     .course_added()
                     .emit(&GString::from(path.as_str()));
             }
+            AppEvent::CoursesChanged => self.signals().courses_changed().emit(),
             AppEvent::ClimbCompleted {
                 index,
                 elapsed,
@@ -2365,6 +2626,12 @@ fn control_name(control: Control) -> &'static str {
         Control::PlayPause => "play_pause",
         Control::NextTrack => "next",
         Control::PreviousTrack => "previous",
+        Control::Pause => "pause",
+        Control::DifficultyUp => "difficulty_up",
+        Control::DifficultyDown => "difficulty_down",
+        Control::IntensityUp => "intensity_up",
+        Control::IntensityDown => "intensity_down",
+        Control::SkipStep => "skip_step",
     }
 }
 
@@ -2397,10 +2664,12 @@ fn workout_state(w: &torqa_session::workout::WorkoutState) -> Variant {
     vdict! {
         "target_power_w" => &optional(w.target_power.map(|p| p.0)),
         "target_heart_rate" => &optional(w.target_heart_rate.map(|h| h.0)),
+        "intensity_pct" => w.intensity.0,
         "progress" => &w.progress.as_ref().map_or_else(Variant::nil, |p| {
             vdict! {
                 "step" => i64::try_from(p.step).unwrap_or(0),
                 "steps" => i64::try_from(p.steps).unwrap_or(0),
+                "elapsed_s" => p.elapsed.as_secs_f64(),
                 "step_left_s" => p.step_left.as_secs_f64(),
                 "left_s" => p.left.as_secs_f64(),
                 "cadence" => &optional(p.cadence.map(|c| c.0)),
@@ -2576,19 +2845,101 @@ fn plan_steps(plan: &Plan, ftp: Watts, test: bool) -> VarArray {
     steps
 }
 
+/// Names of choices for the front end.
+fn name_array(names: impl Iterator<Item = &'static str>) -> PackedStringArray {
+    names.map(GString::from).collect()
+}
+
+/// A loaded route for `route_loaded`.
+fn route_dict(route: &torqa_app::RouteSummary) -> VarDictionary {
+    let source = match route.elevation_source {
+        ElevationSource::Terrain => "terrain",
+        ElevationSource::File => "file",
+    };
+    vdict! {
+        "name" => route.name.as_str(),
+        "length_m" => route.length,
+        "elevation_gain_m" => route.elevation_gain,
+        "max_grade" => route.max_grade,
+        "elevation_source" => source,
+    }
+}
+
+/// The interface language, e.g. `de` or `en_US`.
+fn locale() -> String {
+    TranslationServer::singleton().get_locale().to_string()
+}
+
+/// A country named only by its `code`, by Godot's name for it (in English); the code itself
+/// if Godot knows none.
+fn country_name_or_godots(code: &str) -> String {
+    let name = TranslationServer::singleton().get_country_name(code);
+    if name.is_empty() {
+        code.to_owned()
+    } else {
+        name.to_string()
+    }
+}
+
+/// A course for the front end, as `TorqaApp.courses()` lists it, its countries named in
+/// `locale`.
+fn course_dict(course: &torqa_app::CourseEntry, locale: &str) -> VarDictionary {
+    let path = course.path.display().to_string();
+    let mut countries = VarArray::new();
+    for country in course.manifest.countries.iter().flatten() {
+        let name = library::country_name(country, locale);
+        let name = if name == country.code {
+            country_name_or_godots(name)
+        } else {
+            name.to_owned()
+        };
+        countries.push(
+            &vdict! {
+                "code" => country.code.as_str(),
+                "name" => name.as_str(),
+            }
+            .to_variant(),
+        );
+    }
+    let video = course
+        .manifest
+        .video
+        .as_ref()
+        .map_or("", |v| v.file_name.as_str());
+    vdict! {
+        "path" => path.as_str(),
+        "name" => course.manifest.name.as_str(),
+        "length_m" => course.manifest.length_m,
+        "elevation_gain_m" => course.manifest.elevation_gain_m,
+        "max_grade" => course.manifest.max_grade_percent,
+        "created_unix_s" => i64::try_from(course.manifest.created_unix_s).unwrap_or(0),
+        "track" => &points(&course.manifest.track),
+        "profile" => &points(&course.manifest.profile),
+        "video" => video,
+        // Tacx RLV courses are known only by distance and slope: no 3D world.
+        "located" => course.manifest.video.as_ref().is_none_or(|v| v.located),
+        "countries" => &countries,
+    }
+}
+
 fn points(points: &[[f32; 2]]) -> PackedVector2Array {
     points.iter().map(|&[x, y]| Vector2::new(x, y)).collect()
+}
+
+/// A device kind as GDScript knows it.
+fn kind_name(kind: DeviceKind) -> &'static str {
+    match kind {
+        DeviceKind::Trainer => "trainer",
+        DeviceKind::HeartRateSensor => "heart_rate",
+        DeviceKind::Controller => "controller",
+    }
 }
 
 /// Scanned devices as `[{index, name, kind, rssi}]` for `devices_found`.
 fn device_array(devices: Vec<torqa_app::DeviceInfo>) -> VarArray {
     let mut array = VarArray::new();
     for device in devices {
-        let kind = match device.kind {
-            DeviceKind::Trainer => "trainer",
-            DeviceKind::HeartRateSensor => "heart_rate",
-            DeviceKind::Controller => "controller",
-        };
+        let kind = kind_name(device.kind);
         let rssi = device
             .rssi
             .map_or_else(Variant::nil, |rssi| i64::from(rssi).to_variant());

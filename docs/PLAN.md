@@ -35,7 +35,8 @@ app/                       Godot 4 project: scenes/ (screens, 3D world, video vi
                            controls and theme), shaders/, translations/, tests/ (smoke tests)
 art/                       Blender Python scripts for the 3D models: buildings, vegetation,
                            clouds, riders and bikes; third-party bases in art/sources/ (ADR 0009)
-docs/                      requirements, plan, ADRs, user docs per feature, images/ for them
+docs/                      requirements, plan, ADRs, development guides and shared images
+wiki/                      GitHub wiki submodule: application usage guides, published after merge
 scripts/                   container helpers: checks, builds (GDExtension, FFmpeg), renders and
                            screenshots, the art container, i18n
 .devcontainer/             development container (all tooling lives here)
@@ -131,6 +132,8 @@ Built in rideable steps:
 - [x] `.tqc` format 1: manifest, GPX and the downloaded inputs, with format and generator
   versions (ADR 0007 amendment)
 - [x] Course library in the data directory; list, import, save-as-course in the app
+- [x] An import can be cancelled from beside its loading bar, and a job that dies reports an
+  error instead of loading forever (#219)
 - [x] Rebuild outdated worlds from stored inputs (format 1 always rebuilds offline)
 - [ ] Format 2: store the pre-built world for an instant start
 - **Exit:** prepare a course online, ride it offline on another machine from the `.tqc` file ✅
@@ -141,7 +144,9 @@ Built in rideable steps:
 - [x] Zones shown and adjustable per rider (#173); a rider's default trainer difficulty (#175);
   riders deleted with their rides, after asking
 - [x] Customizable HUD (R23); an ascent-to-go figure (#174); power in % of FTP and heart
-  rate in % of the maximum
+  rate in % of the maximum; % of FTP also under a large power figure, beside W/kg and zone
+- [x] Estimated time to the finish (R66, #231): on the course page at 75 % of FTP, as a
+  time-to-go figure on the HUD from the rider's average power so far
 - [x] Simulation with the fake trainer: speed-up, jumps on map/profile, free camera (#53)
 - [x] HUD layout per rider in the profile settings: drag and drop from the widget list
   directly into the HUD preview and within it (R51, R54)
@@ -189,6 +194,9 @@ Built in rideable steps:
     (channels chosen in Devices & Settings), remembered and reconnected like the trainer
   - [x] Di2 buttons assignable (#139): each channel's press, hold and double press shift one
     or two gears, or work the camera, the overlay or the music
+  - [x] More ride controls on Di2 buttons (R66): pause/resume, trainer difficulty ±10 %,
+    workout intensity ±5 % and skipping a structured workout's step; also on the keyboard
+    (H / E, I / L, N)
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their
@@ -220,15 +228,27 @@ Built in rideable steps:
   (ADR 0007 format bump); frames from the video for video courses
 - [x] Courses gallery (cards with stats and small map) and course detail page with ride options;
   courses renamed (the pencil's Edit course dialog, with their video) and deleted (the bin)
-  there, 3D world built only when riding
+  there, 3D world built only when riding; the cards share the window's full width, their maps
+  growing with them
+- [x] The gallery searched by name, sorted (name, length, climbing, estimated time, date added,
+  last ridden), filtered by chips (type, terrain, length bands) and grouped (R67, #230); each
+  card with the rider's estimated time from the profile its file keeps
+- [x] The countries a course passes, from the OpenFreeMap tiles' borders and country labels,
+  to group, filter and search by and listed on the cards; older courses learn theirs in the
+  background (R68, #230)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
 - [x] Auto-reconnect last-used devices (R41)
+- [x] Devices that drop come back by themselves, also after a pause: the driver looks the
+  device up again (macOS forgets it at once) instead of retrying its stale link; the in-ride
+  settings' Devices tab shows each device and reconnects those that are not (R69)
 - [x] In-ride settings dialog (camera, difficulty, descents, time of day, weather, HUD) from
   one button or key S; finish & save or abort without saving after a confirmation (R48–R49)
 - [x] The same ride options on the course detail page (R48, with the start page)
 - [x] Ride names: default course + date, set on the summary, rename in history (R50)
 - [x] Export a ride's FIT file from the history or summary to a place the rider picks (R28)
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
+- [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Devices & Settings → Graphics;
+  the choice is kept and Torqa starts that way
 - [ ] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
   - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)

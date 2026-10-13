@@ -1,13 +1,14 @@
 //! Decoding `OpenMapTiles` vector tiles into map features.
 //! Schema: <https://openmaptiles.org/schema/>.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::f64::consts::PI;
 
 use geo_types::{Geometry, LineString, Polygon};
 use mvt_reader::Reader;
 use mvt_reader::feature::Value;
 
+use crate::countries::{Border, CountryData};
 use crate::{
     Area, Building, LandCover, LatLon, MapData, OsmError, Place, PlaceKind, Railway, Road,
     RoadClass, StructureKind, Waterway,
@@ -88,6 +89,88 @@ pub(crate) fn merge(
         }
     }
     Ok(())
+}
+
+/// Adds the borders between countries and the countries' labels of tile (x, y) at `zoom` to
+/// `data` (#230).
+pub(crate) fn merge_countries(
+    zoom: u8,
+    (x, y): (u32, u32),
+    bytes: Vec<u8>,
+    data: &mut CountryData,
+) -> Result<(), OsmError> {
+    let invalid = |e: mvt_reader::error::ParserError| OsmError::Invalid(e.to_string());
+    let reader = Reader::new(bytes).map_err(invalid)?;
+    for layer in reader.get_layer_metadata().map_err(invalid)? {
+        if layer.name != "boundary" && layer.name != "place" {
+            continue;
+        }
+        let projection = TileProjection {
+            zoom,
+            x: f64::from(x),
+            y: f64::from(y),
+            extent: f64::from(layer.extent),
+        };
+        for feature in reader
+            .get_features_as::<f64>(layer.layer_index)
+            .map_err(invalid)?
+        {
+            let tags = Tags(feature.properties.unwrap_or_default());
+            if layer.name == "place" {
+                let code = tags.text("iso_a2");
+                if tags.text("class") == "country" && !code.is_empty() {
+                    data.labels
+                        .entry(code.to_owned())
+                        .or_insert_with(|| country_names(&tags));
+                }
+                continue;
+            }
+            // Borders between countries; a disputed line would put a place in two. Those
+            // whose sides the tiles leave out are kept too: they still part countries, and
+            // without them a place could be put on a border farther away.
+            if tags.number("admin_level") != Some(2.0) || tags.number("disputed") == Some(1.0) {
+                continue;
+            }
+            let side = |key: &str| Some(tags.text(key)).filter(|code| !code.is_empty());
+            let (left, right) = (side("adm0_l"), side("adm0_r"));
+            for line in lines(&feature.geometry) {
+                for part in projection.own_parts(line) {
+                    data.borders.push(Border {
+                        left: left.map(ToOwned::to_owned),
+                        right: right.map(ToOwned::to_owned),
+                        line: part,
+                    });
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// A country label's names: by two-letter language code, and in the country's own
+/// language(s) under the empty code.
+fn country_names(tags: &Tags) -> BTreeMap<String, String> {
+    let mut names = BTreeMap::new();
+    for (key, value) in &tags.0 {
+        let Value::String(name) = value else {
+            continue;
+        };
+        let language = match key.strip_prefix("name:") {
+            Some(code) if code.len() == 2 && code.bytes().all(|b| b.is_ascii_lowercase()) => code,
+            _ if key == "name" => "",
+            _ => continue,
+        };
+        if !name.trim().is_empty() {
+            names.insert(language.to_owned(), name.trim().to_owned());
+        }
+    }
+    let english = tags.text("name_en").trim();
+    if !english.is_empty() {
+        names
+            .entry("en".to_owned())
+            .or_insert_with(|| english.to_owned());
+    }
+    names
 }
 
 fn add_place(

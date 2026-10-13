@@ -5,6 +5,8 @@ set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$root/core"
+python3 "$root/scripts/wiki/check.py"
+python3 -m unittest discover -s "$root/scripts/wiki" -p 'test_*.py'
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
@@ -37,6 +39,10 @@ ride_output="$(run_godot -s res://tests/ride_smoke.gd)"
 echo "$ride_output" | grep "RIDE SMOKE TEST PASSED"
 ui_output="$(run_godot -s res://tests/ui_smoke.gd)"
 echo "$ui_output" | grep "UI SMOKE TEST PASSED"
+window_output="$(run_godot -s res://tests/window_smoke.gd)"
+echo "$window_output" | grep "WINDOW SMOKE TEST PASSED"
+hud_output="$(run_godot -s res://tests/hud_smoke.gd)"
+echo "$hud_output" | grep "HUD SMOKE TEST PASSED"
 course_output="$(run_godot -s res://tests/course_smoke.gd)"
 echo "$course_output" | grep "COURSE SMOKE TEST PASSED"
 rider_output="$(run_godot -s res://tests/rider_smoke.gd)"

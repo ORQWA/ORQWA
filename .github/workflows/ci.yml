@@ -59,6 +59,8 @@ jobs:
       IMAGE: ${{ needs.image.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       # The build directory, the crate registry and Godot's imports carry over between runs, as
       # the devcontainer's volumes do for a developer: a cold build of the whole workspace takes
       # over ten minutes, a warm one seconds. The key is what decides the build: the toolchain

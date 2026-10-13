@@ -9,7 +9,7 @@ use std::time::Duration;
 use torqa_domain::profile::Profile;
 use torqa_domain::recording::Sample;
 use torqa_domain::telemetry::Telemetry;
-use torqa_domain::units::{BeatsPerMinute, Rpm, Watts};
+use torqa_domain::units::{BeatsPerMinute, Percent, Rpm, Watts};
 use torqa_domain::workout::{Cue, Intensity, Plan, Step, Target};
 
 use crate::analysis::{effort_test_ftp, ramp_test_ftp};
@@ -40,6 +40,11 @@ const FAILING_FOR: Duration = Duration::from_secs(10);
 const EASY: f64 = 0.45;
 /// The cool-down after an FTP test: very easy.
 const COOL_DOWN: f64 = 0.4;
+/// The rider can make a workout's powers easier or harder within these shares of them, in
+/// steps of [`INTENSITY_STEP`] (#139)…
+const INTENSITY_RANGE: (f64, f64) = (50.0, 150.0);
+/// …each a small change, as a smart trainer platform's bias: 5 % of 250 W is 12.5 W.
+const INTENSITY_STEP: f64 = 5.0;
 
 /// What a workout asks of the rider.
 #[derive(Debug, Clone, PartialEq)]
@@ -311,6 +316,8 @@ pub struct WorkoutState {
     pub target_heart_rate: Option<BeatsPerMinute>,
     /// Where a structured workout stands.
     pub progress: Option<Progress>,
+    /// The share of its powers the workout asks for, 100 % as planned.
+    pub intensity: Percent,
 }
 
 /// Where a structured workout stands.
@@ -320,6 +327,8 @@ pub struct Progress {
     pub step: usize,
     /// Number of steps.
     pub steps: usize,
+    /// Time into the workout: ahead of the ride's time once steps were skipped.
+    pub elapsed: Duration,
     /// Time left in this step.
     pub step_left: Duration,
     /// Time left in the whole workout.
@@ -360,6 +369,8 @@ pub(crate) struct WorkoutControl {
     failing_for: Duration,
     /// The FTP test has ended: the rider gave way.
     gave_way: bool,
+    /// The share of the planned powers asked for, in percent.
+    intensity: f64,
 }
 
 impl WorkoutControl {
@@ -378,6 +389,7 @@ impl WorkoutControl {
             elapsed: Duration::ZERO,
             failing_for: Duration::ZERO,
             gave_way: false,
+            intensity: 100.0,
         }
     }
 
@@ -401,11 +413,49 @@ impl WorkoutControl {
     /// The power for the trainer now; `None` lets it simulate the road.
     pub(crate) fn power(&self) -> Option<Watts> {
         match &self.workout {
-            Workout::Structured { plan, ftp } => plan.at(self.elapsed, *ftp)?.power,
+            Workout::Structured { plan, ftp } => plan
+                .at(self.elapsed, *ftp)?
+                .power
+                .map(|power| self.intense(power)),
             Workout::EffortTest(test) => test.plan.at(self.elapsed, test.ftp)?.power,
             Workout::RampTest(test) => Some(test.power_at(self.elapsed)),
-            _ => Some(Watts(self.power)),
+            Workout::ConstantPower(_) => Some(self.intense(Watts(self.power))),
+            Workout::HeartRate(_) => Some(Watts(self.power)),
         }
+    }
+
+    /// `power` at the rider's intensity.
+    fn intense(&self, power: Watts) -> Watts {
+        Watts(power.0 * self.intensity / 100.0)
+    }
+
+    /// Makes the workout's powers `steps` steps harder (easier if negative), within limits,
+    /// and returns the new intensity. A heart-rate hold would undo it and an FTP test must
+    /// follow its protocol, so these keep their powers: `None`.
+    pub(crate) fn step_intensity(&mut self, steps: i32) -> Option<Percent> {
+        if !matches!(
+            self.workout,
+            Workout::ConstantPower(_) | Workout::Structured { .. }
+        ) {
+            return None;
+        }
+        let (low, high) = INTENSITY_RANGE;
+        self.intensity = (self.intensity + f64::from(steps) * INTENSITY_STEP).clamp(low, high);
+        Some(Percent(self.intensity))
+    }
+
+    /// Ends the step under way of a structured workout and goes on with the next; after the
+    /// last step the workout is finished. Whether a step was skipped: an FTP test takes the
+    /// FTP from the times of its steps, so it cannot skip any.
+    pub(crate) fn skip_step(&mut self) -> bool {
+        let Workout::Structured { plan, ftp } = &self.workout else {
+            return false;
+        };
+        let Some(at) = plan.at(self.elapsed, *ftp) else {
+            return false;
+        };
+        self.elapsed += at.left;
+        true
     }
 
     /// Whether a structured workout or an FTP test of efforts has run its last step, or the
@@ -442,6 +492,7 @@ impl WorkoutControl {
                 Workout::RampTest(test) => Some(self.ramp_progress(test)),
                 _ => None,
             },
+            intensity: Percent(self.intensity),
         }
     }
 
@@ -462,6 +513,7 @@ impl WorkoutControl {
         Progress {
             step,
             steps: 0,
+            elapsed: self.elapsed,
             step_left,
             left: Duration::ZERO,
             cadence: None,
@@ -481,7 +533,7 @@ impl WorkoutControl {
         let at = plan.at(self.elapsed, ftp)?;
         let next = plan.steps.get(at.step + 1).map(|step| NextStep {
             power: match step.target {
-                Target::Power { from, .. } => Some(from.watts(ftp)),
+                Target::Power { from, .. } => Some(self.intense(from.watts(ftp))),
                 Target::Free => None,
             },
             duration: step.duration,
@@ -490,6 +542,7 @@ impl WorkoutControl {
         Some(Progress {
             step: at.step,
             steps: plan.steps.len(),
+            elapsed: self.elapsed,
             step_left: at.left,
             left: plan.duration().saturating_sub(self.elapsed),
             cadence: plan.steps[at.step].cadence,

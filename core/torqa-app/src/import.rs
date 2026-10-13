@@ -5,6 +5,7 @@ use std::path::Path;
 use torqa_domain::files::UsedFiles;
 use torqa_osm::{MapData, Osm};
 use torqa_routes::{ElevationModel, LocalProjection, Route};
+use torqa_storage::course::CourseCountry;
 use torqa_terrain::{Terrain, TileSource};
 use torqa_world::course_map::{self, CourseMap, Frame};
 use tracing::warn;
@@ -20,6 +21,8 @@ pub enum LoadStage {
     Elevation,
     /// Downloading (or reading cached) map data for the course's picture.
     CourseMap,
+    /// Finding the countries the route passes (#230).
+    Countries,
     /// Building the 3D world.
     World,
 }
@@ -34,6 +37,7 @@ impl LoadStage {
             Self::Map => "Downloading map data",
             Self::Elevation => "Correcting elevations",
             Self::CourseMap => "Downloading the course map",
+            Self::Countries => "Finding the countries",
             Self::World => "Building 3D world",
         }
         // i18n-end
@@ -45,6 +49,7 @@ impl LoadStage {
         match self {
             Self::Route => "files",
             Self::Map | Self::CourseMap => "tiles",
+            Self::Countries => "steps",
             Self::Elevation => "points",
             Self::World => "chunks",
         }
@@ -66,6 +71,8 @@ pub struct Imported {
     pub gpx: String,
     /// The map for the course's picture, when it is to get one ([`course_map`]).
     pub course_map: Option<Box<CourseMap>>,
+    /// The countries the route passes, when looked up ([`countries`]).
+    pub countries: Option<Vec<CourseCountry>>,
 }
 
 /// Reads a GPX file and imports it with [`import_gpx`], named after the file if the track has
@@ -152,6 +159,7 @@ pub async fn import_gpx(
         name,
         gpx: xml,
         course_map: None,
+        countries: None,
     })
 }
 
@@ -191,6 +199,37 @@ pub async fn course_map(
         &track,
         frame,
     )))
+}
+
+/// The countries the route through `points` (latitude, longitude) passes (#230), from map
+/// tiles cached under `cache_dir`, downloaded unless `offline`. `None` if the tiles are not to
+/// be had, so that they are looked up again later.
+pub async fn countries(
+    points: &[(f64, f64)],
+    cache_dir: &Path,
+    offline: bool,
+    progress: Progress<'_>,
+) -> Option<Vec<CourseCountry>> {
+    progress(LoadStage::Countries, 0, 1);
+    let mut osm = Osm::new(cache_dir.join("osm"));
+    if offline {
+        osm = osm.offline();
+    }
+    let countries = osm
+        .countries_along(points)
+        .await
+        .inspect_err(|error| warn!(%error, "the route's countries are not known yet"))
+        .ok()?;
+    progress(LoadStage::Countries, 1, 1);
+    Some(
+        countries
+            .into_iter()
+            .map(|country| CourseCountry {
+                code: country.code,
+                names: country.names,
+            })
+            .collect(),
+    )
 }
 
 /// Reports elevation lookups as progress.

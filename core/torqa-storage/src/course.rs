@@ -13,6 +13,7 @@
 //! Opening a course puts the data files back into the cache, after which the course is built
 //! offline exactly as when it was prepared — always with the current world generator (R35).
 
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -92,6 +93,22 @@ pub struct Manifest {
     /// For video courses (R17): the video, which is referenced rather than embedded (R35).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub video: Option<VideoReference>,
+    /// The countries the route passes, in the order it reaches them (#230); `None` until they
+    /// are looked up, empty where the map tells none (a video without a place, or a country
+    /// the map data leaves out).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub countries: Option<Vec<CourseCountry>>,
+}
+
+/// A country a course passes (#230).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CourseCountry {
+    /// ISO 3166-1 two-letter code, e.g. `CH`.
+    pub code: String,
+    /// Its name by language code (`en`, `de`, …), and in its own language(s) under the empty
+    /// code; kept in the file so that a shared course names its countries offline.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub names: BTreeMap<String, String>,
 }
 
 /// The video a video course plays, found again by path, or by name next to the course file.
@@ -266,6 +283,18 @@ pub fn read_manifest(path: &Path) -> Result<Manifest, CourseError> {
     manifest_of(&mut zip)
 }
 
+/// The original GPX track of the course at `path`.
+///
+/// # Errors
+/// [`CourseError::NewerFormat`] for files from a newer Torqa, or an I/O, zip or manifest error.
+pub fn route_gpx(path: &Path) -> Result<String, CourseError> {
+    let mut zip = ZipArchive::new(BufReader::new(File::open(path)?))?;
+    manifest_of(&mut zip)?;
+    let mut gpx = String::new();
+    zip.by_name(ROUTE)?.read_to_string(&mut gpx)?;
+    Ok(gpx)
+}
+
 /// Reads a course and puts its data files under `data_root`. Files already there are kept: the
 /// cache paths are versioned, so an existing file has the same content.
 ///
@@ -433,7 +462,45 @@ mod tests {
             track: vec![[0.0, 0.0], [10.0, 250.5]],
             profile: vec![[0.0, 500.0], [12_345.0, 620.0]],
             video: None,
+            countries: None,
         }
+    }
+
+    #[test]
+    fn a_course_learns_its_countries_later_and_keeps_their_names() {
+        let dir = temp_dir("countries");
+        let course = dir.join("c.tqc");
+        write(&course, &manifest(), "<gpx>route</gpx>", &dir, &[]).unwrap();
+        // Written before they were looked up: none, and not as an empty list.
+        assert_eq!(read_manifest(&course).unwrap().countries, None);
+        let text = |course: &Path| {
+            let mut zip = ZipArchive::new(File::open(course).unwrap()).unwrap();
+            let mut json = String::new();
+            zip.by_name(MANIFEST)
+                .unwrap()
+                .read_to_string(&mut json)
+                .unwrap();
+            json
+        };
+        assert!(!text(&course).contains("countries"));
+
+        let mut found = read_manifest(&course).unwrap();
+        found.countries = Some(vec![CourseCountry {
+            code: "CH".to_owned(),
+            names: BTreeMap::from([
+                ("de".to_owned(), "Schweiz".to_owned()),
+                ("en".to_owned(), "Switzerland".to_owned()),
+            ]),
+        }]);
+        rewrite_manifest(&course, &found).unwrap();
+
+        assert_eq!(read_manifest(&course).unwrap(), found);
+        assert_eq!(route_gpx(&course).unwrap(), "<gpx>route</gpx>");
+        // Looked up and none known stays told apart from not looked up.
+        found.countries = Some(Vec::new());
+        rewrite_manifest(&course, &found).unwrap();
+        assert_eq!(read_manifest(&course).unwrap().countries, Some(Vec::new()));
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

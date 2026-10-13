@@ -5,14 +5,16 @@
 pub mod analysis;
 pub mod hud;
 mod import;
+pub mod library;
 pub mod media;
 pub mod paths;
 pub mod uploads;
 pub mod video;
 pub mod view;
 
-pub use import::{Imported, LoadStage, Progress, course_map, import_gpx, import_route};
+pub use import::{Imported, LoadStage, Progress, countries, course_map, import_gpx, import_route};
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, SystemTime};
@@ -25,16 +27,17 @@ use torqa_domain::profile::{Drivetrain, Profile};
 use torqa_domain::recording::{RideSummary, Sample};
 use torqa_domain::shifting::{ButtonMap, Control, Shift, ShiftInput};
 use torqa_domain::telemetry::TrainerControl;
-use torqa_domain::units::{Meters, Percent, Watts};
+use torqa_domain::units::{Meters, MetersPerSecond, Percent, Watts};
 use torqa_physics::{DescentMode, RiderSetup, VirtualGears};
-use torqa_routes::{Climb, ElevationSource, LocalProjection, Route};
+use torqa_routes::{Climb, ElevationProfile, ElevationSource, LocalProjection, Route};
 use torqa_session::analysis::{
     analyse, effort, summarize, time_at, time_in_heart_rate_zones, time_in_power_zones,
 };
+use torqa_session::estimate;
 use torqa_session::ghost::Ghost;
 use torqa_session::workout::Workout;
 use torqa_session::{Ride, RideConfig, RideState};
-use torqa_storage::course::{self, Manifest};
+use torqa_storage::course::{self, CourseCountry, Manifest};
 use torqa_storage::profiles::{self, DeviceRole, StoredProfile};
 pub use torqa_storage::profiles::{
     GraphicsQuality, OverlayWindow, button_action_from_name, button_action_name,
@@ -148,6 +151,17 @@ pub struct DeviceInfo {
     pub remembered: bool,
 }
 
+/// A device the rider uses, and whether it is connected now (R69).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeviceStatus {
+    /// Its name.
+    pub name: String,
+    /// Whether it is the trainer, the heart-rate sensor or the shifter.
+    pub kind: DeviceKind,
+    /// Whether it is connected now; if not, it is being reconnected or was not found.
+    pub connected: bool,
+}
+
 /// Key facts about a loaded route.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RouteSummary {
@@ -170,6 +184,32 @@ pub struct CourseEntry {
     pub path: PathBuf,
     /// What the course file says about itself.
     pub manifest: Manifest,
+}
+
+/// A course as its estimated time depends on it: its file, and when and how long it was
+/// prepared, which a course replaced under the same name changes.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct EstimateKey {
+    path: PathBuf,
+    created_unix_s: u64,
+    length_bits: u64,
+}
+
+/// The gallery's estimated times by course, and the rider setup and power they are for.
+#[derive(Debug, Default)]
+struct Estimates {
+    basis: Option<(RiderSetup, Watts)>,
+    times: HashMap<EstimateKey, Option<Duration>>,
+}
+
+impl EstimateKey {
+    fn of(course: &CourseEntry) -> Self {
+        Self {
+            path: course.path.clone(),
+            created_unix_s: course.manifest.created_unix_s,
+            length_bits: course.manifest.length_m.to_bits(),
+        }
+    }
 }
 
 /// A ride in the history.
@@ -259,6 +299,8 @@ pub enum AppEvent {
     RideSaved(PathBuf),
     /// A course was saved or imported into the library.
     CourseAdded(PathBuf),
+    /// Courses in the library learned their countries (#230).
+    CoursesChanged,
     /// The rider reached the top of a climb.
     ClimbCompleted {
         /// Index in [`Route::climbs`].
@@ -343,6 +385,9 @@ enum JobResult {
     /// The course at the first path has its own copy of its video at the second (#165).
     VideoKept(PathBuf, PathBuf),
     Upload(Box<uploads::Done>),
+    /// The countries of the course at the path, prepared at the given time, were found
+    /// (#230); `None` once the lookup is over.
+    Countries(Option<(PathBuf, u64, Vec<CourseCountry>)>),
     Failed(String),
 }
 
@@ -380,6 +425,8 @@ struct ActiveRide {
     /// Summary of the samples so far and how many it covers, refreshed once per new sample
     /// rather than every frame.
     summary: (usize, RideSummary),
+    /// Estimated time to the finish (R66).
+    time_to_go: estimate::TimeToGo,
     ghost: Option<Ghost>,
     /// Plays the video of a video course along the ride.
     player: Option<video::VideoPlayer>,
@@ -450,12 +497,16 @@ pub struct App {
     /// ride started later must not wait for a report that has already come.
     trainer_connected: Option<SystemTime>,
     sensor_id: Option<String>,
+    /// When the heart-rate sensor last reported itself connected; `None` while it is not.
+    sensor_connected: Option<SystemTime>,
     /// The running scan was started to reconnect the remembered devices.
     reconnecting: bool,
     /// The loaded route came from a course file (and is in the library already).
     from_course: bool,
     /// Counts loads; results of earlier ones are stale.
     load: u64,
+    /// The job of the current load, to cancel it (#219).
+    loading: Option<tokio::task::AbortHandle>,
     /// When to build the loaded route's world.
     world_plan: WorldPlan,
     /// The course file of the loaded route, once it is one.
@@ -473,6 +524,14 @@ pub struct App {
     route: Option<Route>,
     /// The map for the loaded course's picture, if it is to get one (#203).
     course_map: Option<Box<torqa_world::course_map::CourseMap>>,
+    /// The countries the loaded route passes, if looked up (#230).
+    countries: Option<Vec<CourseCountry>>,
+    /// Whether the courses' countries are being looked up, and how many were found so far.
+    filling_countries: Option<usize>,
+    /// The gallery's estimated times (R67) by course, for the rider setup and power they
+    /// were worked out for: a search refreshes the gallery on every key, too often to ride
+    /// every course again.
+    estimates: Estimates,
     world: Option<Arc<World>>,
     offline: bool,
     /// Name and GPX of the loaded route, for saving it as a course.
@@ -521,9 +580,11 @@ impl App {
             trainer_id: None,
             trainer_connected: None,
             sensor_id: None,
+            sensor_connected: None,
             reconnecting: false,
             from_course: false,
             load: 0,
+            loading: None,
             world_plan: WorldPlan::Now,
             course: None,
             saving: None,
@@ -533,6 +594,9 @@ impl App {
             preview: None,
             route: None,
             course_map: None,
+            countries: None,
+            filling_countries: None,
+            estimates: Estimates::default(),
             world: None,
             offline: false,
             loaded: None,
@@ -656,7 +720,7 @@ impl App {
         let load = self.load;
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -667,6 +731,9 @@ impl App {
                 Ok(mut imported) => {
                     imported.course_map =
                         course_map(&imported.route, &cache, offline, &mut report).await;
+                    imported.countries =
+                        countries(&route_points(&imported.route), &cache, offline, &mut report)
+                            .await;
                     Ok(Box::new(imported))
                 }
                 Err(message) => Err(message),
@@ -687,7 +754,7 @@ impl App {
         self.course = Some(path.clone());
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -779,7 +846,7 @@ impl App {
         let load = self.load;
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -805,10 +872,16 @@ impl App {
                 .await
                 {
                     Ok(mut imported) => {
-                        // Nor does it get a map: there is no land around a drawn line.
+                        // Nor does it get a map or countries: there is no land around a drawn
+                        // line.
                         if source.located {
                             imported.course_map =
                                 course_map(&imported.route, &cache, offline, &mut report).await;
+                            let points = route_points(&imported.route);
+                            imported.countries =
+                                countries(&points, &cache, offline, &mut report).await;
+                        } else {
+                            imported.countries = Some(Vec::new());
                         }
                         Ok(Box::new((imported, source)))
                     }
@@ -1066,6 +1139,7 @@ impl App {
             track: thin(&view::track(route, PREVIEW_POINTS)),
             profile: thin(&view::elevation_profile(route, PREVIEW_POINTS)),
             video: self.video.as_ref().map(|v| video_reference(v, route)),
+            countries: self.countries.clone(),
         };
         // Preparing the same course again must not fill the library with copies; one still
         // being written reports itself when done. A course named on import is the rider's
@@ -1275,6 +1349,160 @@ impl App {
         courses
     }
 
+    /// The course library as the Courses tab shows it (R67): what `query` searches, chooses,
+    /// sorts and groups, each course with the time the active rider is estimated to take from
+    /// the profile its file keeps (R66, coasting the descents as the course page does until
+    /// asked otherwise) and when they last rode it.
+    #[must_use]
+    pub fn course_library(&mut self, query: &library::CourseQuery) -> library::Gallery {
+        let ridden = self.last_ridden();
+        let basis = (
+            self.rider_setup(),
+            estimate::planned_power(self.profile.profile.ftp),
+        );
+        if self.estimates.basis != Some(basis) {
+            self.estimates = Estimates {
+                basis: Some(basis),
+                times: HashMap::new(),
+            };
+        }
+        let (setup, power) = basis;
+        let courses: Vec<CourseEntry> = self.courses();
+        let courses = courses
+            .into_iter()
+            .map(|entry| {
+                let estimated = *self
+                    .estimates
+                    .times
+                    .entry(EstimateKey::of(&entry))
+                    .or_insert_with(|| {
+                        let profile = entry
+                            .manifest
+                            .profile
+                            .iter()
+                            .map(|&[d, e]| (Meters(f64::from(d)), Meters(f64::from(e))));
+                        ElevationProfile::new(profile).and_then(|profile| {
+                            estimate::time_to_finish(
+                                &profile,
+                                &setup,
+                                DescentMode::Coast,
+                                Meters(0.0),
+                                MetersPerSecond(0.0),
+                                power,
+                            )
+                        })
+                    });
+                let last_ridden = entry
+                    .manifest
+                    .route_key
+                    .as_ref()
+                    .and_then(|key| ridden.get(key).copied());
+                library::LibraryCourse {
+                    entry,
+                    estimated,
+                    last_ridden,
+                }
+            })
+            .collect();
+        library::gallery(courses, query, self.profile.profile.units)
+    }
+
+    /// How the Courses tab was left (R67): its order and groups, the defaults for names this
+    /// version does not know.
+    #[must_use]
+    pub fn courses_view(&self) -> library::View {
+        let stored = profiles::courses_view(&self.data_dir);
+        library::View {
+            sort: library::SortKey::from_name(&stored.sort).unwrap_or_default(),
+            descending: stored.descending,
+            group: library::GroupKey::from_name(&stored.group).unwrap_or_default(),
+        }
+    }
+
+    /// Remembers how the Courses tab orders and groups the library.
+    ///
+    /// # Errors
+    /// [`AppError::Storage`] if it cannot be saved.
+    pub fn set_courses_view(&mut self, view: library::View) -> Result<(), AppError> {
+        let stored = profiles::CoursesView {
+            sort: view.sort.name().to_owned(),
+            descending: view.descending,
+            group: view.group.name().to_owned(),
+        };
+        profiles::set_courses_view(&self.data_dir, &stored)
+            .map_err(|e| AppError::Storage(e.to_string()))
+    }
+
+    /// When the active rider last started a ride, by the key of its route. Rides whose
+    /// details cannot be read are left out, as the history rebuilds those.
+    fn last_ridden(&self) -> HashMap<String, SystemTime> {
+        let mut last: HashMap<String, SystemTime> = HashMap::new();
+        for fit in rides::fit_files(&self.rides_dir()) {
+            let Ok(record) = rides::load(&fit) else {
+                continue;
+            };
+            if let Some(key) = record.route_key {
+                last.entry(key)
+                    .and_modify(|start| *start = (*start).max(record.start))
+                    .or_insert(record.start);
+            }
+        }
+        last
+    }
+
+    /// Looks up in the background the countries of the courses that do not know them yet
+    /// (#230): those prepared before Torqa knew countries, offline, or while the map tiles were
+    /// out of reach. Each course's file learns its countries as they are found, and
+    /// [`AppEvent::CoursesChanged`] follows once all were looked up. `offline` uses cached map
+    /// tiles only. Does nothing while a lookup is under way.
+    pub fn fill_in_countries(&mut self, offline: bool) {
+        if self.filling_countries.is_some() {
+            return;
+        }
+        let missing: Vec<(PathBuf, u64, bool)> = self
+            .courses()
+            .into_iter()
+            .filter(|c| c.manifest.countries.is_none())
+            .map(|c| {
+                let located = c.manifest.video.as_ref().is_none_or(|v| v.located);
+                (c.path, c.manifest.created_unix_s, located)
+            })
+            .collect();
+        if missing.is_empty() {
+            return;
+        }
+        self.filling_countries = Some(0);
+        let tx = self.jobs_tx.clone();
+        let cache = self.cache_dir.clone();
+        self.runtime.spawn(async move {
+            for (path, created, located) in missing {
+                let found = if located {
+                    let file = path.clone();
+                    let points = tokio::task::spawn_blocking(move || {
+                        let gpx = course::route_gpx(&file).ok()?;
+                        torqa_routes::track_points(&gpx).ok()
+                    })
+                    .await
+                    .ok()
+                    .flatten();
+                    match points {
+                        Some(points) => {
+                            countries(&points, &cache, offline, &mut |_, _, _| {}).await
+                        }
+                        None => None,
+                    }
+                } else {
+                    // Known only by distance and slope: no land, no country.
+                    Some(Vec::new())
+                };
+                if let Some(found) = found {
+                    let _ = tx.send(JobResult::Countries(Some((path, created, found))));
+                }
+            }
+            let _ = tx.send(JobResult::Countries(None));
+        });
+    }
+
     /// The map picture of the course at `path` (#192), the PNG the app drew when the course
     /// was prepared; `None` without one.
     #[must_use]
@@ -1338,8 +1566,45 @@ impl App {
         self.data_dir.join("courses")
     }
 
-    /// Forgets the current route and starts recording the files a new one uses.
+    /// Stops preparing the route, video or world being loaded (#219): its results are dropped,
+    /// and what it downloaded stays in the cache, so trying again is quick.
+    pub fn cancel_loading(&mut self) {
+        if self.loading.as_ref().is_some_and(|job| !job.is_finished()) {
+            let _ = self.start_loading(self.offline);
+        }
+    }
+
+    /// Runs the job of load `load` (the current one), in place of the current load's job; a
+    /// job that panics fails the load instead of leaving the rider waiting (#219).
+    fn spawn_load(&mut self, load: u64, job: impl Future<Output = ()> + Send + 'static) {
+        let task = self.runtime.spawn(job);
+        self.loading = Some(task.abort_handle());
+        let tx = self.jobs_tx.clone();
+        self.runtime.spawn(async move {
+            let Err(error) = task.await else {
+                return;
+            };
+            // A cancelled load is a stale one: its report is dropped like its results.
+            let message = if error.is_panic() {
+                let panic = error.into_panic();
+                let reason = panic
+                    .downcast_ref::<&str>()
+                    .map(|reason| (*reason).to_owned())
+                    .or_else(|| panic.downcast_ref::<String>().cloned())
+                    .unwrap_or_default();
+                format!("preparing the course stopped unexpectedly: {reason}")
+            } else {
+                "preparing the course was cancelled".to_owned()
+            };
+            let _ = tx.send(JobResult::Route(load, Err(message)));
+        });
+    }
+
+    /// Forgets the current route, stops its job and starts recording the files a new one uses.
     fn start_loading(&mut self, offline: bool) -> UsedFiles {
+        if let Some(job) = self.loading.take() {
+            job.abort();
+        }
         self.load += 1;
         self.offline = offline;
         self.world_plan = WorldPlan::Now;
@@ -1351,6 +1616,7 @@ impl App {
         self.world = None;
         self.route = None;
         self.course_map = None;
+        self.countries = None;
         self.loaded = None;
         self.used = UsedFiles::default();
         self.used.clone()
@@ -1372,7 +1638,7 @@ impl App {
         let mut detailed = terrain(TileSource::defaults());
         // The land beyond the corridor needs only coarse tiles, a few for the whole view.
         let mut distant = terrain(TileSource::distant());
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -1433,6 +1699,21 @@ impl App {
     /// [`AppError::Storage`] if it cannot be saved.
     pub fn set_ride_bar_folded(&mut self, folded: bool) -> Result<(), AppError> {
         profiles::set_ride_bar_folded(&self.data_dir, folded)
+            .map_err(|e| AppError::Storage(e.to_string()))
+    }
+
+    /// Whether the app fills the screen (#218).
+    #[must_use]
+    pub fn fullscreen(&self) -> bool {
+        profiles::fullscreen(&self.data_dir)
+    }
+
+    /// Remembers whether the app fills the screen, to start that way next time.
+    ///
+    /// # Errors
+    /// [`AppError::Storage`] if it cannot be saved.
+    pub fn set_fullscreen(&mut self, fullscreen: bool) -> Result<(), AppError> {
+        profiles::set_fullscreen(&self.data_dir, fullscreen)
             .map_err(|e| AppError::Storage(e.to_string()))
     }
 
@@ -1553,6 +1834,71 @@ impl App {
         true
     }
 
+    /// The trainer, heart-rate sensor and shifter in use or remembered (R41), and whether
+    /// each is connected now (R69).
+    #[must_use]
+    pub fn devices(&self) -> Vec<DeviceStatus> {
+        let remembered = profiles::remembered_devices(&self.data_dir);
+        let status = |kind: DeviceKind,
+                      live: Option<(&str, bool)>,
+                      remembered: Option<profiles::RememberedDevice>| {
+            live.map(|(name, connected)| (name.to_owned(), connected))
+                .or_else(|| remembered.map(|r| (r.name, false)))
+                .map(|(name, connected)| DeviceStatus {
+                    name,
+                    kind,
+                    connected,
+                })
+        };
+        let controller = self
+            .controller_id
+            .as_ref()
+            .and_then(|_| self.shift_inputs.get(1))
+            .map(|input| (input.name(), input.connected()));
+        [
+            status(
+                DeviceKind::Trainer,
+                self.trainer
+                    .as_ref()
+                    .map(|t| (t.name(), self.trainer_connected.is_some())),
+                remembered.trainer,
+            ),
+            status(
+                DeviceKind::HeartRateSensor,
+                self.sensor
+                    .as_ref()
+                    .map(|s| (s.name(), self.sensor_connected.is_some())),
+                remembered.heart_rate,
+            ),
+            status(DeviceKind::Controller, controller, remembered.controller),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    /// Connects again the Bluetooth devices that are not connected now, e.g. during a ride
+    /// (R69): drops their links, scans and connects the remembered ones as at start (R41),
+    /// reporting [`AppEvent::RememberedMissing`] for those not found. Connected devices keep
+    /// their link. Returns false if no device is remembered.
+    pub fn reconnect_devices(&mut self) -> bool {
+        if self.trainer_id.is_some() && self.trainer_connected.is_none() {
+            self.trainer = None;
+            self.trainer_id = None;
+        }
+        if self.sensor_connected.is_none() {
+            self.sensor = None;
+            self.sensor_id = None;
+        }
+        if self.controller_id.is_some() && !self.shift_inputs.get(1).is_some_and(|i| i.connected())
+        {
+            self.shift_inputs.truncate(1);
+            self.shift_inputs_connected.truncate(1);
+            self.controller_id = None;
+        }
+        self.reconnect_remembered()
+    }
+
     fn remember(&self, role: DeviceRole, device: &DiscoveredDevice) {
         let remembered = profiles::RememberedDevice {
             id: device.id(),
@@ -1623,6 +1969,7 @@ impl App {
         self.remember(DeviceRole::HeartRate, &device);
         self.sensor_id = Some(id);
         self.sensor = Some(self.bluetooth()?.connect(device));
+        self.sensor_connected = None;
         Ok(())
     }
 
@@ -1808,12 +2155,17 @@ impl App {
         }
     }
 
+    /// The active rider on their bike.
+    fn rider_setup(&self) -> RiderSetup {
+        RiderSetup {
+            mass: self.profile.profile.system_mass(),
+            ..RiderSetup::default()
+        }
+    }
+
     fn ride_config(&self, difficulty: Percent, descent: DescentMode) -> RideConfig {
         RideConfig {
-            setup: RiderSetup {
-                mass: self.profile.profile.system_mass(),
-                ..RiderSetup::default()
-            },
+            setup: self.rider_setup(),
             difficulty,
             descent,
             gears: match self.profile.profile.drivetrain {
@@ -1846,6 +2198,7 @@ impl App {
             records,
             next_climb: 0,
             summary: (0, RideSummary::default()),
+            time_to_go: estimate::TimeToGo::default(),
             ghost,
             player,
             sound,
@@ -1894,6 +2247,26 @@ impl App {
         if let Some(active) = &mut self.ride {
             active.ride.adjust(difficulty, descent);
         }
+    }
+
+    /// Makes the current ride's trainer difficulty `steps` steps harder (easier if negative),
+    /// as a shifter's button asks (#139); the new difficulty, `None` when not riding.
+    pub fn step_difficulty(&mut self, steps: i32) -> Option<Percent> {
+        Some(self.ride.as_mut()?.ride.step_difficulty(steps))
+    }
+
+    /// Makes the workout's powers `steps` steps harder (easier if negative), as a shifter's
+    /// button asks (#139); the share of the planned powers now asked for, `None` when not in
+    /// a workout that can change them.
+    pub fn step_intensity(&mut self, steps: i32) -> Option<Percent> {
+        self.ride.as_mut()?.ride.step_intensity(steps)
+    }
+
+    /// Goes on with the next step of a structured workout (#139); whether there was one.
+    pub fn skip_step(&mut self) -> bool {
+        self.ride
+            .as_mut()
+            .is_some_and(|active| active.ride.skip_step())
     }
 
     /// Ends the ride without saving anything (R49).
@@ -2180,12 +2553,14 @@ impl App {
         let Some(active) = &self.ride else {
             return Vec::new();
         };
+        let state = active.ride.state();
         hud::values(
-            &active.ride.state(),
+            &state,
             active.ride.samples(),
             &active.summary.1,
             active.ride.route(),
             &self.profile.profile,
+            active.time_to_go.at(state.elapsed),
         )
     }
 
@@ -2198,6 +2573,21 @@ impl App {
                 let _ = tx.send(JobResult::Failed(message));
             }
         });
+    }
+
+    /// How long the active rider would take for the loaded route at the planned share of their
+    /// FTP, with their weight and `descent` (R66); `None` without a route, or if that power
+    /// would not get them to the finish.
+    #[must_use]
+    pub fn estimated_time(&self, descent: DescentMode) -> Option<Duration> {
+        estimate::time_to_finish(
+            self.route()?,
+            &self.rider_setup(),
+            descent,
+            Meters(0.0),
+            MetersPerSecond(0.0),
+            estimate::planned_power(self.profile.profile.ftp),
+        )
     }
 
     /// The ghost of the current ride, if any.
@@ -2220,10 +2610,7 @@ impl App {
         choice: &GhostChoice,
     ) -> Result<Option<Ghost>, AppError> {
         let profile = &self.profile.profile;
-        let setup = RiderSetup {
-            mass: profile.system_mass(),
-            ..RiderSetup::default()
-        };
+        let setup = self.rider_setup();
         let unavailable = |why: String| AppError::GhostUnavailable(why);
         let ghost = match choice {
             GhostChoice::None => return Ok(None),
@@ -2429,7 +2816,13 @@ impl App {
             }
             let samples = active.ride.samples();
             if samples.len() != active.summary.0 {
-                active.summary = (samples.len(), summarize(samples, self.profile.profile.ftp));
+                let ftp = self.profile.profile.ftp;
+                let summary = summarize(samples, ftp);
+                active.time_to_go.update(summary.elapsed, || {
+                    let power = estimate::expected_power(ftp, summary.avg_power, summary.elapsed);
+                    active.ride.time_to_finish(power)
+                });
+                active.summary = (samples.len(), summary);
             }
             // Samples arrive once a second, so a climb is timed once a sample lies past its top.
             let climbs = active.ride.route().map_or(&[][..], Route::climbs);
@@ -2530,26 +2923,7 @@ impl App {
         while let Ok(result) = self.jobs_rx.try_recv() {
             match result {
                 JobResult::Scan(Ok((bluetooth, devices))) => {
-                    let infos = devices
-                        .iter()
-                        .enumerate()
-                        .map(|(index, d)| DeviceInfo {
-                            index,
-                            name: d.name.clone(),
-                            kind: d.kind,
-                            rssi: d.rssi,
-                            remembered: self.is_remembered(d),
-                        })
-                        .collect();
-                    self.bluetooth = Some(bluetooth);
-                    self.discovered = devices;
-                    events.push(AppEvent::DevicesFound(infos));
-                    if std::mem::take(&mut self.reconnecting) {
-                        let missing = self.connect_remembered();
-                        if !missing.is_empty() {
-                            events.push(AppEvent::RememberedMissing(missing));
-                        }
-                    }
+                    self.scanned(bluetooth, devices, events);
                 }
                 JobResult::Route(load, _)
                 | JobResult::Video(load, _)
@@ -2610,24 +2984,83 @@ impl App {
                     self.saving = None;
                     events.push(AppEvent::Error(message));
                 }
-                JobResult::Scan(Err(message)) if std::mem::take(&mut self.reconnecting) => {
-                    // No Bluetooth (or no permission): the rider sees it when scanning.
-                    warn!(%message, "cannot reconnect the devices used last");
-                }
                 JobResult::VideoKept(course, kept) => {
                     if let Err(e) = refer_to_kept_video(&course, &kept) {
                         events.push(AppEvent::Error(e.to_string()));
                     }
                 }
                 JobResult::Upload(done) => events.push(self.upload_work_done(*done)),
-                JobResult::Scan(Err(message))
-                | JobResult::Route(_, Err(message))
+                JobResult::Countries(found) => self.countries_found(found, events),
+                JobResult::Scan(Err(message)) => self.scan_failed(message, events),
+                JobResult::Route(_, Err(message))
                 | JobResult::Video(_, Err(message))
                 | JobResult::CourseAdded(Err(message))
                 | JobResult::Failed(message) => {
                     events.push(AppEvent::Error(message));
                 }
             }
+        }
+    }
+
+    /// Takes the devices a scan found, and connects the remembered ones if it was to
+    /// reconnect them.
+    fn scanned(
+        &mut self,
+        bluetooth: Bluetooth,
+        devices: Vec<DiscoveredDevice>,
+        events: &mut Vec<AppEvent>,
+    ) {
+        let infos = devices
+            .iter()
+            .enumerate()
+            .map(|(index, d)| DeviceInfo {
+                index,
+                name: d.name.clone(),
+                kind: d.kind,
+                rssi: d.rssi,
+                remembered: self.is_remembered(d),
+            })
+            .collect();
+        self.bluetooth = Some(bluetooth);
+        self.discovered = devices;
+        events.push(AppEvent::DevicesFound(infos));
+        if std::mem::take(&mut self.reconnecting) {
+            let missing = self.connect_remembered();
+            if !missing.is_empty() {
+                events.push(AppEvent::RememberedMissing(missing));
+            }
+        }
+    }
+
+    fn scan_failed(&mut self, message: String, events: &mut Vec<AppEvent>) {
+        if !std::mem::take(&mut self.reconnecting) {
+            events.push(AppEvent::Error(message));
+            return;
+        }
+        warn!(%message, "cannot reconnect the devices used last");
+        // During a ride the rider asked for it (R69); at start they see it when scanning.
+        if self.ride.is_some() {
+            events.push(AppEvent::Error(message));
+        }
+    }
+
+    /// Keeps the countries found for a course in its file, and reports the courses changed
+    /// once the lookup is over.
+    fn countries_found(
+        &mut self,
+        found: Option<(PathBuf, u64, Vec<CourseCountry>)>,
+        events: &mut Vec<AppEvent>,
+    ) {
+        let Some((path, created, countries)) = found else {
+            if self.filling_countries.take().is_some_and(|kept| kept > 0) {
+                events.push(AppEvent::CoursesChanged);
+            }
+            return;
+        };
+        if keep_countries(&path, created, countries)
+            && let Some(kept) = &mut self.filling_countries
+        {
+            *kept += 1;
         }
     }
 
@@ -2638,10 +3071,12 @@ impl App {
             name,
             gpx,
             course_map,
+            countries,
             ..
         } = imported;
         self.loaded = Some((name.clone(), gpx));
         self.course_map = course_map;
+        self.countries = countries;
         events.push(AppEvent::RouteLoaded(RouteSummary {
             name,
             length: route.length().0,
@@ -2660,19 +3095,23 @@ impl App {
             match trainer.try_next_event() {
                 Ok(Some(DeviceEvent::Connected)) => {
                     self.trainer_connected = Some(SystemTime::now());
-                    if let Some(active) = &mut self.ride
-                        && active.started.is_none()
-                    {
-                        active.started = Some(SystemTime::now());
+                    if let Some(active) = &mut self.ride {
+                        active.started.get_or_insert_with(SystemTime::now);
+                        // A trainer connected anew (see `reconnect_devices`) knows no gradient.
+                        if !active.paused {
+                            active.ride.resend_control();
+                        }
                     }
                     events.push(AppEvent::Connected(trainer.name().to_owned()));
                 }
                 Ok(Some(DeviceEvent::Disconnected)) => {
-                    self.trainer_connected = None;
                     if let Some(active) = &mut self.ride {
                         active.ride.on_power_source_lost();
                     }
-                    events.push(AppEvent::Disconnected(trainer.name().to_owned()));
+                    // Each failed attempt to reconnect reports again; the rider hears it once.
+                    if self.trainer_connected.take().is_some() {
+                        events.push(AppEvent::Disconnected(trainer.name().to_owned()));
+                    }
                 }
                 Ok(Some(DeviceEvent::Telemetry(telemetry))) => {
                     if let Some(active) = &mut self.ride {
@@ -2684,6 +3123,7 @@ impl App {
                 Err(error) => {
                     events.push(AppEvent::Error(format!("trainer: {error}")));
                     self.trainer = None;
+                    self.trainer_connected = None;
                     break;
                 }
             }
@@ -2697,10 +3137,16 @@ impl App {
         loop {
             match sensor.try_next_event() {
                 Ok(Some(DeviceEvent::Connected)) => {
+                    self.sensor_connected = Some(SystemTime::now());
                     events.push(AppEvent::Connected(sensor.name().to_owned()));
                 }
                 Ok(Some(DeviceEvent::Disconnected)) => {
-                    events.push(AppEvent::Disconnected(sensor.name().to_owned()));
+                    if let Some(active) = &mut self.ride {
+                        active.ride.on_heart_rate_lost();
+                    }
+                    if self.sensor_connected.take().is_some() {
+                        events.push(AppEvent::Disconnected(sensor.name().to_owned()));
+                    }
                 }
                 Ok(Some(DeviceEvent::Telemetry(telemetry))) => {
                     if let Some(active) = &mut self.ride {
@@ -2712,6 +3158,7 @@ impl App {
                 Err(error) => {
                     events.push(AppEvent::Error(format!("heart rate: {error}")));
                     self.sensor = None;
+                    self.sensor_connected = None;
                     break;
                 }
             }
@@ -2862,6 +3309,27 @@ fn refer_to_kept_video(path: &Path, kept: &Path) -> Result<(), AppError> {
     })
 }
 
+/// The positions of `route` as (latitude, longitude).
+fn route_points(route: &Route) -> Vec<(f64, f64)> {
+    route.points().iter().map(|p| (p.lat, p.lon)).collect()
+}
+
+/// Gives the course at `path` the `countries` found for it while it was the one prepared at
+/// `created`, unless it knows them already; true if it was given them. A course replaced or
+/// deleted meanwhile is left alone.
+fn keep_countries(path: &Path, created: u64, countries: Vec<CourseCountry>) -> bool {
+    let Ok(mut manifest) = course::read_manifest(path) else {
+        return false;
+    };
+    if manifest.created_unix_s != created || manifest.countries.is_some() {
+        return false;
+    }
+    manifest.countries = Some(countries);
+    course::rewrite_manifest(path, &manifest)
+        .inspect_err(|error| warn!(path = %path.display(), %error, "cannot keep the countries"))
+        .is_ok()
+}
+
 fn update_manifest(path: &Path, change: impl FnOnce(&mut Manifest)) -> Result<(), AppError> {
     let storage = |e: course::CourseError| AppError::Storage(e.to_string());
     let mut manifest = course::read_manifest(path).map_err(storage)?;
@@ -2980,6 +3448,43 @@ mod tests {
         assert_eq!(summary.name, "Test loop");
         assert!((summary.length - 400.0).abs() < 1.0);
         assert!(app.route().is_some());
+    }
+
+    #[test]
+    fn a_load_that_hangs_can_be_cancelled_and_the_next_one_goes_through() {
+        let dir = temp_dir("cancel");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let _ = app.start_loading(true);
+        app.spawn_load(app.load, std::future::pending());
+
+        app.cancel_loading();
+
+        let deadline = std::time::Instant::now() + Duration::from_millis(500);
+        while std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(16));
+            let events = app.update(Duration::from_millis(16));
+            assert!(
+                events.is_empty(),
+                "nothing from a cancelled load: {events:?}"
+            );
+        }
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+    }
+
+    #[test]
+    fn a_load_whose_job_panics_is_reported_instead_of_loading_forever() {
+        let dir = temp_dir("panic");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let _ = app.start_loading(true);
+
+        app.spawn_load(app.load, async { panic!("a broken tile") });
+
+        let events = run_until(&mut app, |e| matches!(e, AppEvent::Error(_)));
+        let Some(AppEvent::Error(message)) = events.last() else {
+            unreachable!()
+        };
+        assert!(message.contains("a broken tile"), "{message}");
     }
 
     /// The reference route (#167) imported as a rider would, from the map and terrain tiles in
@@ -3502,6 +4007,7 @@ mod tests {
         let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
         app.load_route(write_route(&dir), true);
         run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        let planned = app.estimated_time(DescentMode::Coast).unwrap();
 
         app.connect_trainer(TrainerChoice::Fake(FakeRider {
             power: Watts(250.0),
@@ -3526,6 +4032,12 @@ mod tests {
         assert_eq!(value("power_3s"), Some(250.0));
         assert_eq!(value("heart_rate"), None);
         assert!(value("distance").is_some_and(|km| km > 0.0));
+        // Under way, less of the route is left than was planned.
+        let to_go = value("time_remaining").unwrap();
+        assert!(
+            to_go > 0.0 && to_go < planned.as_secs_f64(),
+            "{to_go} of {planned:?}"
+        );
 
         app.adjust_ride(Percent(80.0), DescentMode::Flat);
         let events = app.finish_ride();
@@ -3738,6 +4250,141 @@ mod tests {
         app.delete_course(course).unwrap();
         assert_eq!(app.courses().len(), 0);
         assert_eq!(app.loaded_course(), None);
+    }
+
+    #[test]
+    fn the_course_library_knows_the_riders_estimates_and_last_rides() {
+        let dir = temp_dir("library");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        app.load_route(write_climb_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        ride_to_the_finish(&mut app, &GhostChoice::None);
+
+        let query = library::CourseQuery {
+            view: library::View {
+                sort: library::SortKey::Ridden,
+                descending: true,
+                group: library::GroupKey::None,
+            },
+            ..library::CourseQuery::default()
+        };
+        let gallery = app.course_library(&query);
+
+        let courses = &gallery.groups[0].courses;
+        let names: Vec<&str> = courses
+            .iter()
+            .map(|c| c.entry.manifest.name.as_str())
+            .collect();
+        assert_eq!(names, ["Hill", "Test loop"]);
+        assert!(courses[0].last_ridden.is_some());
+        assert_eq!(courses[1].last_ridden, None);
+        // 1.2 km with a climb takes longer than 400 m on the flat.
+        assert!(courses[1].estimated.is_some());
+        assert!(courses[0].estimated > courses[1].estimated);
+
+        // A stronger rider is quicker: the estimates follow the rider's figures.
+        let before = courses[0].estimated.unwrap();
+        let id = app.profile().id.clone();
+        let stronger = Profile {
+            ftp: Watts(app.profile().profile.ftp.0 * 1.5),
+            ..app.profile().profile.clone()
+        };
+        app.save_profile(Some(&id), stronger).unwrap();
+        let after = app.course_library(&query).groups[0].courses[0]
+            .estimated
+            .unwrap();
+        assert!(
+            after < before,
+            "{after:?} with more power, {before:?} before"
+        );
+    }
+
+    /// 400 m due north through Bern, far from any border, with elevations.
+    fn write_bern_route(dir: &std::path::Path) -> PathBuf {
+        let mut xml = String::from("<gpx><trk><name>Bern</name><trkseg>");
+        for i in 0..=40 {
+            let lat = 46.948 + f64::from(i) * 10.0 / 111_195.0;
+            let _ = write!(
+                xml,
+                r#"<trkpt lat="{lat}" lon="7.447"><ele>540</ele></trkpt>"#
+            );
+        }
+        xml.push_str("</trkseg></trk></gpx>");
+        let path = dir.join("bern.gpx");
+        std::fs::write(&path, xml).unwrap();
+        path
+    }
+
+    #[test]
+    fn courses_learn_their_countries_once_the_map_tiles_are_at_hand() {
+        let dir = temp_dir("countries");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        // Prepared offline without the tiles: its countries are not known yet.
+        app.load_route(write_bern_route(&dir), true);
+        let events = run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        let Some(AppEvent::CourseAdded(path)) = events.last().cloned() else {
+            unreachable!()
+        };
+        assert_eq!(course::read_manifest(&path).unwrap().countries, None);
+
+        // The tile with Switzerland's borders and label arrives in the cache.
+        let tile = torqa_osm::tile_path(&dir.join("cache/osm"), 6, (33, 22));
+        std::fs::create_dir_all(tile.parent().unwrap()).unwrap();
+        std::fs::copy(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../fixtures/countries/6/33/22.pbf"),
+            &tile,
+        )
+        .unwrap();
+        app.rename_course(&path, "Bärn").unwrap();
+        app.fill_in_countries(true);
+        run_until(&mut app, |e| matches!(e, AppEvent::CoursesChanged));
+
+        let manifest = course::read_manifest(&path).unwrap();
+        let countries = manifest.countries.unwrap();
+        assert_eq!(countries.len(), 1);
+        assert_eq!(countries[0].code, "CH");
+        assert_eq!(countries[0].names["de"], "Schweiz");
+        assert_eq!(manifest.name, "Bärn", "the rename made meanwhile is kept");
+        // Nothing left to look up: no lookup, no event.
+        app.fill_in_countries(true);
+        assert!(app.filling_countries.is_none());
+
+        // A course prepared with the tiles at hand knows its countries at once.
+        app.name_next_import("Bern again", false);
+        app.load_route(write_bern_route(&dir), true);
+        let events = run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        let Some(AppEvent::CourseAdded(again)) = events.last().cloned() else {
+            unreachable!()
+        };
+        let known = course::read_manifest(&again).unwrap().countries.unwrap();
+        assert_eq!(known[0].code, "CH");
+    }
+
+    #[test]
+    fn the_courses_view_is_remembered_and_unknown_choices_fall_back() {
+        let dir = temp_dir("courses-view");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        assert_eq!(app.courses_view(), library::View::default());
+        let view = library::View {
+            sort: library::SortKey::Added,
+            descending: true,
+            group: library::GroupKey::Terrain,
+        };
+
+        app.set_courses_view(view).unwrap();
+        assert_eq!(app.courses_view(), view);
+
+        // A choice only a newer Torqa knows.
+        let newer = profiles::CoursesView {
+            sort: "colour".to_owned(),
+            descending: true,
+            group: "terrain".to_owned(),
+        };
+        profiles::set_courses_view(&dir.join("data"), &newer).unwrap();
+        assert_eq!(app.courses_view().sort, library::SortKey::Name);
+        assert_eq!(app.courses_view().group, library::GroupKey::Terrain);
     }
 
     /// A copy of a generated test video in `dir`, so each test owns its files.
@@ -4683,6 +5330,48 @@ mod tests {
         // No Bluetooth is touched (the container has none): nothing to reconnect.
         assert!(!app.reconnect_remembered());
         assert_eq!(app.update(Duration::ZERO), []);
+    }
+
+    #[test]
+    fn the_devices_show_whether_they_are_connected_and_a_reconnect_keeps_the_connected() {
+        let dir = temp_dir("device-status");
+        let data = dir.join("data");
+        let mut app = App::new(data.clone(), dir.join("cache")).unwrap();
+        let strap = profiles::RememberedDevice {
+            id: "strap".to_owned(),
+            name: "Polar H9".to_owned(),
+        };
+        profiles::remember_device(&data, DeviceRole::HeartRate, strap).unwrap();
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(200.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+        run_until(&mut app, |e| matches!(e, AppEvent::Connected(_)));
+
+        let status = |app: &App| {
+            app.devices()
+                .into_iter()
+                .map(|d| (d.kind, d.connected))
+                .collect::<Vec<_>>()
+        };
+        // The strap used last is not connected: the rider can ask to reconnect it (R69).
+        assert_eq!(
+            status(&app),
+            [
+                (DeviceKind::Trainer, true),
+                (DeviceKind::HeartRateSensor, false)
+            ]
+        );
+        assert_eq!(app.devices()[1].name, "Polar H9");
+        // A reconnect scans for the strap (no Bluetooth in the container) and leaves the
+        // connected trainer alone.
+        assert!(app.reconnect_devices());
+        app.update(Duration::ZERO);
+        assert!(app.trainer_connected());
+        assert_eq!(status(&app)[0], (DeviceKind::Trainer, true));
+        app.shutdown();
     }
 
     #[test]

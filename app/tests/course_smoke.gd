@@ -2,6 +2,7 @@ extends SceneTree
 ## Headless checks of a course's page (R40): its name with a pencil and a bin, as a ride in
 ## the history has (#190), and the dialog the pencil opens to rename the course and add, align
 ## or remove its video (R17).
+## Also the gallery's cards and toolbar (R67).
 ## Run: godot --headless --path app -s res://tests/course_smoke.gd
 
 var _failed: bool = false
@@ -14,6 +15,10 @@ func _initialize() -> void:
 func _run() -> void:
 	_course_page()
 	_edit_dialog()
+	_estimates()
+	_card_countries()
+	await _course_gallery()
+	await _card_widths()
 	if not _failed:
 		print("COURSE SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -142,6 +147,158 @@ func _edit_dialog() -> void:
 	dialog.free()
 
 
+## A card names the countries its course passes (#230): codes, their names on hover.
+func _card_countries() -> void:
+	var course: Dictionary = {
+		"path": "/tmp/x.tqc",
+		"name": "Dreiländer",
+		"length_m": 54000.0,
+		"elevation_gain_m": 420.0,
+		"max_grade": 8.0,
+		"track": PackedVector2Array([Vector2(0, 0), Vector2(500, 800)]),
+		"profile": PackedVector2Array([Vector2(0, 260), Vector2(54000, 300)]),
+	}
+	course["countries"] = [
+		{"code": "CH", "name": "Switzerland"},
+		{"code": "FR", "name": "France"},
+	]
+	var countries_card: CourseCard = CourseCard.new(course, false)
+	var countries: Label = _label_with_text(countries_card, "CH · FR")
+	_check(
+		countries != null and countries.tooltip_text == "Switzerland, France",
+		"countries by code, named on hover"
+	)
+	_check(_label_with_text(countries_card, "Countries") != null, "under Countries")
+	countries_card.free()
+
+
+## Estimated times show to the nearest 5 minutes, on the course page and the cards (R66, R67).
+func _estimates() -> void:
+	var shown: PackedStringArray = PackedStringArray()
+	for seconds: float in [60.0, 1000.0, 3540.0, 6300.0, 7650.0]:
+		shown.append(CourseCard.estimate(seconds))
+	_check(
+		shown == PackedStringArray(["5 min", "15 min", "1 h 00", "1 h 45", "2 h 10"]),
+		"estimates to 5 minutes: %s" % shown
+	)
+
+
+## The gallery's toolbar and chips (R67) ask the core for what the rider chose; clearing
+## the filters keeps the order and groups.
+func _course_gallery() -> void:
+	var torqa: TorqaApp = TorqaApp.new()
+	root.add_child(torqa)
+	torqa.set_courses_view("name", false, "none")
+	var tab: CoursesTab = CoursesTab.new()
+	root.add_child(tab)
+	tab.theme = UiTheme.build()
+	tab.size = Vector2(1600, 900)
+	tab.bind(torqa)
+	var asked: Dictionary = tab.query()
+	var asked_sort: String = asked["sort"]
+	var asked_descending: bool = asked["descending"]
+	var asked_group: String = asked["group"]
+	_check(
+		asked_sort == "name" and not asked_descending and asked_group == "none",
+		"the view as remembered: %s" % asked
+	)
+	var chips: HFlowContainer = tab.get("_chips")
+	var texts: PackedStringArray = PackedStringArray()
+	var hilly: Button = null
+	for child: Node in chips.get_children():
+		var chip: Button = child as Button
+		if chip != null and chip.toggle_mode:
+			texts.append(chip.text)
+			if chip.text == "Hilly":
+				hilly = chip
+	_check(
+		"3D" in texts and "< 25 km" in texts and "25–50 km" in texts and "≥ 100 km" in texts,
+		"chips for type, terrain and length: %s" % texts
+	)
+	# A chip chosen shows Clear filters beside them; nothing in the row grows or moves. The
+	# chips show whatever the library holds.
+	chips.show()
+	await process_frame
+	await process_frame
+	var chip_size: Vector2 = hilly.size
+	var row_height: float = chips.size.y
+	tab.call("_show_clear", true)
+	await process_frame
+	await process_frame
+	_check(
+		hilly.size == chip_size and is_equal_approx(chips.size.y, row_height),
+		(
+			"chips keep their size: %s → %s, row %s → %s"
+			% [chip_size, hilly.size, row_height, chips.size.y]
+		)
+	)
+	hilly.button_pressed = true
+	var terrains: PackedStringArray = tab.query()["terrains"]
+	_check(terrains == PackedStringArray(["hilly"]), "a chip narrows down: %s" % terrains)
+	# Another order starts in its own direction: the latest courses first.
+	var sort: OptionButton = tab.get("_sort")
+	for i: int in sort.item_count:
+		if sort.get_item_metadata(i) == "added":
+			sort.select(i)
+			sort.item_selected.emit(i)
+	var latest_first: bool = tab.query()["descending"]
+	_check(latest_first, "the latest first")
+	var direction: Button = tab.get("_direction")
+	direction.pressed.emit()
+	var turned: bool = tab.query()["descending"]
+	_check(not turned, "the arrow turns the order round")
+	var remembered: Dictionary = torqa.courses_view()
+	var remembered_sort: String = remembered["sort"]
+	_check(remembered_sort == "added", "the order is remembered: %s" % remembered)
+	var search: LineEdit = tab.get("_search")
+	search.text = "gurten"
+	search.text_changed.emit("gurten")
+	_check(tab.filtered(), "a search filters")
+	tab.clear_filters()
+	var cleared: Dictionary = tab.query()
+	var cleared_terrains: PackedStringArray = cleared["terrains"]
+	var cleared_search: String = cleared["search"]
+	var cleared_sort: String = cleared["sort"]
+	_check(
+		cleared_search.is_empty() and cleared_terrains.is_empty() and cleared_sort == "added",
+		"filters cleared, the order kept: %s" % cleared
+	)
+	_check(not hilly.button_pressed, "the chip is off again")
+	torqa.set_courses_view("name", false, "none")
+	tab.free()
+	torqa.free()
+
+
+## The gallery's cards fill its whole width, however wide the window (R39): as many side by
+## side as fit at their narrowest, sharing the row; the route grows with the card.
+func _card_widths() -> void:
+	var gap: float = CoursesTab.CARD_GAP
+	for available: float in [300.0, 640.0, 1280.0, 1918.0, 3840.0]:
+		var width: float = CoursesTab.card_width(available)
+		var columns: int = floori((available + gap) / (width + gap))
+		var row: float = columns * width + (columns - 1) * gap
+		_check(
+			width >= CourseCard.WIDTH and row <= available and available - row < columns,
+			"%d cards of %s fill a row of %s" % [columns, width, available]
+		)
+	_check(is_equal_approx(CoursesTab.card_width(200.0), CourseCard.WIDTH), "never narrower")
+	var course: Dictionary = {
+		"name": "Gurten", "length_m": 2400.0, "elevation_gain_m": 149.4, "max_grade": 17.6
+	}
+	var card: CourseCard = CourseCard.new(course, false)
+	card.theme = UiTheme.build()
+	root.add_child(card)
+	card.custom_minimum_size.x = 600.0
+	await process_frame
+	await process_frame
+	var route: PathCard = card.get("_path_card")
+	_check(
+		absf(route.size.y - route.size.x * CourseCard.MAP_ASPECT) <= 1.0 and route.size.x > 500.0,
+		"the route grows with the card: %s" % route.size
+	)
+	card.free()
+
+
 func _check(condition: bool, what: String) -> void:
 	if not condition:
 		push_error("COURSE SMOKE TEST FAILED: " + what)
@@ -153,4 +310,15 @@ func _button_with_text(node: Node, text: String) -> Button:
 	for button: Node in node.find_children("*", "Button", true, false):
 		if (button as Button).text == text:
 			return button
+	return null
+
+
+func _label_with_text(node: Node, text: String) -> Label:
+	for child: Node in node.get_children():
+		var label: Label = child as Label
+		if label != null and label.text == text:
+			return label
+		var found: Label = _label_with_text(child, text)
+		if found != null:
+			return found
 	return null

@@ -1,12 +1,16 @@
 class_name CourseCard
 extends PanelContainer
-## A course in the gallery (R39): its path card, name and key figures in rows, marked if it is
-## ridden along a video (R17); click to open it. The elevation profile is left to the course
-## page.
+## A course in the gallery (R39): its path card, name and key figures in rows, with the time
+## the rider is estimated to take (R67), marked if it is ridden along a video (R17); click to
+## open it. The elevation profile is left to the course page. The gallery sets its width, so
+## its cards share the row; the route grows with it.
 
 signal pressed
 
+## The narrowest a card gets.
 const WIDTH: float = 300.0
+## The route's height to its width, as the course map is drawn (`course_map::PICTURE`).
+const MAP_ASPECT: float = 640.0 / 1072.0
 
 var _path_card: PathCard = PathCard.new()
 var _title: Label = Label.new()
@@ -18,8 +22,9 @@ func _init(course: Dictionary, imperial: bool) -> void:
 	var rows: VBoxContainer = VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 12)
 	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_path_card.custom_minimum_size = Vector2(WIDTH - 32.0, 160)
+	_path_card.custom_minimum_size = Vector2(WIDTH - 32.0, (WIDTH - 32.0) * MAP_ASPECT)
 	_path_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_path_card.resized.connect(_fit_map)
 	var track: PackedVector2Array = course.get("track", PackedVector2Array())
 	_path_card.set_track(track)
 	rows.add_child(_path_card)
@@ -37,13 +42,25 @@ func _init(course: Dictionary, imperial: bool) -> void:
 	if not str(course.get("video", "")).is_empty():
 		heading.add_child(video_badge())
 	rows.add_child(heading)
-	rows.add_child(figure_rows(course, imperial))
+	var grid: GridContainer = figure_rows(course, imperial)
+	# From the profile the course file keeps (R67); the course page rides the whole route.
+	if course.get("estimated_s") != null:
+		var seconds: float = course["estimated_s"]
+		add_figure(grid, TranslationServer.translate("Time estimate"), estimate(seconds))
+	var countries: Array = course.get("countries", [])
+	_add_countries(grid, countries)
+	rows.add_child(grid)
 	add_child(rows)
 
 
 ## Shows the course's map under its route, `png` as the app drew it (#192); empty for none.
 func set_map(png: PackedByteArray) -> void:
 	_path_card.set_map(png)
+
+
+## The route as tall as the map is for the card's width, so it fills the card uncropped.
+func _fit_map() -> void:
+	_path_card.custom_minimum_size.y = roundf(_path_card.size.x * MAP_ASPECT)
 
 
 ## A name the card's width cuts off shows in full on hover, as file managers do; one that fits
@@ -81,17 +98,56 @@ static func figure_rows(course: Dictionary, imperial: bool) -> GridContainer:
 	grid.add_theme_constant_override("h_separation", 16)
 	grid.add_theme_constant_override("v_separation", 6)
 	for figure: PackedStringArray in figures(course, imperial):
-		var caption: Label = Label.new()
-		caption.text = TranslationServer.translate(figure[0])
-		caption.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		caption.add_theme_color_override("font_color", UiTheme.MUTED)
-		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.add_child(caption)
-		var value: Label = Label.new()
-		value.text = figure[1]
-		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		grid.add_child(value)
+		add_figure(grid, TranslationServer.translate(figure[0]), figure[1])
 	return grid
+
+
+## Adds a row to a grid of `figure_rows`: `caption`, translated already, and `value`.
+static func add_figure(grid: GridContainer, caption: String, value: String) -> void:
+	var caption_label: Label = Label.new()
+	caption_label.text = caption
+	caption_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	caption_label.add_theme_color_override("font_color", UiTheme.MUTED)
+	caption_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(caption_label)
+	var value_label: Label = Label.new()
+	value_label.text = value
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	grid.add_child(value_label)
+
+
+## The countries the course passes (#230) by their codes, e.g. "CH · DE · FR", their names
+## on hover; nothing where they are not known.
+static func _add_countries(grid: GridContainer, countries: Array) -> void:
+	if countries.is_empty():
+		return
+	var codes: PackedStringArray = PackedStringArray()
+	var names: PackedStringArray = PackedStringArray()
+	for country: Dictionary in countries:
+		var code: String = country["code"]
+		var country_name: String = country["name"]
+		codes.append(code)
+		names.append(country_name)
+	var caption: String = (
+		TranslationServer.translate("Country")
+		if countries.size() == 1
+		else TranslationServer.translate("Countries")
+	)
+	add_figure(grid, caption, " · ".join(codes))
+	var value: Label = grid.get_child(grid.get_child_count() - 1) as Label
+	value.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	value.tooltip_text = ", ".join(names)
+	# Sees the mouse for its tooltip; the click still reaches the card.
+	value.mouse_filter = Control.MOUSE_FILTER_PASS
+
+
+## An estimated time to the nearest 5 minutes, which is all an estimate can tell (R66, R67):
+## "1 h 05" or "45 min", and "5 min" at the least.
+static func estimate(seconds: float) -> String:
+	var minutes: int = maxi(5, roundi(seconds / 300.0) * 5)
+	if minutes < 60:
+		return TranslationServer.translate("%d min") % minutes
+	return TranslationServer.translate("%d h %02d") % [minutes / 60, minutes % 60]
 
 
 ## `[caption, value]` pairs: length, climbing and steepest gradient, in the rider's units.
