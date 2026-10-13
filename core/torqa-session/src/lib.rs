@@ -160,6 +160,12 @@ impl Ride {
         self.telemetry.speed = None;
     }
 
+    /// Forgets the heart rate, e.g. when the strap disconnects, so no stale value is shown
+    /// or recorded until it reports again.
+    pub fn on_heart_rate_lost(&mut self) {
+        self.telemetry.heart_rate = None;
+    }
+
     /// Advances the ride by `dt`. Returns a control for the trainer when the simulated gradient
     /// or the workout's power should change.
     pub fn tick(&mut self, dt: Duration) -> Option<TrainerControl> {
@@ -571,6 +577,23 @@ mod tests {
         }
 
         assert!(ride.state().speed.0 < 1.0, "{:?}", ride.state().speed);
+    }
+
+    #[tokio::test]
+    async fn a_lost_strap_records_no_stale_heart_rate() {
+        let mut ride = Ride::new(route(&[0.0], 5000.0).await, RideConfig::default());
+        ride.on_telemetry(&Telemetry {
+            heart_rate: Some(BeatsPerMinute(150.0)),
+            ..Telemetry::default()
+        });
+        pedal(&mut ride, 250.0, 5);
+
+        ride.on_heart_rate_lost();
+        pedal(&mut ride, 250.0, 5);
+
+        let samples = ride.samples();
+        assert_eq!(samples[1].heart_rate, Some(BeatsPerMinute(150.0)));
+        assert_eq!(samples.last().unwrap().heart_rate, None);
     }
 
     #[test]

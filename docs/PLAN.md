@@ -235,6 +235,9 @@ Built in rideable steps:
   background (R68, #230)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
 - [x] Auto-reconnect last-used devices (R41)
+- [x] Devices that drop come back by themselves, also after a pause: the driver looks the
+  device up again (macOS forgets it at once) instead of retrying its stale link; the in-ride
+  settings' Devices tab shows each device and reconnects those that are not (R69)
 - [x] In-ride settings dialog (camera, difficulty, descents, time of day, weather, HUD) from
   one button or key S; finish & save or abort without saving after a confirmation (R48–R49)
 - [x] The same ride options on the course detail page (R48, with the start page)

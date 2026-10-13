@@ -1544,3 +1544,24 @@ msgstr "Länder bestimmen"
 
 msgid "Time estimate"
 msgstr "Zeitschätzung"
+
+msgid "%s not found"
+msgstr "%s nicht gefunden"
+
+msgid "%s not found — wake it, then reconnect again."
+msgstr "%s nicht gefunden — aufwecken, dann erneut verbinden."
+
+msgid "Connected"
+msgstr "Verbunden"
+
+msgid "Looking for your devices… wake them by pedalling or putting on the strap."
+msgstr "Suche deine Geräte… wecke sie durch Treten oder Anziehen des Brustgurts."
+
+msgid "No devices connected yet: connect them in Devices & Settings."
+msgstr "Noch keine Geräte verbunden: verbinde sie unter Geräte & Einstellungen."
+
+msgid "Reconnect devices"
+msgstr "Geräte neu verbinden"
+
+msgid "Shifter"
+msgstr "Schalter"

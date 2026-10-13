@@ -89,6 +89,8 @@ func bind(torqa: TorqaApp, world: RideWorld) -> void:
 	_world = world
 	_torqa.device_connected.connect(_on_device_connected)
 	_torqa.device_disconnected.connect(_on_device_disconnected)
+	_torqa.remembered_missing.connect(_on_remembered_missing)
+	_settings_dialog.bind(_torqa)
 	# Deferred: the handler calls back into Torqa, which is still busy emitting the signal.
 	_torqa.ride_finished.connect(_on_ride_finished, CONNECT_DEFERRED)
 	_torqa.ride_saved.connect(_on_ride_saved)
@@ -647,6 +649,12 @@ func _on_device_connected(device_name: String) -> void:
 
 func _on_device_disconnected(device_name: String) -> void:
 	_show_toast(tr("%s disconnected — reconnecting…") % device_name)
+
+
+## A reconnect from the ride settings (R69) did not find some devices.
+func _on_remembered_missing(names: PackedStringArray) -> void:
+	if visible:
+		_show_toast(tr("%s not found") % ", ".join(names))
 
 
 func _on_ride_finished() -> void:

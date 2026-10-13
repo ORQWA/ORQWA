@@ -61,6 +61,19 @@ func _run() -> void:
 	_check(is_equal_approx(power, 250.0), "power arrives: %s" % state)
 	var metrics: Dictionary = state.get("metrics", {})
 	_check(metrics.get("time_remaining") != null, "time to go on the HUD: %s" % metrics)
+	# The ride settings show the devices, and the connected trainer needs no reconnect (R69).
+	var devices: Array = _torqa.devices()
+	var trainer: Dictionary = devices[0] if devices.size() == 1 else {}
+	var trainer_connected: bool = trainer.get("connected", false)
+	var kind: String = trainer.get("kind", "")
+	_check(kind == "trainer" and trainer_connected, "devices during the ride: %s" % [devices])
+	var ride_devices: RideDevices = RideDevices.new()
+	ride_devices.bind(_torqa)
+	root.add_child(ride_devices)
+	ride_devices.refresh()
+	var reconnect: Button = ride_devices.find_children("*", "Button", true, false)[0]
+	_check(reconnect.disabled, "nothing to reconnect with every device connected")
+	ride_devices.free()
 
 	_torqa.finish_ride()
 	_check(_saved_path.ends_with(".fit"), "ride saved: %s" % _saved_path)
