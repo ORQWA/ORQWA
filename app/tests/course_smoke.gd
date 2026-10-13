@@ -2,6 +2,7 @@ extends SceneTree
 ## Headless checks of a course's page (R40): its name with a pencil and a bin, as a ride in
 ## the history has (#190), and the dialog the pencil opens to rename the course and add, align
 ## or remove its video (R17).
+## Also the gallery's cards and toolbar (R67).
 ## Run: godot --headless --path app -s res://tests/course_smoke.gd
 
 var _failed: bool = false
@@ -15,6 +16,7 @@ func _run() -> void:
 	_course_page()
 	_edit_dialog()
 	_estimates()
+	_card_countries()
 	await _course_gallery()
 	if not _failed:
 		print("COURSE SMOKE TEST PASSED")
@@ -144,6 +146,31 @@ func _edit_dialog() -> void:
 	dialog.free()
 
 
+## A card names the countries its course passes (#230): codes, their names on hover.
+func _card_countries() -> void:
+	var course: Dictionary = {
+		"path": "/tmp/x.tqc",
+		"name": "Dreiländer",
+		"length_m": 54000.0,
+		"elevation_gain_m": 420.0,
+		"max_grade": 8.0,
+		"track": PackedVector2Array([Vector2(0, 0), Vector2(500, 800)]),
+		"profile": PackedVector2Array([Vector2(0, 260), Vector2(54000, 300)]),
+	}
+	course["countries"] = [
+		{"code": "CH", "name": "Switzerland"},
+		{"code": "FR", "name": "France"},
+	]
+	var countries_card: CourseCard = CourseCard.new(course, false)
+	var countries: Label = _label_with_text(countries_card, "CH · FR")
+	_check(
+		countries != null and countries.tooltip_text == "Switzerland, France",
+		"countries by code, named on hover"
+	)
+	_check(_label_with_text(countries_card, "Countries") != null, "under Countries")
+	countries_card.free()
+
+
 ## Estimated times show to the nearest 5 minutes, on the course page and the cards (R66, R67).
 func _estimates() -> void:
 	var shown: PackedStringArray = PackedStringArray()
@@ -252,4 +279,15 @@ func _button_with_text(node: Node, text: String) -> Button:
 	for button: Node in node.find_children("*", "Button", true, false):
 		if (button as Button).text == text:
 			return button
+	return null
+
+
+func _label_with_text(node: Node, text: String) -> Label:
+	for child: Node in node.get_children():
+		var label: Label = child as Label
+		if label != null and label.text == text:
+			return label
+		var found: Label = _label_with_text(child, text)
+		if found != null:
+			return found
 	return null

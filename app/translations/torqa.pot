@@ -15,11 +15,11 @@ msgstr ""
 msgid "%d h"
 msgstr ""
 
-#: app/ui/course_card.gd:113
+#: app/ui/course_card.gd:140
 msgid "%d h %02d"
 msgstr ""
 
-#: app/ui/course_card.gd:112 app/ui/power_curve_chart.gd:39
+#: app/ui/course_card.gd:139 app/ui/power_curve_chart.gd:39
 msgid "%d min"
 msgstr ""
 
@@ -63,7 +63,7 @@ msgstr ""
 msgid "%s disconnected — reconnecting…"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:565
+#: app/scenes/courses_tab.gd:615
 msgid "%s has no GPS, so it cannot become a course by itself."
 msgstr ""
 
@@ -87,7 +87,7 @@ msgstr ""
 msgid "+ Step"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:566
+#: app/scenes/courses_tab.gd:616
 msgid "1. Import the GPX route of the ride shown in the video."
 msgstr ""
 
@@ -95,7 +95,7 @@ msgstr ""
 msgid "2 × 8-minute test"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:567
+#: app/scenes/courses_tab.gd:617
 msgid "2. Open that course."
 msgstr ""
 
@@ -107,7 +107,7 @@ msgstr ""
 msgid "20-minute test"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:569
+#: app/scenes/courses_tab.gd:619
 msgid "3. Press the pencil beside its name, then Add video…, and place the route in the video."
 msgstr ""
 
@@ -119,7 +119,7 @@ msgstr ""
 msgid "8 minutes all out: as hard as you can hold to the end"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:533
+#: app/scenes/courses_tab.gd:583
 msgid "A course named “%s” exists already. Replace it, or keep both?"
 msgstr ""
 
@@ -239,7 +239,7 @@ msgstr ""
 msgid "Apr"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:482
+#: app/scenes/courses_tab.gd:532
 msgid "Ascending"
 msgstr ""
 
@@ -291,7 +291,7 @@ msgstr ""
 msgid "Bike weight"
 msgstr ""
 
-#: app/scenes/course_detail.gd:100 app/scenes/workouts_tab.gd:281 core/torqa-app/src/import.rs:37
+#: app/scenes/course_detail.gd:100 app/scenes/workouts_tab.gd:281 core/torqa-app/src/import.rs:41
 msgid "Building 3D world"
 msgstr ""
 
@@ -311,7 +311,7 @@ msgstr ""
 msgid "Camera: %s"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:195 app/ui/workout_editor.gd:60
+#: app/scenes/courses_tab.gd:207 app/ui/workout_editor.gd:60
 msgid "Cancel"
 msgstr ""
 
@@ -363,7 +363,7 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:53 app/scenes/courses_tab.gd:315
+#: app/scenes/courses_tab.gd:55 app/scenes/courses_tab.gd:327
 msgid "Clear filters"
 msgstr ""
 
@@ -407,7 +407,7 @@ msgstr ""
 msgid "Climbed"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd:23 app/scenes/courses_tab.gd:25 app/scenes/history_screen.gd:364 app/ui/course_card.gd:130
+#: app/scenes/analysis_tab.gd:23 app/scenes/courses_tab.gd:26 app/scenes/history_screen.gd:364 app/ui/course_card.gd:157
 msgid "Climbing"
 msgstr ""
 
@@ -455,11 +455,19 @@ msgstr ""
 msgid "Constant power %d W"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:35
+#: core/torqa-app/src/import.rs:38
 msgid "Correcting elevations"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:256
+#: app/ui/course_card.gd:124
+msgid "Countries"
+msgstr ""
+
+#: app/scenes/courses_tab.gd:373 app/scenes/courses_tab.gd:36 app/ui/course_card.gd:122
+msgid "Country"
+msgstr ""
+
+#: app/scenes/courses_tab.gd:268
 msgid "Course name in use"
 msgstr ""
 
@@ -479,7 +487,7 @@ msgstr ""
 msgid "Daily TSS"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:27
+#: app/scenes/courses_tab.gd:28
 msgid "Date added"
 msgstr ""
 
@@ -523,7 +531,7 @@ msgstr ""
 msgid "Delete workout?"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:482
+#: app/scenes/courses_tab.gd:532
 msgid "Descending"
 msgstr ""
 
@@ -567,11 +575,11 @@ msgstr ""
 msgid "Double press"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:34
+#: core/torqa-app/src/import.rs:37
 msgid "Downloading map data"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:36
+#: core/torqa-app/src/import.rs:39
 msgid "Downloading the course map"
 msgstr ""
 
@@ -631,7 +639,7 @@ msgstr ""
 msgid "Endurance"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:26
+#: app/scenes/courses_tab.gd:27
 msgid "Estimated time"
 msgstr ""
 
@@ -711,6 +719,10 @@ msgstr ""
 msgid "Find your API key on intervals.icu under Settings, Developer Settings."
 msgstr ""
 
+#: core/torqa-app/src/import.rs:40
+msgid "Finding the countries"
+msgstr ""
+
 #: app/scenes/ride_settings_dialog.gd:37
 msgid "Finish & save"
 msgstr ""
@@ -739,7 +751,7 @@ msgstr ""
 msgid "Fitness, fatigue and form"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:38
+#: app/scenes/courses_tab.gd:40
 msgid "Flat"
 msgstr ""
 
@@ -795,11 +807,11 @@ msgstr ""
 msgid "Full view"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:234
+#: app/scenes/courses_tab.gd:246
 msgid "GPX routes"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:181
+#: app/scenes/courses_tab.gd:193
 msgid "GPX routes, videos with GPS, route videos and course files"
 msgstr ""
 
@@ -823,7 +835,7 @@ msgstr ""
 msgid "Grey zone"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:287
+#: app/scenes/courses_tab.gd:299
 msgid "Group"
 msgstr ""
 
@@ -887,7 +899,7 @@ msgstr ""
 msgid "Highest power"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:40
+#: app/scenes/courses_tab.gd:42
 msgid "Hilly"
 msgstr ""
 
@@ -911,7 +923,7 @@ msgstr ""
 msgid "Imperial (mi, lb)"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:180 app/scenes/courses_tab.gd:249
+#: app/scenes/courses_tab.gd:192 app/scenes/courses_tab.gd:261
 msgid "Import"
 msgstr ""
 
@@ -955,7 +967,7 @@ msgstr ""
 msgid "Jun"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:258
+#: app/scenes/courses_tab.gd:270
 msgid "Keep both"
 msgstr ""
 
@@ -979,11 +991,11 @@ msgstr ""
 msgid "Last 90 days"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:28
+#: app/scenes/courses_tab.gd:29
 msgid "Last ridden"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:355 app/scenes/courses_tab.gd:24 app/scenes/courses_tab.gd:34 app/ui/course_card.gd:129
+#: app/scenes/courses_tab.gd:371 app/scenes/courses_tab.gd:25 app/scenes/courses_tab.gd:35 app/ui/course_card.gd:156
 msgid "Length"
 msgstr ""
 
@@ -991,7 +1003,7 @@ msgstr ""
 msgid "Light"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:579
+#: app/scenes/courses_tab.gd:629
 msgid "Loading %s …"
 msgstr ""
 
@@ -1067,7 +1079,7 @@ msgstr ""
 msgid "Morning"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:41
+#: app/scenes/courses_tab.gd:43
 msgid "Mountainous"
 msgstr ""
 
@@ -1091,11 +1103,11 @@ msgstr ""
 msgid "Music: previous track"
 msgstr ""
 
-#: app/scenes/course_edit_dialog.gd:61 app/scenes/courses_tab.gd:23 app/scenes/profile_dialog.gd:50 app/ui/workout_editor.gd:120
+#: app/scenes/course_edit_dialog.gd:61 app/scenes/courses_tab.gd:24 app/scenes/profile_dialog.gd:50 app/ui/workout_editor.gd:120
 msgid "Name"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:248
+#: app/scenes/courses_tab.gd:260
 msgid "Name the course"
 msgstr ""
 
@@ -1139,11 +1151,15 @@ msgstr ""
 msgid "Next: free ride for %s"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:305
+#: app/scenes/courses_tab.gd:424
+msgid "No country"
+msgstr ""
+
+#: app/scenes/courses_tab.gd:317
 msgid "No courses match"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:212
+#: app/scenes/courses_tab.gd:224
 msgid "No courses yet. Import a GPX route or a video to prepare your first course."
 msgstr ""
 
@@ -1163,7 +1179,7 @@ msgstr ""
 msgid "Nobody"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:31 app/scenes/devices_tab.gd:146 app/scenes/devices_tab.gd:326
+#: app/scenes/courses_tab.gd:32 app/scenes/devices_tab.gd:146 app/scenes/devices_tab.gd:326
 msgid "None"
 msgstr ""
 
@@ -1191,7 +1207,7 @@ msgstr ""
 msgid "Nothing"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:310
+#: app/scenes/courses_tab.gd:322
 msgid "Nothing in your library matches this search and these filters."
 msgstr ""
 
@@ -1231,7 +1247,7 @@ msgstr ""
 msgid "Only the HUD, on top of other windows, e.g. over a video (O)"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:225
+#: app/scenes/courses_tab.gd:237
 msgid "Open a GPX route, video or Torqa course"
 msgstr ""
 
@@ -1383,7 +1399,7 @@ msgstr ""
 msgid "Ramp to"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:33
+#: core/torqa-app/src/import.rs:36
 msgid "Reading route"
 msgstr ""
 
@@ -1411,7 +1427,7 @@ msgstr ""
 msgid "Rename the ride"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:257
+#: app/scenes/courses_tab.gd:269
 msgid "Replace"
 msgstr ""
 
@@ -1471,7 +1487,7 @@ msgstr ""
 msgid "Rides you keep with Done on their summary go up by themselves"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:39
+#: app/scenes/courses_tab.gd:41
 msgid "Rolling"
 msgstr ""
 
@@ -1479,7 +1495,7 @@ msgstr ""
 msgid "Route"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:233
+#: app/scenes/courses_tab.gd:245
 msgid "Routes, videos and courses"
 msgstr ""
 
@@ -1515,7 +1531,7 @@ msgstr ""
 msgid "Screen"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:272
+#: app/scenes/courses_tab.gd:284
 msgid "Search courses"
 msgstr ""
 
@@ -1575,7 +1591,7 @@ msgstr ""
 msgid "Smaller (−)"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:279
+#: app/scenes/courses_tab.gd:291
 msgid "Sort"
 msgstr ""
 
@@ -1603,7 +1619,7 @@ msgstr ""
 msgid "Steady"
 msgstr ""
 
-#: app/ui/course_card.gd:131
+#: app/ui/course_card.gd:158
 msgid "Steepest"
 msgstr ""
 
@@ -1651,7 +1667,7 @@ msgstr ""
 msgid "Tempo"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:354 app/scenes/courses_tab.gd:33
+#: app/scenes/courses_tab.gd:370 app/scenes/courses_tab.gd:34
 msgid "Terrain"
 msgstr ""
 
@@ -1739,7 +1755,7 @@ msgstr ""
 msgid "Torqa could not connect. Go back to Torqa to try again."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:242
+#: app/scenes/courses_tab.gd:254
 msgid "Torqa courses"
 msgstr ""
 
@@ -1771,7 +1787,7 @@ msgstr ""
 msgid "Twice 8 minutes all out, 10 easy between. FTP: 90 % of their average."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:353 app/scenes/courses_tab.gd:32
+#: app/scenes/courses_tab.gd:369 app/scenes/courses_tab.gd:33
 msgid "Type"
 msgstr ""
 
@@ -1819,7 +1835,7 @@ msgstr ""
 msgid "Very light"
 msgstr ""
 
-#: app/scenes/course_edit_dialog.gd:71 app/scenes/courses_tab.gd:36 app/ui/course_card.gd:75
+#: app/scenes/course_edit_dialog.gd:71 app/scenes/courses_tab.gd:38 app/ui/course_card.gd:77
 msgid "Video"
 msgstr ""
 
@@ -1835,7 +1851,7 @@ msgstr ""
 msgid "Video removed: this course is ridden in 3D."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:263
+#: app/scenes/courses_tab.gd:275
 msgid "Video without GPS"
 msgstr ""
 
@@ -1843,7 +1859,7 @@ msgstr ""
 msgid "Videos"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:239
+#: app/scenes/courses_tab.gd:251
 msgid "Videos with GPS, route videos (Incyclist .xml, Tacx .rlv)"
 msgstr ""
 
@@ -1947,7 +1963,7 @@ msgstr ""
 msgid "Your best time on this route: %s"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:176
+#: app/scenes/courses_tab.gd:188
 msgid "Your courses"
 msgstr ""
 

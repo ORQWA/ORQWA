@@ -27,15 +27,18 @@ preparing it fail unexpectedly, Torqa says so instead of loading forever.
 
 The bar above the cards finds a course in a large library:
 
-- **Search** shows the courses whose name contains what you type, of any case.
+- **Search** shows the courses whose name, or the name of a country they pass, contains what
+  you type, of any case.
 - **Sort** orders them by name, length, climbing, estimated time, date added or the date you
   last rode them. Each order starts the natural way round (A to Z, short to long, newest and
   latest ridden first); the arrow beside it turns it round. Courses you never rode, or could not
   finish at the planned power, come last.
-- **Group** puts them under headings by type, terrain or length, with how many each holds.
-- The **chips** below show only some courses: **Type** (3D or video), **Terrain** and
-  **Length**. Chips of one kind add up (Hilly and Mountainous shows both), chips of different
-  kinds narrow down (Hilly and 25–50 km shows the hilly courses of that length).
+- **Group** puts them under headings by type, terrain, length or country, with how many each
+  holds. A course that crosses borders is under each of its countries.
+- The **chips** below show only some courses: **Type** (3D or video), **Terrain**, **Length**
+  and, once your courses span two countries or more, **Country**. Chips of one kind add up
+  (Hilly and Mountainous shows both), chips of different kinds narrow down (Hilly and
+  25–50 km shows the hilly courses of that length).
   **Clear filters** turns them all off and empties the search.
 
 | Terrain | Climbing per km |
@@ -53,6 +56,20 @@ from the elevation profile the course file keeps for its card, so it may differ 
 minutes from the course page's **Time at 75 % FTP**, which rides the whole route.
 
 Torqa remembers the order and grouping; the search and chips start empty each time.
+
+### Countries
+
+Each card lists the **countries** the course passes by their codes, e.g. CH · FR; hover over
+them for their names. Torqa finds them on the OpenStreetMap map when the course is prepared:
+which side of a border the route is on, a country counting once the route rides at least
+200 m in it. The names are kept in the course file, so a course you share names its countries
+offline too.
+
+The map data does not name the country on every side of every border: in 2026 it often leaves
+out Germany, Austria and Poland. A stretch of route beside such a border is in no known
+country, and a course known nowhere sits under **No country**, as do videos without a place
+(Tacx RLV). Courses prepared by an earlier Torqa, or offline, learn their countries in the
+background the next time Torqa starts online; this rewrites their course files once.
 
 ## Ride a course
 

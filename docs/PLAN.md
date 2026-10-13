@@ -228,8 +228,9 @@ Built in rideable steps:
 - [x] The gallery searched by name, sorted (name, length, climbing, estimated time, date added,
   last ridden), filtered by chips (type, terrain, length bands) and grouped (R67, #230); each
   card with the rider's estimated time from the profile its file keeps
-- [ ] The countries a course passes, from the OpenFreeMap tiles, to filter and group by
-  (#230, second step)
+- [x] The countries a course passes, from the OpenFreeMap tiles' borders and country labels,
+  to group, filter and search by and listed on the cards; older courses learn theirs in the
+  background (R68, #230)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
 - [x] Auto-reconnect last-used devices (R41)
 - [x] In-ride settings dialog (camera, difficulty, descents, time of day, weather, HUD) from

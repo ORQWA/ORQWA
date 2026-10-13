@@ -1,14 +1,18 @@
 //! OpenStreetMap data for Torqa: buildings, land cover, water, roads, bridges and tunnels around
-//! a route, from [`OpenFreeMap`](https://openfreemap.org) vector tiles (`OpenMapTiles` schema),
-//! cached on disk for offline rides (R3).
+//! a route, and the countries it passes (#230), from [`OpenFreeMap`](https://openfreemap.org)
+//! vector tiles (`OpenMapTiles` schema), cached on disk for offline rides (R3).
 //!
 //! © `OpenFreeMap`, © `OpenMapTiles`, data © OpenStreetMap contributors (ODbL 1.0) — attribution
 //! must be shown where the data is used.
 
+mod countries;
+mod iso;
 mod mvt;
 
+pub use countries::Country;
+
 use std::collections::BTreeSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use futures::{StreamExt, stream};
@@ -370,12 +374,7 @@ impl Osm {
         tile: (u32, u32),
         template: Option<&str>,
     ) -> Result<Vec<u8>, OsmError> {
-        let path = self
-            .cache_dir
-            .join(CACHE_VERSION)
-            .join(zoom.to_string())
-            .join(tile.0.to_string())
-            .join(format!("{}.pbf", tile.1));
+        let path = tile_path(&self.cache_dir, zoom, tile);
         match tokio::fs::read(&path).await {
             Ok(bytes) => {
                 self.used.record(&path);
@@ -423,6 +422,17 @@ impl Osm {
         }
         None
     }
+}
+
+/// Where tile (x, y) at `zoom` is cached under `cache_dir`, the directory an [`Osm`] is
+/// created with.
+#[must_use]
+pub fn tile_path(cache_dir: &Path, zoom: u8, (x, y): (u32, u32)) -> PathBuf {
+    cache_dir
+        .join(CACHE_VERSION)
+        .join(zoom.to_string())
+        .join(x.to_string())
+        .join(format!("{y}.pbf"))
 }
 
 /// Tiles (x, y at [`ZOOM`]) within `corridor` metres of the polyline.

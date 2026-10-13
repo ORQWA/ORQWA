@@ -13,7 +13,8 @@ const STEP_WEIGHTS: Dictionary[String, Vector2] = {
 	"Reading route": Vector2(0.0, 0.02),
 	"Downloading map data": Vector2(0.02, 0.6),
 	"Correcting elevations": Vector2(0.6, 0.75),
-	"Downloading the course map": Vector2(0.75, 0.8),
+	"Downloading the course map": Vector2(0.75, 0.78),
+	"Finding the countries": Vector2(0.78, 0.8),
 	"Building 3D world": Vector2(0.8, 1.0),
 }
 ## The gallery's choices by the names the core knows them by; items and labels are
@@ -32,6 +33,7 @@ const GROUP_LABELS: Dictionary[String, String] = {
 	"type": "Type",
 	"terrain": "Terrain",
 	"length": "Length",
+	"country": "Country",
 }
 const KIND_LABELS: Dictionary[String, String] = {"3d": "3D", "video": "Video"}
 const TERRAIN_LABELS: Dictionary[String, String] = {
@@ -59,7 +61,11 @@ var _chosen: Dictionary[String, PackedStringArray] = {
 	"kinds": PackedStringArray(),
 	"terrains": PackedStringArray(),
 	"lengths": PackedStringArray(),
+	"countries": PackedStringArray(),
 }
+## The countries the library's courses pass (#230), as the last gallery listed them:
+## `[{code, name}]`, `none` for courses whose countries are not known.
+var _countries: Array = []
 var _descending: bool = false
 ## The groups shown, each a header and its cards.
 var _gallery: VBoxContainer = VBoxContainer.new()
@@ -91,6 +97,7 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa = torqa
 	_torqa.loading_progress.connect(_on_loading_progress)
 	_torqa.course_added.connect(_on_course_added)
+	_torqa.courses_changed.connect(refresh)
 	_torqa.failed.connect(_on_failed)
 	_choices = _torqa.course_library_choices()
 	_build_menus()
@@ -115,6 +122,10 @@ func refresh() -> void:
 	for child: Node in _gallery.get_children():
 		child.queue_free()
 	var library: Dictionary = _torqa.course_library(query())
+	var countries: Array = library["countries"]
+	if countries != _countries:
+		_countries = countries
+		_build_chips()
 	var total: int = library["total"]
 	var groups: Array = library["groups"]
 	for group: Dictionary in groups:
@@ -144,6 +155,7 @@ func query() -> Dictionary:
 		"kinds": _chosen["kinds"],
 		"terrains": _chosen["terrains"],
 		"lengths": _chosen["lengths"],
+		"countries": _chosen["countries"],
 	}
 
 
@@ -332,7 +344,8 @@ func _build_menus() -> void:
 		_group.set_item_metadata(_group.item_count - 1, group_name)
 
 
-## One row of chips: type | terrain | length, and a way to turn them all off.
+## One row of chips: type | terrain | length | country, and a way to turn them all off. Country
+## chips show once the library spans more than one country.
 func _build_chips() -> void:
 	for child: Node in _chips.get_children():
 		if child != _clear:
@@ -344,16 +357,29 @@ func _build_chips() -> void:
 	for band: Dictionary in _choices["lengths"]:
 		var band_name: String = band["name"]
 		lengths.append(band_name)
-	# A band the rider chose stays chosen only if it still exists.
-	var kept: PackedStringArray = PackedStringArray()
-	for chosen: String in _chosen["lengths"]:
-		if chosen in lengths:
-			kept.append(chosen)
-	_chosen["lengths"] = kept
+	var countries: PackedStringArray = PackedStringArray()
+	for country: Dictionary in _countries:
+		var code: String = country["code"]
+		countries.append(code)
+	if countries.size() < 2:
+		countries.clear()
+	# A band or country the rider chose stays chosen only if it is still there.
+	_chosen["lengths"] = _kept(_chosen["lengths"], lengths)
+	_chosen["countries"] = _kept(_chosen["countries"], countries)
 	_add_chips(tr("Type"), "kinds", kinds, false)
 	_add_chips(tr("Terrain"), "terrains", terrains, true)
 	_add_chips(tr("Length"), "lengths", lengths, true)
+	if not countries.is_empty():
+		_add_chips(tr("Country"), "countries", countries, true)
 	_chips.move_child(_clear, -1)
+
+
+static func _kept(chosen: PackedStringArray, offered: PackedStringArray) -> PackedStringArray:
+	var kept: PackedStringArray = PackedStringArray()
+	for choice: String in chosen:
+		if choice in offered:
+			kept.append(choice)
+	return kept
 
 
 func _add_chips(caption: String, kind: String, names: PackedStringArray, divided: bool) -> void:
@@ -367,13 +393,16 @@ func _add_chips(caption: String, kind: String, names: PackedStringArray, divided
 	_chips.add_child(label)
 	for chip_name: String in names:
 		var chip: Button = UiTheme.toggle_chip(_choice_label(kind, chip_name))
+		if kind == "countries":
+			# Named by the core in the rider's language already.
+			chip.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		chip.set_pressed_no_signal(chip_name in _chosen[kind])
 		chip.toggled.connect(_on_chip_toggled.bind(kind, chip_name))
 		_chips.add_child(chip)
 
 
-## The label of chip or group `choice` of `kind` (`kinds`, `terrains` or `lengths`),
-## untranslated where it is a word: the button or label translates itself.
+## The label of chip or group `choice` of `kind` (`kinds`, `terrains`, `lengths` or
+## `countries`), untranslated where it is a word: the button or label translates itself.
 func _choice_label(kind: String, choice: String) -> String:
 	var label: String = choice
 	match kind:
@@ -381,9 +410,23 @@ func _choice_label(kind: String, choice: String) -> String:
 			label = KIND_LABELS.get(choice, choice)
 		"terrains":
 			label = TERRAIN_LABELS.get(choice, choice)
+		"countries":
+			label = _country_label(choice)
 		_:
 			label = _length_label(choice)
 	return label
+
+
+## A country's name as the core gave it, or "No country" for the courses whose countries are
+## not known.
+func _country_label(code: String) -> String:
+	if code == "none":
+		return tr("No country")
+	for country: Dictionary in _countries:
+		if country["code"] == code:
+			var country_name: String = country["name"]
+			return country_name
+	return code
 
 
 ## A length band in the rider's units, e.g. "< 25 km", "25–50 km" or "≥ 100 km".
@@ -415,6 +458,11 @@ func _add_group(group: Dictionary) -> void:
 		header.add_theme_constant_override("separation", 10)
 		var title: Label = Label.new()
 		title.text = _choice_label(_group_kind(), group_name)
+		var label: String = group.get("label", "")
+		if not label.is_empty():
+			# A country, named by the core.
+			title.text = label
+			title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		title.add_theme_font_size_override("font_size", 18)
 		header.add_child(title)
 		var count: Label = Label.new()
@@ -447,6 +495,8 @@ func _group_kind() -> String:
 			return "kinds"
 		"terrain":
 			return "terrains"
+		"country":
+			return "countries"
 		_:
 			return "lengths"
 

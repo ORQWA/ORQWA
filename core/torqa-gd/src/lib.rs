@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use godot::classes::image::Format as ImageFormat;
-use godot::classes::{Engine, INode, Image, Node};
+use godot::classes::{Engine, INode, Image, Node, TranslationServer};
 use godot::prelude::*;
 use torqa_app::analysis::{BestEffort, Comparison};
 use torqa_app::hud::MetricKind;
@@ -78,11 +78,22 @@ impl INode for TorqaApp {
         Self { base, app }
     }
 
+    fn ready(&mut self) {
+        // Courses from before Torqa knew countries, or prepared offline, learn them (#230).
+        if let Some(app) = self.app.as_mut() {
+            app.fill_in_countries(false);
+        }
+    }
+
     fn process(&mut self, delta: f64) {
         let Some(app) = self.app.as_mut() else {
             return;
         };
         let events = app.update(Duration::from_secs_f64(delta.max(0.0)));
+        // A course imported from a file, or prepared offline, may not know its countries yet.
+        if events.iter().any(|e| matches!(e, AppEvent::CourseAdded(_))) {
+            app.fill_in_countries(false);
+        }
         for event in events {
             self.emit(event);
         }
@@ -142,6 +153,11 @@ impl TorqaApp {
     /// A course was saved or imported into the library.
     #[signal]
     fn course_added(path: GString);
+
+    /// Courses in the library learned their countries (#230): the gallery is to be shown
+    /// again.
+    #[signal]
+    fn courses_changed();
 
     /// Devices used last that the reconnect at start did not find, by name.
     #[signal]
@@ -497,23 +513,29 @@ impl TorqaApp {
     /// created_unix_s, track, profile, video, located}]`; `track` (metres east/north of the
     /// start) and `profile` (distance, elevation) are thinned for cards and empty for older
     /// courses; `video` is the video's file name for video courses, else empty; `located` is
-    /// false for courses known only by distance and slope (Tacx RLV).
+    /// false for courses known only by distance and slope (Tacx RLV); `countries` are those
+    /// the route passes as `[{code, name}]`, named in the interface language (#230), empty
+    /// where not known.
     #[func]
     fn courses(&self) -> VarArray {
+        let locale = locale();
         let mut array = VarArray::new();
         for course in self.app.as_ref().map(App::courses).unwrap_or_default() {
-            array.push(&course_dict(&course).to_variant());
+            array.push(&course_dict(&course, &locale).to_variant());
         }
         array
     }
 
     /// The library as the Courses tab shows it (R67), for `query` `{search, sort, descending,
-    /// group, kinds, terrains, lengths}`: the names of `course_library_choices()`, the chips
-    /// as `PackedStringArray`s (empty for all). Returns `{total, groups: [{group, courses}]}`:
-    /// how many courses the library holds, and the groups shown, `group` the name of their
-    /// kind, terrain or length band (empty when not grouped). Courses are as in `courses()`,
-    /// with `estimated_s` at the planned share of FTP (R66, from the card's profile; `null`
-    /// out of reach), `last_ridden_unix_s` (`null` if never) and `terrain`.
+    /// group, kinds, terrains, lengths, countries}`: the names of `course_library_choices()`,
+    /// the chips as `PackedStringArray`s (empty for all), countries by code or `none` for
+    /// those not known. Returns `{total, groups: [{group, label, courses}], countries}`: how
+    /// many courses the library holds; the groups shown, `group` the name of their kind,
+    /// terrain or length band, or a country's code or `none` (empty when not grouped) and
+    /// `label` a country's name; and the countries the library's courses pass as `[{code,
+    /// name}]` (#230). Countries are named and searched in the interface language. Courses are
+    /// as in `courses()`, with `estimated_s` at the planned share of FTP (R66, from the card's
+    /// profile; `null` out of reach), `last_ridden_unix_s` (`null` if never) and `terrain`.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn course_library(&mut self, query: VarDictionary) -> VarDictionary {
@@ -553,6 +575,8 @@ impl TorqaApp {
                 .iter()
                 .filter_map(|n| library::LengthBand::from_name(n))
                 .collect(),
+            countries: chips("countries"),
+            locale: locale(),
         };
         let gallery = self
             .app
@@ -563,7 +587,7 @@ impl TorqaApp {
         for group in &gallery.groups {
             let mut courses = VarArray::new();
             for course in &group.courses {
-                let mut dict = course_dict(&course.entry);
+                let mut dict = course_dict(&course.entry, &query.locale);
                 let estimated = course
                     .estimated
                     .map_or_else(Variant::nil, |t| t.as_secs_f64().to_variant());
@@ -575,10 +599,32 @@ impl TorqaApp {
                 dict.set("terrain", course.terrain().name());
                 courses.push(&dict.to_variant());
             }
+            let label = if group.label == group.group.name() {
+                // A country the map named only by its code.
+                country_name_or_godots(&group.label)
+            } else {
+                group.label.clone()
+            };
             groups.push(
                 &vdict! {
                     "group" => group.group.name(),
+                    "label" => label.as_str(),
                     "courses" => &courses,
+                }
+                .to_variant(),
+            );
+        }
+        let mut countries = VarArray::new();
+        for choice in &gallery.countries {
+            let name = if choice.name == choice.code {
+                country_name_or_godots(&choice.code)
+            } else {
+                choice.name.clone()
+            };
+            countries.push(
+                &vdict! {
+                    "code" => choice.code.as_str(),
+                    "name" => name.as_str(),
                 }
                 .to_variant(),
             );
@@ -586,6 +632,7 @@ impl TorqaApp {
         vdict! {
             "total" => i64::try_from(gallery.total).unwrap_or(i64::MAX),
             "groups" => &groups,
+            "countries" => &countries,
         }
     }
 
@@ -2429,20 +2476,7 @@ impl TorqaApp {
             AppEvent::DevicesFound(devices) => {
                 self.signals().devices_found().emit(&device_array(devices));
             }
-            AppEvent::RouteLoaded(route) => {
-                let source = match route.elevation_source {
-                    ElevationSource::Terrain => "terrain",
-                    ElevationSource::File => "file",
-                };
-                let info = vdict! {
-                    "name" => route.name.as_str(),
-                    "length_m" => route.length,
-                    "elevation_gain_m" => route.elevation_gain,
-                    "max_grade" => route.max_grade,
-                    "elevation_source" => source,
-                };
-                self.signals().route_loaded().emit(&info);
-            }
+            AppEvent::RouteLoaded(route) => self.signals().route_loaded().emit(&route_dict(&route)),
             AppEvent::LoadProgress { stage, done, total } => {
                 self.signals().loading_progress().emit(
                     &GString::from(stage.label()),
@@ -2489,6 +2523,7 @@ impl TorqaApp {
                     .course_added()
                     .emit(&GString::from(path.as_str()));
             }
+            AppEvent::CoursesChanged => self.signals().courses_changed().emit(),
             AppEvent::ClimbCompleted {
                 index,
                 elapsed,
@@ -2752,9 +2787,57 @@ fn name_array(names: impl Iterator<Item = &'static str>) -> PackedStringArray {
     names.map(GString::from).collect()
 }
 
-/// A course for the front end, as `TorqaApp.courses()` lists it.
-fn course_dict(course: &torqa_app::CourseEntry) -> VarDictionary {
+/// A loaded route for `route_loaded`.
+fn route_dict(route: &torqa_app::RouteSummary) -> VarDictionary {
+    let source = match route.elevation_source {
+        ElevationSource::Terrain => "terrain",
+        ElevationSource::File => "file",
+    };
+    vdict! {
+        "name" => route.name.as_str(),
+        "length_m" => route.length,
+        "elevation_gain_m" => route.elevation_gain,
+        "max_grade" => route.max_grade,
+        "elevation_source" => source,
+    }
+}
+
+/// The interface language, e.g. `de` or `en_US`.
+fn locale() -> String {
+    TranslationServer::singleton().get_locale().to_string()
+}
+
+/// A country named only by its `code`, by Godot's name for it (in English); the code itself
+/// if Godot knows none.
+fn country_name_or_godots(code: &str) -> String {
+    let name = TranslationServer::singleton().get_country_name(code);
+    if name.is_empty() {
+        code.to_owned()
+    } else {
+        name.to_string()
+    }
+}
+
+/// A course for the front end, as `TorqaApp.courses()` lists it, its countries named in
+/// `locale`.
+fn course_dict(course: &torqa_app::CourseEntry, locale: &str) -> VarDictionary {
     let path = course.path.display().to_string();
+    let mut countries = VarArray::new();
+    for country in course.manifest.countries.iter().flatten() {
+        let name = library::country_name(country, locale);
+        let name = if name == country.code {
+            country_name_or_godots(name)
+        } else {
+            name.to_owned()
+        };
+        countries.push(
+            &vdict! {
+                "code" => country.code.as_str(),
+                "name" => name.as_str(),
+            }
+            .to_variant(),
+        );
+    }
     let video = course
         .manifest
         .video
@@ -2772,6 +2855,7 @@ fn course_dict(course: &torqa_app::CourseEntry) -> VarDictionary {
         "video" => video,
         // Tacx RLV courses are known only by distance and slope: no 3D world.
         "located" => course.manifest.video.as_ref().is_none_or(|v| v.located),
+        "countries" => &countries,
     }
 }
 

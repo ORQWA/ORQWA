@@ -70,3 +70,13 @@ an optional entry, so the format stays 1.
 Measured on the 7 km Lake Biel route: 6.2 MB, opened on an empty machine offline in ~23 s
 (debug build). Storing the pre-built world for an instant start remains a later step
 (format 2); readers reject formats newer than they know.
+
+## Amendment 2026-10-13 — countries in the manifest (#230)
+
+`manifest.json` gains an optional `countries` list: the countries the route passes, in order,
+each with its ISO 3166-1 two-letter `code` and its `names` by language, so a shared course
+names its countries offline (R68). The field is absent until the countries were looked up and
+an empty list where none is known, so Torqa fills in older courses' countries in the background
+and never asks again for a course without any. Older Torqa versions ignore the field; the
+format stays 1. Filling it in rewrites the course file, like a rename: two machines doing so
+before their sync folder catches up may leave a sync conflict copy (ADR 0002).

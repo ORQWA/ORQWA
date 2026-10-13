@@ -27,6 +27,12 @@ The Blender skills in `.claude/skills/blender-*` are from
 Map and terrain data credits are shown in the app and stored in every course file; see
 [courses.md](courses.md).
 
+The list of ISO 3166-1 country codes that matches the map's three-letter codes to two-letter
+ones (`core/torqa-osm/src/iso.rs`) is taken from Debian's
+[iso-codes](https://salsa.debian.org/iso-codes-team/iso-codes) (`data/iso_3166-1.json`,
+LGPL 2.1 or later). The test tiles in `core/fixtures/countries/` are cut from OpenFreeMap
+tiles: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0).
+
 ## Documentation images
 
 Images that only illustrate the docs and never ship in the app may show third-party footage

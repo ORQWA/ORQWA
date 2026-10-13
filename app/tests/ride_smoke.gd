@@ -47,6 +47,9 @@ func _run() -> void:
 		var path: String = course["path"]
 		listed = listed or path == course_path
 	_check(listed, "course listed in the library")
+	var first: Dictionary = _torqa.courses()[0]
+	var first_countries: Variant = first.get("countries")
+	_check(first_countries is Array, "the courses list their countries: %s" % first)
 
 	_check(_torqa.connect_fake_trainer(250.0, 90.0), "fake trainer connected")
 	_check(_torqa.start_ride(50.0, false, {"kind": "none"}), "ride started")
