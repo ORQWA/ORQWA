@@ -259,6 +259,33 @@ msgstr "Musik: Wiedergabe / Pause"
 msgid "Music: previous track"
 msgstr "Musik: vorheriger Titel"
 
+msgid "Pause / resume"
+msgstr "Pause / weiter"
+
+msgid "Trainer difficulty +10 %"
+msgstr "Trainer-Schwierigkeit +10 %"
+
+msgid "Trainer difficulty −10 %"
+msgstr "Trainer-Schwierigkeit −10 %"
+
+msgid "Workout intensity +5 %"
+msgstr "Workout-Intensität +5 %"
+
+msgid "Workout intensity −5 %"
+msgstr "Workout-Intensität −5 %"
+
+msgid "Workout: skip step"
+msgstr "Workout: Schritt überspringen"
+
+msgid "Workout: next step"
+msgstr "Workout: nächster Schritt"
+
+msgid "Trainer difficulty: %d %%"
+msgstr "Trainer-Schwierigkeit: %d %%"
+
+msgid "Workout intensity: %d %%"
+msgstr "Workout-Intensität: %d %%"
+
 msgid "Name"
 msgstr "Name"
 

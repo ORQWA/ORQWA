@@ -2249,6 +2249,26 @@ impl App {
         }
     }
 
+    /// Makes the current ride's trainer difficulty `steps` steps harder (easier if negative),
+    /// as a shifter's button asks (#139); the new difficulty, `None` when not riding.
+    pub fn step_difficulty(&mut self, steps: i32) -> Option<Percent> {
+        Some(self.ride.as_mut()?.ride.step_difficulty(steps))
+    }
+
+    /// Makes the workout's powers `steps` steps harder (easier if negative), as a shifter's
+    /// button asks (#139); the share of the planned powers now asked for, `None` when not in
+    /// a workout that can change them.
+    pub fn step_intensity(&mut self, steps: i32) -> Option<Percent> {
+        self.ride.as_mut()?.ride.step_intensity(steps)
+    }
+
+    /// Goes on with the next step of a structured workout (#139); whether there was one.
+    pub fn skip_step(&mut self) -> bool {
+        self.ride
+            .as_mut()
+            .is_some_and(|active| active.ride.skip_step())
+    }
+
     /// Ends the ride without saving anything (R49).
     pub fn abort_ride(&mut self) {
         self.ride = None;

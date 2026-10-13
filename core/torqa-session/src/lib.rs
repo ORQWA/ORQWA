@@ -29,6 +29,9 @@ const GRADE_UPDATE_THRESHOLD: f64 = 0.1;
 /// Nor are smaller changes of the target power (ERG targets are whole watts).
 const POWER_UPDATE_THRESHOLD: f64 = 1.0;
 const SAMPLE_INTERVAL: Duration = Duration::from_secs(1);
+/// A shifter's button changes the trainer difficulty this much a press (#139): two steps of
+/// the settings' slider, enough to feel at once.
+const DIFFICULTY_STEP: f64 = 10.0;
 
 /// Settings for one ride.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -211,6 +214,34 @@ impl Ride {
         self.config.difficulty = difficulty;
         self.config.descent = descent;
         self.last_control = None;
+    }
+
+    /// Makes the trainer difficulty `steps` steps harder (easier if negative) during the ride,
+    /// from 0 to 100 %, and returns it; the trainer gets the new gradient on the next tick.
+    pub fn step_difficulty(&mut self, steps: i32) -> Percent {
+        let difficulty = self.config.difficulty.0 + f64::from(steps) * DIFFICULTY_STEP;
+        self.adjust(Percent(difficulty.clamp(0.0, 100.0)), self.config.descent);
+        self.config.difficulty
+    }
+
+    /// Makes the workout's powers `steps` steps harder (easier if negative), and returns the
+    /// share of the planned powers now asked for; `None` without a workout or in one whose
+    /// powers stay as they are (a heart-rate hold, an FTP test). The trainer hears of it on
+    /// the next tick.
+    pub fn step_intensity(&mut self, steps: i32) -> Option<Percent> {
+        let intensity = self.workout.as_mut()?.step_intensity(steps)?;
+        self.last_control = None;
+        Some(intensity)
+    }
+
+    /// Goes on with the next step of a structured workout, or finishes it in its last step.
+    /// Whether a step was skipped: other workouts have no steps to skip.
+    pub fn skip_step(&mut self) -> bool {
+        let skipped = self.workout.as_mut().is_some_and(WorkoutControl::skip_step);
+        if skipped {
+            self.last_control = None;
+        }
+        skipped
     }
 
     /// Changes the workout during a workout, e.g. a new target power or heart rate; the
@@ -402,7 +433,7 @@ mod tests {
 
     use torqa_domain::units::{BeatsPerMinute, Rpm};
     use torqa_domain::workout::{Cue, Intensity, Plan, Step, Target};
-    use workout::HeartRateHold;
+    use workout::{EffortTest, HeartRateHold, RampTest};
 
     use super::*;
 
@@ -535,6 +566,93 @@ mod tests {
 
         let first = controls.first().map(grade_of).unwrap();
         assert!((first - 4.0).abs() < 0.3, "{controls:?}");
+    }
+
+    #[tokio::test]
+    async fn a_button_steps_the_difficulty_within_its_range() {
+        let mut ride = Ride::new(route(&[8.0], 5000.0).await, RideConfig::default());
+        pedal(&mut ride, 300.0, 30);
+
+        assert_eq!(ride.step_difficulty(1), Percent(60.0));
+        let controls = pedal(&mut ride, 300.0, 1);
+
+        let first = controls.first().map(grade_of).unwrap();
+        assert!((first - 4.8).abs() < 0.3, "at once: {controls:?}");
+        assert_eq!(ride.step_difficulty(10), Percent(100.0));
+        assert_eq!(ride.step_difficulty(-20), Percent(0.0));
+    }
+
+    #[test]
+    fn buttons_make_a_workout_harder_and_skip_its_steps() {
+        let workout = Workout::Structured {
+            plan: plan(),
+            ftp: Watts(240.0),
+        };
+        let mut ride = Ride::workout(workout, RideConfig::default());
+        pedal(&mut ride, 150.0, 10);
+
+        assert_eq!(ride.step_intensity(2), Some(Percent(110.0)));
+        let harder = pedal(&mut ride, 150.0, 1);
+        assert!(ride.skip_step());
+        let skipped = pedal(&mut ride, 150.0, 1);
+        let state = ride.state().workout.unwrap();
+
+        assert_eq!(
+            harder,
+            [TrainerControl::TargetPower(Watts(132.0))],
+            "10 % above 120 W, at once"
+        );
+        // At once on with the ramp from 100 W, 10 % harder, though the ride is only 11 s old.
+        let power = ride_power(&skipped[0]);
+        assert!((110.0..=111.0).contains(&power), "{skipped:?}");
+        let progress = state.progress.unwrap();
+        assert_eq!(progress.step, 1);
+        assert_eq!(progress.elapsed, Duration::from_secs(61));
+        assert_eq!(state.intensity, Percent(110.0));
+        // Skipping the last step ends the workout.
+        assert!(ride.skip_step() && ride.skip_step());
+        assert!(ride.is_finished());
+        assert!(!ride.skip_step(), "nothing left to skip");
+    }
+
+    #[test]
+    fn a_workouts_intensity_stays_within_half_and_one_and_a_half_times_its_powers() {
+        let mut ride = Ride::workout(Workout::ConstantPower(Watts(200.0)), RideConfig::default());
+
+        assert_eq!(ride.step_intensity(100), Some(Percent(150.0)));
+        assert_eq!(
+            pedal(&mut ride, 200.0, 1),
+            [TrainerControl::TargetPower(Watts(300.0))]
+        );
+        assert_eq!(ride.step_intensity(-100), Some(Percent(50.0)));
+        assert!(!ride.skip_step(), "a constant power has no steps");
+    }
+
+    #[tokio::test]
+    async fn heart_rate_holds_ftp_tests_and_plain_rides_keep_their_powers_and_steps() {
+        let hold = HeartRateHold::bpm(
+            &Profile::default(),
+            BeatsPerMinute(140.0),
+            Watts(100.0),
+            Watts(250.0),
+        );
+        let tests = [
+            Workout::HeartRate(hold),
+            Workout::RampTest(RampTest::for_ftp(Watts(200.0))),
+            Workout::EffortTest(EffortTest::twenty_minutes(Watts(200.0))),
+        ];
+        let rides = tests
+            .into_iter()
+            .map(|workout| Ride::workout(workout, RideConfig::default()))
+            .chain([Ride::new(
+                route(&[0.0], 1000.0).await,
+                RideConfig::default(),
+            )]);
+
+        for mut ride in rides {
+            assert_eq!(ride.step_intensity(1), None);
+            assert!(!ride.skip_step());
+        }
     }
 
     #[tokio::test]

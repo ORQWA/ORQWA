@@ -257,7 +257,7 @@ func _process(delta: float) -> void:
 		_chart_left -= delta
 		if _chart_left <= 0.0:
 			_chart_left = CHART_EVERY_S
-			_plan_chart.progress_s = state["elapsed_s"]
+			_plan_chart.progress_s = _workout_elapsed(state)
 			var chart: Dictionary = _torqa.ride_chart(600)
 			var power: PackedVector2Array = chart["power"]
 			var heart_rate: PackedVector2Array = chart["heart_rate"]
@@ -374,6 +374,16 @@ func _show_plan(ftp: float) -> void:
 	var duration: float = plan["duration_s"]
 	_chart.min_duration = duration
 	_chart.power_range = Vector2(0.0, _plan_chart.top_w())
+
+
+## Time into a structured workout: ahead of the ride's once steps were skipped (#139).
+func _workout_elapsed(state: Dictionary) -> float:
+	var workout: Variant = state["workout"]
+	if workout is Dictionary:
+		var progress: Variant = workout["progress"]
+		if progress is Dictionary:
+			return progress["elapsed_s"]
+	return state["elapsed_s"]
 
 
 func _on_hud_changed(layout: PackedStringArray) -> void:
@@ -597,10 +607,39 @@ func _on_control_requested(control: String) -> void:
 	elif control == "overlay":
 		if not _finished:
 			overlay_requested.emit(not is_overlay())
+	elif control == "pause":
+		_toggle_pause()
+	elif control in ["difficulty_up", "difficulty_down"]:
+		_step_difficulty(1 if control == "difficulty_up" else -1)
+	elif control in ["intensity_up", "intensity_down"]:
+		_step_intensity(1 if control == "intensity_up" else -1)
+	elif control == "skip_step":
+		if _torqa.skip_step():
+			_show_toast(tr("Workout: next step"))
 	else:
 		for music: Array in MUSIC_KEYS.values():
 			if music[0] == control:
 				_control_music(music)
+
+
+## Makes the trainer difficulty a step harder or easier (#139), as the ride settings would.
+func _step_difficulty(step: int) -> void:
+	if _finished:
+		return
+	var difficulty: float = _torqa.step_difficulty(step)
+	if difficulty < 0.0:
+		return
+	_options["difficulty"] = difficulty
+	_show_toast(tr("Trainer difficulty: %d %%") % roundi(difficulty))
+
+
+## Makes the workout's powers a step harder or easier (#139); other rides keep theirs.
+func _step_intensity(step: int) -> void:
+	if _finished:
+		return
+	var intensity: float = _torqa.step_intensity(step)
+	if intensity >= 0.0:
+		_show_toast(tr("Workout intensity: %d %%") % roundi(intensity))
 
 
 ## Plays, pauses or skips the music: `music` is a command and its message, as in MUSIC_KEYS.

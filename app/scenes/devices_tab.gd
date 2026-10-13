@@ -19,6 +19,12 @@ const ACTION_LABELS: Dictionary[String, String] = {
 	"play_pause": "Music: play / pause",
 	"next_track": "Music: next track",
 	"previous_track": "Music: previous track",
+	"pause": "Pause / resume",
+	"difficulty_up": "Trainer difficulty +10 %",
+	"difficulty_down": "Trainer difficulty −10 %",
+	"intensity_up": "Workout intensity +5 %",
+	"intensity_down": "Workout intensity −5 %",
+	"skip_step": "Workout: skip step",
 }
 ## The kinds of press, in the core's order.
 const PRESSES: Array[String] = ["Press", "Hold", "Double press"]
