@@ -52,7 +52,7 @@ var _sort: OptionButton = OptionButton.new()
 var _direction: Button = Button.new()
 var _group: OptionButton = OptionButton.new()
 var _chips: HFlowContainer = HFlowContainer.new()
-var _clear: Button = Button.new()
+var _clear: Button = UiTheme.chip_action(tr("Clear filters"), "cross")
 ## What the core offers to choose from (`TorqaApp.course_library_choices()`); the length bands
 ## follow the rider's units.
 var _choices: Dictionary = {}
@@ -134,7 +134,15 @@ func refresh() -> void:
 	_toolbar.visible = total > 0
 	_chips.visible = total > 0
 	_no_match.visible = total > 0 and groups.is_empty()
-	_clear.visible = filtered()
+	_show_clear(filtered())
+
+
+## Clear filters keeps its place among the chips while there is nothing to clear, so that
+## choosing a chip neither moves nor wraps the others.
+func _show_clear(active: bool) -> void:
+	_clear.modulate.a = 1.0 if active else 0.0
+	_clear.disabled = not active
+	_clear.mouse_filter = Control.MOUSE_FILTER_STOP if active else Control.MOUSE_FILTER_IGNORE
 
 
 ## What the toolbar and chips ask the library for, as `TorqaApp.course_library()` takes it.
@@ -210,12 +218,6 @@ func _init() -> void:
 	add_child(_toolbar)
 	_chips.add_theme_constant_override("h_separation", 8)
 	_chips.add_theme_constant_override("v_separation", 8)
-	_clear.text = tr("Clear filters")
-	_clear.flat = true
-	_clear.icon = UiIcons.texture("cross", 16, UiTheme.ACCENT)
-	_clear.add_theme_color_override("font_color", UiTheme.ACCENT)
-	_clear.add_theme_color_override("font_hover_color", UiTheme.TEXT)
-	_clear.focus_mode = Control.FOCUS_NONE
 	_clear.pressed.connect(clear_filters)
 	_chips.add_child(_clear)
 	add_child(_chips)
@@ -387,6 +389,7 @@ func _add_chips(caption: String, kind: String, names: PackedStringArray, divided
 		_chips.add_child(divider)
 	var label: Label = _toolbar_label(caption)
 	label.add_theme_font_size_override("font_size", 13)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_chips.add_child(label)
 	for chip_name: String in names:
 		var chip: Button = UiTheme.toggle_chip(_choice_label(kind, chip_name))

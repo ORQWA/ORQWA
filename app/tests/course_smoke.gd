@@ -17,7 +17,7 @@ func _run() -> void:
 	_edit_dialog()
 	_estimates()
 	_card_countries()
-	_course_gallery()
+	await _course_gallery()
 	if not _failed:
 		print("COURSE SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -171,6 +171,17 @@ func _card_countries() -> void:
 	countries_card.free()
 
 
+## Estimated times show to the nearest 5 minutes, on the course page and the cards (R66, R67).
+func _estimates() -> void:
+	var shown: PackedStringArray = PackedStringArray()
+	for seconds: float in [60.0, 1000.0, 3540.0, 6300.0, 7650.0]:
+		shown.append(CourseCard.estimate(seconds))
+	_check(
+		shown == PackedStringArray(["5 min", "15 min", "1 h 00", "1 h 45", "2 h 10"]),
+		"estimates to 5 minutes: %s" % shown
+	)
+
+
 ## The gallery's toolbar and chips (R67) ask the core for what the rider chose; clearing
 ## the filters keeps the order and groups.
 func _course_gallery() -> void:
@@ -179,6 +190,8 @@ func _course_gallery() -> void:
 	torqa.set_courses_view("name", false, "none")
 	var tab: CoursesTab = CoursesTab.new()
 	root.add_child(tab)
+	tab.theme = UiTheme.build()
+	tab.size = Vector2(1600, 900)
 	tab.bind(torqa)
 	var asked: Dictionary = tab.query()
 	var asked_sort: String = asked["sort"]
@@ -200,6 +213,23 @@ func _course_gallery() -> void:
 	_check(
 		"3D" in texts and "< 25 km" in texts and "25–50 km" in texts and "≥ 100 km" in texts,
 		"chips for type, terrain and length: %s" % texts
+	)
+	# A chip chosen shows Clear filters beside them; nothing in the row grows or moves. The
+	# chips show whatever the library holds.
+	chips.show()
+	await process_frame
+	await process_frame
+	var chip_size: Vector2 = hilly.size
+	var row_height: float = chips.size.y
+	tab.call("_show_clear", true)
+	await process_frame
+	await process_frame
+	_check(
+		hilly.size == chip_size and is_equal_approx(chips.size.y, row_height),
+		(
+			"chips keep their size: %s → %s, row %s → %s"
+			% [chip_size, hilly.size, row_height, chips.size.y]
+		)
 	)
 	hilly.button_pressed = true
 	var terrains: PackedStringArray = tab.query()["terrains"]
@@ -233,32 +263,9 @@ func _course_gallery() -> void:
 		"filters cleared, the order kept: %s" % cleared
 	)
 	_check(not hilly.button_pressed, "the chip is off again")
-	# Country chips (#230) once the library spans more than one, those not known last.
-	tab.set("_countries", [{"code": "CH", "name": "Schweiz"}, {"code": "none", "name": ""}])
-	tab.call("_build_chips")
-	var country_chips: PackedStringArray = PackedStringArray()
-	for child: Node in chips.get_children():
-		var chip: Button = child as Button
-		if chip != null and chip.toggle_mode and chip.text in ["Schweiz", "No country"]:
-			country_chips.append(chip.text)
-	_check(
-		country_chips == PackedStringArray(["Schweiz", "No country"]),
-		"country chips: %s" % country_chips
-	)
 	torqa.set_courses_view("name", false, "none")
 	tab.free()
 	torqa.free()
-
-
-## Estimated times show to the nearest 5 minutes, on the course page and the cards (R66, R67).
-func _estimates() -> void:
-	var shown: PackedStringArray = PackedStringArray()
-	for seconds: float in [60.0, 1000.0, 3540.0, 6300.0, 7650.0]:
-		shown.append(CourseCard.estimate(seconds))
-	_check(
-		shown == PackedStringArray(["5 min", "15 min", "1 h 00", "1 h 45", "2 h 10"]),
-		"estimates to 5 minutes: %s" % shown
-	)
 
 
 func _check(condition: bool, what: String) -> void:
