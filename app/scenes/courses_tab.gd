@@ -44,6 +44,8 @@ const TERRAIN_LABELS: Dictionary[String, String] = {
 }
 # i18n-end
 const METERS_PER_MILE: float = 1609.344
+## Room between the cards, across and down.
+const CARD_GAP: int = 20
 
 var _torqa: TorqaApp
 var _toolbar: HBoxContainer = HBoxContainer.new()
@@ -231,6 +233,7 @@ func _init() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_gallery.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_gallery.add_theme_constant_override("separation", 16)
+	_gallery.resized.connect(_fit_cards)
 	scroll.add_child(_gallery)
 	add_child(scroll)
 
@@ -474,11 +477,13 @@ func _add_group(group: Dictionary) -> void:
 		_gallery.add_child(header)
 	var cards: HFlowContainer = HFlowContainer.new()
 	cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cards.add_theme_constant_override("h_separation", 20)
-	cards.add_theme_constant_override("v_separation", 20)
+	cards.add_theme_constant_override("h_separation", CARD_GAP)
+	cards.add_theme_constant_override("v_separation", CARD_GAP)
+	var width: float = card_width(_gallery.size.x)
 	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
 	for course: Dictionary in courses:
 		var card: CourseCard = CourseCard.new(course, imperial)
+		card.custom_minimum_size.x = width
 		var course_path: String = course["path"]
 		if not _maps.has(course_path):
 			_maps[course_path] = _torqa.course_preview(course_path)
@@ -486,6 +491,22 @@ func _add_group(group: Dictionary) -> void:
 		card.pressed.connect(func() -> void: course_opened.emit(course))
 		cards.add_child(card)
 	_gallery.add_child(cards)
+
+
+## The width of each card in a gallery `available` wide: as many as fit side by side at
+## `CourseCard.WIDTH` or wider, sharing the row so it is filled from edge to edge.
+static func card_width(available: float) -> float:
+	var columns: int = maxi(1, floori((available + CARD_GAP) / (CourseCard.WIDTH + CARD_GAP)))
+	# Rounded down so the last card still fits in its row.
+	return maxf(CourseCard.WIDTH, floorf((available - CARD_GAP * (columns - 1)) / columns))
+
+
+func _fit_cards() -> void:
+	var width: float = card_width(_gallery.size.x)
+	for row: Node in _gallery.get_children():
+		if row is HFlowContainer:
+			for card: Node in row.get_children():
+				(card as Control).custom_minimum_size.x = width
 
 
 ## The kind of chip the groups are of.
