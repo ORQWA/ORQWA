@@ -370,7 +370,7 @@ fn video_check(file: &Path, seconds: u64) -> Result<()> {
         if report.keeps_up() {
             "keeps up: a ride along this video runs smoothly here"
         } else {
-            "cannot keep up: a ride along this video stutters here (see docs/video.md)"
+            "cannot keep up: a ride along this video stutters here (see https://github.com/bossm8/Torqa/wiki/Video-courses)"
         }
     );
     Ok(())

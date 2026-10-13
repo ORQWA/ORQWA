@@ -214,7 +214,7 @@ func _run() -> void:
 	quit(0)
 
 
-## The last six weeks against the six before, read off at 5 minutes, as docs/analysis.md shows
+## The last six weeks against the six before, read off at 5 minutes, as wiki/Analysis.md shows.
 ## the power curve (R62).
 func _compare_periods(start: StartPage) -> void:
 	var analysis: AnalysisTab = start.find_children("*", "AnalysisTab", true, false)[0]
@@ -226,7 +226,7 @@ func _compare_periods(start: StartPage) -> void:
 	chart.queue_redraw()
 
 
-## Further down the Analysis tab, scrolled to the card of `chart`, as docs/analysis.md shows it:
+## Further down the Analysis tab, scrolled to the card of `chart`, as wiki/Analysis.md shows:
 ## fitness, fatigue and form read off at today, and the weeks' time in power zones (R64).
 func _analysis_below(start: StartPage, chart: String) -> void:
 	var analysis: AnalysisTab = start.find_children("*", "AnalysisTab", true, false)[0]
@@ -245,7 +245,7 @@ func _analysis_below(start: StartPage, chart: String) -> void:
 	await create_timer(0.5).timeout
 
 
-## Unfolds the rider's card to their whole setup and zones (#194), as docs/riders.md shows it.
+## Unfolds the rider's card to their whole setup and zones (#194), as wiki/Riders.md shows.
 func _unfold_rider(start: StartPage) -> void:
 	for found: Node in start.find_children("*", "Button", true, false):
 		var button: Button = found
