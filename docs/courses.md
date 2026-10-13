@@ -23,6 +23,37 @@ already, choose **Replace** to replace it or **Keep both**.
 what was downloaded so far stays on the computer, so importing it again picks up quickly. Should
 preparing it fail unexpectedly, Torqa says so instead of loading forever.
 
+## Find a course
+
+The bar above the cards finds a course in a large library:
+
+- **Search** shows the courses whose name contains what you type, of any case.
+- **Sort** orders them by name, length, climbing, estimated time, date added or the date you
+  last rode them. Each order starts the natural way round (A to Z, short to long, newest and
+  latest ridden first); the arrow beside it turns it round. Courses you never rode, or could not
+  finish at the planned power, come last.
+- **Group** puts them under headings by type, terrain or length, with how many each holds.
+- The **chips** below show only some courses: **Type** (3D or video), **Terrain** and
+  **Length**. Chips of one kind add up (Hilly and Mountainous shows both), chips of different
+  kinds narrow down (Hilly and 25–50 km shows the hilly courses of that length).
+  **Clear filters** turns them all off and empties the search.
+
+| Terrain | Climbing per km |
+|---|---|
+| Flat | under 5 m |
+| Rolling | 5–10 m |
+| Hilly | 10–20 m |
+| Mountainous | 20 m and more |
+
+The length bands meet at 25, 50 and 100 km, or at 15, 30 and 60 miles with imperial units.
+
+Each card's **Time** is about how long the course takes you at 75 % of your FTP, with your
+weight, coasting the descents. It comes from the elevation profile the course file keeps for
+its card, so it may differ by a few minutes from the course page's **Time at 75 % FTP**, which
+rides the whole route.
+
+Torqa remembers the order and grouping; the search and chips start empty each time.
+
 ## Ride a course
 
 Click its card on the Courses tab, then **Ride**. No internet connection is needed. **← Courses**

@@ -5,6 +5,7 @@ pub mod climbs;
 mod curve;
 mod gpx;
 mod passes;
+mod profile;
 mod projection;
 mod snap;
 mod structures;
@@ -12,6 +13,7 @@ mod turns;
 
 pub use climbs::{Climb, ClimbCategory};
 pub use curve::catmull_rom;
+pub use profile::{ElevationProfile, Gradients};
 pub use projection::LocalProjection;
 
 use std::f64::consts::{PI, TAU};

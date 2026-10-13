@@ -18,6 +18,7 @@ func _run() -> void:
 	_rider_drivetrain()
 	_shifter_buttons()
 	_course_cards()
+	_course_gallery()
 	await _rider_switch()
 	_ride_bar()
 	await _summary_icons()
@@ -452,6 +453,73 @@ func _course_cards() -> void:
 	var video_card: CourseCard = CourseCard.new(course, false)
 	_check(_has_badge(video_card), "a video course is marked as one")
 	video_card.free()
+
+
+## The gallery's toolbar and chips (R67) ask the core for what the rider chose; clearing
+## the filters keeps the order and groups.
+func _course_gallery() -> void:
+	var torqa: TorqaApp = TorqaApp.new()
+	root.add_child(torqa)
+	torqa.set_courses_view("name", false, "none")
+	var tab: CoursesTab = CoursesTab.new()
+	root.add_child(tab)
+	tab.bind(torqa)
+	var asked: Dictionary = tab.query()
+	var asked_sort: String = asked["sort"]
+	var asked_descending: bool = asked["descending"]
+	var asked_group: String = asked["group"]
+	_check(
+		asked_sort == "name" and not asked_descending and asked_group == "none",
+		"the view as remembered: %s" % asked
+	)
+	var chips: HFlowContainer = tab.get("_chips")
+	var texts: PackedStringArray = PackedStringArray()
+	var hilly: Button = null
+	for child: Node in chips.get_children():
+		var chip: Button = child as Button
+		if chip != null and chip.toggle_mode:
+			texts.append(chip.text)
+			if chip.text == "Hilly":
+				hilly = chip
+	_check(
+		"3D" in texts and "< 25 km" in texts and "25–50 km" in texts and "≥ 100 km" in texts,
+		"chips for type, terrain and length: %s" % texts
+	)
+	hilly.button_pressed = true
+	var terrains: PackedStringArray = tab.query()["terrains"]
+	_check(terrains == PackedStringArray(["hilly"]), "a chip narrows down: %s" % terrains)
+	# Another order starts in its own direction: the latest courses first.
+	var sort: OptionButton = tab.get("_sort")
+	for i: int in sort.item_count:
+		if sort.get_item_metadata(i) == "added":
+			sort.select(i)
+			sort.item_selected.emit(i)
+	var latest_first: bool = tab.query()["descending"]
+	_check(latest_first, "the latest first")
+	var direction: Button = tab.get("_direction")
+	direction.pressed.emit()
+	var turned: bool = tab.query()["descending"]
+	_check(not turned, "the arrow turns the order round")
+	var remembered: Dictionary = torqa.courses_view()
+	var remembered_sort: String = remembered["sort"]
+	_check(remembered_sort == "added", "the order is remembered: %s" % remembered)
+	var search: LineEdit = tab.get("_search")
+	search.text = "gurten"
+	search.text_changed.emit("gurten")
+	_check(tab.filtered(), "a search filters")
+	tab.clear_filters()
+	var cleared: Dictionary = tab.query()
+	var cleared_terrains: PackedStringArray = cleared["terrains"]
+	var cleared_search: String = cleared["search"]
+	var cleared_sort: String = cleared["sort"]
+	_check(
+		cleared_search.is_empty() and cleared_terrains.is_empty() and cleared_sort == "added",
+		"filters cleared, the order kept: %s" % cleared
+	)
+	_check(not hilly.button_pressed, "the chip is off again")
+	torqa.set_courses_view("name", false, "none")
+	tab.free()
+	torqa.free()
 
 
 func _has_badge(node: Node) -> bool:

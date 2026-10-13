@@ -95,6 +95,26 @@ func _run() -> void:
 	var curves: Dictionary = _torqa.power_curves(0, false, false)
 	var bests: Array = curves.get("period", [])
 	_check(not bests.is_empty(), "the rider's power curve: %s" % curves)
+	# The gallery (R67): the course found by its name, with the rider's estimated time and
+	# the ride just saved; a search that matches nothing shows no group.
+	var library: Dictionary = _torqa.course_library(
+		{"search": "SMO", "sort": "ridden", "descending": true, "group": "terrain"}
+	)
+	var found: Dictionary = {}
+	var groups: Array = library["groups"]
+	for group: Dictionary in groups:
+		var group_courses: Array = group["courses"]
+		for course: Dictionary in group_courses:
+			if course["path"] == course_path:
+				found = course
+	_check(
+		found.get("estimated_s") != null and found.get("last_ridden_unix_s") != null,
+		"the course in the gallery: %s" % found
+	)
+	var nothing: Dictionary = _torqa.course_library({"search": "no such course"})
+	var no_groups: Array = nothing["groups"]
+	var total: int = nothing["total"]
+	_check(no_groups.is_empty() and total > 0, "a search matching nothing: %s" % nothing)
 
 	await _workout()
 

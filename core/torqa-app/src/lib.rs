@@ -5,6 +5,7 @@
 pub mod analysis;
 pub mod hud;
 mod import;
+pub mod library;
 pub mod media;
 pub mod paths;
 pub mod uploads;
@@ -13,6 +14,7 @@ pub mod view;
 
 pub use import::{Imported, LoadStage, Progress, course_map, import_gpx, import_route};
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, SystemTime};
@@ -27,7 +29,7 @@ use torqa_domain::shifting::{ButtonMap, Control, Shift, ShiftInput};
 use torqa_domain::telemetry::TrainerControl;
 use torqa_domain::units::{Meters, MetersPerSecond, Percent, Watts};
 use torqa_physics::{DescentMode, RiderSetup, VirtualGears};
-use torqa_routes::{Climb, ElevationSource, LocalProjection, Route};
+use torqa_routes::{Climb, ElevationProfile, ElevationSource, LocalProjection, Route};
 use torqa_session::analysis::{
     analyse, effort, summarize, time_at, time_in_heart_rate_zones, time_in_power_zones,
 };
@@ -1279,6 +1281,92 @@ impl App {
             .collect();
         courses.sort_by(|a, b| a.manifest.name.cmp(&b.manifest.name));
         courses
+    }
+
+    /// The course library as the Courses tab shows it (R67): what `query` searches, chooses,
+    /// sorts and groups, each course with the time the active rider is estimated to take from
+    /// the profile its file keeps (R66, coasting the descents as the course page does until
+    /// asked otherwise) and when they last rode it.
+    #[must_use]
+    pub fn course_library(&self, query: &library::CourseQuery) -> library::Gallery {
+        let ridden = self.last_ridden();
+        let setup = self.rider_setup();
+        let power = estimate::planned_power(self.profile.profile.ftp);
+        let courses = self
+            .courses()
+            .into_iter()
+            .map(|entry| {
+                let profile = entry
+                    .manifest
+                    .profile
+                    .iter()
+                    .map(|&[d, e]| (Meters(f64::from(d)), Meters(f64::from(e))));
+                let estimated = ElevationProfile::new(profile).and_then(|profile| {
+                    estimate::time_to_finish(
+                        &profile,
+                        &setup,
+                        DescentMode::Coast,
+                        Meters(0.0),
+                        MetersPerSecond(0.0),
+                        power,
+                    )
+                });
+                let last_ridden = entry
+                    .manifest
+                    .route_key
+                    .as_ref()
+                    .and_then(|key| ridden.get(key).copied());
+                library::LibraryCourse {
+                    entry,
+                    estimated,
+                    last_ridden,
+                }
+            })
+            .collect();
+        library::gallery(courses, query, self.profile.profile.units)
+    }
+
+    /// How the Courses tab was left (R67): its order and groups, the defaults for names this
+    /// version does not know.
+    #[must_use]
+    pub fn courses_view(&self) -> library::View {
+        let stored = profiles::courses_view(&self.data_dir);
+        library::View {
+            sort: library::SortKey::from_name(&stored.sort).unwrap_or_default(),
+            descending: stored.descending,
+            group: library::GroupKey::from_name(&stored.group).unwrap_or_default(),
+        }
+    }
+
+    /// Remembers how the Courses tab orders and groups the library.
+    ///
+    /// # Errors
+    /// [`AppError::Storage`] if it cannot be saved.
+    pub fn set_courses_view(&mut self, view: library::View) -> Result<(), AppError> {
+        let stored = profiles::CoursesView {
+            sort: view.sort.name().to_owned(),
+            descending: view.descending,
+            group: view.group.name().to_owned(),
+        };
+        profiles::set_courses_view(&self.data_dir, &stored)
+            .map_err(|e| AppError::Storage(e.to_string()))
+    }
+
+    /// When the active rider last started a ride, by the key of its route. Rides whose
+    /// details cannot be read are left out, as the history rebuilds those.
+    fn last_ridden(&self) -> HashMap<String, SystemTime> {
+        let mut last: HashMap<String, SystemTime> = HashMap::new();
+        for fit in rides::fit_files(&self.rides_dir()) {
+            let Ok(record) = rides::load(&fit) else {
+                continue;
+            };
+            if let Some(key) = record.route_key {
+                last.entry(key)
+                    .and_modify(|start| *start = (*start).max(record.start))
+                    .or_insert(record.start);
+            }
+        }
+        last
     }
 
     /// The map picture of the course at `path` (#192), the PNG the app drew when the course
@@ -3866,6 +3954,64 @@ mod tests {
         app.delete_course(course).unwrap();
         assert_eq!(app.courses().len(), 0);
         assert_eq!(app.loaded_course(), None);
+    }
+
+    #[test]
+    fn the_course_library_knows_the_riders_estimates_and_last_rides() {
+        let dir = temp_dir("library");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        app.load_route(write_climb_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::CourseAdded(_)));
+        ride_to_the_finish(&mut app, &GhostChoice::None);
+
+        let query = library::CourseQuery {
+            view: library::View {
+                sort: library::SortKey::Ridden,
+                descending: true,
+                group: library::GroupKey::None,
+            },
+            ..library::CourseQuery::default()
+        };
+        let gallery = app.course_library(&query);
+
+        let courses = &gallery.groups[0].courses;
+        let names: Vec<&str> = courses
+            .iter()
+            .map(|c| c.entry.manifest.name.as_str())
+            .collect();
+        assert_eq!(names, ["Hill", "Test loop"]);
+        assert!(courses[0].last_ridden.is_some());
+        assert_eq!(courses[1].last_ridden, None);
+        // 1.2 km with a climb takes longer than 400 m on the flat.
+        assert!(courses[1].estimated.is_some());
+        assert!(courses[0].estimated > courses[1].estimated);
+    }
+
+    #[test]
+    fn the_courses_view_is_remembered_and_unknown_choices_fall_back() {
+        let dir = temp_dir("courses-view");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        assert_eq!(app.courses_view(), library::View::default());
+        let view = library::View {
+            sort: library::SortKey::Added,
+            descending: true,
+            group: library::GroupKey::Terrain,
+        };
+
+        app.set_courses_view(view).unwrap();
+        assert_eq!(app.courses_view(), view);
+
+        // A choice only a newer Torqa knows.
+        let newer = profiles::CoursesView {
+            sort: "colour".to_owned(),
+            descending: true,
+            group: "terrain".to_owned(),
+        };
+        profiles::set_courses_view(&dir.join("data"), &newer).unwrap();
+        assert_eq!(app.courses_view().sort, library::SortKey::Name);
+        assert_eq!(app.courses_view().group, library::GroupKey::Terrain);
     }
 
     /// A copy of a generated test video in `dir`, so each test owns its files.
