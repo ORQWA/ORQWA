@@ -18,6 +18,7 @@ func _run() -> void:
 	_estimates()
 	_card_countries()
 	await _course_gallery()
+	await _card_widths()
 	if not _failed:
 		print("COURSE SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -266,6 +267,36 @@ func _course_gallery() -> void:
 	torqa.set_courses_view("name", false, "none")
 	tab.free()
 	torqa.free()
+
+
+## The gallery's cards fill its whole width, however wide the window (R39): as many side by
+## side as fit at their narrowest, sharing the row; the route grows with the card.
+func _card_widths() -> void:
+	var gap: float = CoursesTab.CARD_GAP
+	for available: float in [300.0, 640.0, 1280.0, 1918.0, 3840.0]:
+		var width: float = CoursesTab.card_width(available)
+		var columns: int = floori((available + gap) / (width + gap))
+		var row: float = columns * width + (columns - 1) * gap
+		_check(
+			width >= CourseCard.WIDTH and row <= available and available - row < columns,
+			"%d cards of %s fill a row of %s" % [columns, width, available]
+		)
+	_check(is_equal_approx(CoursesTab.card_width(200.0), CourseCard.WIDTH), "never narrower")
+	var course: Dictionary = {
+		"name": "Gurten", "length_m": 2400.0, "elevation_gain_m": 149.4, "max_grade": 17.6
+	}
+	var card: CourseCard = CourseCard.new(course, false)
+	card.theme = UiTheme.build()
+	root.add_child(card)
+	card.custom_minimum_size.x = 600.0
+	await process_frame
+	await process_frame
+	var route: PathCard = card.get("_path_card")
+	_check(
+		absf(route.size.y - route.size.x * CourseCard.MAP_ASPECT) <= 1.0 and route.size.x > 500.0,
+		"the route grows with the card: %s" % route.size
+	)
+	card.free()
 
 
 func _check(condition: bool, what: String) -> void:

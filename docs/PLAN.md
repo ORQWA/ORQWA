@@ -225,7 +225,8 @@ Built in rideable steps:
   (ADR 0007 format bump); frames from the video for video courses
 - [x] Courses gallery (cards with stats and small map) and course detail page with ride options;
   courses renamed (the pencil's Edit course dialog, with their video) and deleted (the bin)
-  there, 3D world built only when riding
+  there, 3D world built only when riding; the cards share the window's full width, their maps
+  growing with them
 - [x] The gallery searched by name, sorted (name, length, climbing, estimated time, date added,
   last ridden), filtered by chips (type, terrain, length bands) and grouped (R67, #230); each
   card with the rider's estimated time from the profile its file keeps

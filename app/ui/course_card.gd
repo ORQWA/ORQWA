@@ -2,11 +2,15 @@ class_name CourseCard
 extends PanelContainer
 ## A course in the gallery (R39): its path card, name and key figures in rows, with the time
 ## the rider is estimated to take (R67), marked if it is ridden along a video (R17); click to
-## open it. The elevation profile is left to the course page.
+## open it. The elevation profile is left to the course page. The gallery sets its width, so
+## its cards share the row; the route grows with it.
 
 signal pressed
 
+## The narrowest a card gets.
 const WIDTH: float = 300.0
+## The route's height to its width, as the course map is drawn (`course_map::PICTURE`).
+const MAP_ASPECT: float = 640.0 / 1072.0
 
 var _path_card: PathCard = PathCard.new()
 var _title: Label = Label.new()
@@ -18,8 +22,9 @@ func _init(course: Dictionary, imperial: bool) -> void:
 	var rows: VBoxContainer = VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 12)
 	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_path_card.custom_minimum_size = Vector2(WIDTH - 32.0, 160)
+	_path_card.custom_minimum_size = Vector2(WIDTH - 32.0, (WIDTH - 32.0) * MAP_ASPECT)
 	_path_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_path_card.resized.connect(_fit_map)
 	var track: PackedVector2Array = course.get("track", PackedVector2Array())
 	_path_card.set_track(track)
 	rows.add_child(_path_card)
@@ -51,6 +56,11 @@ func _init(course: Dictionary, imperial: bool) -> void:
 ## Shows the course's map under its route, `png` as the app drew it (#192); empty for none.
 func set_map(png: PackedByteArray) -> void:
 	_path_card.set_map(png)
+
+
+## The route as tall as the map is for the card's width, so it fills the card uncropped.
+func _fit_map() -> void:
+	_path_card.custom_minimum_size.y = roundf(_path_card.size.x * MAP_ASPECT)
 
 
 ## A name the card's width cuts off shows in full on hover, as file managers do; one that fits
