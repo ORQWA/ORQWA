@@ -57,29 +57,29 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 
 <table>
   <tr>
-    <td width="50%">🚴 <b><a href="docs/riding.md#devices">Smart trainers</a></b><br>
+    <td width="50%">🚴 <b><a href="https://github.com/bossm8/Torqa/wiki/Devices-and-riding#devices">Smart trainers</a></b><br>
       Bluetooth FTMS (SIM, ERG, resistance) and heart-rate straps; your devices reconnect at start</td>
-    <td width="50%">🗺️ <b><a href="docs/riding.md#the-3d-world">Any GPX in 3D</a></b><br>
+    <td width="50%">🗺️ <b><a href="https://github.com/bossm8/Torqa/wiki/Devices-and-riding#the-3d-world">Any GPX in 3D</a></b><br>
       A stylized world from real terrain and OpenStreetMap, with weather and time of day</td>
   </tr>
   <tr>
-    <td>🎬 <b><a href="docs/video.md">Video courses</a></b><br>
+    <td>🎬 <b><a href="https://github.com/bossm8/Torqa/wiki/Video-courses">Video courses</a></b><br>
       GoPro, Incyclist, Tacx RLV or any video matched to a GPX; it plays at your speed</td>
-    <td>💪 <b><a href="docs/workouts.md">Workouts</a></b><br>
+    <td>💪 <b><a href="https://github.com/bossm8/Torqa/wiki/Workouts">Workouts</a></b><br>
       Hold a power or a heart rate, ZWO / ERG / MRC / FIT with an editor, three FTP tests</td>
   </tr>
   <tr>
-    <td>⚙️ <b><a href="docs/riding.md#virtual-gears">Virtual gears</a></b><br>
+    <td>⚙️ <b><a href="https://github.com/bossm8/Torqa/wiki/Devices-and-riding#virtual-gears">Virtual gears</a></b><br>
       24 gears on a single cog, shifted from the keyboard or Shimano Di2 hood buttons</td>
-    <td>🪟 <b><a href="docs/overlay.md">Overlay</a></b><br>
+    <td>🪟 <b><a href="https://github.com/bossm8/Torqa/wiki/Overlay">Overlay</a></b><br>
       Just your HUD, on top of a video or any other window</td>
   </tr>
   <tr>
-    <td>👻 <b><a href="docs/ghosts.md">Ghosts &amp; pacers</a></b><br>
+    <td>👻 <b><a href="https://github.com/bossm8/Torqa/wiki/Ghosts-and-pacers">Ghosts &amp; pacers</a></b><br>
       Race your best ride, a friend's activity or a pacer at your FTP</td>
-    <td>📈 <b><a href="docs/history.md">History &amp; records</a></b><br>
+    <td>📈 <b><a href="https://github.com/bossm8/Torqa/wiki/Ride-history">History &amp; records</a></b><br>
       Your power curve and profile, fitness, progress, records per course, climb and duration,
-      FIT export and <a href="docs/uploads.md">upload to intervals.icu and Strava</a></td>
+      FIT export and <a href="https://github.com/bossm8/Torqa/wiki/Uploading-rides">upload to intervals.icu and Strava</a></td>
   </tr>
 </table>
 
@@ -90,23 +90,25 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 
 ## Using Torqa
 
+The [usage wiki](https://github.com/bossm8/Torqa/wiki) covers riding and application features.
+
 | Topic | Doc |
 |---|---|
-| Start page, course gallery and course pages | [docs/start.md](docs/start.md) |
-| Courses: finding, offline riding and sharing | [docs/courses.md](docs/courses.md) |
-| Video courses | [docs/video.md](docs/video.md) |
-| Devices, riding and in-ride settings | [docs/riding.md](docs/riding.md) |
-| Riders, zones | [docs/riders.md](docs/riders.md) |
-| Ride HUD | [docs/hud.md](docs/hud.md) |
-| Workouts and FTP tests | [docs/workouts.md](docs/workouts.md) |
-| Overlay over other apps | [docs/overlay.md](docs/overlay.md) |
-| Uploading rides to intervals.icu and Strava | [docs/uploads.md](docs/uploads.md) |
-| Ghosts and pacers | [docs/ghosts.md](docs/ghosts.md) |
-| Ride history, climbs and records | [docs/history.md](docs/history.md) |
-| Analysis across rides: power curve and profile, fitness, weeks, progress | [docs/analysis.md](docs/analysis.md) |
-| Music control | [docs/audio.md](docs/audio.md) |
-| Translations | [docs/translating.md](docs/translating.md) |
-| Command-line tool for testing trainers | [docs/cli.md](docs/cli.md) |
+| Start page, course gallery and course pages | [Start page](https://github.com/bossm8/Torqa/wiki/Start-page) |
+| Courses: finding, offline riding and sharing | [Courses](https://github.com/bossm8/Torqa/wiki/Courses) |
+| Video courses | [Video courses](https://github.com/bossm8/Torqa/wiki/Video-courses) |
+| Devices, riding and in-ride settings | [Devices and riding](https://github.com/bossm8/Torqa/wiki/Devices-and-riding) |
+| Riders, zones | [Riders](https://github.com/bossm8/Torqa/wiki/Riders) |
+| Ride HUD | [Ride HUD](https://github.com/bossm8/Torqa/wiki/Ride-HUD) |
+| Workouts and FTP tests | [Workouts](https://github.com/bossm8/Torqa/wiki/Workouts) |
+| Overlay over other apps | [Overlay](https://github.com/bossm8/Torqa/wiki/Overlay) |
+| Uploading rides to intervals.icu and Strava | [Uploading rides](https://github.com/bossm8/Torqa/wiki/Uploading-rides) |
+| Ghosts and pacers | [Ghosts and pacers](https://github.com/bossm8/Torqa/wiki/Ghosts-and-pacers) |
+| Ride history, climbs and records | [Ride history](https://github.com/bossm8/Torqa/wiki/Ride-history) |
+| Analysis across rides: power curve and profile, fitness, weeks, progress | [Analysis](https://github.com/bossm8/Torqa/wiki/Analysis) |
+| Music control | [Sound](https://github.com/bossm8/Torqa/wiki/Sound) |
+| Language | [Language](https://github.com/bossm8/Torqa/wiki/Language) |
+| Command-line tool for testing trainers | [Command line tool](https://github.com/bossm8/Torqa/wiki/Command-line-tool) |
 
 ## Download
 

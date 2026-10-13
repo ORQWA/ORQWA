@@ -1,0 +1,21 @@
+# Agent instructions
+
+Read and follow [CLAUDE.md](CLAUDE.md) before working. Its architecture, container-only tooling,
+testing and documentation rules apply to every AI agent.
+
+Application usage documentation is maintained in the `wiki/` Git submodule. For every relevant
+feature addition, change or removal, update the affected wiki pages, navigation and screenshots
+in the same session as the code. Keep developer documentation, requirements, roadmap, ADRs and
+credits in the application repository current too.
+
+- Run `make wiki-init` before reading/editing the wiki. Preserve all local changes.
+- Create or resume a wiki documentation branch before editing; do not work on a detached HEAD.
+- Run `make wiki-prepare BRANCH=docs/<change>` to validate, commit and push the wiki branch.
+  Explicitly stage the new pointer with `git add wiki` and include the wiki comparison link
+  in the application PR. Do not stage unrelated application changes.
+- Never push directly to the published wiki branch. GitHub Actions publishes the prepared
+  revision after the application PR merges into `main`; any pointer reconciliation gets a PR.
+- If checks, access or publication fail, preserve prepared work and report the remaining action.
+  Do not claim publication succeeded without checking the workflow result.
+
+Setup and conflict recovery: [Usage wiki](docs/development.md#usage-wiki).

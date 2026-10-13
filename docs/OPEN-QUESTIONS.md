@@ -9,7 +9,7 @@ Things to review or decide together. Newest first; remove entries once settled.
 - **intervals.icu** (#214): connect with your API key (Profile → your card → Accounts) and
   upload a ride from the history. It should show as a virtual ride under its name, and
   **View on intervals.icu** should open it.
-- **Strava**: create your own API application ([uploads.md](uploads.md#connecting-strava)),
+- **Strava**: create your own API application ([Uploading rides](https://github.com/bossm8/Torqa/wiki/Uploading-rides#connecting-strava)),
   connect, and upload a ride. Check that the browser comes back to "Torqa is connected", that
   the ride shows as a virtual ride on a trainer under its name, and that **Disconnect**
   removes Torqa from Strava's *My Apps*. The tests run against a stand-in for Strava only.

@@ -68,15 +68,24 @@ Blender references. Use them for any visual or model work.
 - Comments explain *why*, never narrate *what*.
 - Rustdoc on all public items.
 - Significant decisions get an ADR in `docs/adr/`.
-- User-facing docs / README per feature.
+- User-facing guides live in the `wiki/` Git submodule, published on the GitHub wiki.
+- **Every relevant feature addition, change or removal must update the wiki in the same
+  session and application PR.** Update affected pages, Home/sidebar navigation and screenshots.
+  Run `make wiki-init` before reading or editing guides. Preserve local changes; never reset
+  a dirty wiki checkout or edit on a detached HEAD: create/resume a documentation branch.
+  Run `make wiki-prepare BRANCH=docs/<change>`, explicitly stage `git add wiki`, and include
+  the wiki comparison link in the application PR. Never push to the published wiki branch:
+  the workflow publishes only after the application change reaches `main`.
+  See [the wiki workflow](docs/development.md#usage-wiki) for setup and recovery.
 - **Docs are always updated with the change, in the same PR.** A change is not done until
-  every doc it affects says what the code now does: the user docs (`docs/*.md`, README),
+  every doc it affects says what the code now does: the usage wiki (`wiki/*.md`, README),
   `docs/PLAN.md`, `docs/REQUIREMENTS.md` (append-only), ADR amendments, `docs/CREDITS.md`,
   `docs/OPEN-QUESTIONS.md` (remove what is settled), `art/README.md` and the skills in
   `.claude/skills/`.
 - **Images in docs stay current too.** Re-render those a change affects: app screenshots with
   `scripts/screenshots.sh`, the model galleries with `GALLERY=docs/images/models` and
-  `scripts/render-models.sh` / `scripts/render-riders.sh`. Delete images no doc links any more.
+  `scripts/render-models.sh` / `scripts/render-riders.sh`. Check wiki links as well as repository
+  docs before deleting unused images. Wiki screenshots use absolute raw URLs to this repository.
   PR review images are committed under `docs/images/` and linked from the PR by commit
   (`raw.githubusercontent.com/<owner>/Torqa/<commit>/…`), so pruning them breaks no PR.
 
@@ -90,5 +99,6 @@ Blender references. Use them for any visual or model work.
 - Small PR-sized steps, one roadmap phase at a time; stop for review after each meaningful step.
 - Before declaring done, run in the container: `cargo fmt --check`,
   `cargo clippy --all-targets -- -D warnings`, `cargo test`, `cargo deny check`, and `gdlint`
-  (`scripts/check.sh` runs them all), and update the docs and their images (see Documentation).
+  (`scripts/check.sh` runs them all), run `make wiki-check`, and update the docs and their images
+  (see Documentation). Check both repository statuses before declaring preparation complete.
 - Keep the checkboxes in `docs/PLAN.md` up to date.

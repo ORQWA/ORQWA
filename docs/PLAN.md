@@ -35,7 +35,8 @@ app/                       Godot 4 project: scenes/ (screens, 3D world, video vi
                            controls and theme), shaders/, translations/, tests/ (smoke tests)
 art/                       Blender Python scripts for the 3D models: buildings, vegetation,
                            clouds, riders and bikes; third-party bases in art/sources/ (ADR 0009)
-docs/                      requirements, plan, ADRs, user docs per feature, images/ for them
+docs/                      requirements, plan, ADRs, development guides and shared images
+wiki/                      GitHub wiki submodule: application usage guides, published after merge
 scripts/                   container helpers: checks, builds (GDExtension, FFmpeg), renders and
                            screenshots, the art container, i18n
 .devcontainer/             development container (all tooling lives here)

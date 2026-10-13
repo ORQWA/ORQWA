@@ -3,11 +3,7 @@
 Torqa is written in English and translated with gettext files in `app/translations/`
 (R24). German (`de.po`, Swiss spelling) is the first translation.
 
-## For riders
-
-Pick the language in **Rider settings → Profile → Language**: *System language* follows the
-computer, or choose a language explicitly. Each rider has their own. Some texts switch on the
-next screen change.
+Rider language selection is described in the [wiki](https://github.com/bossm8/Torqa/wiki/Language).
 
 ## Adding or updating a language
 
