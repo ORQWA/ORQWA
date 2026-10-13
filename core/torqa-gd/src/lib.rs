@@ -27,6 +27,7 @@ use torqa_domain::units::{
 use torqa_domain::workout::{Cue, Intensity, Plan, Step, Target};
 use torqa_physics::{DescentMode, lean_angle};
 use torqa_routes::{ElevationSource, LocalProjection};
+use torqa_session::estimate;
 use torqa_session::workout::{EffortTest, HeartRateHold, RampTest, Workout};
 
 mod log;
@@ -212,6 +213,15 @@ impl TorqaApp {
     fn load_video(&mut self, path: GString, offline: bool) {
         if let Some(app) = self.app.as_mut() {
             app.load_video(PathBuf::from(path.to_string()), offline);
+        }
+    }
+
+    /// Stops preparing the route, video or world being loaded (#219); nothing more is emitted
+    /// for it.
+    #[func]
+    fn cancel_loading(&mut self) {
+        if let Some(app) = self.app.as_mut() {
+            app.cancel_loading();
         }
     }
 
@@ -2031,6 +2041,26 @@ impl TorqaApp {
         vdict! {
             "route_best_s" => &optional(records.route),
             "climbs" => &climbs,
+        }
+    }
+
+    /// How long the active rider would take for the loaded route (R66), with descents ridden
+    /// flat or not: `{time_s, ftp_share_pct}`, at that share of their FTP; `time_s` is `null`
+    /// without a route, or where that power would not get them to the finish.
+    #[func]
+    fn estimated_time(&self, flat_descents: bool) -> VarDictionary {
+        let descent = if flat_descents {
+            DescentMode::Flat
+        } else {
+            DescentMode::Coast
+        };
+        let time = self
+            .app
+            .as_ref()
+            .and_then(|app| app.estimated_time(descent));
+        vdict! {
+            "time_s" => &time.map_or_else(Variant::nil, |t| t.as_secs_f64().to_variant()),
+            "ftp_share_pct" => estimate::FTP_SHARE * 100.0,
         }
     }
 

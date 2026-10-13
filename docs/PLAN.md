@@ -131,6 +131,8 @@ Built in rideable steps:
 - [x] `.tqc` format 1: manifest, GPX and the downloaded inputs, with format and generator
   versions (ADR 0007 amendment)
 - [x] Course library in the data directory; list, import, save-as-course in the app
+- [x] An import can be cancelled from beside its loading bar, and a job that dies reports an
+  error instead of loading forever (#219)
 - [x] Rebuild outdated worlds from stored inputs (format 1 always rebuilds offline)
 - [ ] Format 2: store the pre-built world for an instant start
 - **Exit:** prepare a course online, ride it offline on another machine from the `.tqc` file ✅
@@ -141,7 +143,9 @@ Built in rideable steps:
 - [x] Zones shown and adjustable per rider (#173); a rider's default trainer difficulty (#175);
   riders deleted with their rides, after asking
 - [x] Customizable HUD (R23); an ascent-to-go figure (#174); power in % of FTP and heart
-  rate in % of the maximum
+  rate in % of the maximum; % of FTP also under a large power figure, beside W/kg and zone
+- [x] Estimated time to the finish (R66, #231): on the course page at 75 % of FTP, as a
+  time-to-go figure on the HUD from the rider's average power so far
 - [x] Simulation with the fake trainer: speed-up, jumps on map/profile, free camera (#53)
 - [x] HUD layout per rider in the profile settings: drag and drop from the widget list
   directly into the HUD preview and within it (R51, R54)

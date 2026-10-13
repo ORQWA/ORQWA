@@ -25,12 +25,13 @@ use torqa_domain::profile::{Drivetrain, Profile};
 use torqa_domain::recording::{RideSummary, Sample};
 use torqa_domain::shifting::{ButtonMap, Control, Shift, ShiftInput};
 use torqa_domain::telemetry::TrainerControl;
-use torqa_domain::units::{Meters, Percent, Watts};
+use torqa_domain::units::{Meters, MetersPerSecond, Percent, Watts};
 use torqa_physics::{DescentMode, RiderSetup, VirtualGears};
 use torqa_routes::{Climb, ElevationSource, LocalProjection, Route};
 use torqa_session::analysis::{
     analyse, effort, summarize, time_at, time_in_heart_rate_zones, time_in_power_zones,
 };
+use torqa_session::estimate;
 use torqa_session::ghost::Ghost;
 use torqa_session::workout::Workout;
 use torqa_session::{Ride, RideConfig, RideState};
@@ -380,6 +381,8 @@ struct ActiveRide {
     /// Summary of the samples so far and how many it covers, refreshed once per new sample
     /// rather than every frame.
     summary: (usize, RideSummary),
+    /// Estimated time to the finish (R66).
+    time_to_go: estimate::TimeToGo,
     ghost: Option<Ghost>,
     /// Plays the video of a video course along the ride.
     player: Option<video::VideoPlayer>,
@@ -456,6 +459,8 @@ pub struct App {
     from_course: bool,
     /// Counts loads; results of earlier ones are stale.
     load: u64,
+    /// The job of the current load, to cancel it (#219).
+    loading: Option<tokio::task::AbortHandle>,
     /// When to build the loaded route's world.
     world_plan: WorldPlan,
     /// The course file of the loaded route, once it is one.
@@ -524,6 +529,7 @@ impl App {
             reconnecting: false,
             from_course: false,
             load: 0,
+            loading: None,
             world_plan: WorldPlan::Now,
             course: None,
             saving: None,
@@ -656,7 +662,7 @@ impl App {
         let load = self.load;
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -687,7 +693,7 @@ impl App {
         self.course = Some(path.clone());
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -779,7 +785,7 @@ impl App {
         let load = self.load;
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -1338,8 +1344,45 @@ impl App {
         self.data_dir.join("courses")
     }
 
-    /// Forgets the current route and starts recording the files a new one uses.
+    /// Stops preparing the route, video or world being loaded (#219): its results are dropped,
+    /// and what it downloaded stays in the cache, so trying again is quick.
+    pub fn cancel_loading(&mut self) {
+        if self.loading.as_ref().is_some_and(|job| !job.is_finished()) {
+            let _ = self.start_loading(self.offline);
+        }
+    }
+
+    /// Runs the job of load `load` (the current one), in place of the current load's job; a
+    /// job that panics fails the load instead of leaving the rider waiting (#219).
+    fn spawn_load(&mut self, load: u64, job: impl Future<Output = ()> + Send + 'static) {
+        let task = self.runtime.spawn(job);
+        self.loading = Some(task.abort_handle());
+        let tx = self.jobs_tx.clone();
+        self.runtime.spawn(async move {
+            let Err(error) = task.await else {
+                return;
+            };
+            // A cancelled load is a stale one: its report is dropped like its results.
+            let message = if error.is_panic() {
+                let panic = error.into_panic();
+                let reason = panic
+                    .downcast_ref::<&str>()
+                    .map(|reason| (*reason).to_owned())
+                    .or_else(|| panic.downcast_ref::<String>().cloned())
+                    .unwrap_or_default();
+                format!("preparing the course stopped unexpectedly: {reason}")
+            } else {
+                "preparing the course was cancelled".to_owned()
+            };
+            let _ = tx.send(JobResult::Route(load, Err(message)));
+        });
+    }
+
+    /// Forgets the current route, stops its job and starts recording the files a new one uses.
     fn start_loading(&mut self, offline: bool) -> UsedFiles {
+        if let Some(job) = self.loading.take() {
+            job.abort();
+        }
         self.load += 1;
         self.offline = offline;
         self.world_plan = WorldPlan::Now;
@@ -1372,7 +1415,7 @@ impl App {
         let mut detailed = terrain(TileSource::defaults());
         // The land beyond the corridor needs only coarse tiles, a few for the whole view.
         let mut distant = terrain(TileSource::distant());
-        self.runtime.spawn(async move {
+        self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
@@ -1823,12 +1866,17 @@ impl App {
         }
     }
 
+    /// The active rider on their bike.
+    fn rider_setup(&self) -> RiderSetup {
+        RiderSetup {
+            mass: self.profile.profile.system_mass(),
+            ..RiderSetup::default()
+        }
+    }
+
     fn ride_config(&self, difficulty: Percent, descent: DescentMode) -> RideConfig {
         RideConfig {
-            setup: RiderSetup {
-                mass: self.profile.profile.system_mass(),
-                ..RiderSetup::default()
-            },
+            setup: self.rider_setup(),
             difficulty,
             descent,
             gears: match self.profile.profile.drivetrain {
@@ -1861,6 +1909,7 @@ impl App {
             records,
             next_climb: 0,
             summary: (0, RideSummary::default()),
+            time_to_go: estimate::TimeToGo::default(),
             ghost,
             player,
             sound,
@@ -2195,12 +2244,14 @@ impl App {
         let Some(active) = &self.ride else {
             return Vec::new();
         };
+        let state = active.ride.state();
         hud::values(
-            &active.ride.state(),
+            &state,
             active.ride.samples(),
             &active.summary.1,
             active.ride.route(),
             &self.profile.profile,
+            active.time_to_go.at(state.elapsed),
         )
     }
 
@@ -2213,6 +2264,21 @@ impl App {
                 let _ = tx.send(JobResult::Failed(message));
             }
         });
+    }
+
+    /// How long the active rider would take for the loaded route at the planned share of their
+    /// FTP, with their weight and `descent` (R66); `None` without a route, or if that power
+    /// would not get them to the finish.
+    #[must_use]
+    pub fn estimated_time(&self, descent: DescentMode) -> Option<Duration> {
+        estimate::time_to_finish(
+            self.route()?,
+            &self.rider_setup(),
+            descent,
+            Meters(0.0),
+            MetersPerSecond(0.0),
+            estimate::planned_power(self.profile.profile.ftp),
+        )
     }
 
     /// The ghost of the current ride, if any.
@@ -2235,10 +2301,7 @@ impl App {
         choice: &GhostChoice,
     ) -> Result<Option<Ghost>, AppError> {
         let profile = &self.profile.profile;
-        let setup = RiderSetup {
-            mass: profile.system_mass(),
-            ..RiderSetup::default()
-        };
+        let setup = self.rider_setup();
         let unavailable = |why: String| AppError::GhostUnavailable(why);
         let ghost = match choice {
             GhostChoice::None => return Ok(None),
@@ -2444,7 +2507,13 @@ impl App {
             }
             let samples = active.ride.samples();
             if samples.len() != active.summary.0 {
-                active.summary = (samples.len(), summarize(samples, self.profile.profile.ftp));
+                let ftp = self.profile.profile.ftp;
+                let summary = summarize(samples, ftp);
+                active.time_to_go.update(summary.elapsed, || {
+                    let power = estimate::expected_power(ftp, summary.avg_power, summary.elapsed);
+                    active.ride.time_to_finish(power)
+                });
+                active.summary = (samples.len(), summary);
             }
             // Samples arrive once a second, so a climb is timed once a sample lies past its top.
             let climbs = active.ride.route().map_or(&[][..], Route::climbs);
@@ -2997,6 +3066,43 @@ mod tests {
         assert!(app.route().is_some());
     }
 
+    #[test]
+    fn a_load_that_hangs_can_be_cancelled_and_the_next_one_goes_through() {
+        let dir = temp_dir("cancel");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let _ = app.start_loading(true);
+        app.spawn_load(app.load, std::future::pending());
+
+        app.cancel_loading();
+
+        let deadline = std::time::Instant::now() + Duration::from_millis(500);
+        while std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(16));
+            let events = app.update(Duration::from_millis(16));
+            assert!(
+                events.is_empty(),
+                "nothing from a cancelled load: {events:?}"
+            );
+        }
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+    }
+
+    #[test]
+    fn a_load_whose_job_panics_is_reported_instead_of_loading_forever() {
+        let dir = temp_dir("panic");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let _ = app.start_loading(true);
+
+        app.spawn_load(app.load, async { panic!("a broken tile") });
+
+        let events = run_until(&mut app, |e| matches!(e, AppEvent::Error(_)));
+        let Some(AppEvent::Error(message)) = events.last() else {
+            unreachable!()
+        };
+        assert!(message.contains("a broken tile"), "{message}");
+    }
+
     /// The reference route (#167) imported as a rider would, from the map and terrain tiles in
     /// the cache: run `torqa-cli route core/fixtures/oberalp.gpx` once online, then
     /// `cargo test -p torqa-app -- --ignored reference_route`.
@@ -3517,6 +3623,7 @@ mod tests {
         let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
         app.load_route(write_route(&dir), true);
         run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        let planned = app.estimated_time(DescentMode::Coast).unwrap();
 
         app.connect_trainer(TrainerChoice::Fake(FakeRider {
             power: Watts(250.0),
@@ -3541,6 +3648,12 @@ mod tests {
         assert_eq!(value("power_3s"), Some(250.0));
         assert_eq!(value("heart_rate"), None);
         assert!(value("distance").is_some_and(|km| km > 0.0));
+        // Under way, less of the route is left than was planned.
+        let to_go = value("time_remaining").unwrap();
+        assert!(
+            to_go > 0.0 && to_go < planned.as_secs_f64(),
+            "{to_go} of {planned:?}"
+        );
 
         app.adjust_ride(Percent(80.0), DescentMode::Flat);
         let events = app.finish_ride();
