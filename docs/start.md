@@ -27,7 +27,7 @@ Torqa opens on the start page with six tabs:
 - **Profile** — who rides, their figures, editing them and their HUD, adding and deleting riders
   ([riders.md](riders.md), [hud.md](hud.md)).
 - **Devices & Settings** — trainer, heart-rate strap and Di2 shifter, the ones used last
-  reconnecting by themselves, and the graphics quality ([riding.md](riding.md)).
+  reconnecting by themselves, the graphics quality and full screen ([riding.md](riding.md)).
 
 After a ride its summary appears; **Done** returns here.
 

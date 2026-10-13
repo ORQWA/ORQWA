@@ -51,7 +51,7 @@ msgstr ""
 msgid "%s behind"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:49 app/scenes/ride_screen.gd:645
+#: app/scenes/devices_tab.gd:51 app/scenes/ride_screen.gd:645
 msgid "%s connected"
 msgstr ""
 
@@ -67,7 +67,7 @@ msgstr ""
 msgid "%s no longer accepts the account: connect it again."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:296
+#: app/scenes/devices_tab.gd:316
 msgid "%s not found — wake it by pedalling (or put on the strap), then scan."
 msgstr ""
 
@@ -107,7 +107,7 @@ msgstr ""
 msgid "3. Press the pencil beside its name, then Add video…, and place the route in the video."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:283
+#: app/scenes/devices_tab.gd:303
 msgid "60 fps on a MacBook with M1: soft light, shadows and haze."
 msgstr ""
 
@@ -227,7 +227,7 @@ msgstr ""
 msgid "Analysis"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:290
+#: app/scenes/devices_tab.gd:310
 msgid "Applies from the next ride."
 msgstr ""
 
@@ -239,7 +239,7 @@ msgstr ""
 msgid "Ascent to go"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:130
+#: app/scenes/devices_tab.gd:132
 msgid "Assign buttons to D-Fly channels in E-TUBE, then choose here what each press does"
 msgstr ""
 
@@ -459,7 +459,7 @@ msgstr ""
 msgid "Custom"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:236
+#: app/scenes/devices_tab.gd:238
 msgid "D-Fly channel %d"
 msgstr ""
 
@@ -515,7 +515,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:95
+#: app/scenes/devices_tab.gd:97
 msgid "Devices"
 msgstr ""
 
@@ -615,7 +615,7 @@ msgstr ""
 msgid "Evening"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:285
+#: app/scenes/devices_tab.gd:305
 msgid "Everything on, including global illumination: for fast GPUs."
 msgstr ""
 
@@ -651,7 +651,7 @@ msgstr ""
 msgid "FTP test: your FTP is about %d W (now %d W)."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:143 app/scenes/devices_tab.gd:303
+#: app/scenes/devices_tab.gd:145 app/scenes/devices_tab.gd:323
 msgid "Fake trainer (200 W, for testing)"
 msgstr ""
 
@@ -719,11 +719,11 @@ msgstr ""
 msgid "Fold the controls away"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:284
+#: app/scenes/devices_tab.gd:304
 msgid "For stronger GPUs: softer shadows, bounced light, light fog, more distance."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:282
+#: app/scenes/devices_tab.gd:302
 msgid "For weaker computers: shorter view, simpler shadows and sky."
 msgstr ""
 
@@ -739,7 +739,7 @@ msgstr ""
 msgid "Form is fitness minus fatigue: fresh above zero, tired below it."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:178
+#: app/scenes/devices_tab.gd:180
 msgid "Found %d device(s)"
 msgstr ""
 
@@ -757,6 +757,10 @@ msgstr ""
 
 #: app/ui/ui_theme.gd:269
 msgid "Fri"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:279
+msgid "Full screen (F11)"
 msgstr ""
 
 #: app/scenes/overlay_hud.gd:54
@@ -783,7 +787,7 @@ msgstr ""
 msgid "Grade"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:246
+#: app/scenes/devices_tab.gd:248
 msgid "Graphics"
 msgstr ""
 
@@ -811,7 +815,7 @@ msgstr ""
 msgid "Hazy"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:115 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:415 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
+#: app/scenes/devices_tab.gd:117 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:415 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
 msgid "Heart rate"
 msgstr ""
 
@@ -839,7 +843,7 @@ msgstr ""
 msgid "Heart-rate zones, the top of each as a share of the maximum heart rate"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:257
+#: app/scenes/devices_tab.gd:259
 msgid "High"
 msgstr ""
 
@@ -959,7 +963,7 @@ msgstr ""
 msgid "Log in to %s in your browser and let Torqa upload your rides. Then come back here."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:257
+#: app/scenes/devices_tab.gd:259
 msgid "Low"
 msgstr ""
 
@@ -991,7 +995,7 @@ msgstr ""
 msgid "May"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:257
+#: app/scenes/devices_tab.gd:259
 msgid "Medium"
 msgstr ""
 
@@ -1111,11 +1115,11 @@ msgstr ""
 msgid "Nobody"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:144 app/scenes/devices_tab.gd:306
+#: app/scenes/devices_tab.gd:146 app/scenes/devices_tab.gd:326
 msgid "None"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:145 app/scenes/devices_tab.gd:309
+#: app/scenes/devices_tab.gd:147 app/scenes/devices_tab.gd:329
 msgid "None (keyboard: ↑ / ↓)"
 msgstr ""
 
@@ -1135,7 +1139,7 @@ msgstr ""
 msgid "Not connected"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:241
+#: app/scenes/devices_tab.gd:243
 msgid "Nothing"
 msgstr ""
 
@@ -1299,7 +1303,7 @@ msgstr ""
 msgid "Progress"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:252
+#: app/scenes/devices_tab.gd:254
 msgid "Quality"
 msgstr ""
 
@@ -1331,7 +1335,7 @@ msgstr ""
 msgid "Reading route"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:69
+#: app/scenes/devices_tab.gd:71
 msgid "Reconnecting your devices…"
 msgstr ""
 
@@ -1443,12 +1447,16 @@ msgstr ""
 msgid "Saved to your workouts."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:100
+#: app/scenes/devices_tab.gd:102
 msgid "Scan for devices"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:151
+#: app/scenes/devices_tab.gd:153
 msgid "Scanning…"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:276
+msgid "Screen"
 msgstr ""
 
 #: app/ui/ui_theme.gd:271
@@ -1475,7 +1483,7 @@ msgstr ""
 msgid "Shift up two gears"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:116
+#: app/scenes/devices_tab.gd:118
 msgid "Shifter (Di2)"
 msgstr ""
 
@@ -1667,7 +1675,7 @@ msgstr ""
 msgid "Torqa is connected. You can close this page."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:114
+#: app/scenes/devices_tab.gd:116
 msgid "Trainer"
 msgstr ""
 
@@ -1691,7 +1699,7 @@ msgstr ""
 msgid "Twice 8 minutes all out, 10 easy between. FTP: 90 % of their average."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:257
+#: app/scenes/devices_tab.gd:259
 msgid "Ultra"
 msgstr ""
 
@@ -1779,7 +1787,7 @@ msgstr ""
 msgid "Waiting for the trainer…"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:104
+#: app/scenes/devices_tab.gd:106
 msgid "Wake your trainer by pedalling, then scan."
 msgstr ""
 
