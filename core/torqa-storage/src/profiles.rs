@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
 use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, Press};
+use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
 
 const PROFILES: &str = "profiles";
@@ -193,6 +194,12 @@ struct Settings {
     trainer: Option<RememberedDevice>,
     /// The heart-rate sensor connected last.
     heart_rate: Option<RememberedDevice>,
+    /// The power meter connected last (R71).
+    power_meter: Option<RememberedDevice>,
+    /// The cadence sensor connected last (R72).
+    cadence_sensor: Option<RememberedDevice>,
+    /// Which device's cadence counts (R72), by [`CadenceSource::name`].
+    cadence_source: Option<String>,
     /// The controller (shifter) connected last.
     controller: Option<RememberedDevice>,
     /// What the Di2 shifter's buttons do (#139).
@@ -398,6 +405,10 @@ pub struct RememberedDevices {
     pub trainer: Option<RememberedDevice>,
     /// The heart-rate sensor connected last.
     pub heart_rate: Option<RememberedDevice>,
+    /// The power meter connected last (R71).
+    pub power_meter: Option<RememberedDevice>,
+    /// The cadence sensor connected last (R72).
+    pub cadence_sensor: Option<RememberedDevice>,
     /// The controller (shifter) connected last.
     pub controller: Option<RememberedDevice>,
 }
@@ -409,6 +420,10 @@ pub enum DeviceRole {
     Trainer,
     /// The heart-rate sensor.
     HeartRate,
+    /// The power meter (R71).
+    PowerMeter,
+    /// The cadence sensor (R72).
+    CadenceSensor,
     /// A controller that shifts.
     Controller,
 }
@@ -526,6 +541,8 @@ pub fn remembered_devices(data_dir: &Path) -> RememberedDevices {
     RememberedDevices {
         trainer: settings.trainer,
         heart_rate: settings.heart_rate,
+        power_meter: settings.power_meter,
+        cadence_sensor: settings.cadence_sensor,
         controller: settings.controller,
     }
 }
@@ -539,13 +556,50 @@ pub fn remember_device(
     role: DeviceRole,
     device: RememberedDevice,
 ) -> Result<(), ProfileError> {
+    set_remembered(data_dir, role, Some(device))
+}
+
+/// Stops reconnecting the device in `role` at start.
+///
+/// # Errors
+/// On file system errors.
+pub fn forget_device(data_dir: &Path, role: DeviceRole) -> Result<(), ProfileError> {
+    set_remembered(data_dir, role, None)
+}
+
+fn set_remembered(
+    data_dir: &Path,
+    role: DeviceRole,
+    device: Option<RememberedDevice>,
+) -> Result<(), ProfileError> {
     let mut settings = settings(data_dir);
     let slot = match role {
         DeviceRole::Trainer => &mut settings.trainer,
         DeviceRole::HeartRate => &mut settings.heart_rate,
+        DeviceRole::PowerMeter => &mut settings.power_meter,
+        DeviceRole::CadenceSensor => &mut settings.cadence_sensor,
         DeviceRole::Controller => &mut settings.controller,
     };
-    *slot = Some(device);
+    *slot = device;
+    save_settings(data_dir, &settings)
+}
+
+/// Which device's cadence counts (R72); automatic until chosen.
+#[must_use]
+pub fn cadence_source(data_dir: &Path) -> CadenceSource {
+    settings(data_dir)
+        .cadence_source
+        .and_then(|name| CadenceSource::from_name(&name))
+        .unwrap_or_default()
+}
+
+/// Remembers which device's cadence counts (R72).
+///
+/// # Errors
+/// On file system errors.
+pub fn set_cadence_source(data_dir: &Path, source: CadenceSource) -> Result<(), ProfileError> {
+    let mut settings = settings(data_dir);
+    settings.cadence_source = Some(source.name().to_owned());
     save_settings(data_dir, &settings)
 }
 
@@ -1019,10 +1073,30 @@ mod tests {
         set_active(&data, "anna").unwrap();
         remember_device(&data, DeviceRole::Trainer, kickr.clone()).unwrap();
         set_active(&data, "zoe").unwrap();
+        let pedals = RememberedDevice {
+            id: "hci0/dev_BB".to_owned(),
+            name: "ASSIOMA12345R".to_owned(),
+        };
+        remember_device(&data, DeviceRole::PowerMeter, pedals.clone()).unwrap();
 
         assert_eq!(remembered_devices(&data).trainer, Some(kickr));
+        assert_eq!(remembered_devices(&data).power_meter, Some(pedals));
         assert_eq!(remembered_devices(&data).heart_rate, None);
+        forget_device(&data, DeviceRole::PowerMeter).unwrap();
+        assert_eq!(remembered_devices(&data).power_meter, None);
+        assert!(remembered_devices(&data).trainer.is_some());
         assert_eq!(active(&data), Some("zoe".to_owned()));
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn remembers_the_cadence_source() {
+        let data = temp_dir("cadence");
+        assert_eq!(cadence_source(&data), CadenceSource::Automatic);
+
+        set_cadence_source(&data, CadenceSource::Trainer).unwrap();
+
+        assert_eq!(cadence_source(&data), CadenceSource::Trainer);
         std::fs::remove_dir_all(data).unwrap();
     }
 

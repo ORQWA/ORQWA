@@ -55,7 +55,7 @@ msgstr ""
 msgid "%s behind"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:57 app/scenes/ride_screen.gd:698
+#: app/scenes/devices_tab.gd:69 app/scenes/ride_screen.gd:698
 msgid "%s connected"
 msgstr ""
 
@@ -75,11 +75,11 @@ msgstr ""
 msgid "%s not found"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:322
+#: app/scenes/devices_tab.gd:382
 msgid "%s not found — wake it by pedalling (or put on the strap), then scan."
 msgstr ""
 
-#: app/ui/ride_devices.gd:104
+#: app/ui/ride_devices.gd:106
 msgid "%s not found — wake it, then reconnect again."
 msgstr ""
 
@@ -119,7 +119,7 @@ msgstr ""
 msgid "3. Press the pencil beside its name, then Add video…, and place the route in the video."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:309
+#: app/scenes/devices_tab.gd:369
 msgid "60 fps on a MacBook with M1: soft light, shadows and haze."
 msgstr ""
 
@@ -239,7 +239,7 @@ msgstr ""
 msgid "Analysis"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:316
+#: app/scenes/devices_tab.gd:376
 msgid "Applies from the next ride."
 msgstr ""
 
@@ -255,12 +255,20 @@ msgstr ""
 msgid "Ascent to go"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:138
+#: app/scenes/devices_tab.gd:166
 msgid "Assign buttons to D-Fly channels in E-TUBE, then choose here what each press does"
 msgstr ""
 
 #: app/ui/ui_theme.gd:312
 msgid "Aug"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:237
+msgid "Automatic"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:162
+msgid "Automatic: a cadence sensor, else the power meter, else the trainer"
 msgstr ""
 
 #: app/ui/hud_editor.gd:42
@@ -303,7 +311,7 @@ msgstr ""
 msgid "Building 3D world"
 msgstr ""
 
-#: app/ui/workout_editor.gd:348 core/torqa-app/src/hud.rs:113
+#: app/scenes/devices_tab.gd:143 app/ui/ride_devices.gd:50 app/ui/workout_editor.gd:348 core/torqa-app/src/hud.rs:113
 msgid "Cadence"
 msgstr ""
 
@@ -451,7 +459,7 @@ msgstr ""
 msgid "Connect %s and upload…"
 msgstr ""
 
-#: app/ui/ride_devices.gd:68
+#: app/ui/ride_devices.gd:70
 msgid "Connected"
 msgstr ""
 
@@ -495,7 +503,7 @@ msgstr ""
 msgid "Custom"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:244
+#: app/scenes/devices_tab.gd:304
 msgid "D-Fly channel %d"
 msgstr ""
 
@@ -567,7 +575,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:103 app/scenes/ride_settings_dialog.gd:33
+#: app/scenes/devices_tab.gd:122 app/scenes/ride_settings_dialog.gd:33
 msgid "Devices"
 msgstr ""
 
@@ -595,7 +603,7 @@ msgstr ""
 msgid "Done! Cool down easy"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:30
+#: app/scenes/devices_tab.gd:38
 msgid "Double press"
 msgstr ""
 
@@ -671,7 +679,7 @@ msgstr ""
 msgid "Evening"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:311
+#: app/scenes/devices_tab.gd:371
 msgid "Everything on, including global illumination: for fast GPUs."
 msgstr ""
 
@@ -707,7 +715,7 @@ msgstr ""
 msgid "FTP test: your FTP is about %d W (now %d W)."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:151 app/scenes/devices_tab.gd:329
+#: app/scenes/devices_tab.gd:179 app/scenes/devices_tab.gd:389
 msgid "Fake trainer (200 W, for testing)"
 msgstr ""
 
@@ -783,11 +791,11 @@ msgstr ""
 msgid "Fold the controls away"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:310
+#: app/scenes/devices_tab.gd:370
 msgid "For stronger GPUs: softer shadows, bounced light, light fog, more distance."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:308
+#: app/scenes/devices_tab.gd:368
 msgid "For weaker computers: shorter view, simpler shadows and sky."
 msgstr ""
 
@@ -803,7 +811,7 @@ msgstr ""
 msgid "Form is fitness minus fatigue: fresh above zero, tired below it."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:186
+#: app/scenes/devices_tab.gd:220
 msgid "Found %d device(s)"
 msgstr ""
 
@@ -823,7 +831,7 @@ msgstr ""
 msgid "Fri"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:285
+#: app/scenes/devices_tab.gd:345
 msgid "Full screen (F11)"
 msgstr ""
 
@@ -851,7 +859,7 @@ msgstr ""
 msgid "Grade"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:254
+#: app/scenes/devices_tab.gd:314
 msgid "Graphics"
 msgstr ""
 
@@ -883,7 +891,7 @@ msgstr ""
 msgid "Hazy"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:123 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:433 app/ui/ride_devices.gd:48 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
+#: app/scenes/devices_tab.gd:144 app/scenes/history_screen.gd:253 app/scenes/ride_screen.gd:433 app/ui/ride_devices.gd:48 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
 msgid "Heart rate"
 msgstr ""
 
@@ -911,7 +919,7 @@ msgstr ""
 msgid "Heart-rate zones, the top of each as a share of the maximum heart rate"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:265
+#: app/scenes/devices_tab.gd:325
 msgid "High"
 msgstr ""
 
@@ -931,7 +939,7 @@ msgstr ""
 msgid "History"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:30
+#: app/scenes/devices_tab.gd:38
 msgid "Hold"
 msgstr ""
 
@@ -1039,11 +1047,11 @@ msgstr ""
 msgid "Log in to %s in your browser and let Torqa upload your rides. Then come back here."
 msgstr ""
 
-#: app/ui/ride_devices.gd:86
+#: app/ui/ride_devices.gd:88
 msgid "Looking for your devices… wake them by pedalling or putting on the strap."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:265
+#: app/scenes/devices_tab.gd:325
 msgid "Low"
 msgstr ""
 
@@ -1075,7 +1083,7 @@ msgstr ""
 msgid "May"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:265
+#: app/scenes/devices_tab.gd:325
 msgid "Medium"
 msgstr ""
 
@@ -1119,15 +1127,15 @@ msgstr ""
 msgid "Move up"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:20 app/scenes/ride_screen.gd:20
+#: app/scenes/devices_tab.gd:28 app/scenes/ride_screen.gd:20
 msgid "Music: next track"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:19 app/scenes/ride_screen.gd:19
+#: app/scenes/devices_tab.gd:27 app/scenes/ride_screen.gd:19
 msgid "Music: play / pause"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:21 app/scenes/ride_screen.gd:21
+#: app/scenes/devices_tab.gd:29 app/scenes/ride_screen.gd:21
 msgid "Music: previous track"
 msgstr ""
 
@@ -1163,7 +1171,7 @@ msgstr ""
 msgid "Next 500 m"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:17
+#: app/scenes/devices_tab.gd:25
 msgid "Next camera"
 msgstr ""
 
@@ -1191,7 +1199,7 @@ msgstr ""
 msgid "No courses yet. Import a GPX route or a video to prepare your first course."
 msgstr ""
 
-#: app/ui/ride_devices.gd:74
+#: app/ui/ride_devices.gd:76
 msgid "No devices connected yet: connect them in Devices & Settings."
 msgstr ""
 
@@ -1211,12 +1219,16 @@ msgstr ""
 msgid "Nobody"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:32 app/scenes/devices_tab.gd:152 app/scenes/devices_tab.gd:332
+#: app/scenes/courses_tab.gd:32 app/scenes/devices_tab.gd:180 app/scenes/devices_tab.gd:392
 msgid "None"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:153 app/scenes/devices_tab.gd:335
+#: app/scenes/devices_tab.gd:183 app/scenes/devices_tab.gd:404
 msgid "None (keyboard: ↑ / ↓)"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:181 app/scenes/devices_tab.gd:395
+msgid "None (the trainer measures)"
 msgstr ""
 
 #: app/scenes/course_edit_dialog.gd:117
@@ -1231,11 +1243,11 @@ msgstr ""
 msgid "Normalized power"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:209 app/ui/ride_devices.gd:68
+#: app/scenes/profile_tab.gd:209 app/ui/ride_devices.gd:70
 msgid "Not connected"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:249
+#: app/scenes/devices_tab.gd:309
 msgid "Nothing"
 msgstr ""
 
@@ -1291,7 +1303,7 @@ msgstr ""
 msgid "Optimal"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:18
+#: app/scenes/devices_tab.gd:26
 msgid "Overlay on / off"
 msgstr ""
 
@@ -1315,7 +1327,7 @@ msgstr ""
 msgid "Pause"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:22
+#: app/scenes/devices_tab.gd:30
 msgid "Pause / resume"
 msgstr ""
 
@@ -1375,6 +1387,14 @@ msgstr ""
 msgid "Power curve"
 msgstr ""
 
+#: app/scenes/devices_tab.gd:142 app/scenes/devices_tab.gd:237 app/ui/ride_devices.gd:49
+msgid "Power meter"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:159
+msgid "Power pedals or crank: its power and cadence count instead of the trainer's"
+msgstr ""
+
 #: app/scenes/analysis_tab.gd:193
 msgid "Power profile"
 msgstr ""
@@ -1395,7 +1415,7 @@ msgstr ""
 msgid "Power zones, the top of each as a share of FTP"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:30
+#: app/scenes/devices_tab.gd:38
 msgid "Press"
 msgstr ""
 
@@ -1407,7 +1427,7 @@ msgstr ""
 msgid "Progress"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:260
+#: app/scenes/devices_tab.gd:320
 msgid "Quality"
 msgstr ""
 
@@ -1443,7 +1463,7 @@ msgstr ""
 msgid "Reconnect devices"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:77
+#: app/scenes/devices_tab.gd:90
 msgid "Reconnecting your devices…"
 msgstr ""
 
@@ -1563,15 +1583,15 @@ msgstr ""
 msgid "Saved to your workouts."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:108
+#: app/scenes/devices_tab.gd:127
 msgid "Scan for devices"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:159
+#: app/scenes/devices_tab.gd:189
 msgid "Scanning…"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:282
+#: app/scenes/devices_tab.gd:342
 msgid "Screen"
 msgstr ""
 
@@ -1587,27 +1607,27 @@ msgstr ""
 msgid "Share of the road gradient you feel on the trainer"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:14
+#: app/scenes/devices_tab.gd:22
 msgid "Shift down"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:16
+#: app/scenes/devices_tab.gd:24
 msgid "Shift down two gears"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:13
+#: app/scenes/devices_tab.gd:21
 msgid "Shift up"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:15
+#: app/scenes/devices_tab.gd:23
 msgid "Shift up two gears"
 msgstr ""
 
-#: app/ui/ride_devices.gd:49
+#: app/ui/ride_devices.gd:51
 msgid "Shifter"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:124
+#: app/scenes/devices_tab.gd:145
 msgid "Shifter (Di2)"
 msgstr ""
 
@@ -1811,7 +1831,7 @@ msgstr ""
 msgid "Torqa is connected. You can close this page."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:122 app/ui/ride_devices.gd:47
+#: app/scenes/devices_tab.gd:141 app/scenes/devices_tab.gd:237 app/ui/ride_devices.gd:47
 msgid "Trainer"
 msgstr ""
 
@@ -1819,11 +1839,11 @@ msgstr ""
 msgid "Trainer difficulty"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:23
+#: app/scenes/devices_tab.gd:31
 msgid "Trainer difficulty +10 %"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:24
+#: app/scenes/devices_tab.gd:32
 msgid "Trainer difficulty −10 %"
 msgstr ""
 
@@ -1851,7 +1871,7 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:265
+#: app/scenes/devices_tab.gd:325
 msgid "Ultra"
 msgstr ""
 
@@ -1939,7 +1959,7 @@ msgstr ""
 msgid "Waiting for the trainer…"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:112
+#: app/scenes/devices_tab.gd:131
 msgid "Wake your trainer by pedalling, then scan."
 msgstr ""
 
@@ -1995,11 +2015,11 @@ msgstr ""
 msgid "Workout editor"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:25
+#: app/scenes/devices_tab.gd:33
 msgid "Workout intensity +5 %"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:26
+#: app/scenes/devices_tab.gd:34
 msgid "Workout intensity −5 %"
 msgstr ""
 
@@ -2011,7 +2031,7 @@ msgstr ""
 msgid "Workout: next step"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:27
+#: app/scenes/devices_tab.gd:35
 msgid "Workout: skip step"
 msgstr ""
 

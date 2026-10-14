@@ -105,6 +105,13 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Fake trainer
 - [x] `torqa-cli scan` / `torqa-cli ride`
 - [x] macOS CLI artifact from CI
+- [x] Power meter (R71, [ADR 0016](adr/0016-power-meters.md)): Cycling Power Service, cadence
+  from crank revolutions; its power and cadence win over the trainer's, each falling back to
+  the trainer when the meter drops; chosen, remembered and reconnected like the other devices
+- [x] Cadence source (R72): automatic, trainer, power meter or a Bluetooth cadence sensor
+  (Cycling Speed and Cadence Service), the others standing in while the chosen one is silent
+- [ ] ERG power matching (R71's later step): the trainer's ERG target nudged until the power
+  meter shows the workout's power
 - **Exit:** CLI controls the KICKR Core 2 grade and reads power/cadence/HR ✅ (verified on hardware 2026-10-02)
 
 ### Phase 2 — Route, physics, FIT

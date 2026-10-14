@@ -1,7 +1,7 @@
-//! Bluetooth LE discovery and drivers for FTMS trainers, heart-rate sensors and Shimano Di2
-//! shifters.
+//! Bluetooth LE discovery and drivers for FTMS trainers, power meters, cadence sensors,
+//! heart-rate sensors and Shimano Di2 shifters.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use btleplug::api::bleuuid::uuid_from_u16;
 use btleplug::api::{
@@ -14,10 +14,12 @@ use tokio::time::{sleep, timeout};
 use torqa_domain::telemetry::{Telemetry, TrainerControl};
 use tracing::{debug, info, warn};
 
+use crate::cycling_power;
 use crate::di2;
 use crate::ftms::{self, ControlResult, ResistanceRange};
 use crate::handle::{DeviceError, DeviceEvent, DeviceHandle, DriverChannels};
 use crate::heart_rate;
+use crate::speed_cadence;
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(2);
 /// How long a reconnect scans for a device the system no longer knows.
@@ -32,6 +34,10 @@ pub enum DeviceKind {
     Trainer,
     /// A heart-rate sensor.
     HeartRateSensor,
+    /// A power meter (Cycling Power Service), e.g. power pedals.
+    PowerMeter,
+    /// A cadence sensor (Cycling Speed and Cadence Service).
+    CadenceSensor,
     /// A shifter whose buttons can shift the virtual gears (Shimano Di2, R7).
     Controller,
 }
@@ -78,7 +84,8 @@ impl Bluetooth {
         Ok(Self { adapter })
     }
 
-    /// Scans for trainers, heart-rate sensors and controllers for `duration`.
+    /// Scans for trainers, power meters, cadence and heart-rate sensors and controllers for
+    /// `duration`.
     ///
     /// # Errors
     /// Returns the Bluetooth stack's error.
@@ -98,13 +105,24 @@ impl Bluetooth {
                 .clone()
                 .or(properties.advertisement_name.clone())
                 .unwrap_or_else(|| "Unnamed device".to_owned());
+            // Trainers often offer the Cycling Power Service too: they stay trainers.
             let kind = if properties.services.contains(&uuid_from_u16(ftms::SERVICE)) {
                 DeviceKind::Trainer
+            } else if properties
+                .services
+                .contains(&uuid_from_u16(cycling_power::SERVICE))
+            {
+                DeviceKind::PowerMeter
             } else if properties
                 .services
                 .contains(&uuid_from_u16(heart_rate::SERVICE))
             {
                 DeviceKind::HeartRateSensor
+            } else if properties
+                .services
+                .contains(&uuid_from_u16(speed_cadence::SERVICE))
+            {
+                DeviceKind::CadenceSensor
             } else if properties.services.iter().any(|s| s.to_string() == di2::SERVICE)
                 || properties.manufacturer_data.contains_key(&di2::MANUFACTURER)
                 // Rear derailleurs advertise as their model, e.g. "RDR9250".
@@ -140,6 +158,7 @@ impl Bluetooth {
                 last_control: None,
                 resistance_range: ResistanceRange::default(),
                 buttons: di2::Buttons::default(),
+                cadence: cycling_power::Cadence::default(),
             }
             .run()
         })
@@ -161,6 +180,8 @@ struct Driver {
     resistance_range: ResistanceRange,
     /// Decodes a shifter's button indications.
     buttons: di2::Buttons,
+    /// A power meter's or cadence sensor's cadence, from its crank counter.
+    cadence: cycling_power::Cadence,
 }
 
 impl Driver {
@@ -316,6 +337,19 @@ impl Driver {
                 peripheral.subscribe(&measurement).await?;
                 None
             }
+            DeviceKind::PowerMeter | DeviceKind::CadenceSensor => {
+                // The counter from before a drop may be minutes old.
+                self.cadence = cycling_power::Cadence::default();
+                let uuid = if self.device.kind == DeviceKind::PowerMeter {
+                    cycling_power::MEASUREMENT
+                } else {
+                    speed_cadence::MEASUREMENT
+                };
+                peripheral
+                    .subscribe(&characteristic(peripheral, uuid)?)
+                    .await?;
+                None
+            }
             DeviceKind::Controller => {
                 // Indications; the system asks to pair the unit first if it is not yet.
                 let buttons = peripheral
@@ -401,6 +435,27 @@ impl Driver {
                 .ok()?;
             Some(DeviceEvent::Telemetry(Telemetry {
                 heart_rate,
+                ..Telemetry::default()
+            }))
+        } else if uuid == uuid_from_u16(cycling_power::MEASUREMENT) {
+            let measurement = cycling_power::parse_measurement(value)
+                .inspect_err(|error| warn!(device = %name, %error, "invalid power measurement"))
+                .ok()?;
+            let cadence = measurement
+                .crank
+                .and_then(|crank| self.cadence.update(crank, Instant::now()));
+            Some(DeviceEvent::Telemetry(Telemetry {
+                power: Some(measurement.power),
+                cadence,
+                ..Telemetry::default()
+            }))
+        } else if uuid == uuid_from_u16(speed_cadence::MEASUREMENT) {
+            let crank = speed_cadence::parse_measurement(value)
+                .inspect_err(|error| warn!(device = %name, %error, "invalid cadence measurement"))
+                .ok()??;
+            let cadence = self.cadence.update(crank, Instant::now())?;
+            Some(DeviceEvent::Telemetry(Telemetry {
+                cadence: Some(cadence),
                 ..Telemetry::default()
             }))
         } else if uuid.to_string().starts_with(di2::BUTTONS_PREFIX) {

@@ -2,6 +2,31 @@
 
 Things to review or decide together. Newest first; remove entries once settled.
 
+## 2026-10-14 — Power meters and cadence (R71–R72)
+
+### Needs your hardware
+
+- **Assioma Pro Duo**: wake the pedals, scan in Devices & Settings, pick them under
+  **Power meter** and ride. The HUD's power should follow the pedals (compare with the
+  Assioma app or a head unit), and cadence should drop to 0 within about three seconds of
+  coasting. Turn the pedals off mid-ride: the trainer's power should take over, and come
+  back to the pedals once they reconnect. Only the decoding is tested, against the
+  Bluetooth specification; no real meter yet.
+- **Cadence source**: try **Cadence** set to Trainer and to Power meter, and compare how
+  steady each is. A Bluetooth cadence sensor, if you have one, should show up there after a
+  scan.
+
+### Decisions I took (say if you want them otherwise)
+
+- **The power meter always wins** while it reports; there is no setting to choose the
+  trainer's power instead ([ADR 0016](adr/0016-power-meters.md)).
+- **A scan does not pick a power meter by itself** (unlike the strap), only the one used
+  last: pedals nearby may be on another bike.
+- **Choosing Automatic, Trainer or Power meter for the cadence forgets a cadence sensor**
+  chosen before, so it no longer reconnects at start.
+- **ERG power matching** is not part of this step; the trainer still holds ERG targets by
+  its own measurement.
+
 ## 2026-10-13 — Devices that drop (R69)
 
 ### Needs your hardware

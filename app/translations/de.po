@@ -1604,3 +1604,18 @@ msgstr "Geräte neu verbinden"
 
 msgid "Shifter"
 msgstr "Schalter"
+
+msgid "Power meter"
+msgstr "Powermeter"
+
+msgid "None (the trainer measures)"
+msgstr "Keiner (der Trainer misst)"
+
+msgid "Power pedals or crank: its power and cadence count instead of the trainer's"
+msgstr "Powerpedale oder Kurbel: Leistung und Trittfrequenz kommen von dort statt vom Trainer"
+
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgid "Automatic: a cadence sensor, else the power meter, else the trainer"
+msgstr "Automatisch: ein Trittfrequenzsensor, sonst das Powermeter, sonst der Trainer"
