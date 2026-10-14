@@ -44,6 +44,8 @@ var _ftp_row: HBoxContainer = HBoxContainer.new()
 var _ftp_text: Label = Label.new()
 var _ftp_button: Button = Button.new()
 var _chart: RideChart = RideChart.new()
+## The chart's legend by series, each key showing or hiding its line (R73).
+var _legend: Dictionary[String, Button] = {}
 var _power_zones: ZoneBars = ZoneBars.new()
 var _heart_rate_zones: ZoneBars = ZoneBars.new()
 var _power_curve: PowerCurveChart = PowerCurveChart.new()
@@ -249,15 +251,17 @@ func _ready() -> void:
 	legend.add_theme_constant_override("separation", 18)
 	# i18n-begin
 	for entry: Array in [
-		["Power", UiTheme.POWER_COLOR],
-		["Heart rate", UiTheme.HEART_RATE_COLOR],
-		["Elevation", Color(1, 1, 1, 0.35)],
+		["power", "Power", UiTheme.POWER_COLOR],
+		["heart_rate", "Heart rate", UiTheme.HEART_RATE_COLOR],
+		["cadence", "Cadence", UiTheme.CADENCE_COLOR],
+		["elevation", "Elevation", Color(1, 1, 1, 0.35)],
 	]:
 		# i18n-end
-		var key_name: String = entry[0]
-		var key_color: Color = entry[1]
-		var key: Label = UiTheme.caption(key_name)
-		key.add_theme_color_override("font_color", key_color)
+		var series: String = entry[0]
+		var key_name: String = entry[1]
+		var key_color: Color = entry[2]
+		var key: Button = _legend_key(series, key_name, key_color)
+		_legend[series] = key
 		legend.add_child(key)
 	_detail.add_child(legend)
 	_chart.custom_minimum_size = Vector2(0, 220)
@@ -305,6 +309,39 @@ func _ready() -> void:
 	_apply_embedded()
 
 
+## A legend key in the series' colour that hides its line from the chart and shows it again;
+## a hidden one is dimmed. The choice holds for the other rides until the screen closes.
+func _legend_key(series: String, key_name: String, key_color: Color) -> Button:
+	var key: Button = Button.new()
+	key.toggle_mode = true
+	key.button_pressed = true
+	# Without a button's padding, so the keys line up with the chart as labels would.
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		key.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	key.focus_mode = Control.FOCUS_NONE
+	key.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# As `UiTheme.caption()`: translated before upper-casing.
+	key.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	key.text = tr(key_name).to_upper()
+	key.tooltip_text = tr("Show or hide in the chart")
+	key.add_theme_font_size_override("font_size", 11)
+	_color_key(key, key_color)
+	key.toggled.connect(
+		func(shown: bool) -> void:
+			_chart.set_shown(series, shown)
+			_color_key(key, key_color)
+	)
+	return key
+
+
+func _color_key(key: Button, key_color: Color) -> void:
+	var color: Color = key_color if key.button_pressed else Color(UiTheme.MUTED, 0.4)
+	for state: String in [
+		"font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"
+	]:
+		key.add_theme_color_override(state, color)
+
+
 func _apply_embedded() -> void:
 	_back.visible = not embedded
 	($Background as ColorRect).visible = not embedded
@@ -335,7 +372,13 @@ func _show_ride(index: int) -> void:
 	var elevation: PackedVector2Array = detail["elevation_m"]
 	var power: PackedVector2Array = detail["power"]
 	var heart_rate: PackedVector2Array = detail["heart_rate"]
-	_chart.set_series(elevation, power, heart_rate)
+	var cadence: PackedVector2Array = detail["cadence"]
+	_chart.set_series(elevation, power, heart_rate, cadence)
+	# A ride without a sensor has no line to show or hide for it.
+	_legend["power"].visible = not power.is_empty()
+	_legend["heart_rate"].visible = not heart_rate.is_empty()
+	_legend["cadence"].visible = not cadence.is_empty()
+	_legend["elevation"].visible = not elevation.is_empty()
 	var power_zones: PackedFloat64Array = detail["power_zones"]
 	var heart_rate_zones: PackedFloat64Array = detail["heart_rate_zones"]
 	_power_zones.set_zones(power_zones, UiTheme.POWER_ZONES)

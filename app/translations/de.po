@@ -1243,6 +1243,9 @@ msgstr "Fahrt pausieren (P)"
 msgid "Show the controls"
 msgstr "Steuerung einblenden"
 
+msgid "Show or hide in the chart"
+msgstr "Im Diagramm ein- oder ausblenden"
+
 msgid "Fold the controls away"
 msgstr "Steuerung ausblenden"
 

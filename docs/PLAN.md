@@ -256,6 +256,7 @@ Built in rideable steps:
 - [x] The same ride options on the course detail page (R48, with the start page)
 - [x] Ride names: default course + date, set on the summary, rename in history (R50)
 - [x] Export a ride's FIT file from the history or summary to a place the rider picks (R28)
+- [x] The ride chart draws cadence too; clicking a legend key hides or shows its line (R73)
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
 - [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Devices & Settings → Graphics;
   the choice is kept and Torqa starts that way

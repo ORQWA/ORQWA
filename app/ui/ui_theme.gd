@@ -43,6 +43,7 @@ const GHOST_COLOR: Color = Color(0.98, 0.55, 0.2)
 # i18n-end
 const POWER_COLOR: Color = Color(0.04, 0.61, 0.96)
 const HEART_RATE_COLOR: Color = Color(0.95, 0.33, 0.38)
+const CADENCE_COLOR: Color = Color(0.36, 0.82, 0.56)
 
 
 static func build() -> Theme:

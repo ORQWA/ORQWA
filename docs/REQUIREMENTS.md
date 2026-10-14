@@ -9,7 +9,8 @@ with uploads by one click or automatically (R60) and the analysis of a rider's p
 their rides (R61–R65, #217), and 2026-10-13 with an estimated time to the finish (R66, #231)
 and a searchable, sortable and grouped course gallery with the countries courses pass
 (R67–R68, #230), and 2026-10-14 with the minimap's land around the whole route (R70, #236)
-and power meters and the cadence's source (R71–R72).
+and power meters and the cadence's source (R71–R72) and a ride chart with cadence and lines to
+hide (R73).
 Requirement IDs (`R<n>`) are referenced from code, tests and ADRs. The list is **append-only**:
 existing requirements are never reworded or renumbered; changes are new requirements that state
 what they supersede, and the old entry only gets a short pointer.
@@ -88,7 +89,8 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 | R28 | Export activities as **FIT** (MVP). |
 | R29 | Uploaders behind a common interface: Strava, intervals.icu, Garmin Connect, TrainingPeaks, Komoot. (Garmin/TrainingPeaks/Komoot require partner approval → best effort.) |
 | R30 | Local storage in a **configurable data directory** that may live in a synced folder (e.g. Nextcloud) → sync-safe design, see ADR 0002. |
-| R31 | Detailed ride history and analysis: power/HR/cadence charts, zones, PRs. *(Across rides: R61–R65.)* |
+| R31 | Detailed ride history and analysis: power/HR/cadence charts, zones, PRs. *(Across rides: R61–R65. Chart lines to hide: R73.)* |
+| R73 | Extends R31 (2026-10-14): a ride's chart in the summary and the history also draws **cadence**, and each key of its legend (power, heart rate, cadence, elevation) **hides or shows** that line when clicked, the hidden key dimmed; the others keep their own scales. The choice holds while browsing rides; keys of data the ride lacks are left out. |
 
 ## Courses
 
