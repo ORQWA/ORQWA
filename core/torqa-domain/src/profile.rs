@@ -22,6 +22,16 @@ pub enum Avatar {
     Male,
 }
 
+/// How the ride's minimap is drawn (R70).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MapStyle {
+    /// Muted colours: green woods, blue water, golden main roads.
+    #[default]
+    Coloured,
+    /// Black and greys, like the course cards' maps.
+    Dark,
+}
+
 /// What the rider shifts with on the trainer (R9, ADR 0003).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Drivetrain {
@@ -56,6 +66,8 @@ pub struct Profile {
     pub language: String,
     /// The rider shown on the bike.
     pub avatar: Avatar,
+    /// How the ride's minimap is drawn.
+    pub map_style: MapStyle,
     /// What the rider shifts with.
     pub drivetrain: Drivetrain,
     /// Upper bounds of power zones 1–6 as a share of FTP (zone 7 is open), each above the one
@@ -79,6 +91,7 @@ impl Default for Profile {
             units: UnitSystem::Metric,
             language: String::new(),
             avatar: Avatar::Female,
+            map_style: MapStyle::Coloured,
             drivetrain: Drivetrain::Cassette,
             power_zones: POWER_ZONES,
             heart_rate_zones: HEART_RATE_ZONES,

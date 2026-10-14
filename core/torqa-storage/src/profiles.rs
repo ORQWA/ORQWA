@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use torqa_domain::profile::{Avatar, Drivetrain, Profile, UnitSystem};
+use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
 use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, Press};
 use torqa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
 
@@ -53,6 +53,7 @@ struct ProfileFile {
     units: Units,
     language: String,
     avatar: AvatarFile,
+    map_style: MapStyleFile,
     drivetrain: DrivetrainFile,
     chainring: u8,
     cog: u8,
@@ -88,6 +89,13 @@ enum AvatarFile {
     Male,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum MapStyleFile {
+    Coloured,
+    Dark,
+}
+
 impl Default for ProfileFile {
     fn default() -> Self {
         Self::from(&Profile::default())
@@ -110,6 +118,10 @@ impl From<&Profile> for ProfileFile {
             avatar: match p.avatar {
                 Avatar::Female => AvatarFile::Female,
                 Avatar::Male => AvatarFile::Male,
+            },
+            map_style: match p.map_style {
+                MapStyle::Coloured => MapStyleFile::Coloured,
+                MapStyle::Dark => MapStyleFile::Dark,
             },
             drivetrain: match p.drivetrain {
                 Drivetrain::Cassette => DrivetrainFile::Cassette,
@@ -152,6 +164,10 @@ impl From<ProfileFile> for Profile {
             avatar: match f.avatar {
                 AvatarFile::Female => Avatar::Female,
                 AvatarFile::Male => Avatar::Male,
+            },
+            map_style: match f.map_style {
+                MapStyleFile::Coloured => MapStyle::Coloured,
+                MapStyleFile::Dark => MapStyle::Dark,
             },
             drivetrain: match f.drivetrain {
                 DrivetrainFile::Cassette => Drivetrain::Cassette,
@@ -875,6 +891,7 @@ mod tests {
             units: UnitSystem::Imperial,
             language: "de".to_owned(),
             avatar: Avatar::Male,
+            map_style: MapStyle::Dark,
             drivetrain: Drivetrain::SingleCog {
                 chainring: 46,
                 cog: 14,

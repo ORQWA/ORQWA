@@ -1,32 +1,104 @@
-//! A flat map of the corridor for the minimap, in a dark palette matching the HUD: land cover, water, roads and buildings as one
-//! coloured triangle list in metres east/north of the route start.
+//! The flat maps of the ride's minimap (R19, R70) and of the course cards (#192): map features
+//! as coloured triangles in metres east/north of the route start, coloured in the rider's
+//! [`MapStyle`] only when drawn. The corridor's map shows the land along the route in detail,
+//! for the close view, drawn over the course's map of the whole land ([`crate::course_map`]).
 
+use torqa_domain::profile::MapStyle;
 use torqa_osm::{LandCover, MapData, RoadClass};
-use torqa_routes::LocalProjection;
+use torqa_routes::{LocalProjection, Route};
 
 use crate::CORRIDOR;
 use crate::buildings::{signed_area, triangulate};
 use crate::road::RoadIndex;
 
-/// Background of the minimap (open land).
-pub const BACKGROUND: [f32; 4] = [0.15, 0.17, 0.16, 1.0];
-const WATER: [f32; 4] = [0.11, 0.21, 0.31, 1.0];
-const BUILDING: [f32; 4] = [0.29, 0.29, 0.32, 1.0];
-const MINOR_ROAD: [f32; 4] = [0.36, 0.37, 0.40, 1.0];
-const MAJOR_ROAD: [f32; 4] = [0.60, 0.53, 0.37, 1.0];
 /// Rings are simplified to this tolerance in metres; finer detail is invisible on the minimap.
 const SIMPLIFY: f64 = 2.5;
 
-/// Coloured triangles, three vertices each, in metres east/north of the route start.
+/// What a part of a flat map shows, which gives its colour in each [`MapStyle`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MapFeature {
+    /// Open land: the map's background, and the holes in areas.
+    Land,
+    /// Towns: residential, industrial and commercial land.
+    Built,
+    /// Orchards and vineyards.
+    Orchard,
+    /// Woods.
+    Forest,
+    /// Bare rock and scree.
+    Rock,
+    /// Lakes and rivers.
+    Water,
+    /// Buildings.
+    Building,
+    /// Streets.
+    MinorRoad,
+    /// Main roads.
+    MajorRoad,
+}
+
+impl MapFeature {
+    /// Its colour in `style`. The dark style is the course cards' (after CARTO's Dark
+    /// Matter); the coloured one is muted to sit under the HUD.
+    #[must_use]
+    pub fn color(self, style: MapStyle) -> [f32; 4] {
+        let rgb = match style {
+            MapStyle::Coloured => match self {
+                Self::Land => [0.15, 0.17, 0.16],
+                Self::Built => [0.20, 0.20, 0.22],
+                Self::Orchard => [0.18, 0.22, 0.16],
+                Self::Forest => [0.12, 0.20, 0.14],
+                Self::Rock => [0.25, 0.25, 0.25],
+                Self::Water => [0.11, 0.21, 0.31],
+                Self::Building => [0.29, 0.29, 0.32],
+                Self::MinorRoad => [0.36, 0.37, 0.40],
+                Self::MajorRoad => [0.60, 0.53, 0.37],
+            },
+            MapStyle::Dark => {
+                let grey = match self {
+                    Self::Land => 0.055,
+                    Self::Orchard | Self::Forest => 0.075,
+                    Self::Rock => 0.09,
+                    Self::Built => 0.115,
+                    Self::Building => 0.14,
+                    Self::MinorRoad => 0.15,
+                    Self::Water => 0.17,
+                    Self::MajorRoad => 0.27,
+                };
+                [grey; 3]
+            }
+        };
+        [rgb[0], rgb[1], rgb[2], 1.0]
+    }
+}
+
+/// Triangles, three vertices each, in metres east/north of the route start.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FlatMap {
     /// Triangle corners (east, north).
     pub vertices: Vec<[f32; 2]>,
-    /// One colour per vertex.
-    pub colors: Vec<[f32; 4]>,
+    /// What each vertex shows.
+    pub features: Vec<MapFeature>,
 }
 
-pub(crate) fn build(map: &MapData, projection: &LocalProjection, road: &RoadIndex) -> FlatMap {
+impl FlatMap {
+    /// Each vertex's colour in `style`.
+    #[must_use]
+    pub fn colors(&self, style: MapStyle) -> Vec<[f32; 4]> {
+        self.features.iter().map(|f| f.color(style)).collect()
+    }
+}
+
+/// The map of the corridor along `route` for the minimap's close view: woods, towns, water,
+/// rock, roads and buildings from `map`. Open land (meadows, fields) is left out: the whole
+/// land's map below shows through it.
+#[must_use]
+pub fn minimap(route: &Route, map: &MapData) -> FlatMap {
+    let projection = LocalProjection::for_route(route);
+    build(map, &projection, &RoadIndex::new(route, &projection))
+}
+
+fn build(map: &MapData, projection: &LocalProjection, road: &RoadIndex) -> FlatMap {
     let mut flat = FlatMap::default();
     let near = |points: &[(f64, f64)]| {
         points
@@ -41,21 +113,24 @@ pub(crate) fn build(map: &MapData, projection: &LocalProjection, road: &RoadInde
     };
 
     // Land cover from general to specific, so specific areas paint over general ones.
-    let mut areas: Vec<_> = map.areas.iter().collect();
-    areas.sort_by_key(|a| layer(a.cover));
-    for area in areas {
-        let color = cover_color(area.cover);
+    let mut areas: Vec<_> = map
+        .areas
+        .iter()
+        .filter_map(|a| Some((a, cover_feature(a.cover)?)))
+        .collect();
+    areas.sort_by_key(|(a, _)| layer(a.cover));
+    for (area, feature) in areas {
         for ring in &area.outer {
             let ring = project(ring);
             if near(&ring) {
-                fill(&mut flat, &ring, color, SIMPLIFY);
+                fill(&mut flat, &ring, feature, SIMPLIFY);
             }
         }
-        // Holes are painted with the background, approximating the cut-out.
+        // Holes are painted as open land, approximating the cut-out.
         for ring in &area.inner {
             let ring = project(ring);
             if near(&ring) {
-                fill(&mut flat, &ring, BACKGROUND, SIMPLIFY);
+                fill(&mut flat, &ring, MapFeature::Land, SIMPLIFY);
             }
         }
     }
@@ -64,7 +139,7 @@ pub(crate) fn build(map: &MapData, projection: &LocalProjection, road: &RoadInde
             &mut flat,
             &project(&waterway.line),
             waterway.width.max(4.0),
-            WATER,
+            MapFeature::Water,
             road,
         );
     }
@@ -72,18 +147,18 @@ pub(crate) fn build(map: &MapData, projection: &LocalProjection, road: &RoadInde
         // Paths would clutter the small map.
         let drawn = map.roads.iter().filter(|r| r.class != RoadClass::Path);
         for street in drawn.filter(|r| r.major() == minor_first) {
-            let (width, color) = if street.major() {
-                (9.0, MAJOR_ROAD)
+            let (width, feature) = if street.major() {
+                (9.0, MapFeature::MajorRoad)
             } else {
-                (5.0, MINOR_ROAD)
+                (5.0, MapFeature::MinorRoad)
             };
-            ribbon(&mut flat, &project(&street.line), width, color, road);
+            ribbon(&mut flat, &project(&street.line), width, feature, road);
         }
     }
     for building in &map.buildings {
         let outline = project(&building.outline);
         if near(&outline) {
-            fill(&mut flat, &outline, BUILDING, SIMPLIFY);
+            fill(&mut flat, &outline, MapFeature::Building, SIMPLIFY);
         }
     }
     flat
@@ -102,24 +177,25 @@ fn layer(cover: LandCover) -> u8 {
     }
 }
 
-fn cover_color(cover: LandCover) -> [f32; 4] {
+/// What the corridor's map shows of `cover`: nothing of open land, which would cover the
+/// whole land's map in the corridor's blocks (#236).
+fn cover_feature(cover: LandCover) -> Option<MapFeature> {
     match cover {
         // Schools' and hospitals' grounds are mostly lawns and yards.
-        LandCover::Meadow | LandCover::Public => [0.17, 0.21, 0.17, 1.0],
-        LandCover::Farmland => [0.21, 0.21, 0.17, 1.0],
+        LandCover::Meadow | LandCover::Public | LandCover::Farmland => None,
         LandCover::Residential | LandCover::Industrial | LandCover::Commercial => {
-            [0.20, 0.20, 0.22, 1.0]
+            Some(MapFeature::Built)
         }
-        LandCover::Orchard => [0.18, 0.22, 0.16, 1.0],
-        LandCover::Forest => [0.12, 0.20, 0.14, 1.0],
-        LandCover::Rock => [0.25, 0.25, 0.25, 1.0],
-        LandCover::Water => WATER,
+        LandCover::Orchard => Some(MapFeature::Orchard),
+        LandCover::Forest => Some(MapFeature::Forest),
+        LandCover::Rock => Some(MapFeature::Rock),
+        LandCover::Water => Some(MapFeature::Water),
     }
 }
 
 /// Fills a closed ring, simplified to `tolerance` metres.
 #[allow(clippy::cast_possible_truncation)] // drawing precision
-pub(crate) fn fill(flat: &mut FlatMap, ring: &[(f64, f64)], color: [f32; 4], tolerance: f64) {
+pub(crate) fn fill(flat: &mut FlatMap, ring: &[(f64, f64)], feature: MapFeature, tolerance: f64) {
     let mut points = simplify(ring, tolerance);
     points.pop(); // closing point
     if points.len() < 3 {
@@ -132,14 +208,20 @@ pub(crate) fn fill(flat: &mut FlatMap, ring: &[(f64, f64)], color: [f32; 4], tol
         for index in triangle {
             let (east, north) = points[index as usize];
             flat.vertices.push([east as f32, north as f32]);
-            flat.colors.push(color);
+            flat.features.push(feature);
         }
     }
 }
 
 /// A band `width` wide along the parts of a line within the corridor.
 #[allow(clippy::cast_possible_truncation)] // drawing precision
-fn ribbon(flat: &mut FlatMap, line: &[(f64, f64)], width: f64, color: [f32; 4], road: &RoadIndex) {
+fn ribbon(
+    flat: &mut FlatMap,
+    line: &[(f64, f64)],
+    width: f64,
+    feature: MapFeature,
+    road: &RoadIndex,
+) {
     let half = width / 2.0;
     for pair in line.windows(2) {
         let (a, b) = (pair[0], pair[1]);
@@ -161,7 +243,7 @@ fn ribbon(flat: &mut FlatMap, line: &[(f64, f64)], width: f64, color: [f32; 4], 
         for index in [0, 1, 2, 0, 2, 3] {
             let (east, north) = corners[index];
             flat.vertices.push([east as f32, north as f32]);
-            flat.colors.push(color);
+            flat.features.push(feature);
         }
     }
 }
@@ -207,6 +289,27 @@ pub(crate) fn simplify(points: &[(f64, f64)], tolerance: f64) -> Vec<(f64, f64)>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_style_sets_water_woods_towns_and_roads_off_the_land() {
+        for style in [MapStyle::Coloured, MapStyle::Dark] {
+            let land = MapFeature::Land.color(style);
+            for feature in [
+                MapFeature::Water,
+                MapFeature::Forest,
+                MapFeature::Built,
+                MapFeature::MinorRoad,
+                MapFeature::MajorRoad,
+            ] {
+                assert_ne!(feature.color(style), land, "{style:?} {feature:?}");
+            }
+            let brightness = |f: MapFeature| f.color(style)[..3].iter().sum::<f32>();
+            assert!(brightness(MapFeature::MajorRoad) > brightness(MapFeature::MinorRoad));
+        }
+        // The dark style is black and greys.
+        let [r, g, b, _] = MapFeature::Water.color(MapStyle::Dark);
+        assert_eq!([r, g], [g, b]);
+    }
 
     #[test]
     fn simplification_keeps_corners_and_drops_noise() {

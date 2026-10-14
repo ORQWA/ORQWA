@@ -522,8 +522,11 @@ pub struct App {
     /// A video open for preview frames, e.g. while aligning it to a route.
     preview: Option<(PathBuf, Video)>,
     route: Option<Route>,
-    /// The map for the loaded course's picture, if it is to get one (#203).
+    /// The map of the land around the loaded route, for its course's picture (#203) and the
+    /// minimap (R70); `None` without map data.
     course_map: Option<Box<torqa_world::course_map::CourseMap>>,
+    /// The detailed map of the loaded route's corridor, for the minimap's close view.
+    minimap: torqa_world::FlatMap,
     /// The countries the loaded route passes, if looked up (#230).
     countries: Option<Vec<CourseCountry>>,
     /// Whether the courses' countries are being looked up, and how many were found so far.
@@ -594,6 +597,7 @@ impl App {
             preview: None,
             route: None,
             course_map: None,
+            minimap: torqa_world::FlatMap::default(),
             countries: None,
             filling_countries: None,
             estimates: Estimates::default(),
@@ -730,7 +734,7 @@ impl App {
             let result = match import_route(&path, &cache, offline, &used, &mut report).await {
                 Ok(mut imported) => {
                     imported.course_map =
-                        course_map(&imported.route, &cache, offline, &mut report).await;
+                        course_map(&imported.route, (&cache, offline), &used, &mut report).await;
                     imported.countries =
                         countries(&route_points(&imported.route), &cache, offline, &mut report)
                             .await;
@@ -811,13 +815,20 @@ impl App {
                 imported.name = unpacked.manifest.name;
                 imported
             });
-            // A course from before #203 gets the map of its land: its file holds only its
-            // corridor's, so the map comes online.
+            // The map of the course's land, from the tiles its file brought along (R70). A
+            // course from before #236 lacks them, one from before #203 has a picture of its
+            // corridor only: theirs comes online, for the minimap and a new picture.
             if let Ok(imported) = &mut imported
-                && outdated_preview
                 && video.as_ref().is_none_or(|v| v.located)
             {
-                imported.course_map = course_map(&imported.route, &cache, false, &mut report).await;
+                let mut map = None;
+                if !outdated_preview {
+                    map = course_map(&imported.route, (&cache, true), &used, &mut report).await;
+                }
+                if map.is_none() {
+                    map = course_map(&imported.route, (&cache, false), &used, &mut report).await;
+                }
+                imported.course_map = map;
             }
             let _ = tx.send(match (imported, video) {
                 (Ok(imported), Some(source)) => {
@@ -876,7 +887,8 @@ impl App {
                         // line.
                         if source.located {
                             imported.course_map =
-                                course_map(&imported.route, &cache, offline, &mut report).await;
+                                course_map(&imported.route, (&cache, offline), &used, &mut report)
+                                    .await;
                             let points = route_points(&imported.route);
                             imported.countries =
                                 countries(&points, &cache, offline, &mut report).await;
@@ -1518,14 +1530,26 @@ impl App {
     }
 
     /// The map to draw the picture of the course at `path` from (#203), if it is the loaded
-    /// course and its map came with it: a new course's always, an opened one's only when its
-    /// picture was outdated ([`App::course_preview_outdated`]). `None` too when no map data
-    /// could be had.
+    /// course; `None` too when no map data could be had.
     #[must_use]
     pub fn course_map(&self, path: &Path) -> Option<&torqa_world::course_map::CourseMap> {
         (self.course.as_deref() == Some(path))
             .then_some(self.course_map.as_deref())
             .flatten()
+    }
+
+    /// The loaded route's maps for the minimap (R70): the land around the whole route, if any
+    /// map data could be had, and the route's corridor in detail. `None` without a route.
+    #[must_use]
+    pub fn minimap(
+        &self,
+    ) -> Option<(
+        Option<&torqa_world::course_map::CourseMap>,
+        &torqa_world::FlatMap,
+    )> {
+        self.route
+            .as_ref()
+            .map(|_| (self.course_map.as_deref(), &self.minimap))
     }
 
     /// Keeps `png`, the map picture the app drew, with the course at `path` (#192).
@@ -1616,6 +1640,7 @@ impl App {
         self.world = None;
         self.route = None;
         self.course_map = None;
+        self.minimap = torqa_world::FlatMap::default();
         self.countries = None;
         self.loaded = None;
         self.used = UsedFiles::default();
@@ -3071,11 +3096,13 @@ impl App {
             name,
             gpx,
             course_map,
+            minimap,
             countries,
             ..
         } = imported;
         self.loaded = Some((name.clone(), gpx));
         self.course_map = course_map;
+        self.minimap = minimap;
         self.countries = countries;
         events.push(AppEvent::RouteLoaded(RouteSummary {
             name,

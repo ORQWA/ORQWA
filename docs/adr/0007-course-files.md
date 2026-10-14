@@ -80,3 +80,14 @@ an empty list where none is known, so Torqa fills in older courses' countries in
 and never asks again for a course without any. Older Torqa versions ignore the field; the
 format stays 1. Filling it in rewrites the course file, like a rename: two machines doing so
 before their sync folder catches up may leave a sync conflict copy (ADR 0002).
+
+## Amendment 2026-10-14 — the course map's tiles in `data/` (#236)
+
+The ride's minimap shows the land around the whole route (R70), as the course's picture does:
+the picture's map tiles (ADR 0008, zoom 4–14 as the frame needs) are now recorded like the
+corridor's and bundled under `data/`, so the map is made again, offline, whenever the course
+opens. Measured on twelve real courses (12–212 km): 4–12 tiles, 64–890 KB before deflating
+(about a quarter less after), 0.5–4 % of most course files and up to 18 % of the smallest (a
+video course of 0.6 MB); making the map takes under 25 ms. Courses prepared before take their
+tiles from the cache, else download them when opened; their files stay as they are. The
+format stays 1.

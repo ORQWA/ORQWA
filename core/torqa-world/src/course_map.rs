@@ -1,7 +1,10 @@
-//! A course's map picture (#192, #203): the land around the whole route in black and greys,
-//! after CARTO's Dark Matter, with its waters, roads and the names of its towns, framed for the
-//! course's card. Drawn once when the course is prepared, from map tiles as detailed as the
-//! frame needs, and kept in the course file as a picture.
+//! A course's map (#192, #203): the land around the whole route with its waters, roads and the
+//! names of its towns, framed for the course's card, from map tiles as detailed as the frame
+//! needs. The card's picture is drawn from it once, in the dark [`MapStyle`] (after CARTO's
+//! Dark Matter), and kept in the course file; the tiles are kept too, so the ride's minimap
+//! shows the same land around the whole route in the rider's style (R70).
+//!
+//! [`MapStyle`]: torqa_domain::profile::MapStyle
 
 use std::collections::HashSet;
 
@@ -9,18 +12,11 @@ pub use torqa_osm::PlaceKind;
 use torqa_osm::{LandCover, LatLon, MapData, RoadClass};
 use torqa_routes::LocalProjection;
 
-use crate::minimap::{FlatMap, fill, simplify};
+use crate::minimap::{FlatMap, MapFeature, fill, simplify};
 
 /// The picture's size in pixels: twice the course card's, so it stays sharp on the course
 /// page and on high-density screens.
 pub const PICTURE: [u32; 2] = [1072, 640];
-/// Land, the picture's background.
-pub const LAND: [f32; 4] = [0.055, 0.055, 0.055, 1.0];
-const FOREST: [f32; 4] = [0.075, 0.075, 0.075, 1.0];
-const BUILT: [f32; 4] = [0.115, 0.115, 0.115, 1.0];
-const WATER: [f32; 4] = [0.17, 0.17, 0.17, 1.0];
-const MINOR_ROAD: [f32; 4] = [0.15, 0.15, 0.15, 1.0];
-const MAJOR_ROAD: [f32; 4] = [0.27, 0.27, 0.27, 1.0];
 /// Room between the route and the picture's edges, as a share of its width and height.
 const MARGIN: f64 = 0.08;
 /// The narrowest frame: a short loop still shows the land around it.
@@ -147,8 +143,8 @@ pub struct Line {
     pub points: Vec<[f32; 2]>,
     /// Width in pixels of the picture.
     pub width: f32,
-    /// Colour.
-    pub color: [f32; 4],
+    /// What it is.
+    pub feature: MapFeature,
 }
 
 /// The name of a city, town or village on the map.
@@ -169,7 +165,7 @@ pub struct Label {
 pub struct CourseMap {
     /// The land shown.
     pub frame: Frame,
-    /// Woods, towns and lakes as coloured triangles, in metres east/north of the route's start.
+    /// Woods, towns and lakes as triangles, in metres east/north of the route's start.
     pub areas: FlatMap,
     /// Rivers, then roads, minor before major: in drawing order.
     pub lines: Vec<Line>,
@@ -195,37 +191,37 @@ pub fn build(
 
     let mut areas = FlatMap::default();
     // Woods first: towns lie in their clearings, lakes in the towns.
-    for (covers, color) in [
-        (&[LandCover::Forest][..], FOREST),
+    for (covers, feature) in [
+        (&[LandCover::Forest][..], MapFeature::Forest),
         (
             &[
                 LandCover::Residential,
                 LandCover::Industrial,
                 LandCover::Commercial,
             ][..],
-            BUILT,
+            MapFeature::Built,
         ),
-        (&[LandCover::Water][..], WATER),
+        (&[LandCover::Water][..], MapFeature::Water),
     ] {
         for area in map.areas.iter().filter(|a| covers.contains(&a.cover)) {
             for ring in &area.outer {
                 let ring = project(ring);
                 if frame.touches(&ring) {
-                    fill(&mut areas, &ring, color, pixel * DETAIL_PX);
+                    fill(&mut areas, &ring, feature, pixel * DETAIL_PX);
                 }
             }
             // Holes show the land, approximating the cut-out.
             for ring in &area.inner {
                 let ring = project(ring);
                 if frame.touches(&ring) {
-                    fill(&mut areas, &ring, LAND, pixel * DETAIL_PX);
+                    fill(&mut areas, &ring, MapFeature::Land, pixel * DETAIL_PX);
                 }
             }
         }
     }
 
     let mut lines = Vec::new();
-    let mut line = |points: &[(f64, f64)], width: f32, color: [f32; 4]| {
+    let mut line = |points: &[(f64, f64)], width: f32, feature: MapFeature| {
         if !frame.touches(points) {
             return;
         }
@@ -236,20 +232,20 @@ pub fn build(
                 #[allow(clippy::cast_possible_truncation)]
                 points: points.iter().map(|&(e, n)| [e as f32, n as f32]).collect(),
                 width,
-                color,
+                feature,
             });
         }
     };
     // Rivers and canals; streams would clutter the map.
     for waterway in map.waterways.iter().filter(|w| w.width >= 8.0) {
-        line(&project(&waterway.line), 2.0, WATER);
+        line(&project(&waterway.line), 2.0, MapFeature::Water);
     }
-    for (class, width, color) in [
-        (RoadClass::Street, 1.2, MINOR_ROAD),
-        (RoadClass::Major, 2.4, MAJOR_ROAD),
+    for (class, width, feature) in [
+        (RoadClass::Street, 1.2, MapFeature::MinorRoad),
+        (RoadClass::Major, 2.4, MapFeature::MajorRoad),
     ] {
         for road in map.roads.iter().filter(|r| r.class == class) {
-            line(&project(&road.line), width, color);
+            line(&project(&road.line), width, feature);
         }
     }
 
@@ -428,7 +424,7 @@ mod tests {
                 .iter()
                 .all(|&[_, n]| f64::from(n) < frame.north)
         );
-        assert!(drawn.areas.colors.iter().all(|&c| c == WATER));
+        assert!(drawn.areas.features.iter().all(|&f| f == MapFeature::Water));
     }
 
     #[test]
@@ -455,8 +451,8 @@ mod tests {
 
         let drawn = build(&map, &projection, &track, frame);
 
-        let colors: Vec<_> = drawn.lines.iter().map(|l| l.color).collect();
-        assert_eq!(colors, [MINOR_ROAD, MAJOR_ROAD]);
+        let features: Vec<_> = drawn.lines.iter().map(|l| l.feature).collect();
+        assert_eq!(features, [MapFeature::MinorRoad, MapFeature::MajorRoad]);
         assert!(drawn.lines[1].width > drawn.lines[0].width);
     }
 

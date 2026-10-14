@@ -7,6 +7,7 @@ use torqa_osm::{MapData, Osm};
 use torqa_routes::{ElevationModel, LocalProjection, Route};
 use torqa_storage::course::CourseCountry;
 use torqa_terrain::{Terrain, TileSource};
+use torqa_world::FlatMap;
 use torqa_world::course_map::{self, CourseMap, Frame};
 use tracing::warn;
 
@@ -69,8 +70,11 @@ pub struct Imported {
     pub name: String,
     /// The original GPX track, kept for saving the course.
     pub gpx: String,
-    /// The map for the course's picture, when it is to get one ([`course_map`]).
+    /// The map of the land around the whole route ([`course_map`]), for the course's picture
+    /// and the minimap; `None` until it is made, or without map data.
     pub course_map: Option<Box<CourseMap>>,
+    /// The detailed map of the route's corridor, for the minimap's close view (R70).
+    pub minimap: FlatMap,
     /// The countries the route passes, when looked up ([`countries`]).
     pub countries: Option<Vec<CourseCountry>>,
 }
@@ -153,24 +157,26 @@ pub async fn import_gpx(
     let name = route
         .name()
         .map_or_else(|| fallback_name.to_owned(), ToOwned::to_owned);
+    let minimap = torqa_world::minimap(&route, &map);
     Ok(Imported {
         route,
         map,
         name,
         gpx: xml,
         course_map: None,
+        minimap,
         countries: None,
     })
 }
 
-/// The map of the land around the whole of `route` for the course's picture (#203), from map
-/// tiles as detailed as the picture needs. Downloads are cached under `cache_dir` but not
-/// recorded for the course file, which keeps the picture instead; `offline` uses the cache
-/// only. `None` if no tile is available.
+/// The map of the land around the whole of `route` for the course's picture (#203) and the
+/// minimap (R70), from map tiles as detailed as the picture needs. Downloads are cached under
+/// `cache_dir` and every cached tile used is recorded in `used`, for the course file to keep;
+/// `offline` uses the cache only. `None` if no tile is available.
 pub async fn course_map(
     route: &Route,
-    cache_dir: &Path,
-    offline: bool,
+    (cache_dir, offline): (&Path, bool),
+    used: &UsedFiles,
     progress: Progress<'_>,
 ) -> Option<Box<CourseMap>> {
     let projection = LocalProjection::for_route(route);
@@ -180,7 +186,7 @@ pub async fn course_map(
         .map(|p| projection.project(p.lat, p.lon))
         .collect();
     let frame = Frame::around(&track)?;
-    let mut osm = Osm::new(cache_dir.join("osm"));
+    let mut osm = Osm::new(cache_dir.join("osm")).recording(used.clone());
     if offline {
         osm = osm.offline();
     }
@@ -272,8 +278,9 @@ mod tests {
         </trkseg></trk></gpx>"#;
         let route = Route::from_gpx(gpx, None).await.unwrap();
         let mut stages = Vec::new();
+        let used = UsedFiles::default();
 
-        let map = course_map(&route, &cache, true, &mut |stage, _, total| {
+        let map = course_map(&route, (&cache, true), &used, &mut |stage, _, total| {
             stages.push((stage, total));
         })
         .await
@@ -290,6 +297,8 @@ mod tests {
         let projection = LocalProjection::for_route(&route);
         let (end_east, _) = projection.project(46.70, 8.38);
         assert!(west < -500.0 && east > end_east + 500.0);
+        // R70: its tile goes into the course file, for the minimap to show the land offline.
+        assert_eq!(used.paths(), [tiles.join("1445.pbf")]);
         std::fs::remove_dir_all(cache).unwrap();
     }
 }

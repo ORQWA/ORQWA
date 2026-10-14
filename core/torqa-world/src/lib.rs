@@ -34,7 +34,7 @@ use tracing::{info, warn};
 
 pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
-pub use minimap::{BACKGROUND as MINIMAP_BACKGROUND, FlatMap};
+pub use minimap::{FlatMap, MapFeature, minimap};
 use road::RoadIndex;
 pub use vegetation::Trees;
 
@@ -204,16 +204,13 @@ pub struct World {
     /// The land beyond the corridor, from [`horizon`] (empty until it is made: it needs a coarse
     /// terrain model of its own).
     pub horizon: Horizon,
-    /// Flat map of the corridor for the minimap.
-    pub minimap: FlatMap,
     /// Terrain samples that had no elevation data and followed the road instead.
     pub fallback_samples: usize,
 }
 
 /// The parts of the world built whole rather than by chunk: the road ridden, the bridges and
-/// tunnels, the railways and the map.
+/// tunnels and the railways.
 async fn whole<M: ElevationModel>(
-    map: &MapData,
     projection: &LocalProjection,
     (shapers, ways, below): (&Shapers<'_>, &Ways, &structures::Below<'_>),
     model: &mut M,
@@ -224,7 +221,6 @@ async fn whole<M: ElevationModel>(
         structures: structures::build_all((road, rails), below, shapers.portals, projection, model)
             .await,
         railways: rails.mesh(railways::BED_M / 2.0, &[]),
-        minimap: minimap::build(map, projection, road),
         ..World::default()
     }
 }
@@ -267,7 +263,7 @@ pub async fn generate<M: ElevationModel>(
         hills: true,
     };
     let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
-    let mut world = whole(map, &projection, (&shapers, &ways, &below), model).await;
+    let mut world = whole(&projection, (&shapers, &ways, &below), model).await;
     let corridor = Corridor {
         shapers: &shapers,
         land: &land,

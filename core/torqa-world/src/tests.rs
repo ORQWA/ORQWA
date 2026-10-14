@@ -3192,19 +3192,42 @@ async fn minimap_draws_map_features_near_the_route_only() {
         levels: None,
         color: None,
     };
-    let world = world(&MapData {
+    let map = MapData {
         areas: vec![forest, far_lake],
         buildings: vec![house],
         ..MapData::default()
-    })
-    .await;
+    };
 
-    let flat = &world.minimap;
+    let flat = crate::minimap(&route_north(&[]).await, &map);
+
     assert_eq!(flat.vertices.len() % 3, 0);
-    assert_eq!(flat.vertices.len(), flat.colors.len());
+    assert_eq!(flat.vertices.len(), flat.features.len());
     // Forest square (2 triangles) and house (2 triangles); the lake is 9 km away.
     assert_eq!(flat.vertices.len(), 12);
     assert!(flat.vertices.iter().all(|v| v[0] < 500.0));
+}
+
+#[tokio::test]
+async fn the_minimaps_corridor_leaves_open_land_to_the_whole_lands_map() {
+    // #236: meadows and fields cut off at the corridor's edge covered the land beyond in blocks.
+    let area = |cover| Area {
+        cover,
+        outer: vec![square(300.0, 500.0, 100.0)],
+        inner: vec![],
+    };
+    let map = MapData {
+        areas: vec![
+            area(LandCover::Meadow),
+            area(LandCover::Farmland),
+            area(LandCover::Public),
+            area(LandCover::Forest),
+        ],
+        ..MapData::default()
+    };
+
+    let flat = crate::minimap(&route_north(&[]).await, &map);
+
+    assert_eq!(flat.features, [MapFeature::Forest; 6]);
 }
 
 #[tokio::test]

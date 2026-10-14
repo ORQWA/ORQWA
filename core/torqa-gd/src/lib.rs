@@ -19,7 +19,7 @@ use torqa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
 use torqa_app::{library, view};
 use torqa_devices::ble::DeviceKind;
 use torqa_devices::fake::{FakeHeart, FakeRider};
-use torqa_domain::profile::{Avatar, Drivetrain, Profile, UnitSystem};
+use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
 use torqa_domain::shifting::{BUTTONS, Control, Press, Shift};
 use torqa_domain::units::{
     BeatsPerMinute, Kilograms, Meters, MetersPerSecond, Percent, Rpm, Watts,
@@ -29,6 +29,7 @@ use torqa_physics::{DescentMode, lean_angle};
 use torqa_routes::{ElevationSource, LocalProjection};
 use torqa_session::estimate;
 use torqa_session::workout::{EffortTest, HeartRateHold, RampTest, Workout};
+use torqa_world::MapFeature;
 
 mod log;
 
@@ -1301,30 +1302,8 @@ impl TorqaApp {
         let Some(map) = self.app.as_ref().and_then(|app| app.course_map(&path)) else {
             return VarDictionary::new();
         };
-        let color = |[r, g, b, a]: [f32; 4]| Color::from_rgba(r, g, b, a);
-        let vertices: PackedVector2Array = map
-            .areas
-            .vertices
-            .iter()
-            .map(|&[x, y]| Vector2::new(x, y))
-            .collect();
-        let colors: PackedColorArray = map.areas.colors.iter().map(|&c| color(c)).collect();
-        let mut lines = VarArray::new();
-        for line in &map.lines {
-            let points: PackedVector2Array = line
-                .points
-                .iter()
-                .map(|&[x, y]| Vector2::new(x, y))
-                .collect();
-            lines.push(
-                &vdict! {
-                    "points" => &points,
-                    "width" => line.width,
-                    "color" => color(line.color),
-                }
-                .to_variant(),
-            );
-        }
+        // The cards' pictures are dark whatever the rider's minimap.
+        let style = MapStyle::Dark;
         let mut labels = VarArray::new();
         for label in &map.labels {
             let kind = match label.kind {
@@ -1353,13 +1332,14 @@ impl TorqaApp {
             i32::try_from(PICTURE[0]).unwrap_or(i32::MAX),
             i32::try_from(PICTURE[1]).unwrap_or(i32::MAX),
         );
+        let (vertices, colors) = flat_map_arrays(&map.areas, style);
         vdict! {
             "size" => size,
             "frame" => frame,
-            "background" => color(torqa_world::course_map::LAND),
+            "background" => map_color(MapFeature::Land, style),
             "vertices" => &vertices,
             "colors" => &colors,
-            "lines" => &lines,
+            "lines" => &map_lines(&map.lines, style),
             "labels" => &labels,
         }
     }
@@ -2003,6 +1983,15 @@ impl TorqaApp {
             } else {
                 Avatar::Female
             },
+            map_style: if data
+                .get("map_style")
+                .and_then(|v| v.try_to::<GString>().ok())
+                .is_some_and(|m| m == "dark")
+            {
+                MapStyle::Dark
+            } else {
+                MapStyle::Coloured
+            },
             drivetrain: if data
                 .get("drivetrain")
                 .and_then(|v| v.try_to::<GString>().ok())
@@ -2380,30 +2369,31 @@ impl TorqaApp {
             .map_or_else(VarDictionary::new, |world| mesh_arrays(&world.structures))
     }
 
-    /// The minimap as coloured triangles: `{vertices, colors, background}`, vertices in metres
-    /// east/north of the route start (as in `track()`).
+    /// The minimap (R70) in the rider's map style: `{background, land, lines, corridor}`, all
+    /// in metres east/north of the route start (as in `track()`). `land` is the map of the
+    /// land around the whole route as coloured triangles `{vertices, colors}`, with its rivers
+    /// and roads as `lines` (`[{points, width, color}]` in drawing order, `width` in pixels)
+    /// over it; `corridor` the route's corridor in detail, drawn over both. Empty without a
+    /// route.
     #[func]
     fn minimap_mesh(&self) -> VarDictionary {
-        let Some(world) = self.app.as_ref().and_then(App::world) else {
+        let Some(app) = self.app.as_ref() else {
             return VarDictionary::new();
         };
-        let vertices: PackedVector2Array = world
-            .minimap
-            .vertices
-            .iter()
-            .map(|&[x, y]| Vector2::new(x, y))
-            .collect();
-        let colors: PackedColorArray = world
-            .minimap
-            .colors
-            .iter()
-            .map(|&[r, g, b, a]| Color::from_rgba(r, g, b, a))
-            .collect();
-        let [r, g, b, a] = torqa_world::MINIMAP_BACKGROUND;
+        let Some((land, corridor)) = app.minimap() else {
+            return VarDictionary::new();
+        };
+        let style = app.profile().profile.map_style;
+        let mesh = |flat: &torqa_world::FlatMap| {
+            let (vertices, colors) = flat_map_arrays(flat, style);
+            vdict! { "vertices" => &vertices, "colors" => &colors }
+        };
+        let empty = torqa_world::FlatMap::default();
         vdict! {
-            "vertices" => &vertices,
-            "colors" => &colors,
-            "background" => Color::from_rgba(r, g, b, a),
+            "background" => map_color(MapFeature::Land, style),
+            "land" => &mesh(land.map_or(&empty, |l| &l.areas)),
+            "lines" => &map_lines(land.map_or(&[][..], |l| &l.lines[..]), style),
+            "corridor" => &mesh(corridor),
         }
     }
 
@@ -3067,9 +3057,50 @@ fn sync_marks(marks: &PackedVector2Array) -> Vec<torqa_app::SyncMark> {
         .collect()
 }
 
+/// A flat map's triangles and their colours in `style`, for an `ArrayMesh`.
+fn flat_map_arrays(
+    flat: &torqa_world::FlatMap,
+    style: MapStyle,
+) -> (PackedVector2Array, PackedColorArray) {
+    let vertices = flat
+        .vertices
+        .iter()
+        .map(|&[x, y]| Vector2::new(x, y))
+        .collect();
+    let colors = flat.features.iter().map(|&f| map_color(f, style)).collect();
+    (vertices, colors)
+}
+
+/// A course map's rivers and roads as `[{points, width, color}]`, coloured in `style`.
+fn map_lines(lines: &[torqa_world::course_map::Line], style: MapStyle) -> VarArray {
+    let mut array = VarArray::new();
+    for line in lines {
+        let points: PackedVector2Array = line
+            .points
+            .iter()
+            .map(|&[x, y]| Vector2::new(x, y))
+            .collect();
+        array.push(
+            &vdict! {
+                "points" => &points,
+                "width" => line.width,
+                "color" => map_color(line.feature, style),
+            }
+            .to_variant(),
+        );
+    }
+    array
+}
+
+fn map_color(feature: MapFeature, style: MapStyle) -> Color {
+    let [r, g, b, a] = feature.color(style);
+    Color::from_rgba(r, g, b, a)
+}
+
 /// A rider as `profile()` describes them: `{id, name, rider_mass_kg, bike_mass_kg, ftp_w,
 /// max_heart_rate_bpm, units, language, avatar, drivetrain, chainring, cog, power_zones_pct,
-/// heart_rate_zones_pct, default_difficulty_pct}`.
+/// heart_rate_zones_pct, default_difficulty_pct, map_style}` with `map_style` either
+/// `"coloured"` or `"dark"`.
 fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
     vdict! {
         "id" => id,
@@ -3102,5 +3133,9 @@ fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
         "power_zones_pct" => &percent(&p.power_zones),
         "heart_rate_zones_pct" => &percent(&p.heart_rate_zones),
         "default_difficulty_pct" => p.default_difficulty.0,
+        "map_style" => match p.map_style {
+            MapStyle::Coloured => "coloured",
+            MapStyle::Dark => "dark",
+        },
     }
 }
