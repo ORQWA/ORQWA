@@ -295,11 +295,11 @@ msgstr ""
 msgid "Below 60 fps: a lower graphics quality (Devices & Settings) runs smoother."
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:98 app/scenes/profile_tab.gd:276
+#: app/scenes/profile_dialog.gd:105 app/scenes/profile_tab.gd:276
 msgid "Bike weight"
 msgstr ""
 
-#: app/scenes/course_detail.gd:100 app/scenes/workouts_tab.gd:281 core/torqa-app/src/import.rs:41
+#: app/scenes/course_detail.gd:100 app/scenes/workouts_tab.gd:281 core/torqa-app/src/import.rs:42
 msgid "Building 3D world"
 msgstr ""
 
@@ -327,7 +327,7 @@ msgstr ""
 msgid "Cannot connect."
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:83 app/scenes/profile_tab.gd:284
+#: app/scenes/profile_dialog.gd:90 app/scenes/profile_tab.gd:285
 msgid "Cassette: shift on the bike"
 msgstr ""
 
@@ -347,7 +347,7 @@ msgstr ""
 msgid "Cat 4"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:106
+#: app/scenes/profile_dialog.gd:114
 msgid "Chainring"
 msgstr ""
 
@@ -419,7 +419,7 @@ msgstr ""
 msgid "Climbing"
 msgstr ""
 
-#: app/scenes/minimap.gd:115
+#: app/scenes/minimap.gd:123
 msgid "Close"
 msgstr ""
 
@@ -427,12 +427,16 @@ msgstr ""
 msgid "Cloudy"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:107
+#: app/scenes/profile_dialog.gd:115
 msgid "Cog"
 msgstr ""
 
 #: app/ui/zones_editor.gd:33
 msgid "Coggan's power zones and the usual heart-rate zones"
+msgstr ""
+
+#: app/scenes/profile_dialog.gd:87 app/scenes/profile_tab.gd:281
+msgid "Colored"
 msgstr ""
 
 #: app/scenes/account_dialog.gd:77
@@ -467,7 +471,7 @@ msgstr ""
 msgid "Constant power %d W"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:38
+#: core/torqa-app/src/import.rs:39
 msgid "Correcting elevations"
 msgstr ""
 
@@ -487,7 +491,7 @@ msgstr ""
 msgid "Courses"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:294
+#: app/scenes/profile_tab.gd:295
 msgid "Custom"
 msgstr ""
 
@@ -499,6 +503,14 @@ msgstr ""
 msgid "Daily TSS"
 msgstr ""
 
+#: app/scenes/profile_tab.gd:281
+msgid "Dark"
+msgstr ""
+
+#: app/scenes/profile_dialog.gd:88
+msgid "Dark, like the course cards"
+msgstr ""
+
 #: app/scenes/courses_tab.gd:28
 msgid "Date added"
 msgstr ""
@@ -507,7 +519,7 @@ msgstr ""
 msgid "Dec"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:294
+#: app/scenes/profile_tab.gd:295
 msgid "Default"
 msgstr ""
 
@@ -587,11 +599,11 @@ msgstr ""
 msgid "Double press"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:37
+#: core/torqa-app/src/import.rs:38
 msgid "Downloading map data"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:39
+#: core/torqa-app/src/import.rs:40
 msgid "Downloading the course map"
 msgstr ""
 
@@ -603,7 +615,7 @@ msgstr ""
 msgid "Drag to resize the overlay"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:105 app/scenes/profile_tab.gd:283
+#: app/scenes/profile_dialog.gd:113 app/scenes/profile_tab.gd:284
 msgid "Drivetrain"
 msgstr ""
 
@@ -675,7 +687,7 @@ msgstr ""
 msgid "FIT activities"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd:305 app/scenes/profile_dialog.gd:99 app/scenes/profile_tab.gd:277
+#: app/scenes/analysis_tab.gd:305 app/scenes/profile_dialog.gd:106 app/scenes/profile_tab.gd:277
 msgid "FTP"
 msgstr ""
 
@@ -711,7 +723,7 @@ msgstr ""
 msgid "Feb"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:80 app/scenes/profile_tab.gd:280
+#: app/scenes/profile_dialog.gd:84 app/scenes/profile_tab.gd:280
 msgid "Female rider"
 msgstr ""
 
@@ -731,7 +743,7 @@ msgstr ""
 msgid "Find your API key on intervals.icu under Settings, Developer Settings."
 msgstr ""
 
-#: core/torqa-app/src/import.rs:40
+#: core/torqa-app/src/import.rs:41
 msgid "Finding the countries"
 msgstr ""
 
@@ -855,7 +867,7 @@ msgstr ""
 msgid "HC"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:122 app/scenes/profile_tab.gd:294 app/scenes/ride_settings_dialog.gd:31
+#: app/scenes/profile_dialog.gd:130 app/scenes/profile_tab.gd:295 app/scenes/ride_settings_dialog.gd:31
 msgid "HUD"
 msgstr ""
 
@@ -891,7 +903,7 @@ msgstr ""
 msgid "Heart-rate zone %d"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:315
+#: app/scenes/profile_tab.gd:316
 msgid "Heart-rate zones"
 msgstr ""
 
@@ -931,7 +943,7 @@ msgstr ""
 msgid "How do you want to ride?"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:78 app/scenes/profile_tab.gd:279
+#: app/scenes/profile_dialog.gd:82 app/scenes/profile_tab.gd:279
 msgid "Imperial (mi, lb)"
 msgstr ""
 
@@ -983,7 +995,7 @@ msgstr ""
 msgid "Keep both"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:103 app/scenes/profile_tab.gd:281
+#: app/scenes/profile_dialog.gd:110 app/scenes/profile_tab.gd:282
 msgid "Language"
 msgstr ""
 
@@ -1039,7 +1051,7 @@ msgstr ""
 msgid "Lowest power"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:81 app/scenes/profile_tab.gd:280
+#: app/scenes/profile_dialog.gd:85 app/scenes/profile_tab.gd:280
 msgid "Male rider"
 msgstr ""
 
@@ -1047,7 +1059,7 @@ msgstr ""
 msgid "Mar"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:100 app/scenes/profile_tab.gd:278
+#: app/scenes/profile_dialog.gd:107 app/scenes/profile_tab.gd:278
 msgid "Max heart rate"
 msgstr ""
 
@@ -1075,7 +1087,7 @@ msgstr ""
 msgid "Message at the start of the step"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:77 app/scenes/profile_tab.gd:279
+#: app/scenes/profile_dialog.gd:81 app/scenes/profile_tab.gd:279
 msgid "Metric (km, kg)"
 msgstr ""
 
@@ -1119,7 +1131,7 @@ msgstr ""
 msgid "Music: previous track"
 msgstr ""
 
-#: app/scenes/course_edit_dialog.gd:61 app/scenes/courses_tab.gd:24 app/scenes/profile_dialog.gd:50 app/ui/workout_editor.gd:120
+#: app/scenes/course_edit_dialog.gd:61 app/scenes/courses_tab.gd:24 app/scenes/profile_dialog.gd:53 app/ui/workout_editor.gd:120
 msgid "Name"
 msgstr ""
 
@@ -1135,7 +1147,7 @@ msgstr ""
 msgid "Neuromuscular"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:164
+#: app/scenes/profile_dialog.gd:173
 msgid "New rider"
 msgstr ""
 
@@ -1247,7 +1259,7 @@ msgstr ""
 msgid "On a course, the trainer holds the workout's power while you ride through its 3D world"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:86
+#: app/scenes/profile_dialog.gd:93
 msgid "On a single cog such as the Zwift Cog, Torqa shifts 24 virtual gears: ↑ and ↓ while riding"
 msgstr ""
 
@@ -1375,7 +1387,7 @@ msgstr ""
 msgid "Power zone"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:312
+#: app/scenes/profile_tab.gd:313
 msgid "Power zones"
 msgstr ""
 
@@ -1387,7 +1399,7 @@ msgstr ""
 msgid "Press"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:44 app/scenes/start_page.gd:68
+#: app/scenes/profile_dialog.gd:47 app/scenes/start_page.gd:68
 msgid "Profile"
 msgstr ""
 
@@ -1423,7 +1435,7 @@ msgstr ""
 msgid "Ramp to"
 msgstr ""
 
-#: core/torqa-app/src/import.rs:36
+#: core/torqa-app/src/import.rs:37
 msgid "Reading route"
 msgstr ""
 
@@ -1475,6 +1487,10 @@ msgstr ""
 msgid "Ride descents like flat roads"
 msgstr ""
 
+#: app/scenes/profile_dialog.gd:112 app/scenes/profile_tab.gd:281
+msgid "Ride map"
+msgstr ""
+
 #: app/scenes/course_detail.gd:148
 msgid "Ride options"
 msgstr ""
@@ -1491,15 +1507,15 @@ msgstr ""
 msgid "Ride this course along a video of it"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:176
+#: app/scenes/profile_dialog.gd:185
 msgid "Rider"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:104 app/scenes/profile_tab.gd:280
+#: app/scenes/profile_dialog.gd:111 app/scenes/profile_tab.gd:280
 msgid "Rider on the bike"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:37 app/scenes/profile_dialog.gd:164
+#: app/scenes/profile_dialog.gd:40 app/scenes/profile_dialog.gd:173
 msgid "Rider settings"
 msgstr ""
 
@@ -1519,7 +1535,7 @@ msgstr ""
 msgid "Rolling"
 msgstr ""
 
-#: app/scenes/minimap.gd:115
+#: app/scenes/minimap.gd:123
 msgid "Route"
 msgstr ""
 
@@ -1531,7 +1547,7 @@ msgstr ""
 msgid "Sat"
 msgstr ""
 
-#: app/scenes/course_edit_dialog.gd:57 app/scenes/profile_dialog.gd:38 app/ui/workout_editor.gd:111
+#: app/scenes/course_edit_dialog.gd:57 app/scenes/profile_dialog.gd:41 app/ui/workout_editor.gd:111
 msgid "Save"
 msgstr ""
 
@@ -1615,7 +1631,7 @@ msgstr ""
 msgid "Simulation: %d×"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:84 app/scenes/profile_tab.gd:284
+#: app/scenes/profile_dialog.gd:91 app/scenes/profile_tab.gd:285
 msgid "Single cog: virtual gears"
 msgstr ""
 
@@ -1799,7 +1815,7 @@ msgstr ""
 msgid "Trainer"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:101 app/ui/ride_options.gd:49
+#: app/scenes/profile_dialog.gd:108 app/ui/ride_options.gd:49
 msgid "Trainer difficulty"
 msgstr ""
 
@@ -1839,7 +1855,7 @@ msgstr ""
 msgid "Ultra"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:102 app/scenes/profile_tab.gd:279
+#: app/scenes/profile_dialog.gd:109 app/scenes/profile_tab.gd:279
 msgid "Units"
 msgstr ""
 
@@ -1955,7 +1971,7 @@ msgstr ""
 msgid "Weekly"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:97 app/scenes/profile_tab.gd:275
+#: app/scenes/profile_dialog.gd:104 app/scenes/profile_tab.gd:275
 msgid "Weight"
 msgstr ""
 
@@ -2051,7 +2067,7 @@ msgstr ""
 msgid "Zone %d  ·  %d–%d bpm"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:120
+#: app/scenes/profile_dialog.gd:128
 msgid "Zones"
 msgstr ""
 
@@ -2095,7 +2111,7 @@ msgstr ""
 msgid "© OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors (ODbL) · Terrain: Mapterhorn (CC BY 4.0), AWS Terrain Tiles"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:411
+#: app/scenes/profile_tab.gd:412
 msgid "“%s” and all their rides are deleted."
 msgstr ""
 

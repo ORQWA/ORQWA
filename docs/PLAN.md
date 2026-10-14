@@ -224,6 +224,9 @@ Built in rideable steps:
 - [x] Path card: route in `#2EB0FF` on black (elevation profile on the course page only); since
   #192 on the course's own map, drawn when the course is prepared and kept in the `.tqc`; since
   #203 the land around the whole route, black and white, with the names of its towns
+- [x] The ride's minimap on the course's map of the land around the whole route, its tiles
+  kept in the `.tqc`, with the corridor in detail over it for the close view, on video
+  courses too; colored or dark as each rider chooses (R70, #236)
 - [ ] Auto-rendered course screenshots at build time, cover selection, stored in the `.tqc`
   (ADR 0007 format bump); frames from the video for video courses
 - [x] Courses gallery (cards with stats and small map) and course detail page with ride options;

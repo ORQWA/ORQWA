@@ -865,6 +865,18 @@ msgstr "Unter 60 fps: Eine tiefere Grafikqualität (Geräte & Einstellungen) lä
 msgid "Rider on the bike"
 msgstr "Figur auf dem Velo"
 
+msgid "Ride map"
+msgstr "Karte beim Fahren"
+
+msgid "Colored"
+msgstr "Farbig"
+
+msgid "Dark"
+msgstr "Dunkel"
+
+msgid "Dark, like the course cards"
+msgstr "Dunkel, wie auf den Streckenkarten"
+
 msgid "Female rider"
 msgstr "Fahrerin"
 

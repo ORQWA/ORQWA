@@ -8,7 +8,7 @@ overlay over normal windows only, a Workouts tab and Di2 shifting (R57–R59), e
 with uploads by one click or automatically (R60) and the analysis of a rider's power across
 their rides (R61–R65, #217), and 2026-10-13 with an estimated time to the finish (R66, #231)
 and a searchable, sortable and grouped course gallery with the countries courses pass
-(R67–R68, #230).
+(R67–R68, #230), and 2026-10-14 with the minimap's land around the whole route (R70, #236).
 Requirement IDs (`R<n>`) are referenced from code, tests and ADRs. The list is **append-only**:
 existing requirements are never reworded or renumbered; changes are new requirements that state
 what they supersede, and the old entry only gets a short pointer.
@@ -61,8 +61,9 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 | R16 | **3D world (MVP)**: semi-realistic style *(now stylized, R44)*. World source user-selectable, default **hybrid** (real DEM + OpenStreetMap when available, procedural fallback). Weather/time-of-day presets. Cameras: first person, chase, drone — user's choice. Optional cadence-synced avatar. 60 fps on an M1 integrated GPU. *(Performance superseded by R43; visual target extended by R44–R47.)* |
 | R17 | **Video**: own GoPro/Insta360 footage, downloaded videos, and plain videos without GPS, and Tacx RLV courses (`.rlv` + `.pgmf`, added by #42). Auto-sync from embedded GPS (GoPro GPMF) with manual sync-point fallback. 1080p target; higher resolutions transcoded down on import. Variable playback speed with frame blending. |
 | R18 | **Street imagery**: Google Street View (online only, user's API key, no caching per Google ToS) and Mapillary. Smooth crossfade/zoom transitions between panoramas. |
-| R19 | Overlays: 2D minimap (OpenStreetMap tiles, cached for offline) and elevation profile with current position. |
+| R19 | Overlays: 2D minimap (OpenStreetMap tiles, cached for offline) and elevation profile with current position. *(Land around the whole route, map style: R70.)* |
 | R20 | Ghosts / pacers, selectable per ride: own previous best, fixed W/kg or power pacer, ghost from a GPX/FIT activity. |
+| R70 | Extends R19 (2026-10-14, #236): the minimap shows the **land around the whole route**, as the course's map does, for 3D and video courses alike, offline from the course file; the close view shows the route's corridor in detail over it, for video courses too. Each rider chooses whether it is drawn **colored** or **dark**, like the course cards. |
 
 ## Training & UX
 

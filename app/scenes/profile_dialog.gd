@@ -9,6 +9,8 @@ signal profile_confirmed(id: String, profile: Dictionary, hud_layout: PackedStri
 
 const UNITS: Array[String] = ["metric", "imperial"]
 const DRIVETRAINS: Array[String] = ["cassette", "single_cog"]
+## How the ride's minimap is drawn (R70).
+const MAP_STYLES: Array[String] = ["coloured", "dark"]
 ## Interface languages: locale code and name in that language; "" follows the system.
 const LANGUAGES: Array[Array] = [["", "System language"], ["en", "English"], ["de", "Deutsch"]]
 
@@ -22,6 +24,7 @@ var _difficulty: SpinBox = _spin(0.0, 100.0, 5.0, " %")
 var _units: OptionButton = OptionButton.new()
 var _language: OptionButton = OptionButton.new()
 var _avatar: OptionButton = OptionButton.new()
+var _map_style: OptionButton = OptionButton.new()
 ## A cassette, or a single cog with virtual gears (R9): its chainring and cog then.
 var _drivetrain: OptionButton = OptionButton.new()
 var _chainring: SpinBox = _spin(20.0, 60.0, 1.0, " T")
@@ -69,6 +72,7 @@ func _ready() -> void:
 		_units,
 		_language,
 		_avatar,
+		_map_style,
 		_drivetrain,
 		_chainring,
 		_cog,
@@ -79,6 +83,9 @@ func _ready() -> void:
 	# In the order of RiderAvatar.RIDERS.
 	_avatar.add_item(tr("Female rider"))
 	_avatar.add_item(tr("Male rider"))
+	# In the order of MAP_STYLES.
+	_map_style.add_item(tr("Colored"))
+	_map_style.add_item(tr("Dark, like the course cards"))
 	# In the order of DRIVETRAINS.
 	_drivetrain.add_item(tr("Cassette: shift on the bike"))
 	_drivetrain.add_item(tr("Single cog: virtual gears"))
@@ -102,6 +109,7 @@ func _ready() -> void:
 		["Units", _units],
 		["Language", _language],
 		["Rider on the bike", _avatar],
+		["Ride map", _map_style],
 		["Drivetrain", _drivetrain],
 		["Chainring", _chainring],
 		["Cog", _cog],
@@ -150,6 +158,7 @@ func edit(profile: Dictionary, hud_layout: PackedStringArray) -> void:
 			_language.select(i)
 	var avatar: String = profile.get("avatar", RiderAvatar.RIDERS[0])
 	_avatar.select(maxi(RiderAvatar.RIDERS.find(avatar), 0))
+	_map_style.select(maxi(MAP_STYLES.find(profile.get("map_style", "coloured")), 0))
 	var drivetrain: String = profile.get("drivetrain", "cassette")
 	_drivetrain.select(maxi(DRIVETRAINS.find(drivetrain), 0))
 	_chainring.value = profile.get("chainring", 50)
@@ -182,6 +191,7 @@ func _on_confirmed() -> void:
 				"units": UNITS[_units.selected],
 				"language": LANGUAGES[_language.selected][0],
 				"avatar": RiderAvatar.RIDERS[_avatar.selected],
+				"map_style": MAP_STYLES[_map_style.selected],
 				"drivetrain": DRIVETRAINS[_drivetrain.selected],
 				"chainring": _chainring.value,
 				"cog": _cog.value,

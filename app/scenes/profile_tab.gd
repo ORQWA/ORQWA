@@ -278,6 +278,7 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 		["Max heart rate", "%d bpm" % roundi(max_hr)],
 		["Units", "Imperial (mi, lb)" if imperial else "Metric (km, kg)"],
 		["Rider on the bike", "Male rider" if rider.get("avatar") == "male" else "Female rider"],
+		["Ride map", "Dark" if rider.get("map_style") == "dark" else "Colored"],
 		["Language", language],
 		[
 			"Drivetrain",
