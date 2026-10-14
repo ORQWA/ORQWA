@@ -84,8 +84,8 @@ func _ready() -> void:
 	_avatar.add_item(tr("Female rider"))
 	_avatar.add_item(tr("Male rider"))
 	# In the order of MAP_STYLES.
-	_map_style.add_item(tr("Coloured"))
-	_map_style.add_item(tr("Black, like the course cards"))
+	_map_style.add_item(tr("Colored"))
+	_map_style.add_item(tr("Dark, like the course cards"))
 	# In the order of DRIVETRAINS.
 	_drivetrain.add_item(tr("Cassette: shift on the bike"))
 	_drivetrain.add_item(tr("Single cog: virtual gears"))

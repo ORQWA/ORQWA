@@ -299,10 +299,6 @@ msgstr ""
 msgid "Bike weight"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:88
-msgid "Black, like the course cards"
-msgstr ""
-
 #: app/scenes/course_detail.gd:100 app/scenes/workouts_tab.gd:281 core/torqa-app/src/import.rs:42
 msgid "Building 3D world"
 msgstr ""
@@ -331,7 +327,7 @@ msgstr ""
 msgid "Cannot connect."
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:90 app/scenes/profile_tab.gd:284
+#: app/scenes/profile_dialog.gd:90 app/scenes/profile_tab.gd:285
 msgid "Cassette: shift on the bike"
 msgstr ""
 
@@ -439,8 +435,8 @@ msgstr ""
 msgid "Coggan's power zones and the usual heart-rate zones"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:87
-msgid "Coloured"
+#: app/scenes/profile_dialog.gd:87 app/scenes/profile_tab.gd:281
+msgid "Colored"
 msgstr ""
 
 #: app/scenes/account_dialog.gd:77
@@ -495,7 +491,7 @@ msgstr ""
 msgid "Courses"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:294
+#: app/scenes/profile_tab.gd:295
 msgid "Custom"
 msgstr ""
 
@@ -507,6 +503,14 @@ msgstr ""
 msgid "Daily TSS"
 msgstr ""
 
+#: app/scenes/profile_tab.gd:281
+msgid "Dark"
+msgstr ""
+
+#: app/scenes/profile_dialog.gd:88
+msgid "Dark, like the course cards"
+msgstr ""
+
 #: app/scenes/courses_tab.gd:28
 msgid "Date added"
 msgstr ""
@@ -515,7 +519,7 @@ msgstr ""
 msgid "Dec"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:294
+#: app/scenes/profile_tab.gd:295
 msgid "Default"
 msgstr ""
 
@@ -611,7 +615,7 @@ msgstr ""
 msgid "Drag to resize the overlay"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:113 app/scenes/profile_tab.gd:283
+#: app/scenes/profile_dialog.gd:113 app/scenes/profile_tab.gd:284
 msgid "Drivetrain"
 msgstr ""
 
@@ -863,7 +867,7 @@ msgstr ""
 msgid "HC"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:130 app/scenes/profile_tab.gd:294 app/scenes/ride_settings_dialog.gd:31
+#: app/scenes/profile_dialog.gd:130 app/scenes/profile_tab.gd:295 app/scenes/ride_settings_dialog.gd:31
 msgid "HUD"
 msgstr ""
 
@@ -899,7 +903,7 @@ msgstr ""
 msgid "Heart-rate zone %d"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:315
+#: app/scenes/profile_tab.gd:316
 msgid "Heart-rate zones"
 msgstr ""
 
@@ -991,7 +995,7 @@ msgstr ""
 msgid "Keep both"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:110 app/scenes/profile_tab.gd:281
+#: app/scenes/profile_dialog.gd:110 app/scenes/profile_tab.gd:282
 msgid "Language"
 msgstr ""
 
@@ -1383,7 +1387,7 @@ msgstr ""
 msgid "Power zone"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:312
+#: app/scenes/profile_tab.gd:313
 msgid "Power zones"
 msgstr ""
 
@@ -1483,7 +1487,7 @@ msgstr ""
 msgid "Ride descents like flat roads"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:112
+#: app/scenes/profile_dialog.gd:112 app/scenes/profile_tab.gd:281
 msgid "Ride map"
 msgstr ""
 
@@ -1627,7 +1631,7 @@ msgstr ""
 msgid "Simulation: %d×"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:91 app/scenes/profile_tab.gd:284
+#: app/scenes/profile_dialog.gd:91 app/scenes/profile_tab.gd:285
 msgid "Single cog: virtual gears"
 msgstr ""
 
@@ -2107,7 +2111,7 @@ msgstr ""
 msgid "© OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors (ODbL) · Terrain: Mapterhorn (CC BY 4.0), AWS Terrain Tiles"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:411
+#: app/scenes/profile_tab.gd:412
 msgid "“%s” and all their rides are deleted."
 msgstr ""
 

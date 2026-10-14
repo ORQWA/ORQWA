@@ -63,7 +63,7 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 | R18 | **Street imagery**: Google Street View (online only, user's API key, no caching per Google ToS) and Mapillary. Smooth crossfade/zoom transitions between panoramas. |
 | R19 | Overlays: 2D minimap (OpenStreetMap tiles, cached for offline) and elevation profile with current position. *(Land around the whole route, map style: R70.)* |
 | R20 | Ghosts / pacers, selectable per ride: own previous best, fixed W/kg or power pacer, ghost from a GPX/FIT activity. |
-| R70 | Extends R19 (2026-10-14, #236): the minimap shows the **land around the whole route**, as the course's map does, for 3D and video courses alike, offline from the course file; the close view shows the route's corridor in detail over it, for video courses too. Each rider chooses whether it is drawn **in colour** or **black**, like the course cards. |
+| R70 | Extends R19 (2026-10-14, #236): the minimap shows the **land around the whole route**, as the course's map does, for 3D and video courses alike, offline from the course file; the close view shows the route's corridor in detail over it, for video courses too. Each rider chooses whether it is drawn **colored** or **dark**, like the course cards. |
 
 ## Training & UX
 

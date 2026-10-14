@@ -868,11 +868,14 @@ msgstr "Figur auf dem Velo"
 msgid "Ride map"
 msgstr "Karte beim Fahren"
 
-msgid "Coloured"
+msgid "Colored"
 msgstr "Farbig"
 
-msgid "Black, like the course cards"
-msgstr "Schwarz, wie auf den Streckenkarten"
+msgid "Dark"
+msgstr "Dunkel"
+
+msgid "Dark, like the course cards"
+msgstr "Dunkel, wie auf den Streckenkarten"
 
 msgid "Female rider"
 msgstr "Fahrerin"
