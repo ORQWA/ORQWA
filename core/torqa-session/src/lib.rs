@@ -16,8 +16,8 @@ use std::time::Duration;
 
 use torqa_domain::recording::{Location, Sample};
 use torqa_domain::shifting::Shift;
-use torqa_domain::telemetry::{Telemetry, TrainerControl};
-use torqa_domain::units::{GradePercent, Meters, MetersPerSecond, Percent, Watts};
+use torqa_domain::telemetry::{CadenceSource, Telemetry, TrainerControl};
+use torqa_domain::units::{GradePercent, Meters, MetersPerSecond, Percent, Rpm, Watts};
 use torqa_physics::{DescentMode, GEARS, Motion, RiderSetup, VirtualGears, trainer_grade};
 use torqa_routes::{Route, RoutePosition};
 use workout::{Workout, WorkoutControl, WorkoutState};
@@ -44,6 +44,8 @@ pub struct RideConfig {
     pub descent: DescentMode,
     /// Virtual gears on a single cog (R9); `None` with a cassette.
     pub gears: Option<VirtualGears>,
+    /// Which device's cadence counts (R72).
+    pub cadence: CadenceSource,
 }
 
 impl Default for RideConfig {
@@ -55,6 +57,7 @@ impl Default for RideConfig {
             difficulty: Percent(50.0),
             descent: DescentMode::Coast,
             gears: None,
+            cadence: CadenceSource::Automatic,
         }
     }
 }
@@ -91,6 +94,38 @@ pub struct RideState {
     pub gear: Option<Gear>,
 }
 
+/// The latest power and cadence of each device that measures them; `None` for what a device
+/// does not report, or has not since it connected.
+#[derive(Debug, Clone, Copy, Default)]
+struct Readings {
+    trainer_power: Option<Watts>,
+    trainer_cadence: Option<Rpm>,
+    meter_power: Option<Watts>,
+    meter_cadence: Option<Rpm>,
+    sensor_cadence: Option<Rpm>,
+}
+
+impl Readings {
+    /// A power meter's power wins over the trainer's (R71).
+    fn power(&self) -> Option<Watts> {
+        self.meter_power.or(self.trainer_power)
+    }
+
+    /// The chosen source's cadence, else the others' (R72).
+    fn cadence(&self, source: CadenceSource) -> Option<Rpm> {
+        let (trainer, meter, sensor) = (
+            self.trainer_cadence,
+            self.meter_cadence,
+            self.sensor_cadence,
+        );
+        match source {
+            CadenceSource::Automatic => sensor.or(meter).or(trainer),
+            CadenceSource::Trainer => trainer.or(sensor).or(meter),
+            CadenceSource::PowerMeter => meter.or(sensor).or(trainer),
+        }
+    }
+}
+
 /// A ride along a route, or a workout on a flat road without one.
 #[derive(Debug, Clone)]
 pub struct Ride {
@@ -101,6 +136,8 @@ pub struct Ride {
     distance: Meters,
     elapsed: Duration,
     telemetry: Telemetry,
+    /// Each device's latest power and cadence, which `telemetry` shows the rider's of.
+    readings: Readings,
     samples: Vec<Sample>,
     next_sample: Duration,
     /// The control sent last and when; `None` sends the next one at once.
@@ -143,6 +180,7 @@ impl Ride {
             distance: Meters(0.0),
             elapsed: Duration::ZERO,
             telemetry: Telemetry::default(),
+            readings: Readings::default(),
             samples: Vec::new(),
             next_sample: Duration::ZERO,
             last_control: None,
@@ -150,17 +188,56 @@ impl Ride {
         }
     }
 
-    /// Feeds new measurements from a device.
+    /// Feeds new measurements from the trainer or the heart-rate strap. A power meter's power
+    /// counts over the trainer's (R71), the cadence as [`RideConfig::cadence`] says (R72).
     pub fn on_telemetry(&mut self, telemetry: &Telemetry) {
+        let readings = &mut self.readings;
+        readings.trainer_power = telemetry.power.or(readings.trainer_power);
+        readings.trainer_cadence = telemetry.cadence.or(readings.trainer_cadence);
         self.telemetry.merge(telemetry);
+        self.choose_readings();
     }
 
-    /// Forgets the power source's last values, e.g. when the trainer disconnects, so the rider
-    /// does not keep riding on stale power.
-    pub fn on_power_source_lost(&mut self) {
-        self.telemetry.power = None;
-        self.telemetry.cadence = None;
+    /// Feeds new measurements from a power meter (R71): its power is the rider's while it
+    /// reports.
+    pub fn on_power_meter(&mut self, telemetry: &Telemetry) {
+        let readings = &mut self.readings;
+        readings.meter_power = telemetry.power.or(readings.meter_power);
+        readings.meter_cadence = telemetry.cadence.or(readings.meter_cadence);
+        self.choose_readings();
+    }
+
+    /// Feeds new measurements from a cadence sensor (R72).
+    pub fn on_cadence_sensor(&mut self, telemetry: &Telemetry) {
+        self.readings.sensor_cadence = telemetry.cadence.or(self.readings.sensor_cadence);
+        self.choose_readings();
+    }
+
+    /// Forgets the power meter's values when it disconnects; the trainer's count again.
+    pub fn on_power_meter_lost(&mut self) {
+        self.readings.meter_power = None;
+        self.readings.meter_cadence = None;
+        self.choose_readings();
+    }
+
+    /// Forgets the cadence sensor's cadence when it disconnects.
+    pub fn on_cadence_sensor_lost(&mut self) {
+        self.readings.sensor_cadence = None;
+        self.choose_readings();
+    }
+
+    /// Forgets the trainer's values when it disconnects, so the rider does not keep riding on
+    /// stale power. A power meter's power still counts.
+    pub fn on_trainer_lost(&mut self) {
+        self.readings.trainer_power = None;
+        self.readings.trainer_cadence = None;
         self.telemetry.speed = None;
+        self.choose_readings();
+    }
+
+    fn choose_readings(&mut self) {
+        self.telemetry.power = self.readings.power();
+        self.telemetry.cadence = self.readings.cadence(self.config.cadence);
     }
 
     /// Forgets the heart rate, e.g. when the strap disconnects, so no stale value is shown
@@ -685,16 +762,125 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn lost_power_source_stops_propulsion() {
+    async fn a_lost_trainer_stops_propulsion() {
         let mut ride = Ride::new(route(&[0.0], 5000.0).await, RideConfig::default());
         pedal(&mut ride, 250.0, 60);
 
-        ride.on_power_source_lost();
+        ride.on_trainer_lost();
         for _ in 0..1200 {
             ride.tick(Duration::from_millis(250));
         }
 
         assert!(ride.state().speed.0 < 1.0, "{:?}", ride.state().speed);
+    }
+
+    fn meter(power: f64, cadence: Option<f64>) -> Telemetry {
+        Telemetry {
+            power: Some(Watts(power)),
+            cadence: cadence.map(Rpm),
+            ..Telemetry::default()
+        }
+    }
+
+    #[tokio::test]
+    async fn a_power_meter_outranks_the_trainer() {
+        let mut ride = Ride::new(route(&[0.0], 5000.0).await, RideConfig::default());
+        ride.on_power_meter(&meter(210.0, Some(85.0)));
+        pedal(&mut ride, 200.0, 5);
+
+        let telemetry = ride.state().telemetry;
+        assert_eq!(telemetry.power, Some(Watts(210.0)));
+        assert_eq!(telemetry.cadence, Some(Rpm(85.0)));
+        assert_eq!(ride.samples().last().unwrap().power, Some(Watts(210.0)));
+    }
+
+    #[tokio::test]
+    async fn the_trainer_cadence_counts_while_the_meter_reports_none() {
+        let mut ride = Ride::new(route(&[0.0], 5000.0).await, RideConfig::default());
+        ride.on_power_meter(&meter(210.0, None));
+        pedal(&mut ride, 200.0, 1);
+
+        let telemetry = ride.state().telemetry;
+        assert_eq!(telemetry.power, Some(Watts(210.0)));
+        assert_eq!(telemetry.cadence, Some(Rpm(90.0)));
+    }
+
+    #[tokio::test]
+    async fn the_trainer_takes_over_when_the_meter_drops() {
+        let mut ride = Ride::new(route(&[0.0], 5000.0).await, RideConfig::default());
+        ride.on_power_meter(&meter(210.0, Some(85.0)));
+        pedal(&mut ride, 200.0, 1);
+
+        ride.on_power_meter_lost();
+
+        let telemetry = ride.state().telemetry;
+        assert_eq!(telemetry.power, Some(Watts(200.0)));
+        assert_eq!(telemetry.cadence, Some(Rpm(90.0)));
+    }
+
+    #[tokio::test]
+    async fn the_meter_keeps_the_rider_going_when_the_trainer_drops() {
+        let mut ride = Ride::new(route(&[0.0], 5000.0).await, RideConfig::default());
+        ride.on_power_meter(&meter(250.0, Some(90.0)));
+        pedal(&mut ride, 250.0, 60);
+
+        ride.on_trainer_lost();
+        for _ in 0..240 {
+            ride.on_power_meter(&meter(250.0, Some(90.0)));
+            ride.tick(Duration::from_millis(250));
+        }
+
+        assert!(ride.state().speed.0 > 5.0, "{:?}", ride.state().speed);
+    }
+
+    fn sensor(cadence: f64) -> Telemetry {
+        Telemetry {
+            cadence: Some(Rpm(cadence)),
+            ..Telemetry::default()
+        }
+    }
+
+    /// A ride with a trainer at 90 rpm, a power meter at 85 rpm and a sensor at 80 rpm.
+    async fn three_cadences(source: CadenceSource) -> Ride {
+        let config = RideConfig {
+            cadence: source,
+            ..RideConfig::default()
+        };
+        let mut ride = Ride::new(route(&[0.0], 5000.0).await, config);
+        ride.on_power_meter(&meter(210.0, Some(85.0)));
+        ride.on_cadence_sensor(&sensor(80.0));
+        pedal(&mut ride, 200.0, 1);
+        ride
+    }
+
+    #[tokio::test]
+    async fn automatic_cadence_prefers_a_sensor_then_the_meter() {
+        let mut ride = three_cadences(CadenceSource::Automatic).await;
+        assert_eq!(ride.state().telemetry.cadence, Some(Rpm(80.0)));
+        ride.on_cadence_sensor_lost();
+        assert_eq!(ride.state().telemetry.cadence, Some(Rpm(85.0)));
+        ride.on_power_meter_lost();
+        assert_eq!(ride.state().telemetry.cadence, Some(Rpm(90.0)));
+    }
+
+    #[tokio::test]
+    async fn the_chosen_cadence_source_wins() {
+        let ride = three_cadences(CadenceSource::Trainer).await;
+        assert_eq!(ride.state().telemetry.cadence, Some(Rpm(90.0)));
+        assert_eq!(
+            ride.state().telemetry.power,
+            Some(Watts(210.0)),
+            "power stays the meter's"
+        );
+        let ride = three_cadences(CadenceSource::PowerMeter).await;
+        assert_eq!(ride.state().telemetry.cadence, Some(Rpm(85.0)));
+    }
+
+    #[tokio::test]
+    async fn another_cadence_stands_in_for_the_chosen_one() {
+        let mut ride = three_cadences(CadenceSource::Trainer).await;
+        ride.on_trainer_lost();
+        assert_eq!(ride.state().telemetry.cadence, Some(Rpm(80.0)));
     }
 
     #[tokio::test]

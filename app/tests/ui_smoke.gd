@@ -310,12 +310,12 @@ func _shifter_buttons() -> void:
 	var tab: DevicesTab = DevicesTab.new()
 	root.add_child(tab)
 	var choices: Array[Node] = tab.find_children("*", "OptionButton", true, false)
-	# Trainer, heart rate and shifter, a press, a hold and a double press of four channels, and
-	# the graphics quality.
+	# Trainer, power meter, cadence, heart rate and shifter, a press, a hold and a double press
+	# of four channels, and the graphics quality.
 	_check(
-		choices.size() == 3 + 4 * 3 + 1, "a choice per press of each channel: %d" % choices.size()
+		choices.size() == 5 + 4 * 3 + 1, "a choice per press of each channel: %d" % choices.size()
 	)
-	var press: OptionButton = choices[3]
+	var press: OptionButton = choices[5]
 	_check(press.item_count == 1 + actions.size(), "nothing or any action")
 	tab.free()
 

@@ -8,7 +8,8 @@ overlay over normal windows only, a Workouts tab and Di2 shifting (R57–R59), e
 with uploads by one click or automatically (R60) and the analysis of a rider's power across
 their rides (R61–R65, #217), and 2026-10-13 with an estimated time to the finish (R66, #231)
 and a searchable, sortable and grouped course gallery with the countries courses pass
-(R67–R68, #230), and 2026-10-14 with the minimap's land around the whole route (R70, #236).
+(R67–R68, #230), and 2026-10-14 with the minimap's land around the whole route (R70, #236)
+and power meters and the cadence's source (R71–R72).
 Requirement IDs (`R<n>`) are referenced from code, tests and ADRs. The list is **append-only**:
 existing requirements are never reworded or renumbered; changes are new requirements that state
 what they supersede, and the old entry only gets a short pointer.
@@ -34,10 +35,12 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 |---|---|
 | R5 | Bluetooth LE **FTMS** (MVP). **ANT+ FE-C** later (no ANT+ dongle available for testing yet). |
 | R6 | Direct-drive trainers first (KICKR Core 2). Architecture generic enough for any FTMS/FE-C trainer and smart bikes. |
-| R7 | Sensors: BLE heart-rate strap. Zwift Click as shift input (no official protocol → reverse-engineered BLE, isolated and optional); also OpenBikeControl and keyboard/gamepad as shift inputs. *(Shift inputs: R59.)* |
+| R7 | Sensors: BLE heart-rate strap. Zwift Click as shift input (no official protocol → reverse-engineered BLE, isolated and optional); also OpenBikeControl and keyboard/gamepad as shift inputs. *(Shift inputs: R59; power meters: R71; cadence: R72.)* |
 | R8 | Trainer modes: **SIM** (slope simulation, MVP), **ERG** (target power), **resistance level**; free ride. |
 | R9 | Drivetrain: real cassette (trainer handles shifting naturally) and Zwift Cog (app-side **virtual gears** — resistance offset via FTMS). Post-MVP. See ADR 0003. |
 | R10 | Software **fake trainer** for development and automated tests. |
+| R71 | Extends R7 (2026-10-14): a Bluetooth **power meter** (Cycling Power Service — power pedals such as the Favero Assioma, crank and spider meters) beside the trainer. While it reports, **its power is the rider's**: for the speed, the HUD, the recording and the analysis; its **cadence** too where it reports one (worked out from its crank revolutions), else the trainer's *(choice of source: R72)*. If it drops, the trainer's power and cadence count until it is back, and if the trainer drops the meter's power still moves the rider. It is chosen in Devices & Settings, remembered and reconnected like the other devices (R41, R69). The trainer still holds ERG targets by its own measurement; matching them to the meter is a later step. |
+| R72 | Extends R71 (2026-10-14): the rider chooses **where the cadence comes from**, as Zwift's pairing screen does: **Automatic** (a cadence sensor if one is connected, else the power meter, else the trainer), the **trainer**, the **power meter**, or a Bluetooth **cadence sensor** (Cycling Speed and Cadence Service). While the chosen device reports no cadence, the others stand in, in the automatic order. The choice is kept for the installation; a chosen sensor is remembered and reconnected like the other devices. |
 
 ## Routes
 

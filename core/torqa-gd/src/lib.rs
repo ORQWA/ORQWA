@@ -21,6 +21,7 @@ use torqa_devices::ble::DeviceKind;
 use torqa_devices::fake::{FakeHeart, FakeRider};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
 use torqa_domain::shifting::{BUTTONS, Control, Press, Shift};
+use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{
     BeatsPerMinute, Kilograms, Meters, MetersPerSecond, Percent, Rpm, Watts,
 };
@@ -109,8 +110,8 @@ impl INode for TorqaApp {
 
 #[godot_api]
 impl TorqaApp {
-    /// A scan finished: an array of dictionaries `{index, name, kind ("trainer" or
-    /// "heart_rate"), rssi}`.
+    /// A scan finished: an array of dictionaries `{index, name, kind ("trainer",
+    /// "power_meter", "cadence_sensor", "heart_rate" or "controller"), rssi, remembered}`.
     #[signal]
     fn devices_found(devices: VarArray);
 
@@ -199,7 +200,7 @@ impl TorqaApp {
     #[signal]
     fn control_requested(control: GString);
 
-    /// Reconnects the trainer and heart-rate sensor used last, in the background (emits
+    /// Reconnects the devices used last, in the background (emits
     /// `devices_found`, `device_connected` and, for those not found, `remembered_missing`).
     /// False if none is remembered.
     #[func]
@@ -215,7 +216,7 @@ impl TorqaApp {
         self.app.as_mut().is_some_and(App::reconnect_devices)
     }
 
-    /// The trainer, heart-rate sensor and shifter in use or used last, as
+    /// The trainer, sensors and shifter in use or used last, as
     /// `[{name, kind, connected}]` with `kind` as in `devices_found` (R69).
     #[func]
     fn devices(&self) -> VarArray {
@@ -230,7 +231,7 @@ impl TorqaApp {
         array
     }
 
-    /// Scans for trainers and heart-rate sensors.
+    /// Scans for trainers, power meters, cadence and heart-rate sensors and shifters.
     #[func]
     fn scan(&mut self, seconds: f64) {
         if let Some(app) = self.app.as_mut() {
@@ -1439,6 +1440,46 @@ impl TorqaApp {
             return false;
         };
         self.command(|app| app.connect_heart_rate(index))
+    }
+
+    /// Connects a scanned power meter by its index; its power counts over the trainer's (R71).
+    #[func]
+    fn connect_power_meter(&mut self, index: i64) -> bool {
+        let Ok(index) = usize::try_from(index) else {
+            return false;
+        };
+        self.command(|app| app.connect_power_meter(index))
+    }
+
+    /// Connects a scanned cadence sensor by its index; its cadence counts first (R72).
+    #[func]
+    fn connect_cadence_sensor(&mut self, index: i64) -> bool {
+        let Ok(index) = usize::try_from(index) else {
+            return false;
+        };
+        self.command(|app| app.connect_cadence_sensor(index))
+    }
+
+    /// Which device's cadence counts (R72): `automatic`, `trainer` or `power_meter`.
+    #[func]
+    fn cadence_source(&self) -> GString {
+        let source = self
+            .app
+            .as_ref()
+            .map(App::cadence_source)
+            .unwrap_or_default();
+        GString::from(source.name())
+    }
+
+    /// Takes the cadence from `name` (as `cadence_source` returns it) from the next ride on,
+    /// letting go of any cadence sensor. False for an unknown name.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn set_cadence_source(&mut self, name: GString) -> bool {
+        let Some(source) = CadenceSource::from_name(&name.to_string()) else {
+            return false;
+        };
+        self.command(|app| app.set_cadence_source(source))
     }
 
     /// Starts riding the loaded route as the active rider, against `ghost`: `{kind}` with
@@ -2921,6 +2962,8 @@ fn kind_name(kind: DeviceKind) -> &'static str {
     match kind {
         DeviceKind::Trainer => "trainer",
         DeviceKind::HeartRateSensor => "heart_rate",
+        DeviceKind::PowerMeter => "power_meter",
+        DeviceKind::CadenceSensor => "cadence_sensor",
         DeviceKind::Controller => "controller",
     }
 }
