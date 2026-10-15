@@ -1538,7 +1538,7 @@ msgid "Time of day"
 msgstr "Tageszeit"
 
 msgid "Time to go"
-msgstr "Verbleibende Zeit"
+msgstr "Zeit übrig"
 
 msgid "Times"
 msgstr "Zeiten"
