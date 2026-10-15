@@ -11,7 +11,11 @@ All tooling runs in a container — nothing is installed on your machine.
    [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.
 2. Open this folder in VS Code and choose **Reopen in Container**.
 
-Without VS Code, `scripts/dev.sh <command>` runs any command in the same container.
+Without VS Code, `scripts/dev.sh <command>` runs any command in the same container; on Windows,
+from Git Bash. The checkout uses LF line endings everywhere (`.gitattributes`): the container
+runs the scripts and the Dockerfile from the checkout, and `sh` rejects CRLF. A clone made
+before that setting may hold CRLF files; `git ls-files --eol | grep w/crlf` lists them, and
+`git add --renormalize .` after a clean `git checkout` puts them right.
 
 ## Tasks
 

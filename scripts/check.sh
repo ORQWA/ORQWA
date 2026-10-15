@@ -28,6 +28,9 @@ run_godot() {
     output="$(godot --headless --path "$root/app" "$@" 2>&1)" || { echo "$output"; return 1; }
     echo "$output"
     if echo "$output" | grep -q "SCRIPT ERROR\|SHADER ERROR\|^ERROR:"; then
+        # The callers capture standard output, so the errors go to standard error as well:
+        # otherwise a failing check only says that Godot reported errors, not which.
+        echo "$output" | grep -A3 "SCRIPT ERROR\|SHADER ERROR\|^ERROR:" >&2
         echo "Godot reported errors" >&2
         return 1
     fi
