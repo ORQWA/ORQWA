@@ -382,6 +382,18 @@ msgstr "Verbunden"
 msgid "Connecting…"
 msgstr "Verbinde…"
 
+msgid "Searching…"
+msgstr "Suche…"
+
+msgid "Search"
+msgstr "Suchen"
+
+msgid "Scan for all devices"
+msgstr "Alle Geräte suchen"
+
+msgid "The devices used last connect by themselves. Search beside a row to find one of that kind."
+msgstr "Zuletzt genutzte Geräte verbinden sich von selbst. Suche neben einer Zeile nach einem Gerät dieser Art."
+
 msgid "Reconnecting…"
 msgstr "Verbinde erneut…"
 
@@ -1342,9 +1354,6 @@ msgstr "Gespeichert unter %s"
 msgid "Saved to your workouts."
 msgstr "In deinen Trainings gespeichert."
 
-msgid "Scan for devices"
-msgstr "Geräte suchen"
-
 msgid "Scanning…"
 msgstr "Suche läuft …"
 
@@ -1672,8 +1681,8 @@ msgstr "W/kg"
 msgid "Waiting for the trainer…"
 msgstr "Warte auf den Trainer …"
 
-msgid "Wake your trainer by pedalling, then scan. A device connects as soon as you choose it."
-msgstr "Aktiviere deinen Trainer durch Treten und suche dann nach Geräten. Ein Gerät verbindet sich, sobald du es wählst."
+msgid "Wake the device first: pedal, or put the strap on."
+msgstr "Aktiviere das Gerät zuerst: tritt in die Pedale oder lege den Brustgurt an."
 
 msgid "Warm-up  ·  %s left"
 msgstr "Aufwärmen  ·  noch %s"

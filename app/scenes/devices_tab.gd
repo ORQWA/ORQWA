@@ -51,6 +51,7 @@ const PRESSES: Array[String] = ["Press", "Hold", "Double press"]
 const CLICK_BUTTONS: Array[String] = ["Plus (+)", "Minus (−)"]
 ## How a row's device is doing (R76), by state.
 const STATE_LABELS: Dictionary[String, String] = {
+	"searching": "Searching…",
 	"connecting": "Connecting…",
 	"connected": "Connected",
 	"reconnecting": "Reconnecting…",
@@ -87,6 +88,10 @@ var _names: Dictionary[int, String] = {}
 var _options: Dictionary[String, OptionButton] = {}
 var _state_labels: Dictionary[String, Label] = {}
 var _states: Dictionary[String, String] = {}
+## A search button per role, looking for that kind of device alone (R76).
+var _search_buttons: Dictionary[String, Button] = {}
+## The role whose search is under way, "" for none or a scan for all.
+var _searching: String = ""
 ## The name of the device each role waits for or has, to match the core's reports.
 var _expected: Dictionary[String, String] = {}
 var _buttons: GridContainer = GridContainer.new()
@@ -124,7 +129,7 @@ func bind(torqa: TorqaApp) -> void:
 					option.select(i)
 	# The trainer and strap used last reconnect in the background (R41).
 	if _torqa.reconnect_remembered():
-		_scan_button.disabled = true
+		_set_searching(true)
 		_scan_label.text = tr("Reconnecting your devices…")
 		_show_remembered()
 
@@ -152,20 +157,14 @@ func _init() -> void:
 	heading.text = tr("Devices")
 	heading.add_theme_font_size_override("font_size", 22)
 	add_child(heading)
-	var scan_row: HBoxContainer = HBoxContainer.new()
-	scan_row.add_theme_constant_override("separation", 16)
-	_scan_button.text = tr("Scan for devices")
-	_scan_button.custom_minimum_size = Vector2(220, 44)
-	_scan_button.pressed.connect(_on_scan_pressed)
-	scan_row.add_child(_scan_button)
-	_scan_label.text = tr(
-		"Wake your trainer by pedalling, then scan. A device connects as soon as you choose it."
+	var note: Label = Label.new()
+	note.text = tr(
+		"The devices used last connect by themselves. Search beside a row to find one of that kind."
 	)
-	_scan_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	scan_row.add_child(_scan_label)
-	add_child(scan_row)
+	note.add_theme_color_override("font_color", UiTheme.MUTED)
+	add_child(note)
 	var grid: GridContainer = GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 10)
 	# i18n-begin
@@ -188,6 +187,13 @@ func _init() -> void:
 		option.custom_minimum_size = Vector2(420, 0)
 		grid.add_child(option)
 		_options[role] = option
+		# Looks for this kind of device alone and connects the nearest one found (R76).
+		var search: Button = Button.new()
+		search.text = tr("Search")
+		search.custom_minimum_size = Vector2(110, 0)
+		search.pressed.connect(func() -> void: _on_search(role))
+		grid.add_child(search)
+		_search_buttons[role] = search
 		var state: Label = Label.new()
 		state.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		state.custom_minimum_size = Vector2(160, 0)
@@ -196,6 +202,17 @@ func _init() -> void:
 		_state_labels[role] = state
 		_states[role] = ""
 	add_child(grid)
+	# When neither the reconnect at start nor a row's search found a device: everything at once.
+	var scan_row: HBoxContainer = HBoxContainer.new()
+	scan_row.add_theme_constant_override("separation", 16)
+	_scan_button.text = tr("Scan for all devices")
+	_scan_button.custom_minimum_size = Vector2(220, 44)
+	_scan_button.pressed.connect(_on_scan_pressed)
+	scan_row.add_child(_scan_button)
+	_scan_label.text = tr("Wake the device first: pedal, or put the strap on.")
+	_scan_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	scan_row.add_child(_scan_label)
+	add_child(scan_row)
 	_trainer.item_selected.connect(func(_index: int) -> void: _choose_trainer())
 	_power_meter.tooltip_text = tr(
 		"Power pedals or crank: its power and cadence count instead of the trainer's"
@@ -235,14 +252,32 @@ func _notification(what: int) -> void:
 
 
 func _on_scan_pressed() -> void:
-	_scan_button.disabled = true
+	_set_searching(true)
 	_scan_label.text = tr("Scanning…")
 	_status.text = ""
 	_torqa.scan(SCAN_SECONDS)
 
 
+## Looks for devices of the row's kind (R76): the nearest one found is chosen and connected.
+func _on_search(role: String) -> void:
+	if _torqa == null:
+		return
+	_searching = role
+	_set_state(role, "searching")
+	_set_searching(true)
+	_status.text = ""
+	_torqa.scan(SCAN_SECONDS)
+
+
+## One search at a time: the buttons wait for the scan to end.
+func _set_searching(on: bool) -> void:
+	_scan_button.disabled = on
+	for button: Button in _search_buttons.values():
+		button.disabled = on
+
+
 func _on_devices_found(devices: Array) -> void:
-	_scan_button.disabled = false
+	_set_searching(false)
 	_reset_options()
 	var trainers: int = 0
 	var remembered: Array[int] = []
@@ -281,9 +316,31 @@ func _on_devices_found(devices: Array) -> void:
 			var index: int = option.get_item_metadata(i)
 			if remembered.has(index):
 				option.select(i)
+	# A row's search takes the nearest device of its kind, unless one used last was found.
+	var searched: String = _searching
+	_searching = ""
+	var found: bool = true
+	if not searched.is_empty():
+		var option: OptionButton = _options[searched]
+		var first: int = _first_scanned(option)
+		found = first >= 0
+		var chosen: int = option.get_item_metadata(option.selected)
+		if found and not remembered.has(chosen):
+			option.select(first)
 	_show_buttons()
 	# Chosen is connected (R76): the devices used last, or the ones preferred, right away.
 	connect_selected()
+	if not searched.is_empty() and not found:
+		_set_state(searched, "missing")
+
+
+## The first scanned device in a choice (the nearest: the scan lists them by signal), or −1.
+static func _first_scanned(option: OptionButton) -> int:
+	for i: int in range(option.item_count):
+		var index: int = option.get_item_metadata(i)
+		if index >= 0:
+			return i
+	return -1
 
 
 ## The core reported a device connected: the row waiting for it shows so. A row that shows
@@ -457,7 +514,7 @@ func _keeps(role: String, expected: String) -> bool:
 ## The rider chose a device used last that the scan did not show: look for it again (R69).
 func _look_again(role: String) -> bool:
 	_set_state(role, "connecting")
-	_scan_button.disabled = true
+	_set_searching(true)
 	_scan_label.text = tr("Reconnecting your devices…")
 	return _torqa.reconnect_devices()
 
@@ -476,7 +533,7 @@ func _render_state(role: String) -> void:
 	var color: Color = UiTheme.MUTED
 	if state == "connected":
 		color = UiTheme.SUCCESS
-	elif state in ["connecting", "reconnecting"]:
+	elif state in ["searching", "connecting", "reconnecting"]:
 		color = UiTheme.WARNING
 	elif state in ["missing", "failed"]:
 		color = UiTheme.DANGER

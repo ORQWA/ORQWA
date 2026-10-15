@@ -64,6 +64,22 @@ func _device_states() -> void:
 	var shifter: OptionButton = choices[4]
 	var states: Array[Node] = tab.find_children("*", "Label", true, false)
 	_check(tab.state_of("controller") == "", "nothing chosen, nothing said")
+	# A search per row looks for that kind alone: nothing of the kind found says so, and the
+	# nearest one found is chosen.
+	var searches: int = 0
+	for button: Button in tab.find_children("*", "Button", true, false):
+		if button.text == "Search":
+			searches += 1
+	_check(searches == 5, "a search per row: %d" % searches)
+	tab._searching = "trainer"
+	tab._on_devices_found([_click()])
+	_check(tab.state_of("trainer") == "missing", "no trainer found by the trainer's search")
+	tab._searching = "controller"
+	tab._on_devices_found([_click()])
+	_check(
+		shifter.get_item_text(shifter.selected).begins_with("Zwift Click"),
+		"the Click found by the shifter's search is chosen"
+	)
 	tab._on_devices_found([_click()])
 	# Without the core, the Click is expected and waited for all the same.
 	tab._expected["controller"] = "Zwift Click"
@@ -74,7 +90,7 @@ func _device_states() -> void:
 	_check(
 		tab.state_of("controller") == "connected", "another device's report is not the shifter's"
 	)
-	_check(tab.state_of("trainer") == "", "the trainer was not chosen")
+	_check(tab.state_of("trainer") != "connected", "another device's report is not the trainer's")
 	tab._on_device_disconnected("Zwift Click")
 	_check(tab.state_of("controller") == "reconnecting", "a drop is told while the driver looks")
 	_check(_shown(states, "Reconnecting…"), "the row says reconnecting")
