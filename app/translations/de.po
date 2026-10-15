@@ -1544,7 +1544,7 @@ msgid "Times"
 msgstr "Zeiten"
 
 msgid "To go"
-msgstr "Restdistanz"
+msgstr "Distanz übrig"
 
 msgid "Torqa could not connect. Go back to Torqa to try again."
 msgstr "Die Verbindung mit Torqa ist fehlgeschlagen. Kehre zu Torqa zurück und versuche es erneut."
