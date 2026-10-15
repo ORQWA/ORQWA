@@ -58,3 +58,43 @@ Implemented in `torqa_physics::VirtualGears`:
   The Zwift Click is not supported: its protocol is encrypted, the v2 must be unlocked in
   Zwift each day, and the bridge app that offers it (BikeControl) needs a paid subscription.
 - In ERG (workouts) the trainer holds the power in any gear.
+
+## Amendment 2026-10-15: the Zwift Click (#228, R75)
+
+R59 left the Zwift Click out as encrypted and unlocked daily in Zwift. That describes the
+two-pod Click v2 and the early firmware of the Play and the original Click. Checked on an
+original Click (the single unit with + and −) on 2026-10-15, from a Windows PC's own
+Bluetooth: the unit speaks the plain protocol the community documented for the Zwift Ride
+([Makinolo](https://www.makinolo.com/blog/2024/07/26/zwift-ride-protocol/)) and for the Click
+([click_bridge](https://github.com/imcczy/click_bridge), MIT). No key exchange, no pairing, no
+unlock, no keepalive:
+
+- Service `00000001-19ca-4651-86e5-fa29dcdd09d1`; notifications on `…0002`, writes without
+  response on `…0003`, read and indications on `…0004`. Advertised as "Zwift Click", with
+  Zwift's company id `0x094A` and device type 9 where the stack passes the advertising data on.
+- Handshake: write ASCII `RideOn` to `…0003`; the unit indicates `RideOn` on `…0004` (and
+  answers reads of it with the same once the session is up, empty before). A unit on the old
+  encrypted firmware would answer with `RideOn` plus two bytes and its public key instead; the
+  driver logs that and shifts nothing, rather than carrying a second protocol.
+- Buttons on `…0002`: message `0x37`, then protocol-buffer varints, field 1 the + and field 2
+  the − button, `0` down and `1` up: `37 08 00 10 01` is + down, `37 08 01 10 00` − down,
+  `37 08 01 10 01` both up. The unit repeats the state about ten times a second while a
+  button is down and for a few seconds after, so the driver acts on changes, never on frames.
+  Every few seconds `19 10 5D`: a status whose field is the battery (93 %); the standard
+  Battery Service is there too.
+
+The unit only says whether a button is down. `torqa_devices::zwift_click` makes the presses
+of a Di2 out of that, so the assignments of #139 apply unchanged: a **hold** once the button
+has been down for 500 ms (told then, not when let go, so a long hold is one press however
+long), a **press** when it comes up before that. There is no double press: waiting for a
+second tap would delay every shift, and a shifter must not lag. The + is button 1 and the −
+button 2 of the shared button map, so the default (1 shifts up, 2 down) fits a Click as it
+fits a Di2, and the Devices tab shows a Click's two rows and two columns.
+
+Still out: the Click v2 (two pods, device types 10 and 11; its left pod stops sending after
+about a day without Zwift, its right pod needs further activation writes), the Play (device
+types 2 and 3; other button messages) and the Ride. Their protocols are documented by the
+same community projects, and would be separate drivers once someone has the hardware to
+check them. Zwift has not published any of this and a firmware update may change it; the
+driver stays isolated and optional, as this ADR always said. Rouvy and MyWhoosh took the same
+route (DC Rainmaker, 2025-02).

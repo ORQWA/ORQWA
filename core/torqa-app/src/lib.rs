@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, SystemTime};
 
-use torqa_devices::ble::{Bluetooth, DeviceKind, DiscoveredDevice};
+use torqa_devices::ble::{Bluetooth, ControllerModel, DeviceKind, DiscoveredDevice};
 use torqa_devices::fake::{self, FakeRider};
 use torqa_devices::{DeviceEvent, DeviceHandle};
 use torqa_domain::files::UsedFiles;
@@ -142,6 +142,8 @@ pub struct DeviceInfo {
     pub name: String,
     /// Whether it is a trainer, a power meter, a heart-rate sensor or a shifter.
     pub kind: DeviceKind,
+    /// Which shifter it is, for a shifter: its buttons differ.
+    pub model: Option<ControllerModel>,
     /// Signal strength in dBm, if known.
     pub rssi: Option<i16>,
     /// Whether this is the trainer or sensor used last (R41).
@@ -555,7 +557,7 @@ pub struct App {
     keys: torqa_devices::shift::KeyboardKeys,
     /// Identifier of the connected controller, to avoid reconnecting it.
     controller_id: Option<String>,
-    /// What the Di2 shifter's buttons do (#139).
+    /// What the shifter's buttons do (#139), by button number (a Di2's channels, a Click's + and −).
     buttons: Arc<torqa_devices::shift::Assignments>,
     profile: StoredProfile,
     /// The training platforms rides can be uploaded to and the uploads under way (R29).
@@ -2150,8 +2152,9 @@ impl App {
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
-    /// Connects a Shimano Di2 shifter whose D-Fly buttons shift or do what else the rider gave
-    /// them (R7, #139), replacing any previous one; the keyboard keeps shifting too.
+    /// Connects a shifter (a Shimano Di2 or a Zwift Click) whose buttons shift or do what else
+    /// the rider gave them (R7, R75, #139), replacing any previous one; the keyboard keeps
+    /// shifting too.
     ///
     /// # Errors
     /// [`AppError::UnknownDevice`] if the index is not a controller from the last scan.
@@ -2172,13 +2175,14 @@ impl App {
         Ok(())
     }
 
-    /// What the Di2 shifter's buttons do (#139).
+    /// What the shifter's buttons do (#139): a Di2's D-Fly channels 1–4, or a Zwift Click's +
+    /// (button 1) and − (button 2), which has no double press.
     #[must_use]
     pub fn button_map(&self) -> ButtonMap {
         self.buttons.get()
     }
 
-    /// Gives the Di2 shifter's buttons what `map` says, at once and for next time.
+    /// Gives the shifter's buttons what `map` says, at once and for next time.
     ///
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
@@ -3207,6 +3211,7 @@ impl App {
                 index,
                 name: d.name.clone(),
                 kind: d.kind,
+                model: d.model,
                 rssi: d.rssi,
                 remembered: self.is_remembered(d),
             })

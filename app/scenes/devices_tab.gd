@@ -1,8 +1,8 @@
 class_name DevicesTab
 extends VBoxContainer
-## Trainer, power meter, cadence, heart-rate sensor and Di2 shifter (R5, R7, R41, R71, R72):
-## scanning, choosing, what the shifter's buttons do (#139), and the devices used last
-## reconnecting at start.
+## Trainer, power meter, cadence, heart-rate sensor and shifter — a Shimano Di2 or a Zwift
+## Click (R5, R7, R41, R71, R72, R75): scanning, choosing, what the shifter's buttons do
+## (#139), and the devices used last reconnecting at start.
 
 const FAKE_TRAINER: int = -1
 const NO_HEART_RATE: int = -1
@@ -36,8 +36,15 @@ const ACTION_LABELS: Dictionary[String, String] = {
 }
 ## The kinds of press, in the core's order.
 const PRESSES: Array[String] = ["Press", "Hold", "Double press"]
+## A Zwift Click's buttons (R75), in the core's numbering (1 and 2).
+const CLICK_BUTTONS: Array[String] = ["Plus (+)", "Minus (−)"]
 # i18n-end
 const CHANNELS: int = 4
+## A Zwift Click tells presses and holds apart, not double presses.
+const CLICK_PRESSES: int = 2
+## The core's name for a Di2, whose buttons are its four D-Fly channels.
+const DI2: String = "di2"
+const ZWIFT_CLICK: String = "zwift_click"
 
 var _torqa: TorqaApp
 var _scan_button: Button = Button.new()
@@ -48,10 +55,13 @@ var _heart_rate: OptionButton = OptionButton.new()
 var _power_meter: OptionButton = OptionButton.new()
 ## Where the cadence comes from (R72): a device that measures it, or a cadence sensor.
 var _cadence: OptionButton = OptionButton.new()
-## A Shimano Di2 shifter, and what each press of its D-Fly channels does: a row per channel,
-## a column per kind of press.
+## A shifter, and what each press of its buttons does: a row per button (a Di2's D-Fly
+## channels, a Zwift Click's + and −), a column per kind of press the shifter tells apart.
 var _shifter: OptionButton = OptionButton.new()
+## Which shifter each scanned one is, by its index: the core's "di2" or "zwift_click".
+var _shifter_models: Dictionary[int, String] = {}
 var _buttons: GridContainer = GridContainer.new()
+var _press_headings: Array[Label] = []
 var _channel_captions: Array[Label] = []
 var _assignments: Array[OptionButton] = []
 var _status: Label = Label.new()
@@ -142,7 +152,7 @@ func _init() -> void:
 		["Power meter", _power_meter],
 		["Cadence", _cadence],
 		["Heart rate", _heart_rate],
-		["Shifter (Di2)", _shifter],
+		["Shifter", _shifter],
 	]:
 		# i18n-end
 		var caption: Label = Label.new()
@@ -163,9 +173,9 @@ func _init() -> void:
 	)
 	_cadence.item_selected.connect(_on_cadence_selected)
 	_shifter.tooltip_text = tr(
-		"Assign buttons to D-Fly channels in E-TUBE, then choose here what each press does"
+		"Zwift Click, or Di2 with buttons on D-Fly channels (E-TUBE); choose what each press does"
 	)
-	_shifter.item_selected.connect(func(_index: int) -> void: _show_channels())
+	_shifter.item_selected.connect(func(_index: int) -> void: _show_buttons())
 	_build_buttons()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_color_override("font_color", Color(1, 0.55, 0.45))
@@ -213,6 +223,7 @@ func _on_devices_found(devices: Array) -> void:
 			option = _cadence
 		elif kind == "controller":
 			option = _shifter
+			_shifter_models[index] = device["model"]
 		option.add_item(label)
 		option.set_item_metadata(option.item_count - 1, index)
 		if device["kind"] == "trainer":
@@ -229,7 +240,7 @@ func _on_devices_found(devices: Array) -> void:
 			var index: int = option.get_item_metadata(i)
 			if remembered.has(index):
 				option.select(i)
-	_show_channels()
+	_show_buttons()
 
 
 func _label_cadence_sources() -> void:
@@ -257,9 +268,33 @@ func _on_cadence_selected(index: int) -> void:
 		_torqa.set_cadence_source(CADENCE_SOURCES[key])
 
 
-## The buttons matter only with a shifter chosen.
-func _show_channels() -> void:
-	_buttons.visible = _shifter.get_selected_metadata() != NO_SHIFTER
+## The buttons matter only with a shifter chosen, and are the chosen shifter's.
+func _show_buttons() -> void:
+	# Built before the options are filled, so there may be nothing chosen yet.
+	var selected: Variant = _shifter.get_selected_metadata()
+	var chosen: int = NO_SHIFTER if selected == null else selected
+	_buttons.visible = chosen != NO_SHIFTER
+	var model: String = _shifter_models.get(chosen, DI2)
+	_layout_buttons(model)
+
+
+## Shows the rows and columns of the chosen shifter's buttons and presses, captioned for it.
+func _layout_buttons(model: String) -> void:
+	var buttons: int = CLICK_BUTTONS.size() if model == ZWIFT_CLICK else CHANNELS
+	var presses: int = CLICK_PRESSES if model == ZWIFT_CLICK else PRESSES.size()
+	_buttons.columns = 1 + presses
+	for press: int in range(PRESSES.size()):
+		_press_headings[press].visible = press < presses
+	for channel: int in range(CHANNELS):
+		var caption: Label = _channel_captions[channel]
+		caption.visible = channel < buttons
+		if model == ZWIFT_CLICK and channel < buttons:
+			caption.text = tr(CLICK_BUTTONS[channel])
+		else:
+			caption.text = tr("D-Fly channel %d") % (channel + 1)
+		for press: int in range(PRESSES.size()):
+			var option: OptionButton = _assignments[channel * PRESSES.size() + press]
+			option.visible = channel < buttons and press < presses
 
 
 func _build_buttons() -> void:
@@ -272,6 +307,7 @@ func _build_buttons() -> void:
 	for heading: String in PRESSES:
 		var label: Label = Label.new()
 		label.text = heading
+		_press_headings.append(label)
 		_buttons.add_child(label)
 	for channel: int in range(1, CHANNELS + 1):
 		var caption: Label = Label.new()
@@ -298,10 +334,9 @@ func _build_buttons() -> void:
 	_label_buttons()
 
 
-## Names the channels and actions in the interface language.
+## Names the buttons and actions in the interface language.
 func _label_buttons() -> void:
-	for i: int in range(_channel_captions.size()):
-		_channel_captions[i].text = tr("D-Fly channel %d") % (i + 1)
+	_show_buttons()
 	for option: OptionButton in _assignments:
 		for i: int in range(option.item_count):
 			var action: String = option.get_item_metadata(i)
@@ -403,4 +438,5 @@ func _reset_options() -> void:
 	_shifter.clear()
 	_shifter.add_item(tr("None (keyboard: ↑ / ↓)"))
 	_shifter.set_item_metadata(0, NO_SHIFTER)
-	_show_channels()
+	_shifter_models.clear()
+	_show_buttons()

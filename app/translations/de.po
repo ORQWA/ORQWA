@@ -211,8 +211,8 @@ msgstr "Aufsteigend"
 msgid "Ascent to go"
 msgstr "Anstieg übrig"
 
-msgid "Assign buttons to D-Fly channels in E-TUBE, then choose here what each press does"
-msgstr "Weise in E-TUBE den D-Fly-Kanälen Tasten zu und wähle hier, was ein Tastendruck bewirkt"
+msgid "Zwift Click, or Di2 with buttons on D-Fly channels (E-TUBE); choose what each press does"
+msgstr "Zwift Click oder Di2 mit Tasten auf D-Fly-Kanälen (E-TUBE); wähle, was ein Tastendruck bewirkt"
 
 msgid "Aug"
 msgstr "Aug."
@@ -1366,8 +1366,11 @@ msgstr "Zwei Gänge hochschalten"
 msgid "Shifter"
 msgstr "Schalter"
 
-msgid "Shifter (Di2)"
-msgstr "Schalter (Di2)"
+msgid "Plus (+)"
+msgstr "Plus (+)"
+
+msgid "Minus (−)"
+msgstr "Minus (−)"
 
 msgid "Show"
 msgstr "Anzeigen"
