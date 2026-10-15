@@ -12,7 +12,7 @@ renders and presents. Rationale in [ADR 0001](adr/0001-stack-godot-rust.md).
 core/                      Rust workspace (tokio + tracing)
   torqa-domain/            newtype units (SI internally), profiles, plugin traits
   torqa-physics/           speed integration, grade scaling, descent modes, virtual gears
-  torqa-devices/           btleplug FTMS + HRM + Shimano Di2 (D-Fly), fake trainer, (later) ANT+ FE-C
+  torqa-devices/           btleplug FTMS + HRM + Shimano Di2 (D-Fly), fake trainer
   torqa-routes/            GPX import, snapping to the map's roads, smoothing, DEM correction,
                            climb detection
   torqa-terrain/           elevation tiles (Mapterhorn, AWS fallback), disk cache, height lookup
@@ -49,9 +49,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   `WorkoutParser` (ZWO, ERG/MRC, FIT) and `ActivityUploader` (intervals.icu, Strava;
   ADR 0013) exist, as does `ElevationModel`; the others
   are not introduced yet: today there is one implementation of each (or none), behind concrete
-  types, and each trait comes with its second implementation (e.g. ANT+ FE-C, a second
-  importer).
-  Ride modes are separate Godot views: the 3D world and the video view (Street View later).
+  types, and each trait comes with its second implementation (e.g. a second trainer
+  protocol, a second importer).
+  Ride modes are separate Godot views: the 3D world and the video view.
 - **FTMS**: service `0x1826`, Indoor Bike Data `0x2AD2`, Control Point `0x2AD9`
   (Request Control `0x00`, Set Target Resistance `0x04`, Set Target Power `0x05`,
   Set Indoor Bike Simulation `0x11`). Heart rate: `0x180D` / `0x2A37`.
@@ -85,7 +85,6 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   onto the route's line and evened out over a few seconds); Godot blends the previous and
   next frame in a shader. GPS from GoPro GPMF; Incyclist route videos (GPX + `.xml`); any other video added to a
   GPX course by its start and end marks.
-- **Street imagery** (later): Street View Static API + Mapillary API v4, crossfade shader.
 - **Development environment**: everything runs in Docker / devcontainer. Docker on macOS has no
   Bluetooth or Metal, so macOS builds come from GitHub Actions macOS runners and only the
   portable Godot editor and built Torqa app run natively.
@@ -110,8 +109,8 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   the trainer when the meter drops; chosen, remembered and reconnected like the other devices
 - [x] Cadence source (R72): automatic, trainer, power meter or a Bluetooth cadence sensor
   (Cycling Speed and Cadence Service), the others standing in while the chosen one is silent
-- [ ] ERG power matching (R71's later step): the trainer's ERG target nudged until the power
-  meter shows the workout's power
+- [ ] ~~ERG power matching (R71's later step): the trainer's ERG target nudged until the power
+  meter shows the workout's power~~ — dropped 2026-10-15: the trainer holds ERG by its own measurement
 - **Exit:** CLI controls the KICKR Core 2 grade and reads power/cadence/HR ✅ (verified on hardware 2026-10-02)
 
 ### Phase 2 — Route, physics, FIT
@@ -132,7 +131,8 @@ Built in rideable steps:
 - [x] Step 3c — detailed terrain (Mapterhorn zoom 15, swissALTI3D in Switzerland), true
   first-person camera. Aerial imagery (SWISSIMAGE) was tried and dropped: draped photos looked
   worse than the land-cover shading
-- [ ] Step 3d — real 3D buildings in Switzerland (swissBUILDINGS3D)
+- [ ] ~~Step 3d — real 3D buildings in Switzerland (swissBUILDINGS3D)~~ — dropped 2026-10-15: buildings
+  come from OpenStreetMap, in the stylized look (ADR 0011)
 - **Exit:** ride a real GPX on the KICKR in 3D at 60 fps and save a FIT
 
 ### Phase 3c — Course files (R32–R35, [ADR 0007](adr/0007-course-files.md))
@@ -192,8 +192,8 @@ Built in rideable steps:
   silicon decodes slowly)
 - **Exit:** ride a GoPro recording of a real climb on the KICKR, video in step with the effort
 
-### Phase 6 — Street imagery
-- [ ] Google Street View (user key) + Mapillary with crossfades
+### ~~Phase 6 — Street imagery~~
+- [ ] ~~Google Street View (user key) + Mapillary with crossfades~~ — dropped 2026-10-15
 
 ### Phase 7 — Extras
 - [x] Virtual gears + shift inputs (R59: keyboard and Shimano Di2; no Zwift Click):
@@ -215,7 +215,7 @@ Built in rideable steps:
     also the 20-minute (95 %) and 2 × 8-minute (90 %) tests, all out in slope mode (#125)
   - [x] Workout editor: steps (steady, ramp, free) with duration, % of FTP, cadence and a
     message, intervals added at once, a live chart; saved as ZWO in the library
-- [ ] Uploaders (R29), ANT+ FE-C:
+- [x] Uploaders (R29), ANT+ FE-C:
   - [x] intervals.icu behind `ActivityUploader` (`torqa-upload`, ADR 0013): the rider's API
     key under Accounts on their card, uploads from the summary and the history, where each
     ride went kept with it
@@ -224,7 +224,7 @@ Built in rideable steps:
   - [x] Strava, through each rider's own Strava API application: its Client ID and Secret,
     then the login in the browser back to a loopback address; tokens renewed in the upload's
     turn, access revoked on disconnecting or deleting the rider
-  - [ ] ANT+ FE-C
+  - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth FTMS only
 - [x] Windows and Linux builds from CI (Linux x86_64 and arm64 on Ubuntu 22.04, ADR 0012)
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
 
@@ -236,8 +236,9 @@ Built in rideable steps:
 - [x] The ride's minimap on the course's map of the land around the whole route, its tiles
   kept in the `.tqc`, with the corridor in detail over it for the close view, on video
   courses too; colored or dark as each rider chooses (R70, #236)
-- [ ] Auto-rendered course screenshots at build time, cover selection, stored in the `.tqc`
-  (ADR 0007 format bump); frames from the video for video courses
+- [ ] ~~Auto-rendered course screenshots at build time, cover selection, stored in the `.tqc`
+  (ADR 0007 format bump); frames from the video for video courses~~ — dropped 2026-10-15: the course's
+  map (path card) is its picture
 - [x] Courses gallery (cards with stats and small map) and course detail page with ride options;
   courses renamed (the pencil's Edit course dialog, with their video) and deleted (the bin)
   there, 3D world built only when riding; the cards share the window's full width, their maps
@@ -262,7 +263,7 @@ Built in rideable steps:
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
 - [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Devices & Settings → Graphics;
   the choice is kept and Torqa starts that way
-- [ ] UI design system (sleek minimal) applied to all screens and dialogs, polished course
+- [x] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
   - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)
   - [x] The summary's rename and delete as icon buttons (#190); buttons that delete are red
