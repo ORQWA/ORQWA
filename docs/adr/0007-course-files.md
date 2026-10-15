@@ -1,6 +1,6 @@
 # ADR 0007 — Course files (`.tqc`)
 
-- Status: accepted; amended 2026-10-03 (format 1 bundles inputs only, see below)
+- Status: accepted; amended 2026-10-03 (format 1 bundles inputs only, see below), 2026-10-15
 - Date: 2026-10-02
 
 ## Context
@@ -91,3 +91,9 @@ opens. Measured on twelve real courses (12–212 km): 4–12 tiles, 64–890 KB 
 video course of 0.6 MB); making the map takes under 25 ms. Courses prepared before take their
 tiles from the cache, else download them when opened; their files stay as they are. The
 format stays 1.
+
+## Amendment 2026-10-15 — no stored world
+
+Format 1 (inputs only) is final: a stored pre-built world (format 2) is no longer planned.
+Rebuilding keeps every course on the current generator; the wait before a ride is to be
+hidden by building the world while the course's page is open (#237).

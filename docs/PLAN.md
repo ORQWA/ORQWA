@@ -142,7 +142,8 @@ Built in rideable steps:
 - [x] An import can be cancelled from beside its loading bar, and a job that dies reports an
   error instead of loading forever (#219)
 - [x] Rebuild outdated worlds from stored inputs (format 1 always rebuilds offline)
-- [ ] Format 2: store the pre-built world for an instant start
+- Format 2 (a stored pre-built world) dropped: the world is built while the course's page is
+  open instead (#237, ADR 0007 amendment 2026-10-15)
 - **Exit:** prepare a course online, ride it offline on another machine from the `.tqc` file ✅
   (2026-10-03, Lake Biel 7 km: 6.2 MB, opened offline with an empty cache)
 
@@ -162,7 +163,8 @@ Built in rideable steps:
 - [x] Climbs (auto-detected, categorised) and personal records per route and climb
 - [x] Ghosts & pacers: own best, power / W/kg pacers, recorded GPX/FIT activities (R20)
 - [ ] Audio (R26): music app control ✅, original video sound ✅ (Phase 5); ambient sound
-  dropped for now (synthesised version did not sound right)
+  dropped for now (synthesised version did not sound right), to return with convincing
+  sounds (#259)
 - [x] i18n: all texts translatable, German translation, language per rider (R24)
 
 ### Phase 5 — Video mode (R17, [ADR 0010](adr/0010-video-decoding.md))
