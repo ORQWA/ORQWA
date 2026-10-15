@@ -76,6 +76,9 @@ msgstr "%s nicht gefunden — aktiviere das Gerät und verbinde es erneut."
 msgid "%s to go  ·  %.1f %%"
 msgstr "noch %s  ·  %.1f %%"
 
+msgid "%s was not found. It holds the course's slopes: put it next to the RLV file."
+msgstr "%s nicht gefunden. Sie enthält die Steigungen der Route: Lege sie neben die RLV-Datei."
+
 msgid "(best %s)"
 msgstr "(Bestzeit %s)"
 
@@ -391,8 +394,8 @@ msgstr "Konstante Leistung %d W"
 msgid "Correcting elevations"
 msgstr "Höhendaten werden korrigiert"
 
-msgid "Could not connect the account with %s."
-msgstr "Das Konto konnte nicht mit %s verbunden werden."
+msgid "Could not connect the account with %s: %s"
+msgstr "Das Konto konnte nicht mit %s verbunden werden: %s"
 
 msgid "Could not control the music player."
 msgstr "Der Musikplayer konnte nicht gesteuert werden."
@@ -420,6 +423,9 @@ msgstr "Die Aktivität konnte nicht geladen werden."
 
 msgid "Could not load the ghost rider."
 msgstr "Der virtuelle Fahrer konnte nicht geladen werden."
+
+msgid "Could not load the workout."
+msgstr "Das Training konnte nicht geladen werden."
 
 msgid "Could not open %s."
 msgstr "%s konnte nicht geöffnet werden."
@@ -460,6 +466,9 @@ msgstr "Die Route konnte nicht gespeichert werden."
 msgid "Could not save the rider profile."
 msgstr "Das Fahrerprofil konnte nicht gespeichert werden."
 
+msgid "Could not save the setting."
+msgstr "Die Einstellung konnte nicht gespeichert werden."
+
 msgid "Could not save the video association."
 msgstr "Die Videozuordnung konnte nicht gespeichert werden."
 
@@ -472,8 +481,8 @@ msgstr "Die Gerätesuche ist fehlgeschlagen."
 msgid "Could not update the course."
 msgstr "Die Route konnte nicht aktualisiert werden."
 
-msgid "Could not upload the activity to %s."
-msgstr "Die Aktivität konnte nicht zu %s hochgeladen werden."
+msgid "Could not upload the activity to %s: %s"
+msgstr "Die Aktivität konnte nicht zu %s hochgeladen werden: %s"
 
 msgid "Countries"
 msgstr "Länder"
@@ -558,6 +567,9 @@ msgstr "Aktivität verwerfen"
 
 msgid "Disconnect"
 msgstr "Trennen"
+
+msgid "Dismiss"
+msgstr "Ausblenden"
 
 msgid "Distance"
 msgstr "Distanz"
@@ -1482,6 +1494,9 @@ msgstr "Das ausgewählte Gerät ist nicht verfügbar."
 
 msgid "The selected platform is not supported."
 msgstr "Die ausgewählte Plattform wird nicht unterstützt."
+
+msgid "The video and the route do not match."
+msgstr "Video und Route passen nicht zusammen."
 
 msgid "This course already has a video."
 msgstr "Diese Route hat bereits ein Video."

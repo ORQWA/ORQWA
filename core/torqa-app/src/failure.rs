@@ -4,8 +4,6 @@ use std::fmt;
 /// Stable classification of a failure, independent of its technical cause.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
-    /// Technical details
-    Details,
     /// Could not save the rider profile.
     SaveProfile,
     /// Could not delete the rider profile.
@@ -30,6 +28,8 @@ pub enum Kind {
     ExportFile,
     /// Video %s was not found. Put it next to the course file.
     MissingVideo,
+    /// %s was not found. It holds the course's slopes: put it next to the RLV file.
+    MissingSlopes,
     /// Could not save the video association.
     SaveVideo,
     /// Could not play the video.
@@ -94,9 +94,9 @@ pub enum Kind {
     Scan,
     /// Could not reach %s. Check your internet connection.
     Unreachable,
-    /// Could not upload the activity to %s.
+    /// Could not upload the activity to %s: %s
     Upload,
-    /// Could not connect the account with %s.
+    /// Could not connect the account with %s: %s
     ConnectAccount,
     /// Could not save the account connection.
     SaveAccount,
@@ -116,13 +116,19 @@ pub enum Kind {
     PrepareCourse,
     /// Could not read the video.
     ReadVideo,
+    /// The video and the route do not match.
+    VideoMismatch,
+    /// Could not save the setting.
+    SaveSetting,
+    /// Could not load the workout.
+    LoadWorkout,
     /// An unexpected error occurred.
     Unexpected,
-    /// The final rider profile cannot be removed.
+    /// The only rider cannot be deleted (shared with the delete button's tooltip).
     LastProfile,
-    /// Synchronization points do not advance together.
+    /// Points must follow each other on the route and in the video.
     VideoOrder,
-    /// A platform no longer accepts its saved credentials.
+    /// %s no longer accepts the account: connect it again.
     Unauthorized,
     /// The service requires the rider to reactivate their API application.
     InactiveApplication,
@@ -133,7 +139,6 @@ impl Kind {
     pub fn message(self) -> &'static str {
         // i18n-begin
         match self {
-            Self::Details => "Technical details",
             Self::SaveProfile => "Could not save the rider profile.",
             Self::DeleteProfile => "Could not delete the rider profile.",
             Self::OpenFile => "Could not open %s.",
@@ -146,6 +151,9 @@ impl Kind {
             Self::DeleteFile => "Could not delete %s.",
             Self::ExportFile => "Could not export to %s.",
             Self::MissingVideo => "Video %s was not found. Put it next to the course file.",
+            Self::MissingSlopes => {
+                "%s was not found. It holds the course's slopes: put it next to the RLV file."
+            }
             Self::SaveVideo => "Could not save the video association.",
             Self::PlayVideo => "Could not play the video.",
             Self::PreparationStopped => "Course preparation stopped unexpectedly.",
@@ -184,8 +192,8 @@ impl Kind {
             Self::CourseName => "Enter a name for the course.",
             Self::Scan => "Could not search for devices.",
             Self::Unreachable => "Could not reach %s. Check your internet connection.",
-            Self::Upload => "Could not upload the activity to %s.",
-            Self::ConnectAccount => "Could not connect the account with %s.",
+            Self::Upload => "Could not upload the activity to %s: %s",
+            Self::ConnectAccount => "Could not connect the account with %s: %s",
             Self::SaveAccount => "Could not save the account connection.",
             Self::LoadRide => "Could not load the activity.",
             Self::ImportWorkout => "Could not import the workout.",
@@ -195,6 +203,9 @@ impl Kind {
             Self::LoadGhost => "Could not load the ghost rider.",
             Self::PrepareCourse => "Could not prepare the course.",
             Self::ReadVideo => "Could not read the video.",
+            Self::VideoMismatch => "The video and the route do not match.",
+            Self::SaveSetting => "Could not save the setting.",
+            Self::LoadWorkout => "Could not load the workout.",
             Self::Unexpected => "An unexpected error occurred.",
             Self::LastProfile => "The only rider cannot be deleted",
             Self::VideoOrder => "Points must follow each other on the route and in the video.",
@@ -244,11 +255,6 @@ impl fmt::Display for Failure {
     }
 }
 impl std::error::Error for Failure {}
-impl From<String> for Failure {
-    fn from(value: String) -> Self {
-        Self::new(Kind::Unexpected, value)
-    }
-}
 impl From<crate::AppError> for Failure {
     fn from(error: crate::AppError) -> Self {
         use crate::AppError;
@@ -262,13 +268,10 @@ impl From<crate::AppError> for Failure {
             AppError::UnknownProfile => Kind::UnknownProfile,
             AppError::LastProfile => Kind::LastProfile,
             AppError::GhostUnavailable(_) => Kind::LoadGhost,
-            AppError::Video(_) => Kind::PlayVideo,
-            AppError::Workout(_) => Kind::ImportWorkout,
             AppError::UnknownPlatform => Kind::UnknownPlatform,
             AppError::NotConnected(platform) => {
                 return Self::new(Kind::ConnectFirst, &error).arg(platform);
             }
-            AppError::Storage(_) => Kind::Unexpected,
         };
         Self::new(kind, error)
     }
@@ -292,9 +295,9 @@ mod tests {
     }
 
     #[test]
-    fn unclassified_failures_keep_the_cause_with_a_translatable_fallback() {
-        let failure = Failure::from(crate::AppError::Storage("native cause".to_owned()));
-        assert_eq!(failure.kind, Kind::Unexpected);
+    fn unreported_errors_keep_their_cause_as_details() {
+        let failure = Failure::from(crate::AppError::GhostUnavailable("native cause".to_owned()));
+        assert_eq!(failure.kind, Kind::LoadGhost);
         assert_eq!(failure.details, "native cause");
     }
 }

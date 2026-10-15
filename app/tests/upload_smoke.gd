@@ -40,7 +40,7 @@ func _uploads() -> void:
 		texts.append((label as Label).text)
 	_check(
 		(
-			"ACCOUNTS" in texts
+			"Accounts" in texts
 			and "intervals.icu" in texts
 			and "Strava" in texts
 			and texts.count("Not connected") == 2

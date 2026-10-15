@@ -6,6 +6,7 @@ const HISTORY_LIMIT: int = 20
 
 var _failures: Array[Dictionary] = []
 var _toggle: Button = Button.new()
+var _dismiss: Button = Button.new()
 var _panel: PanelContainer = PanelContainer.new()
 var _rows: VBoxContainer = VBoxContainer.new()
 
@@ -23,11 +24,16 @@ func _init() -> void:
 	_panel.add_child(scroll)
 	add_child(_panel)
 	_panel.hide()
+	var buttons: HBoxContainer = HBoxContainer.new()
+	buttons.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_dismiss.text = tr("Dismiss")
+	_dismiss.pressed.connect(clear)
+	buttons.add_child(_dismiss)
 	_toggle.text = tr("Technical details")
 	_toggle.toggle_mode = true
-	_toggle.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_toggle.toggled.connect(_panel.set_visible)
-	add_child(_toggle)
+	buttons.add_child(_toggle)
+	add_child(buttons)
 	hide()
 
 
@@ -51,6 +57,14 @@ func report(failure: Dictionary) -> void:
 		_failures.resize(HISTORY_LIMIT)
 	_refresh()
 	show()
+
+
+## Forgets the failures shown and hides until the next one.
+func clear() -> void:
+	_failures.clear()
+	_toggle.button_pressed = false
+	_refresh()
+	hide()
 
 
 func _notification(what: int) -> void:

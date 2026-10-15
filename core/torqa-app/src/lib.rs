@@ -95,18 +95,9 @@ pub enum AppError {
     /// The app always has a rider, so the only one cannot be deleted.
     #[error("the only rider cannot be deleted")]
     LastProfile,
-    /// Reading or writing a file in the data directory failed.
-    #[error("{0}")]
-    Storage(String),
     /// The chosen ghost cannot ride this route.
     #[error("{0}")]
     GhostUnavailable(String),
-    /// The video of a video course cannot be played.
-    #[error("{0}")]
-    Video(String),
-    /// A workout file cannot be read.
-    #[error("{0}")]
-    Workout(String),
     /// No training platform with that id (R29).
     #[error("unknown platform")]
     UnknownPlatform,
@@ -676,7 +667,7 @@ impl App {
     /// Saves a profile (a new one if `id` is `None`) and makes it the active one; returns its id.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if it cannot be written.
+    /// [`AppError::Reported`] if it cannot be written.
     pub fn save_profile(&mut self, id: Option<&str>, profile: Profile) -> Result<String, AppError> {
         let id = id.map_or_else(
             || profiles::new_id(&self.data_dir, &profile.name),
@@ -699,7 +690,7 @@ impl App {
     ///
     /// # Errors
     /// [`AppError::LastProfile`] for the only rider, [`AppError::UnknownProfile`] if there is no
-    /// such rider, [`AppError::Storage`] if it cannot be removed.
+    /// such rider, [`AppError::Reported`] if it cannot be removed.
     pub fn delete_profile(&mut self, id: &str) -> Result<(), AppError> {
         let listed = profiles::list(&self.data_dir);
         if !listed.iter().any(|p| p.id == id) {
@@ -940,8 +931,8 @@ impl App {
     /// to the video.
     ///
     /// # Errors
-    /// [`AppError::Video`] if no course is loaded, it has a video already, or the video does
-    /// not fit the marks; [`AppError::Storage`] if the course file cannot be updated.
+    /// [`AppError::Reported`] if no course is loaded, it has a video already, the video does
+    /// not fit the marks, or the course file cannot be updated.
     pub fn add_video(&mut self, video: &Path, marks: &[SyncMark]) -> Result<(), AppError> {
         let (Some(route), Some(path), Some((name, gpx))) =
             (&self.route, &self.course, &self.loaded)
@@ -989,8 +980,8 @@ impl App {
     /// route stays as it is.
     ///
     /// # Errors
-    /// [`AppError::Video`] if the loaded course has no video, [`AppError::Storage`] if the
-    /// course file cannot be updated.
+    /// [`AppError::Reported`] if the loaded course has no video or the course file cannot be
+    /// updated.
     pub fn remove_video(&mut self) -> Result<(), AppError> {
         let (Some(video), Some(path)) = (&self.video, &self.course) else {
             return Err(AppError::Reported(Failure::new(
@@ -1032,8 +1023,8 @@ impl App {
     /// videos placed on the route by hand; the course file keeps the new marks.
     ///
     /// # Errors
-    /// [`AppError::Video`] if the loaded course is not aligned by hand or the marks do not fit
-    /// the video, [`AppError::Storage`] if the course file cannot be updated.
+    /// [`AppError::Reported`] if the loaded course is not aligned by hand, the marks do not fit
+    /// the video, or the course file cannot be updated.
     pub fn align_video(&mut self, marks: &[SyncMark]) -> Result<(), AppError> {
         let (Some(route), Some(current), Some((name, gpx))) =
             (&self.route, &self.video, &self.loaded)
@@ -1070,7 +1061,7 @@ impl App {
     /// it. The video stays open for the next call.
     ///
     /// # Errors
-    /// [`AppError::Video`] if the video cannot be opened or decoded.
+    /// [`AppError::Reported`] if the video cannot be opened or decoded.
     pub fn video_preview(&mut self, path: &Path, time: Duration) -> Result<Frame, AppError> {
         let opened = match &mut self.preview {
             Some((open, video)) if open == path => video,
@@ -1273,7 +1264,7 @@ impl App {
     /// Renames the course at `path`; blank names are refused.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the name is blank or the file cannot be rewritten.
+    /// [`AppError::Reported`] if the name is blank or the file cannot be rewritten.
     pub fn rename_course(&mut self, path: &Path, name: &str) -> Result<(), AppError> {
         let name = name.trim();
         if name.is_empty() {
@@ -1294,7 +1285,7 @@ impl App {
     /// Deletes the course at `path` from the library; rides on it stay in the history.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the file cannot be deleted.
+    /// [`AppError::Reported`] if the file cannot be deleted.
     pub fn delete_course(&mut self, path: &Path) -> Result<(), AppError> {
         // The course's own copy of its video, beside it, goes with it unless another course
         // rides along the same file (#165); a video elsewhere is the rider's and stays.
@@ -1475,7 +1466,7 @@ impl App {
     /// Remembers how the Courses tab orders and groups the library.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if it cannot be saved.
+    /// [`AppError::Reported`] if it cannot be saved.
     pub fn set_courses_view(&mut self, view: library::View) -> Result<(), AppError> {
         let stored = profiles::CoursesView {
             sort: view.sort.name().to_owned(),
@@ -1483,7 +1474,7 @@ impl App {
             group: view.group.name().to_owned(),
         };
         profiles::set_courses_view(&self.data_dir, &stored)
-            .map_err(|e| AppError::Storage(e.to_string()))
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// When the active rider last started a ride, by the key of its route. Rides whose
@@ -1596,9 +1587,10 @@ impl App {
     /// Keeps `png`, the map picture the app drew, with the course at `path` (#192).
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the course file cannot be rewritten.
+    /// [`AppError::Reported`] if the course file cannot be rewritten.
     pub fn set_course_preview(&mut self, path: &Path, png: &[u8]) -> Result<(), AppError> {
-        course::set_preview(path, png).map_err(|e| AppError::Storage(e.to_string()))
+        course::set_preview(path, png)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::UpdateCourse, e)))
     }
 
     /// A name for the course imported from `path`, for the rider to confirm: a GPX file's
@@ -1735,13 +1727,13 @@ impl App {
     /// Chooses how detailed the 3D world is drawn on this computer (R43).
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the choice cannot be saved.
+    /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn set_graphics_quality(
         &mut self,
         quality: profiles::GraphicsQuality,
     ) -> Result<(), AppError> {
         profiles::set_graphics_quality(&self.data_dir, quality)
-            .map_err(|e| AppError::Storage(e.to_string()))
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// Where the overlay was last on screen (R55); `None` before it was first used.
@@ -1753,10 +1745,10 @@ impl App {
     /// Remembers where the overlay is on screen.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if it cannot be saved.
+    /// [`AppError::Reported`] if it cannot be saved.
     pub fn set_overlay_window(&mut self, window: profiles::OverlayWindow) -> Result<(), AppError> {
         profiles::set_overlay_window(&self.data_dir, window)
-            .map_err(|e| AppError::Storage(e.to_string()))
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// Whether the ride view's control bar is folded away to its corner (#189).
@@ -1768,10 +1760,10 @@ impl App {
     /// Remembers whether the ride view's control bar is folded away.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if it cannot be saved.
+    /// [`AppError::Reported`] if it cannot be saved.
     pub fn set_ride_bar_folded(&mut self, folded: bool) -> Result<(), AppError> {
         profiles::set_ride_bar_folded(&self.data_dir, folded)
-            .map_err(|e| AppError::Storage(e.to_string()))
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// Whether the app fills the screen (#218).
@@ -1783,10 +1775,10 @@ impl App {
     /// Remembers whether the app fills the screen, to start that way next time.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if it cannot be saved.
+    /// [`AppError::Reported`] if it cannot be saved.
     pub fn set_fullscreen(&mut self, fullscreen: bool) -> Result<(), AppError> {
         profiles::set_fullscreen(&self.data_dir, fullscreen)
-            .map_err(|e| AppError::Storage(e.to_string()))
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// Whether rides are simulated: with the fake trainer, which can be sped up and jumped
@@ -2103,11 +2095,11 @@ impl App {
     ///
     /// # Errors
     /// [`AppError::UnknownDevice`] if the index is not a cadence sensor from the last scan,
-    /// [`AppError::Storage`] if the choice cannot be saved.
+    /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn connect_cadence_sensor(&mut self, index: usize) -> Result<(), AppError> {
         let device = self.discovered_device(index, DeviceKind::CadenceSensor)?;
         profiles::set_cadence_source(&self.data_dir, CadenceSource::Automatic)
-            .map_err(|e| AppError::Storage(e.to_string()))?;
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))?;
         let id = device.id();
         if self.cadence_sensor.is_some() && self.cadence_sensor_id.as_deref() == Some(id.as_str()) {
             return Ok(());
@@ -2133,7 +2125,7 @@ impl App {
     /// one connected is let go and no longer reconnected (R72).
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the choice cannot be saved.
+    /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn set_cadence_source(&mut self, source: CadenceSource) -> Result<(), AppError> {
         self.cadence_sensor = None;
         self.cadence_sensor_id = None;
@@ -2143,7 +2135,7 @@ impl App {
         }
         profiles::forget_device(&self.data_dir, DeviceRole::CadenceSensor)
             .and_then(|()| profiles::set_cadence_source(&self.data_dir, source))
-            .map_err(|e| AppError::Storage(e.to_string()))
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// Connects a Shimano Di2 shifter whose D-Fly buttons shift or do what else the rider gave
@@ -2177,10 +2169,11 @@ impl App {
     /// Gives the Di2 shifter's buttons what `map` says, at once and for next time.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the choice cannot be saved.
+    /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn set_button_map(&mut self, map: ButtonMap) -> Result<(), AppError> {
         self.buttons.set(map);
-        profiles::set_button_map(&self.data_dir, &map).map_err(|e| AppError::Storage(e.to_string()))
+        profiles::set_button_map(&self.data_dir, &map)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// Shifts from `input` from now on, instead of the shifter connected before (R7).
@@ -2267,7 +2260,7 @@ impl App {
     /// Adds a workout file (ZWO, ERG, MRC or FIT) to the library; returns its id.
     ///
     /// # Errors
-    /// [`AppError::Workout`] if it is no workout Torqa understands or cannot be copied.
+    /// [`AppError::Reported`] if it is no workout Torqa understands or cannot be copied.
     pub fn import_workout(&mut self, file: &Path) -> Result<String, AppError> {
         torqa_workouts::import(&torqa_workouts::library_dir(&self.data_dir), file)
             .map(|path| path.display().to_string())
@@ -2278,7 +2271,7 @@ impl App {
     /// library's ZWO file being edited); returns its id.
     ///
     /// # Errors
-    /// [`AppError::Workout`] if it has no steps or cannot be written.
+    /// [`AppError::Reported`] if it has no steps or cannot be written.
     pub fn save_workout(
         &mut self,
         plan: &torqa_domain::workout::Plan,
@@ -2292,7 +2285,7 @@ impl App {
     /// Deletes a workout file from the library.
     ///
     /// # Errors
-    /// [`AppError::Workout`] for built-ins and files that cannot be deleted.
+    /// [`AppError::Reported`] for built-ins and files that cannot be deleted.
     pub fn delete_workout(&mut self, id: &str) -> Result<(), AppError> {
         torqa_workouts::delete(&torqa_workouts::library_dir(&self.data_dir), id)
             .map_err(|e| AppError::Reported(Failure::new(Kind::DeleteWorkout, e)))
@@ -2301,9 +2294,10 @@ impl App {
     /// A structured workout by its id (see [`App::workouts`]), for the active rider's FTP.
     ///
     /// # Errors
-    /// [`AppError::Workout`] if it cannot be read.
+    /// [`AppError::Reported`] if it cannot be read.
     pub fn structured_workout(&self, id: &str) -> Result<Workout, AppError> {
-        let plan = torqa_workouts::load(id).map_err(|e| AppError::Workout(e.to_string()))?;
+        let plan = torqa_workouts::load(id)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::LoadWorkout, e)))?;
         Ok(Workout::Structured {
             plan: Arc::new(plan),
             ftp: self.profile.profile.ftp,
@@ -2313,7 +2307,7 @@ impl App {
     /// Makes `ftp` the active rider's FTP, e.g. from an FTP test (R22).
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the profile cannot be saved.
+    /// [`AppError::Reported`] if the profile cannot be saved.
     pub fn set_ftp(&mut self, ftp: Watts) -> Result<(), AppError> {
         let mut profile = self.profile.profile.clone();
         profile.ftp = ftp;
@@ -2713,7 +2707,7 @@ impl App {
     /// layout as saved.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if it cannot be written.
+    /// [`AppError::Reported`] if it cannot be written.
     pub fn set_hud_layout(&mut self, layout: &[String]) -> Result<Vec<String>, AppError> {
         let layout = hud::sanitize(layout);
         profiles::save_hud(&self.data_dir, &self.profile.id, &layout)
@@ -2858,7 +2852,7 @@ impl App {
     /// The recorded data of one ride, with zones of the active rider.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the FIT file cannot be read.
+    /// [`AppError::Reported`] if the FIT file cannot be read.
     pub fn ride_detail(&self, fit: &Path) -> Result<RideDetail, AppError> {
         let (_, samples) =
             read_fit(fit).map_err(|e| AppError::Reported(Failure::new(Kind::LoadRide, e)))?;
@@ -2874,12 +2868,12 @@ impl App {
     /// changes, so file names stay stable for syncing.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the metadata cannot be read or written.
+    /// [`AppError::Reported`] if the metadata cannot be read or written.
     pub fn rename_ride(&self, fit: &Path, name: &str) -> Result<(), AppError> {
         let storage = |e: rides::RideError| AppError::Reported(Failure::new(Kind::RenameRide, e));
         let mut record = rides::load(fit)
-            .or_else(|_| self.rebuild_metadata(fit).map_err(AppError::Storage))
-            .map_err(|e| AppError::Storage(e.to_string()))?;
+            .or_else(|_| self.rebuild_metadata(fit))
+            .map_err(|e| AppError::Reported(Failure::new(Kind::RenameRide, e)))?;
         let name = name.trim();
         record.name = (!name.is_empty()).then(|| name.to_owned());
         rides::save(fit, &record).map_err(storage)
@@ -2888,7 +2882,7 @@ impl App {
     /// Deletes a ride: its FIT file and metadata.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the FIT file cannot be removed.
+    /// [`AppError::Reported`] if the FIT file cannot be removed.
     pub fn delete_ride(&self, fit: &Path) -> Result<(), AppError> {
         std::fs::remove_file(fit).map_err(|e| {
             AppError::Reported(Failure::new(Kind::DeleteFile, e).arg(fit.display()))
@@ -2901,7 +2895,7 @@ impl App {
     /// directory (R28).
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the FIT file cannot be read or the copy not written.
+    /// [`AppError::Reported`] if the FIT file cannot be read or the copy not written.
     pub fn export_ride(&self, fit: &Path, to: &Path) -> Result<(), AppError> {
         rides::export(fit, to)
             .map_err(|e| AppError::Reported(Failure::new(Kind::ExportFile, e).arg(to.display())))

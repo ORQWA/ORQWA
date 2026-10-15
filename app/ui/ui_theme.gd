@@ -259,12 +259,14 @@ static func initial(rider_name: String, size: int = 40) -> PanelContainer:
 	return badge
 
 
-## A caption label: small, muted, upper case; `text` is translated first.
+## A caption label: small, muted, upper case; `text` follows the interface language.
 static func caption(text: String) -> Label:
 	var label: Label = Label.new()
-	# Translated here, before upper-casing; the label must not look up the upper-cased text.
-	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	label.text = TranslationServer.translate(text).to_upper()
+	# Upper case only when drawn: the label looks up `text` itself, again whenever the rider's
+	# language changes, as captions are built before the rider's profile picks the language.
+	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_ALWAYS
+	label.uppercase = true
+	label.text = text
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", MUTED)
 	return label

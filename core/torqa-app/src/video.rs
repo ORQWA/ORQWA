@@ -94,7 +94,13 @@ fn tacx_source(path: &Path) -> Result<VideoSource, Failure> {
     let pgmf_name = format!("{stem}.pgmf");
     let pgmf_path =
         find_file(dir, |name| name.eq_ignore_ascii_case(&pgmf_name)).ok_or_else(|| {
-            format!("{pgmf_name} not found — it holds the course's slopes, put it next to the RLV")
+            Failure::new(
+                Kind::MissingSlopes,
+                format!(
+                    "{pgmf_name} not found — it holds the course's slopes, put it next to the RLV"
+                ),
+            )
+            .arg(&pgmf_name)
         })?;
     let pgmf_bytes = std::fs::read(&pgmf_path).map_err(|e| unreadable(&pgmf_path, &e))?;
     let pgmf = tacx::parse_pgmf(&pgmf_bytes).map_err(|e| unreadable(&pgmf_path, &e))?;
@@ -344,7 +350,7 @@ impl VideoCourse {
                     .map(|m| (m.distance.0, m.time.saturating_sub(offset).as_secs_f64())),
             )
         }
-        .ok_or_else(|| Failure::new(Kind::PlayVideo, "the video and the route do not match"))?;
+        .ok_or_else(|| Failure::new(Kind::VideoMismatch, "the video and the route do not match"))?;
         Ok(Self {
             video: source.video.clone(),
             offset,

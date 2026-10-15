@@ -63,10 +63,10 @@ func open(rider: String, account: Dictionary, why: String = "") -> void:
 	_link.uri = url
 	_link.visible = not url.is_empty()
 	_status.hide()
-	_failure_details.hide()
+	_failure_details.clear()
 	if not why.is_empty():
-		# The platform's words; a few are translated.
-		_show_status(tr(why), UiTheme.DANGER)
+		# Already in the rider's language: TorqaApp translates failures before formatting them.
+		_show_status(why, UiTheme.DANGER)
 	_login_link.hide()
 	_set_connecting(false)
 	popup_centered()

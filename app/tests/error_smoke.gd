@@ -12,8 +12,11 @@ func _run() -> void:
 	TranslationServer.set_locale("en")
 	var course: CourseDetail = CourseDetail.new()
 	var settings: RideSettingsDialog = RideSettingsDialog.new()
+	# Built before the rider's profile picks the language, as the start page builds it.
+	var zones: ZonesEditor = ZonesEditor.new()
 	root.add_child(course)
 	root.add_child(settings)
+	root.add_child(zones)
 	await process_frame
 	TranslationServer.set_locale("de")
 	await process_frame
@@ -24,6 +27,13 @@ func _run() -> void:
 	_check(tabs.get_tab_title(ride_options.get_index()) == "Fahrt", "ride tab refreshes")
 	_check(TranslationServer.translate("Ride", "ride_action") == "Fahren", "ride action")
 	_check(TranslationServer.translate("Ride", "ride_tab") == "Fahrt", "ride tab")
+	var heading: Label = zones.get_child(0)
+	_check(
+		heading.atr(heading.text) == "Leistungszonen: jeweilige Obergrenze in % der FTP",
+		"captions built in English follow the switch to German: %s" % heading.atr(heading.text)
+	)
+	var zone: Label = (zones.get_child(1) as GridContainer).get_child(0)
+	_check(zone.text == "Z1 Erholung", "zone names follow the language: %s" % zone.text)
 	var path: String = "C:/Räder/100%/%s.fit"
 	var failure: Dictionary = {
 		"message": "Could not open %s.",
@@ -47,6 +57,10 @@ func _run() -> void:
 	var rows: VBoxContainer = history.get("_rows")
 	var original_details: String = failure["details"]
 	_check((rows.get_child(1) as Label).text == original_details, "diagnostic stays exact")
+	history.clear()
+	_check(not history.visible and not panel.visible, "dismissed details hide until the next")
+	history.report(failure)
+	_check(history.visible and rows.get_child_count() == 2, "dismissing forgets earlier failures")
 	TranslationServer.set_locale("en")
 	await process_frame
 	_check(ride_button.text == "Ride", "ride action switches back to English")
@@ -68,6 +82,7 @@ func _run() -> void:
 	_check("/missing-261.fit" in diagnostic, "binding preserves the original cause")
 	torqa.free()
 	history.free()
+	zones.free()
 	settings.free()
 	course.free()
 	if not _failed:

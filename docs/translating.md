@@ -44,5 +44,8 @@ Rider language selection is described in the [wiki](https://github.com/bossm8/To
   payload for inline controls. `FailureDetails` retains up to 20 failures during the session
   and translates their summaries again if the rider changes language. Technical diagnostics
   remain untranslated and are logged; they are shown separately under **Technical details**.
+- Most of the interface is built before the rider's profile chooses the language. Leave a
+  label's automatic translation on with its English text (as `UiTheme.caption()` does, which
+  upper-cases only when drawing), and redo formatted texts on `NOTIFICATION_TRANSLATION_CHANGED`.
 - Run `python3 -m unittest discover -s scripts/i18n` in the dev container for context and
   escaping checks, and the `error_smoke.gd` Godot test for the boundary/UI.
