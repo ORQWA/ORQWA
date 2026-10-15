@@ -209,7 +209,7 @@ msgid "Ascending"
 msgstr "Aufsteigend"
 
 msgid "Ascent to go"
-msgstr "Verbleibende Höhenmeter"
+msgstr "Anstieg übrig"
 
 msgid "Assign buttons to D-Fly channels in E-TUBE, then choose here what each press does"
 msgstr "Weise in E-TUBE den D-Fly-Kanälen Tasten zu und wähle hier, was ein Tastendruck bewirkt"
