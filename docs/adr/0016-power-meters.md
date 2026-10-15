@@ -49,8 +49,8 @@ Service too, next to FTMS. Cadence sensors talk the **Cycling Speed and Cadence 
 - The rider's power, records and analysis come from the device they trust most, with no
   setting to choose between them; only the cadence has a choice, as pedals estimate it
   differently from trainers and sensors.
-- A meter that reads a few percent off the trainer makes ERG targets look slightly missed
-  until power matching follows.
+- A meter that reads a few percent off the trainer makes ERG targets look slightly missed;
+  power matching was dropped (2026-10-15).
 - No `SensorDriver` trait yet: like the heart-rate strap, the meter runs as a `DeviceHandle`.
-  The trait comes with a second transport (ANT+).
+  The trait comes with a second transport.
 - The meter's left/right balance is read past and not recorded yet.

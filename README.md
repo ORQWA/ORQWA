@@ -86,7 +86,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 📴 Ride offline on any computer · ⚖️ realistic physics, adjustable difficulty ·
 🎛️ a HUD your way · 🌍 English and German · 🖥️ macOS, Windows and Linux
 
-**Planned:** Street View / Mapillary rides, ANT+ FE-C, hardware video decoding — see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+**Planned:** hardware video decoding, the overlay on Windows and Linux — see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Using Torqa
 
