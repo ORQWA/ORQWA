@@ -2,6 +2,7 @@
 //! box: AppleScript on macOS (Spotify or Music), `playerctl` (MPRIS) on Linux and media keys on
 //! Windows. Nothing to install, nothing to authorise beyond the system's own prompt.
 
+use crate::failure::{Failure, Kind};
 use std::process::Command;
 
 /// What to tell the music app.
@@ -48,18 +49,23 @@ pub fn command_line(command: MediaCommand) -> Option<(String, Vec<String>)> {
 ///
 /// # Errors
 /// A readable message if the system has no way to control music, or no player reacted.
-pub fn send(command: MediaCommand) -> Result<(), String> {
-    let (program, args) =
-        command_line(command).ok_or_else(|| "music control is not supported here".to_owned())?;
-    let output = Command::new(&program)
-        .args(&args)
-        .output()
-        .map_err(|e| format!("cannot control music ({program}: {e})"))?;
+pub fn send(command: MediaCommand) -> Result<(), Failure> {
+    let (program, args) = command_line(command)
+        .ok_or_else(|| Failure::new(Kind::MusicControl, "music control is not supported here"))?;
+    let output = Command::new(&program).args(&args).output().map_err(|e| {
+        Failure::new(
+            Kind::MusicControl,
+            format!("cannot control music ({program}: {e})"),
+        )
+    })?;
     if output.status.success() {
         Ok(())
     } else {
         let error = String::from_utf8_lossy(&output.stderr);
-        Err(format!("no music player reacted: {}", error.trim()))
+        Err(Failure::new(
+            Kind::MusicResponse,
+            format!("no music player reacted: {}", error.trim()),
+        ))
     }
 }
 

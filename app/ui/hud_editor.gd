@@ -108,6 +108,12 @@ func _refresh() -> void:
 	)
 
 
+func _notification(what: int) -> void:
+	# The hint is formatted, so the label cannot look it up again by itself.
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_instance_valid(_hint):
+		_refresh()
+
+
 func _caption(id: String) -> String:
 	var caption: String = _preview.catalogue[id]["caption"]
 	return caption

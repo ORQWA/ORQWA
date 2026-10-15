@@ -21,6 +21,7 @@ func _run() -> void:
 	await _rider_switch()
 	_ride_bar()
 	await _summary_icons()
+	await _chart_legend()
 	_profile_icons()
 	await _map_preview()
 	await _courses_tab()
@@ -310,12 +311,12 @@ func _shifter_buttons() -> void:
 	var tab: DevicesTab = DevicesTab.new()
 	root.add_child(tab)
 	var choices: Array[Node] = tab.find_children("*", "OptionButton", true, false)
-	# Trainer, heart rate and shifter, a press, a hold and a double press of four channels, and
-	# the graphics quality.
+	# Trainer, power meter, cadence, heart rate and shifter, a press, a hold and a double press
+	# of four channels, and the graphics quality.
 	_check(
-		choices.size() == 3 + 4 * 3 + 1, "a choice per press of each channel: %d" % choices.size()
+		choices.size() == 5 + 4 * 3 + 1, "a choice per press of each channel: %d" % choices.size()
 	)
-	var press: OptionButton = choices[3]
+	var press: OptionButton = choices[5]
 	_check(press.item_count == 1 + actions.size(), "nothing or any action")
 	tab.free()
 
@@ -588,6 +589,29 @@ func _summary_icons() -> void:
 	)
 	var upload: MenuButton = history.get("_upload_button")
 	_check(upload.icon != null and not upload.tooltip_text.is_empty(), "upload, with a tooltip")
+	main.free()
+
+
+## The ride chart's legend names power, heart rate, cadence and elevation, and clicking a key
+## hides its line and dims the key; clicking it again brings both back (R73).
+func _chart_legend() -> void:
+	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
+	root.add_child(main)
+	await process_frame
+	var history: Control = main.get_node("HistoryScreen")
+	var legend: Dictionary[String, Button] = history.get("_legend")
+	var chart: RideChart = history.get("_chart")
+	for series: String in ["power", "heart_rate", "cadence", "elevation"]:
+		_check(legend.has(series) and chart.is_shown(series), "%s in the legend, shown" % series)
+	var cadence: Button = legend["cadence"]
+	var lit: Color = cadence.get_theme_color("font_color")
+	cadence.button_pressed = false
+	_check(not chart.is_shown("cadence"), "clicking cadence hides it")
+	_check(cadence.get_theme_color("font_color") != lit, "its key dims")
+	_check(chart.is_shown("power") and chart.is_shown("heart_rate"), "the others stay")
+	cadence.button_pressed = true
+	_check(chart.is_shown("cadence"), "clicking again shows it")
+	_check(cadence.get_theme_color("font_color") == lit, "and lights its key")
 	main.free()
 
 

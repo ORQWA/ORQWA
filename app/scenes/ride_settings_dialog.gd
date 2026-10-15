@@ -26,13 +26,14 @@ func _ready() -> void:
 	min_size = Vector2i(860, 480)
 	_workout.name = tr("Workout")
 	_tabs.add_child(_workout)
-	_options.name = tr("Ride")
+	_options.name = tr("Ride", "ride_tab")
 	_tabs.add_child(_options)
 	_hud.name = tr("HUD")
 	_tabs.add_child(_hud)
 	_devices.name = tr("Devices")
 	_tabs.add_child(_devices)
 	add_child(_tabs)
+	_translate_ride_tab()
 	_workout.changed.connect(_on_workout_changed)
 	_options.changed.connect(func() -> void: options_changed.emit(_options.options()))
 	_hud.layout_changed.connect(func(layout: PackedStringArray) -> void: hud_changed.emit(layout))
@@ -45,6 +46,16 @@ func _ready() -> void:
 	_confirm_abort.ok_button_text = tr("Abort ride")
 	_confirm_abort.confirmed.connect(func() -> void: abort_requested.emit())
 	add_child(_confirm_abort)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		_translate_ride_tab()
+
+
+func _translate_ride_tab() -> void:
+	if is_instance_valid(_options) and _options.get_parent() == _tabs:
+		_tabs.set_tab_title(_options.get_index(), tr("Ride", "ride_tab"))
 
 
 ## Shows the devices of `torqa` and reconnects them (R69).

@@ -1,10 +1,18 @@
 class_name DevicesTab
 extends VBoxContainer
-## Trainer, heart-rate sensor and Di2 shifter (R5, R7, R41): scanning, choosing, what the
-## shifter's buttons do (#139), and the devices used last reconnecting at start.
+## Trainer, power meter, cadence, heart-rate sensor and Di2 shifter (R5, R7, R41, R71, R72):
+## scanning, choosing, what the shifter's buttons do (#139), and the devices used last
+## reconnecting at start.
 
 const FAKE_TRAINER: int = -1
 const NO_HEART_RATE: int = -1
+const NO_POWER_METER: int = -1
+## The cadence choices that are no sensor, by the core's name; sensors have their scan index.
+const CADENCE_SOURCES: Dictionary[int, String] = {
+	-1: "automatic",
+	-2: "trainer",
+	-3: "power_meter",
+}
 const NO_SHIFTER: int = -1
 const SCAN_SECONDS: float = 5.0
 ## What a shifter's buttons can be given (#139), by the core's name for each action.
@@ -36,6 +44,10 @@ var _scan_button: Button = Button.new()
 var _scan_label: Label = Label.new()
 var _trainer: OptionButton = OptionButton.new()
 var _heart_rate: OptionButton = OptionButton.new()
+## Power pedals or a crank power meter, whose power counts over the trainer's (R71).
+var _power_meter: OptionButton = OptionButton.new()
+## Where the cadence comes from (R72): a device that measures it, or a cadence sensor.
+var _cadence: OptionButton = OptionButton.new()
 ## A Shimano Di2 shifter, and what each press of its D-Fly channels does: a row per channel,
 ## a column per kind of press.
 var _shifter: OptionButton = OptionButton.new()
@@ -58,6 +70,7 @@ func bind(torqa: TorqaApp) -> void:
 	)
 	_torqa.remembered_missing.connect(_on_remembered_missing)
 	_torqa.failed.connect(func(_message: String) -> void: _scan_button.disabled = false)
+	_select_cadence_source()
 	var current: String = _torqa.graphics_quality()
 	for i: int in range(_quality.item_count):
 		if _quality.get_item_metadata(i) == current:
@@ -77,8 +90,8 @@ func bind(torqa: TorqaApp) -> void:
 		_scan_label.text = tr("Reconnecting your devices…")
 
 
-## Connects the chosen trainer and heart-rate sensor (devices connected already stay
-## connected); false if the trainer cannot be connected.
+## Connects the chosen trainer, power meter, heart-rate sensor and shifter (devices connected
+## already stay connected); false if the trainer cannot be connected.
 func connect_selected() -> bool:
 	var trainer: int = _trainer.get_selected_metadata()
 	var connected: bool = (
@@ -88,6 +101,12 @@ func connect_selected() -> bool:
 	)
 	if not connected:
 		return false
+	var power_meter: int = _power_meter.get_selected_metadata()
+	if power_meter != NO_POWER_METER:
+		_torqa.connect_power_meter(power_meter)
+	var cadence: int = _cadence.get_selected_metadata()
+	if not CADENCE_SOURCES.has(cadence):
+		_torqa.connect_cadence_sensor(cadence)
 	var heart_rate: int = _heart_rate.get_selected_metadata()
 	if heart_rate != NO_HEART_RATE:
 		_torqa.connect_heart_rate(heart_rate)
@@ -120,6 +139,8 @@ func _init() -> void:
 	# i18n-begin
 	for row: Array in [
 		["Trainer", _trainer],
+		["Power meter", _power_meter],
+		["Cadence", _cadence],
 		["Heart rate", _heart_rate],
 		["Shifter (Di2)", _shifter],
 	]:
@@ -134,6 +155,13 @@ func _init() -> void:
 		option.custom_minimum_size = Vector2(420, 0)
 		grid.add_child(option)
 	add_child(grid)
+	_power_meter.tooltip_text = tr(
+		"Power pedals or crank: its power and cadence count instead of the trainer's"
+	)
+	_cadence.tooltip_text = tr(
+		"Automatic: a cadence sensor, else the power meter, else the trainer"
+	)
+	_cadence.item_selected.connect(_on_cadence_selected)
 	_shifter.tooltip_text = tr(
 		"Assign buttons to D-Fly channels in E-TUBE, then choose here what each press does"
 	)
@@ -150,6 +178,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
 		_trainer.set_item_text(0, tr("Fake trainer (200 W, for testing)"))
 		_heart_rate.set_item_text(0, tr("None"))
+		_power_meter.set_item_text(0, tr("None (the trainer measures)"))
+		_label_cadence_sources()
 		_shifter.set_item_text(0, tr("None (keyboard: ↑ / ↓)"))
 		_label_buttons()
 
@@ -177,6 +207,10 @@ func _on_devices_found(devices: Array) -> void:
 		var option: OptionButton = _heart_rate
 		if kind == "trainer":
 			option = _trainer
+		elif kind == "power_meter":
+			option = _power_meter
+		elif kind == "cadence_sensor":
+			option = _cadence
 		elif kind == "controller":
 			option = _shifter
 		option.add_item(label)
@@ -184,17 +218,43 @@ func _on_devices_found(devices: Array) -> void:
 		if device["kind"] == "trainer":
 			trainers += 1
 	_scan_label.text = tr("Found %d device(s)") % devices.size()
-	# Prefer the devices used last, else a real trainer over the fake one.
+	# Prefer the devices used last, else a real trainer over the fake one. A power meter only
+	# when chosen once: pedals nearby may be on another bike.
 	if trainers > 0:
 		_trainer.select(1)
 	if _heart_rate.item_count > 1:
 		_heart_rate.select(1)
-	for option: OptionButton in [_trainer, _heart_rate, _shifter]:
+	for option: OptionButton in [_trainer, _power_meter, _cadence, _heart_rate, _shifter]:
 		for i: int in range(option.item_count):
 			var index: int = option.get_item_metadata(i)
 			if remembered.has(index):
 				option.select(i)
 	_show_channels()
+
+
+func _label_cadence_sources() -> void:
+	# i18n-begin
+	var labels: Array[String] = ["Automatic", "Trainer", "Power meter"]
+	# i18n-end
+	for i: int in range(labels.size()):
+		_cadence.set_item_text(i, tr(labels[i]))
+
+
+## Shows the cadence source chosen before; a remembered sensor is selected once found.
+func _select_cadence_source() -> void:
+	if _torqa == null:
+		return
+	var source: String = _torqa.cadence_source()
+	for i: int in range(CADENCE_SOURCES.size()):
+		if CADENCE_SOURCES[_cadence.get_item_metadata(i)] == source:
+			_cadence.select(i)
+
+
+## A device's own cadence lets go of the cadence sensor; a sensor connects with the others.
+func _on_cadence_selected(index: int) -> void:
+	var key: int = _cadence.get_item_metadata(index)
+	if CADENCE_SOURCES.has(key):
+		_torqa.set_cadence_source(CADENCE_SOURCES[key])
 
 
 ## The buttons matter only with a shifter chosen.
@@ -306,9 +366,9 @@ func _show_quality_note() -> void:
 	# i18n-begin
 	var notes: Dictionary[String, String] = {
 		"low": "For weaker computers: shorter view, simpler shadows and sky.",
-		"medium": "60 fps on a MacBook with M1: soft light, shadows and haze.",
+		"medium": "A balance of visual quality and performance.",
 		"high": "For stronger GPUs: softer shadows, bounced light, light fog, more distance.",
-		"ultra": "Everything on, including global illumination: for fast GPUs.",
+		"ultra": "For powerful GPUs: all effects, including global illumination.",
 	}
 	# i18n-end
 	var key: String = _torqa.graphics_quality() if _torqa != null else "medium"
@@ -331,6 +391,15 @@ func _reset_options() -> void:
 	_heart_rate.clear()
 	_heart_rate.add_item(tr("None"))
 	_heart_rate.set_item_metadata(0, NO_HEART_RATE)
+	_power_meter.clear()
+	_power_meter.add_item(tr("None (the trainer measures)"))
+	_power_meter.set_item_metadata(0, NO_POWER_METER)
+	_cadence.clear()
+	for key: int in CADENCE_SOURCES:
+		_cadence.add_item("")
+		_cadence.set_item_metadata(_cadence.item_count - 1, key)
+	_label_cadence_sources()
+	_select_cadence_source()
 	_shifter.clear()
 	_shifter.add_item(tr("None (keyboard: ↑ / ↓)"))
 	_shifter.set_item_metadata(0, NO_SHIFTER)

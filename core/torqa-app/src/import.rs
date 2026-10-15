@@ -1,5 +1,6 @@
 //! Importing a route with everything needed to ride it.
 
+use crate::failure::{Failure, Kind};
 use std::path::Path;
 
 use torqa_domain::files::UsedFiles;
@@ -7,6 +8,7 @@ use torqa_osm::{MapData, Osm};
 use torqa_routes::{ElevationModel, LocalProjection, Route};
 use torqa_storage::course::CourseCountry;
 use torqa_terrain::{Terrain, TileSource};
+use torqa_world::FlatMap;
 use torqa_world::course_map::{self, CourseMap, Frame};
 use tracing::warn;
 
@@ -69,8 +71,11 @@ pub struct Imported {
     pub name: String,
     /// The original GPX track, kept for saving the course.
     pub gpx: String,
-    /// The map for the course's picture, when it is to get one ([`course_map`]).
+    /// The map of the land around the whole route ([`course_map`]), for the course's picture
+    /// and the minimap; `None` until it is made, or without map data.
     pub course_map: Option<Box<CourseMap>>,
+    /// The detailed map of the route's corridor, for the minimap's close view (R70).
+    pub minimap: FlatMap,
     /// The countries the route passes, when looked up ([`countries`]).
     pub countries: Option<Vec<CourseCountry>>,
 }
@@ -86,17 +91,17 @@ pub async fn import_route(
     offline: bool,
     used: &UsedFiles,
     progress: Progress<'_>,
-) -> Result<Imported, String> {
+) -> Result<Imported, Failure> {
     progress(LoadStage::Route, 0, 1);
     let xml = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+        .map_err(|e| Failure::new(Kind::ReadFile, e).arg(path.display()))?;
     let fallback = path
         .file_stem()
         .map_or_else(|| "Route".to_owned(), |s| s.to_string_lossy().into_owned());
     import_gpx(xml, &fallback, (cache_dir, offline), false, used, progress)
         .await
-        .map_err(|e| format!("cannot import {}: {e}", path.display()))
+        .map_err(|e| Failure::new(Kind::ImportFile, e).arg(path.display()))
 }
 
 /// Imports a GPX track: fetches map data along it (bridges and tunnels shape the elevation
@@ -114,8 +119,9 @@ pub async fn import_gpx(
     video: bool,
     used: &UsedFiles,
     progress: Progress<'_>,
-) -> Result<Imported, String> {
-    let track = torqa_routes::track_points(&xml).map_err(|e| e.to_string())?;
+) -> Result<Imported, Failure> {
+    let track =
+        torqa_routes::track_points(&xml).map_err(|e| Failure::new(Kind::PrepareCourse, e))?;
     progress(LoadStage::Route, 1, 1);
 
     let mut osm = Osm::new(cache_dir.join("osm")).recording(used.clone());
@@ -145,7 +151,7 @@ pub async fn import_gpx(
     };
     let mut route = Route::from_gpx_with(&xml, Some(&mut counting), &map)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| Failure::new(Kind::PrepareCourse, e))?;
     if !video {
         route = route.without_turns_in_place();
     }
@@ -153,24 +159,26 @@ pub async fn import_gpx(
     let name = route
         .name()
         .map_or_else(|| fallback_name.to_owned(), ToOwned::to_owned);
+    let minimap = torqa_world::minimap(&route, &map);
     Ok(Imported {
         route,
         map,
         name,
         gpx: xml,
         course_map: None,
+        minimap,
         countries: None,
     })
 }
 
-/// The map of the land around the whole of `route` for the course's picture (#203), from map
-/// tiles as detailed as the picture needs. Downloads are cached under `cache_dir` but not
-/// recorded for the course file, which keeps the picture instead; `offline` uses the cache
-/// only. `None` if no tile is available.
+/// The map of the land around the whole of `route` for the course's picture (#203) and the
+/// minimap (R70), from map tiles as detailed as the picture needs. Downloads are cached under
+/// `cache_dir` and every cached tile used is recorded in `used`, for the course file to keep;
+/// `offline` uses the cache only. `None` if no tile is available.
 pub async fn course_map(
     route: &Route,
-    cache_dir: &Path,
-    offline: bool,
+    (cache_dir, offline): (&Path, bool),
+    used: &UsedFiles,
     progress: Progress<'_>,
 ) -> Option<Box<CourseMap>> {
     let projection = LocalProjection::for_route(route);
@@ -180,7 +188,7 @@ pub async fn course_map(
         .map(|p| projection.project(p.lat, p.lon))
         .collect();
     let frame = Frame::around(&track)?;
-    let mut osm = Osm::new(cache_dir.join("osm"));
+    let mut osm = Osm::new(cache_dir.join("osm")).recording(used.clone());
     if offline {
         osm = osm.offline();
     }
@@ -272,8 +280,9 @@ mod tests {
         </trkseg></trk></gpx>"#;
         let route = Route::from_gpx(gpx, None).await.unwrap();
         let mut stages = Vec::new();
+        let used = UsedFiles::default();
 
-        let map = course_map(&route, &cache, true, &mut |stage, _, total| {
+        let map = course_map(&route, (&cache, true), &used, &mut |stage, _, total| {
             stages.push((stage, total));
         })
         .await
@@ -290,6 +299,8 @@ mod tests {
         let projection = LocalProjection::for_route(&route);
         let (end_east, _) = projection.project(46.70, 8.38);
         assert!(west < -500.0 && east > end_east + 500.0);
+        // R70: its tile goes into the course file, for the minimap to show the land offline.
+        assert_eq!(used.paths(), [tiles.join("1445.pbf")]);
         std::fs::remove_dir_all(cache).unwrap();
     }
 }

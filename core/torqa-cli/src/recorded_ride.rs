@@ -39,7 +39,7 @@ pub(crate) async fn run(mut ride: Ride, args: &RideArgs, devices: &mut Devices) 
                     }
                     DeviceEvent::Disconnected => {
                         println!("{}: disconnected, reconnecting…", devices.trainer.name());
-                        ride.on_power_source_lost();
+                        ride.on_trainer_lost();
                     }
                     DeviceEvent::Telemetry(telemetry) => ride.on_telemetry(&telemetry),
                     DeviceEvent::Buttons(_) => {}

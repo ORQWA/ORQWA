@@ -31,8 +31,8 @@ Measured on a 36 km test line: 344 s, 6 of 20 tiles failed.
 - One data provider; VersaTiles (Shortbread schema) is a possible fallback if needed.
 - A course's map picture (#203) shows the land around the whole route, far beyond the corridor:
   it comes from the same tiles at a lower zoom (4–14, as detailed as the picture needs, a few
-  tiles per course), downloaded once when the course is prepared. They are cached but not
-  bundled into the course file, which keeps the picture instead.
+  tiles per course), downloaded once when the course is prepared. Since #236 they are bundled
+  into the course file too (ADR 0007), for the ride's minimap.
 - The countries a course passes (R68, #230) come from the same tiles: the `boundary` layer's
   borders between countries name the country on either side (`adm0_l`, `adm0_r`, ISO
   alpha-3), and the `place` layer's country labels give the two-letter code and names in many

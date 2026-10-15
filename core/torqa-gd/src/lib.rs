@@ -13,14 +13,16 @@ use godot::classes::image::Format as ImageFormat;
 use godot::classes::{Engine, INode, Image, Node, TranslationServer};
 use godot::prelude::*;
 use torqa_app::analysis::{BestEffort, Comparison};
+use torqa_app::failure::{Failure, Kind};
 use torqa_app::hud::MetricKind;
 use torqa_app::media::MediaCommand;
 use torqa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
 use torqa_app::{library, view};
 use torqa_devices::ble::DeviceKind;
 use torqa_devices::fake::{FakeHeart, FakeRider};
-use torqa_domain::profile::{Avatar, Drivetrain, Profile, UnitSystem};
+use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
 use torqa_domain::shifting::{BUTTONS, Control, Press, Shift};
+use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{
     BeatsPerMinute, Kilograms, Meters, MetersPerSecond, Percent, Rpm, Watts,
 };
@@ -29,6 +31,7 @@ use torqa_physics::{DescentMode, lean_angle};
 use torqa_routes::{ElevationSource, LocalProjection};
 use torqa_session::estimate;
 use torqa_session::workout::{EffortTest, HeartRateHold, RampTest, Workout};
+use torqa_world::MapFeature;
 
 mod log;
 
@@ -58,12 +61,15 @@ impl TorqaCore {
 pub struct TorqaApp {
     base: Base<Node>,
     app: Option<App>,
+    last_failure: VarDictionary,
+    startup_failure: Option<Failure>,
 }
 
 #[godot_api]
 impl INode for TorqaApp {
     fn init(base: Base<Node>) -> Self {
         // The editor instantiates nodes too; it must not start runtimes or touch Bluetooth.
+        let mut startup_failure = None;
         let app = if Engine::singleton().is_editor_hint() {
             None
         } else {
@@ -72,10 +78,16 @@ impl INode for TorqaApp {
             App::new(paths::data_dir(), paths::cache_dir())
                 .inspect_err(|error| {
                     godot_error!("Torqa: {error}");
+                    startup_failure = Some(Failure::new(Kind::Runtime, error));
                 })
                 .ok()
         };
-        Self { base, app }
+        Self {
+            base,
+            app,
+            last_failure: VarDictionary::new(),
+            startup_failure,
+        }
     }
 
     fn ready(&mut self) {
@@ -86,6 +98,9 @@ impl INode for TorqaApp {
     }
 
     fn process(&mut self, delta: f64) {
+        if let Some(failure) = self.startup_failure.take() {
+            self.report_failure(&failure);
+        }
         let Some(app) = self.app.as_mut() else {
             return;
         };
@@ -108,8 +123,8 @@ impl INode for TorqaApp {
 
 #[godot_api]
 impl TorqaApp {
-    /// A scan finished: an array of dictionaries `{index, name, kind ("trainer" or
-    /// "heart_rate"), rssi}`.
+    /// A scan finished: an array of dictionaries `{index, name, kind ("trainer",
+    /// "power_meter", "cadence_sensor", "heart_rate" or "controller"), rssi, remembered}`.
     #[signal]
     fn devices_found(devices: VarArray);
 
@@ -171,6 +186,16 @@ impl TorqaApp {
     #[signal]
     fn failed(message: GString);
 
+    /// Structured failure history: message key, arguments and original diagnostics.
+    #[signal]
+    fn failure_reported(failure: VarDictionary);
+
+    /// Most recently reported failure, for inline expandable diagnostic controls.
+    #[func]
+    fn last_failure(&self) -> VarDictionary {
+        self.last_failure.clone()
+    }
+
     /// Rider `rider`'s account on `platform` is connected, as `label` (R29).
     #[signal]
     fn account_connected(rider: GString, platform: GString, label: GString);
@@ -198,7 +223,7 @@ impl TorqaApp {
     #[signal]
     fn control_requested(control: GString);
 
-    /// Reconnects the trainer and heart-rate sensor used last, in the background (emits
+    /// Reconnects the devices used last, in the background (emits
     /// `devices_found`, `device_connected` and, for those not found, `remembered_missing`).
     /// False if none is remembered.
     #[func]
@@ -214,7 +239,7 @@ impl TorqaApp {
         self.app.as_mut().is_some_and(App::reconnect_devices)
     }
 
-    /// The trainer, heart-rate sensor and shifter in use or used last, as
+    /// The trainer, sensors and shifter in use or used last, as
     /// `[{name, kind, connected}]` with `kind` as in `devices_found` (R69).
     #[func]
     fn devices(&self) -> VarArray {
@@ -229,7 +254,7 @@ impl TorqaApp {
         array
     }
 
-    /// Scans for trainers and heart-rate sensors.
+    /// Scans for trainers, power meters, cadence and heart-rate sensors and shifters.
     #[func]
     fn scan(&mut self, seconds: f64) {
         if let Some(app) = self.app.as_mut() {
@@ -311,9 +336,7 @@ impl TorqaApp {
                 "has_gps" => probe.has_gps,
             },
             Err(message) => {
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&message);
                 VarDictionary::new()
             }
         }
@@ -993,10 +1016,7 @@ impl TorqaApp {
         let detail = match app.ride_detail(std::path::Path::new(&path.to_string())) {
             Ok(detail) => detail,
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 return VarDictionary::new();
             }
         };
@@ -1301,30 +1321,8 @@ impl TorqaApp {
         let Some(map) = self.app.as_ref().and_then(|app| app.course_map(&path)) else {
             return VarDictionary::new();
         };
-        let color = |[r, g, b, a]: [f32; 4]| Color::from_rgba(r, g, b, a);
-        let vertices: PackedVector2Array = map
-            .areas
-            .vertices
-            .iter()
-            .map(|&[x, y]| Vector2::new(x, y))
-            .collect();
-        let colors: PackedColorArray = map.areas.colors.iter().map(|&c| color(c)).collect();
-        let mut lines = VarArray::new();
-        for line in &map.lines {
-            let points: PackedVector2Array = line
-                .points
-                .iter()
-                .map(|&[x, y]| Vector2::new(x, y))
-                .collect();
-            lines.push(
-                &vdict! {
-                    "points" => &points,
-                    "width" => line.width,
-                    "color" => color(line.color),
-                }
-                .to_variant(),
-            );
-        }
+        // The cards' pictures are dark whatever the rider's minimap.
+        let style = MapStyle::Dark;
         let mut labels = VarArray::new();
         for label in &map.labels {
             let kind = match label.kind {
@@ -1353,13 +1351,14 @@ impl TorqaApp {
             i32::try_from(PICTURE[0]).unwrap_or(i32::MAX),
             i32::try_from(PICTURE[1]).unwrap_or(i32::MAX),
         );
+        let (vertices, colors) = flat_map_arrays(&map.areas, style);
         vdict! {
             "size" => size,
             "frame" => frame,
-            "background" => color(torqa_world::course_map::LAND),
+            "background" => map_color(MapFeature::Land, style),
             "vertices" => &vertices,
             "colors" => &colors,
-            "lines" => &lines,
+            "lines" => &map_lines(&map.lines, style),
             "labels" => &labels,
         }
     }
@@ -1459,6 +1458,46 @@ impl TorqaApp {
             return false;
         };
         self.command(|app| app.connect_heart_rate(index))
+    }
+
+    /// Connects a scanned power meter by its index; its power counts over the trainer's (R71).
+    #[func]
+    fn connect_power_meter(&mut self, index: i64) -> bool {
+        let Ok(index) = usize::try_from(index) else {
+            return false;
+        };
+        self.command(|app| app.connect_power_meter(index))
+    }
+
+    /// Connects a scanned cadence sensor by its index; its cadence counts first (R72).
+    #[func]
+    fn connect_cadence_sensor(&mut self, index: i64) -> bool {
+        let Ok(index) = usize::try_from(index) else {
+            return false;
+        };
+        self.command(|app| app.connect_cadence_sensor(index))
+    }
+
+    /// Which device's cadence counts (R72): `automatic`, `trainer` or `power_meter`.
+    #[func]
+    fn cadence_source(&self) -> GString {
+        let source = self
+            .app
+            .as_ref()
+            .map(App::cadence_source)
+            .unwrap_or_default();
+        GString::from(source.name())
+    }
+
+    /// Takes the cadence from `name` (as `cadence_source` returns it) from the next ride on,
+    /// letting go of any cadence sensor. False for an unknown name.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn set_cadence_source(&mut self, name: GString) -> bool {
+        let Some(source) = CadenceSource::from_name(&name.to_string()) else {
+            return false;
+        };
+        self.command(|app| app.set_cadence_source(source))
     }
 
     /// Starts riding the loaded route as the active rider, against `ghost`: `{kind}` with
@@ -1624,10 +1663,7 @@ impl TorqaApp {
         match app.save_workout(&plan, Some(replace.as_str()).filter(|r| !r.is_empty())) {
             Ok(id) => GString::from(id.as_str()),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 GString::new()
             }
         }
@@ -1660,10 +1696,7 @@ impl TorqaApp {
         match app.import_workout(std::path::Path::new(&path.to_string())) {
             Ok(id) => GString::from(id.as_str()),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 GString::new()
             }
         }
@@ -1686,10 +1719,7 @@ impl TorqaApp {
         match app.structured_workout(&text("id")) {
             Ok(parsed) => Some(parsed),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 None
             }
         }
@@ -2003,6 +2033,15 @@ impl TorqaApp {
             } else {
                 Avatar::Female
             },
+            map_style: if data
+                .get("map_style")
+                .and_then(|v| v.try_to::<GString>().ok())
+                .is_some_and(|m| m == "dark")
+            {
+                MapStyle::Dark
+            } else {
+                MapStyle::Coloured
+            },
             drivetrain: if data
                 .get("drivetrain")
                 .and_then(|v| v.try_to::<GString>().ok())
@@ -2032,10 +2071,7 @@ impl TorqaApp {
                 GString::from(id.as_str())
             }
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 GString::new()
             }
         }
@@ -2233,10 +2269,7 @@ impl TorqaApp {
         match app.set_hud_layout(&ids) {
             Ok(saved) => saved.iter().map(|id| GString::from(id.as_str())).collect(),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 PackedStringArray::new()
             }
         }
@@ -2380,30 +2413,31 @@ impl TorqaApp {
             .map_or_else(VarDictionary::new, |world| mesh_arrays(&world.structures))
     }
 
-    /// The minimap as coloured triangles: `{vertices, colors, background}`, vertices in metres
-    /// east/north of the route start (as in `track()`).
+    /// The minimap (R70) in the rider's map style: `{background, land, lines, corridor}`, all
+    /// in metres east/north of the route start (as in `track()`). `land` is the map of the
+    /// land around the whole route as coloured triangles `{vertices, colors}`, with its rivers
+    /// and roads as `lines` (`[{points, width, color}]` in drawing order, `width` in pixels)
+    /// over it; `corridor` the route's corridor in detail, drawn over both. Empty without a
+    /// route.
     #[func]
     fn minimap_mesh(&self) -> VarDictionary {
-        let Some(world) = self.app.as_ref().and_then(App::world) else {
+        let Some(app) = self.app.as_ref() else {
             return VarDictionary::new();
         };
-        let vertices: PackedVector2Array = world
-            .minimap
-            .vertices
-            .iter()
-            .map(|&[x, y]| Vector2::new(x, y))
-            .collect();
-        let colors: PackedColorArray = world
-            .minimap
-            .colors
-            .iter()
-            .map(|&[r, g, b, a]| Color::from_rgba(r, g, b, a))
-            .collect();
-        let [r, g, b, a] = torqa_world::MINIMAP_BACKGROUND;
+        let Some((land, corridor)) = app.minimap() else {
+            return VarDictionary::new();
+        };
+        let style = app.profile().profile.map_style;
+        let mesh = |flat: &torqa_world::FlatMap| {
+            let (vertices, colors) = flat_map_arrays(flat, style);
+            vdict! { "vertices" => &vertices, "colors" => &colors }
+        };
+        let empty = torqa_world::FlatMap::default();
         vdict! {
-            "vertices" => &vertices,
-            "colors" => &colors,
-            "background" => Color::from_rgba(r, g, b, a),
+            "background" => map_color(MapFeature::Land, style),
+            "land" => &mesh(land.map_or(&empty, |l| &l.areas)),
+            "lines" => &map_lines(land.map_or(&[][..], |l| &l.lines[..]), style),
+            "corridor" => &mesh(corridor),
         }
     }
 
@@ -2441,6 +2475,33 @@ impl TorqaApp {
 }
 
 impl TorqaApp {
+    fn record_failure(&mut self, failure: &Failure) -> GString {
+        tracing::warn!(kind = ?failure.kind, details = %failure.details, "application operation failed");
+        let message = failure.kind.message();
+        let translated = TranslationServer::singleton()
+            .translate(message)
+            .to_string();
+        let summary = format_failure(&translated, &failure.args);
+        let args = failure
+            .args
+            .iter()
+            .map(|arg| GString::from(arg.as_str()))
+            .collect::<PackedStringArray>();
+        self.last_failure = vdict! {
+            "message" => message,
+            "args" => &args,
+            "details" => failure.details.as_str(),
+        };
+        let payload = self.last_failure.clone();
+        self.signals().failure_reported().emit(&payload);
+        GString::from(summary.as_str())
+    }
+
+    fn report_failure(&mut self, failure: &Failure) {
+        let summary = self.record_failure(failure);
+        self.signals().failed().emit(&summary);
+    }
+
     fn command(&mut self, run: impl FnOnce(&mut App) -> Result<(), torqa_app::AppError>) -> bool {
         let Some(app) = self.app.as_mut() else {
             return false;
@@ -2448,10 +2509,7 @@ impl TorqaApp {
         match run(app) {
             Ok(()) => true,
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 false
             }
         }
@@ -2491,10 +2549,11 @@ impl TorqaApp {
                 platform,
                 message,
             } => {
+                let summary = self.record_failure(&message);
                 self.signals().account_failed().emit(
                     &GString::from(rider.as_str()),
                     &GString::from(platform.as_str()),
-                    &GString::from(message.as_str()),
+                    &summary,
                 );
             }
             AppEvent::OpenUrl(url) => {
@@ -2515,10 +2574,11 @@ impl TorqaApp {
                 reconnect,
             } => {
                 let path = fit.display().to_string();
+                let summary = self.record_failure(&message);
                 self.signals().upload_failed().emit(
                     &GString::from(path.as_str()),
                     &GString::from(platform.as_str()),
-                    &GString::from(message.as_str()),
+                    &summary,
                     reconnect,
                 );
             }
@@ -2610,9 +2670,7 @@ impl TorqaApp {
                     .emit(&GString::from(control_name(control)));
             }
             AppEvent::Error(message) => {
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&message);
             }
         }
     }
@@ -2931,6 +2989,8 @@ fn kind_name(kind: DeviceKind) -> &'static str {
     match kind {
         DeviceKind::Trainer => "trainer",
         DeviceKind::HeartRateSensor => "heart_rate",
+        DeviceKind::PowerMeter => "power_meter",
+        DeviceKind::CadenceSensor => "cadence_sensor",
         DeviceKind::Controller => "controller",
     }
 }
@@ -3067,9 +3127,50 @@ fn sync_marks(marks: &PackedVector2Array) -> Vec<torqa_app::SyncMark> {
         .collect()
 }
 
+/// A flat map's triangles and their colours in `style`, for an `ArrayMesh`.
+fn flat_map_arrays(
+    flat: &torqa_world::FlatMap,
+    style: MapStyle,
+) -> (PackedVector2Array, PackedColorArray) {
+    let vertices = flat
+        .vertices
+        .iter()
+        .map(|&[x, y]| Vector2::new(x, y))
+        .collect();
+    let colors = flat.features.iter().map(|&f| map_color(f, style)).collect();
+    (vertices, colors)
+}
+
+/// A course map's rivers and roads as `[{points, width, color}]`, coloured in `style`.
+fn map_lines(lines: &[torqa_world::course_map::Line], style: MapStyle) -> VarArray {
+    let mut array = VarArray::new();
+    for line in lines {
+        let points: PackedVector2Array = line
+            .points
+            .iter()
+            .map(|&[x, y]| Vector2::new(x, y))
+            .collect();
+        array.push(
+            &vdict! {
+                "points" => &points,
+                "width" => line.width,
+                "color" => map_color(line.feature, style),
+            }
+            .to_variant(),
+        );
+    }
+    array
+}
+
+fn map_color(feature: MapFeature, style: MapStyle) -> Color {
+    let [r, g, b, a] = feature.color(style);
+    Color::from_rgba(r, g, b, a)
+}
+
 /// A rider as `profile()` describes them: `{id, name, rider_mass_kg, bike_mass_kg, ftp_w,
 /// max_heart_rate_bpm, units, language, avatar, drivetrain, chainring, cog, power_zones_pct,
-/// heart_rate_zones_pct, default_difficulty_pct}`.
+/// heart_rate_zones_pct, default_difficulty_pct, map_style}` with `map_style` either
+/// `"coloured"` or `"dark"`.
 fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
     vdict! {
         "id" => id,
@@ -3102,5 +3203,33 @@ fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
         "power_zones_pct" => &percent(&p.power_zones),
         "heart_rate_zones_pct" => &percent(&p.heart_rate_zones),
         "default_difficulty_pct" => p.default_difficulty.0,
+        "map_style" => match p.map_style {
+            MapStyle::Coloured => "coloured",
+            MapStyle::Dark => "dark",
+        },
+    }
+}
+
+/// Substitute only template slots: a filename containing `%s` must remain untouched.
+fn format_failure(template: &str, args: &[String]) -> String {
+    let mut parts = template.split("%s");
+    let mut result = parts.next().unwrap_or_default().to_owned();
+    for (index, part) in parts.enumerate() {
+        result.push_str(args.get(index).map_or("%s", String::as_str));
+        result.push_str(part);
+    }
+    result
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::format_failure;
+
+    #[test]
+    fn substitution_never_interprets_a_filename_as_another_placeholder() {
+        assert_eq!(
+            format_failure("Could not open %s.", &["/Räder/100%/%s.fit".to_owned()]),
+            "Could not open /Räder/100%/%s.fit."
+        );
     }
 }

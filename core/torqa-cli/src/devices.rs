@@ -142,6 +142,8 @@ pub(crate) fn kind_label(kind: DeviceKind) -> &'static str {
     match kind {
         DeviceKind::Trainer => "trainer",
         DeviceKind::HeartRateSensor => "heart rate",
+        DeviceKind::PowerMeter => "power meter",
+        DeviceKind::CadenceSensor => "cadence",
         DeviceKind::Controller => "controller",
     }
 }

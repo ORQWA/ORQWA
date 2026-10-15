@@ -112,7 +112,7 @@ func _init() -> void:
 	left.add_theme_constant_override("separation", 14)
 	var top: HBoxContainer = HBoxContainer.new()
 	var back: Button = Button.new()
-	back.text = tr("← Courses")
+	back.text = tr("Courses")
 	back.pressed.connect(func() -> void: back_requested.emit())
 	top.add_child(back)
 	left.add_child(top)
@@ -160,7 +160,8 @@ func _init() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_color_override("font_color", UiTheme.MUTED)
 	right.add_child(_status)
-	_ride_button.text = tr("Ride")
+	_ride_button.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_ride_button.text = tr("Ride", "ride_action")
 	_ride_button.custom_minimum_size = Vector2(0, 56)
 	_ride_button.add_theme_font_size_override("font_size", 22)
 	_ride_button.add_theme_stylebox_override("normal", UiTheme.accent_button())
@@ -240,6 +241,11 @@ func _delete() -> void:
 		_path = ""
 		course_changed.emit()
 		back_requested.emit()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_instance_valid(_ride_button):
+		_ride_button.text = tr("Ride", "ride_action")
 
 
 func _on_route_loaded(_route: Dictionary) -> void:

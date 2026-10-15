@@ -82,6 +82,10 @@ Blender references. Use them for any visual or model work.
   `docs/PLAN.md`, `docs/REQUIREMENTS.md` (append-only), ADR amendments, `docs/CREDITS.md`,
   `docs/OPEN-QUESTIONS.md` (remove what is settled), `art/README.md` and the skills in
   `.claude/skills/`.
+- **Every server Torqa contacts is listed** in the wiki's
+  [When Torqa needs the internet](https://github.com/bossm8/Torqa/wiki/Getting-started#when-torqa-needs-the-internet)
+  section, which riders use for privacy and firewall rules. Adding, changing or removing a
+  network call updates that list in the same PR.
 - **Images in docs stay current too.** Re-render those a change affects: app screenshots with
   `scripts/screenshots.sh`, the model galleries with `GALLERY=docs/images/models` and
   `scripts/render-models.sh` / `scripts/render-riders.sh`. Check wiki links as well as repository

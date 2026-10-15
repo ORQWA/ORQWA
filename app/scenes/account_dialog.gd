@@ -18,6 +18,7 @@ var _edits: Dictionary[String, LineEdit] = {}
 var _help: Label = Label.new()
 var _link: LinkButton = LinkButton.new()
 var _status: Label = Label.new()
+var _failure_details: FailureDetails = FailureDetails.new()
 ## The platform's login, to open again should the browser not have shown it.
 var _login_link: LinkButton = LinkButton.new()
 ## Waiting for the platform to answer.
@@ -62,9 +63,10 @@ func open(rider: String, account: Dictionary, why: String = "") -> void:
 	_link.uri = url
 	_link.visible = not url.is_empty()
 	_status.hide()
+	_failure_details.clear()
 	if not why.is_empty():
-		# The platform's words; a few are translated.
-		_show_status(tr(why), UiTheme.DANGER)
+		# Already in the rider's language: TorqaApp translates failures before formatting them.
+		_show_status(why, UiTheme.DANGER)
 	_login_link.hide()
 	_set_connecting(false)
 	popup_centered()
@@ -96,6 +98,7 @@ func _init() -> void:
 	_status.custom_minimum_size = Vector2(480, 0)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rows.add_child(_status)
+	rows.add_child(_failure_details)
 	_login_link.text = tr("Open the login again")
 	_login_link.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	rows.add_child(_login_link)
@@ -165,6 +168,7 @@ func _on_failed(rider: String, platform: String, message: String) -> void:
 	_set_connecting(false)
 	_login_link.hide()
 	_show_status(message, UiTheme.DANGER)
+	_failure_details.report(_torqa.last_failure())
 
 
 func _set_connecting(on: bool) -> void:

@@ -34,7 +34,10 @@ var _track: PackedVector2Array = PackedVector2Array()
 var _rider: Vector2 = Vector2.ZERO
 ## Direction of travel, radians clockwise from north.
 var _heading: float = 0.0
-var _map: ArrayMesh
+## The land around the whole route, its rivers and roads over it, then the corridor in detail.
+var _land: ArrayMesh
+var _lines: Array[Dictionary] = []
+var _corridor: ArrayMesh
 var _background: Color = Color(0.15, 0.17, 0.16)
 var _follow: bool = true
 
@@ -44,22 +47,20 @@ func set_track(track: PackedVector2Array) -> void:
 	queue_redraw()
 
 
-## Takes the flat map from `TorqaApp.minimap_mesh()`.
+## Takes the maps from `TorqaApp.minimap_mesh()`.
 func set_map(map: Dictionary) -> void:
-	_map = null
+	_land = null
+	_lines.clear()
+	_corridor = null
 	if map.is_empty():
 		return
-	var vertices: PackedVector2Array = map["vertices"]
-	var colors: PackedColorArray = map["colors"]
 	_background = map["background"]
-	if vertices.is_empty():
-		return
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_COLOR] = colors
-	_map = ArrayMesh.new()
-	_map.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var land: Dictionary = map["land"]
+	_land = _mesh(land)
+	var lines: Array = map["lines"]
+	_lines.assign(lines)
+	var corridor: Dictionary = map["corridor"]
+	_corridor = _mesh(corridor)
 	queue_redraw()
 
 
@@ -98,8 +99,15 @@ func _gui_input(event: InputEvent) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), _background)
 	var view: Transform2D = _view()
-	if _map != null:
-		draw_mesh(_map, null, view)
+	if _land != null:
+		draw_mesh(_land, null, view)
+	for line: Dictionary in _lines:
+		var points: PackedVector2Array = line["points"]
+		var width: float = line["width"]
+		var color: Color = line["color"]
+		draw_polyline(view * points, color, width, true)
+	if _corridor != null:
+		draw_mesh(_corridor, null, view)
 	if _track.size() >= 2:
 		draw_polyline(view * _track, Color(0, 0, 0, 0.35), 6.0, true)
 		draw_polyline(view * _track, TRACK_COLOR, 3.5, true)
@@ -116,6 +124,20 @@ func _draw() -> void:
 	draw_string(
 		font, Vector2(14, size.y - 12), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiTheme.MUTED
 	)
+
+
+## Coloured triangles `{vertices, colors}` as a mesh; null without any.
+static func _mesh(triangles: Dictionary) -> ArrayMesh:
+	var vertices: PackedVector2Array = triangles["vertices"]
+	if vertices.is_empty():
+		return null
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = triangles["colors"]
+	var mesh: ArrayMesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 ## An arrow pointing in the direction of travel (`angle` clockwise from screen up).

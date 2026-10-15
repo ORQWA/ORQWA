@@ -1,8 +1,8 @@
 class_name RideDevices
 extends VBoxContainer
-## The trainer, heart-rate strap and shifter during a ride, each with whether it is connected,
-## and a button to reconnect those that are not (R69): a strap that dropped while the rider
-## was off the bike, or one not found at start.
+## The trainer, sensors and shifter during a ride, each with whether it is connected, and a
+## button to reconnect those that are not (R69): a strap that dropped while the rider was off
+## the bike, or one not found at start.
 
 var _torqa: TorqaApp
 var _rows: GridContainer = GridContainer.new()
@@ -46,6 +46,8 @@ func refresh() -> void:
 	var kinds: Dictionary[String, String] = {
 		"trainer": "Trainer",
 		"heart_rate": "Heart rate",
+		"power_meter": "Power meter",
+		"cadence_sensor": "Cadence",
 		"controller": "Shifter",
 	}
 	# i18n-end

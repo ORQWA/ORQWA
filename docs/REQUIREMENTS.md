@@ -8,7 +8,9 @@ overlay over normal windows only, a Workouts tab and Di2 shifting (R57–R59), e
 with uploads by one click or automatically (R60) and the analysis of a rider's power across
 their rides (R61–R65, #217), and 2026-10-13 with an estimated time to the finish (R66, #231)
 and a searchable, sortable and grouped course gallery with the countries courses pass
-(R67–R68, #230).
+(R67–R68, #230), and 2026-10-14 with the minimap's land around the whole route (R70, #236)
+and power meters and the cadence's source (R71–R72) and a ride chart with cadence and lines to
+hide (R73).
 Requirement IDs (`R<n>`) are referenced from code, tests and ADRs. The list is **append-only**:
 existing requirements are never reworded or renumbered; changes are new requirements that state
 what they supersede, and the old entry only gets a short pointer.
@@ -32,12 +34,14 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 
 | ID | Requirement |
 |---|---|
-| R5 | Bluetooth LE **FTMS** (MVP). **ANT+ FE-C** later (no ANT+ dongle available for testing yet). |
+| R5 | Bluetooth LE **FTMS** (MVP). **ANT+ FE-C** later (no ANT+ dongle available for testing yet). *(ANT+ FE-C dropped 2026-10-15.)* |
 | R6 | Direct-drive trainers first (KICKR Core 2). Architecture generic enough for any FTMS/FE-C trainer and smart bikes. |
-| R7 | Sensors: BLE heart-rate strap. Zwift Click as shift input (no official protocol → reverse-engineered BLE, isolated and optional); also OpenBikeControl and keyboard/gamepad as shift inputs. *(Shift inputs: R59.)* |
+| R7 | Sensors: BLE heart-rate strap. Zwift Click as shift input (no official protocol → reverse-engineered BLE, isolated and optional); also OpenBikeControl and keyboard/gamepad as shift inputs. *(Shift inputs: R59; power meters: R71; cadence: R72.)* |
 | R8 | Trainer modes: **SIM** (slope simulation, MVP), **ERG** (target power), **resistance level**; free ride. |
 | R9 | Drivetrain: real cassette (trainer handles shifting naturally) and Zwift Cog (app-side **virtual gears** — resistance offset via FTMS). Post-MVP. See ADR 0003. |
 | R10 | Software **fake trainer** for development and automated tests. |
+| R71 | Extends R7 (2026-10-14): a Bluetooth **power meter** (Cycling Power Service — power pedals such as the Favero Assioma, crank and spider meters) beside the trainer. While it reports, **its power is the rider's**: for the speed, the HUD, the recording and the analysis; its **cadence** too where it reports one (worked out from its crank revolutions), else the trainer's *(choice of source: R72)*. If it drops, the trainer's power and cadence count until it is back, and if the trainer drops the meter's power still moves the rider. It is chosen in Devices & Settings, remembered and reconnected like the other devices (R41, R69). The trainer still holds ERG targets by its own measurement; matching them to the meter is a later step *(matching dropped 2026-10-15)*. |
+| R72 | Extends R71 (2026-10-14): the rider chooses **where the cadence comes from**, as Zwift's pairing screen does: **Automatic** (a cadence sensor if one is connected, else the power meter, else the trainer), the **trainer**, the **power meter**, or a Bluetooth **cadence sensor** (Cycling Speed and Cadence Service). While the chosen device reports no cadence, the others stand in, in the automatic order. The choice is kept for the installation; a chosen sensor is remembered and reconnected like the other devices. |
 
 ## Routes
 
@@ -60,9 +64,10 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 |---|---|
 | R16 | **3D world (MVP)**: semi-realistic style *(now stylized, R44)*. World source user-selectable, default **hybrid** (real DEM + OpenStreetMap when available, procedural fallback). Weather/time-of-day presets. Cameras: first person, chase, drone — user's choice. Optional cadence-synced avatar. 60 fps on an M1 integrated GPU. *(Performance superseded by R43; visual target extended by R44–R47.)* |
 | R17 | **Video**: own GoPro/Insta360 footage, downloaded videos, and plain videos without GPS, and Tacx RLV courses (`.rlv` + `.pgmf`, added by #42). Auto-sync from embedded GPS (GoPro GPMF) with manual sync-point fallback. 1080p target; higher resolutions transcoded down on import. Variable playback speed with frame blending. |
-| R18 | **Street imagery**: Google Street View (online only, user's API key, no caching per Google ToS) and Mapillary. Smooth crossfade/zoom transitions between panoramas. |
-| R19 | Overlays: 2D minimap (OpenStreetMap tiles, cached for offline) and elevation profile with current position. |
+| R18 | **Street imagery**: Google Street View (online only, user's API key, no caching per Google ToS) and Mapillary. Smooth crossfade/zoom transitions between panoramas. *(dropped 2026-10-15.)* |
+| R19 | Overlays: 2D minimap (OpenStreetMap tiles, cached for offline) and elevation profile with current position. *(Land around the whole route, map style: R70.)* |
 | R20 | Ghosts / pacers, selectable per ride: own previous best, fixed W/kg or power pacer, ghost from a GPX/FIT activity. |
+| R70 | Extends R19 (2026-10-14, #236): the minimap shows the **land around the whole route**, as the course's map does, for 3D and video courses alike, offline from the course file; the close view shows the route's corridor in detail over it, for video courses too. Each rider chooses whether it is drawn **colored** or **dark**, like the course cards. |
 
 ## Training & UX
 
@@ -84,7 +89,8 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 | R28 | Export activities as **FIT** (MVP). |
 | R29 | Uploaders behind a common interface: Strava, intervals.icu, Garmin Connect, TrainingPeaks, Komoot. (Garmin/TrainingPeaks/Komoot require partner approval → best effort.) |
 | R30 | Local storage in a **configurable data directory** that may live in a synced folder (e.g. Nextcloud) → sync-safe design, see ADR 0002. |
-| R31 | Detailed ride history and analysis: power/HR/cadence charts, zones, PRs. *(Across rides: R61–R65.)* |
+| R31 | Detailed ride history and analysis: power/HR/cadence charts, zones, PRs. *(Across rides: R61–R65. Chart lines to hide: R73.)* |
+| R73 | Extends R31 (2026-10-14): a ride's chart in the summary and the history also draws **cadence**, and each key of its legend (power, heart rate, cadence, elevation) **hides or shows** that line when clicked, the hidden key dimmed; the others keep their own scales. The choice holds while browsing rides; keys of data the ride lacks are left out. |
 
 ## Courses
 
@@ -94,7 +100,7 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 | R33 | A course contains the original GPX, the processed route (elevations, bridges/tunnels), the corridor's terrain heights and OpenStreetMap features, the **pre-built 3D world**, a preview image and a manifest (format and generator versions, name, stats, attribution). |
 | R34 | **Course library**: a `courses/` folder in the data directory (may be synced, R30). The app lists its courses to pick from, imports `.tqc` files into it and saves newly prepared routes as courses. |
 | R35 | Courses built by an older generator still ride instantly from their stored world; they can be rebuilt from the stored inputs with a newer generator. Video courses (R17) use the same format and reference their video file instead of embedding it. |
-| R36 | **Course screenshots**: every course carries a small screenshot gallery stored in the `.tqc`. 3D courses render it automatically from the generated world when the course is built (e.g. start, highest point, scenic spots); video courses take frames from the video at fixed distances. The user can pick which image is the **cover**. |
+| R36 | **Course screenshots**: every course carries a small screenshot gallery stored in the `.tqc`. 3D courses render it automatically from the generated world when the course is built (e.g. start, highest point, scenic spots); video courses take frames from the video at fixed distances. The user can pick which image is the **cover**. *(dropped 2026-10-15: the path card, R37, is the course's picture.)* |
 | R37 | **Path card**: every course also has a route image: the GPX path in the logo blue **`#2EB0FF`** with start/finish markers, drawn on the course's own map (#192): the land around the whole route in black and greys with its waters, main roads and the names of its towns (#203), kept in the course file as a picture when the course is prepared; or on black for a course without a place. The elevation profile is shown on the course detail page only (review of #28). |
 
 Sharing is file-based for now; a built-in online catalog may follow later.
@@ -105,7 +111,7 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 |---|---|
 | R38 | A real **start page** separate from the ride view, with a top tab bar: **Courses**, **History**, **Profile**, **Devices & Settings**. The ride view only shows the ride. *(Workouts tab: R58; Analysis tab: R61.)* |
 | R39 | **Courses tab**: gallery overview of the course library (R34) — each card shows the cover or path card, distance, elevation gain, a small map, the course type (3D / video) and other key stats. Importing a GPX / preparing a new course starts here. *(Search, sort, filters and groups: R67.)* |
-| R40 | **Course detail page** (opened from a card): screenshot gallery, path card, map, elevation profile, stats, personal records on the course, and the per-ride options (difficulty, descent mode, weather, time of day, camera, ghost) → **Ride**. |
+| R40 | **Course detail page** (opened from a card): screenshot gallery *(dropped 2026-10-15, with R36)*, path card, map, elevation profile, stats, personal records on the course, and the per-ride options (difficulty, descent mode, weather, time of day, camera, ghost) → **Ride**. |
 | R41 | The last-used trainer and sensors **reconnect automatically** in the background at app start; the user is only prompted if that fails when a ride starts. |
 | R42 | At the end of a ride a **summary screen** (stats, charts, PRs, save/discard, upload) is shown, then the app returns to the start page. |
 | R48 | **In-ride settings dialog**: the ride view's controls (today's bottom buttons: camera, HUD customization) move into one settings dialog opened from a single button or key. It is shared: the same dialog and settings (camera, HUD, difficulty, descent mode, weather, time of day, …) are used from the course detail page (R40), so options are set the same way before and during a ride. |
@@ -156,17 +162,18 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | R65 | **Progress** over the chosen period, week by week (month by month for periods over 13 weeks): the best 1, 5 and 20 min of each, the FTP the rides were saved with and the FTP tests. And an **FTP estimated** from the best efforts of the last 90 days (the critical power of Morton's three-parameter model, or 95 % of the best 20 min where the model does not fit), shown beside the rider's FTP with a button to take it — **never applied without asking**. |
 | R66 | Extends R59 (2026-10-13): a Di2 channel's press, hold or double press can also **pause and resume** the ride, make the **trainer difficulty** 10 % harder or easier (within 0–100 %, as the ride settings show), and in a workout make its **intensity** 5 % harder or easier (50–150 % of every planned power, for constant-power and structured workouts) or **skip to the next step** of a structured workout (the last one ends it). The keyboard does the same: H / E harder and easier, I / L more and less intensity, N the next step. Heart-rate holds and FTP tests keep their powers and steps: a hold would undo the change, and a test's FTP comes from its protocol. |
 
+## Language and errors
+
+| ID | Requirement |
+|---|---|
+| R74 | Extends R24 (2026-10-15, #261): the German interface uses the individually approved wording, informal du and Swiss ss spelling. Core failures carry a translatable explanation separately from their original technical details; filenames and device/platform names stay untouched. Details remain accessible after a ride notification fades and can be expanded without interrupting the ride. |
+
 ## MVP definition
 
 Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mode → save a FIT file.
 
 ## Test hardware available
 
-KICKR Core 2, BLE heart-rate strap, Zwift Click + Cog, Shimano Di2 (RD-R8150). No ANT+ dongle.
-
-## Open points
-
-- Trademark / GitHub org availability check for "Torqa" before publishing.
-- ~~Logo: an orca riding a bike.~~ Done (`docs/brand/`).
-- ~~License compatibility of BikeControl before reusing any Zwift Click protocol knowledge from
-  it.~~ Moot: the Zwift Click is not supported (R59).
+KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero
+Assioma Pro Duo power pedals, Shimano Di2 (RD-R8150). A Zwift Click + Cog too, which Torqa
+does not support (R59).

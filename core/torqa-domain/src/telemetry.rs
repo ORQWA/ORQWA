@@ -30,6 +30,40 @@ impl Telemetry {
     }
 }
 
+/// Which device's cadence the rider sees and records (R72). Whichever is chosen, the others
+/// stand in while it reports none.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CadenceSource {
+    /// A cadence sensor if one is connected, else the power meter, else the trainer.
+    #[default]
+    Automatic,
+    /// The trainer's cadence first.
+    Trainer,
+    /// The power meter's cadence first.
+    PowerMeter,
+}
+
+impl CadenceSource {
+    /// All sources, in the order the front end lists them.
+    pub const ALL: [Self; 3] = [Self::Automatic, Self::Trainer, Self::PowerMeter];
+
+    /// The name stored and passed to the front end.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Automatic => "automatic",
+            Self::Trainer => "trainer",
+            Self::PowerMeter => "power_meter",
+        }
+    }
+
+    /// The source called `name`, if any.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|s| s.name() == name)
+    }
+}
+
 /// How a trainer should set its resistance (R8).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TrainerControl {

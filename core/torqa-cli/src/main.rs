@@ -37,7 +37,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// List nearby trainers and heart-rate sensors.
+    /// List nearby trainers, power meters, cadence and heart-rate sensors and shifters.
     Scan {
         /// Scan duration in seconds.
         #[arg(long, default_value_t = 5)]
@@ -222,14 +222,14 @@ async fn scan(seconds: u64) -> Result<()> {
     println!("Scanning for {seconds} s…");
     let devices = bluetooth.scan(Duration::from_secs(seconds)).await?;
     if devices.is_empty() {
-        println!("No trainers or heart-rate sensors found.");
+        println!("No trainers, power meters, sensors or shifters found.");
     }
     for device in &devices {
         let rssi = device
             .rssi
             .map_or_else(|| "?".to_owned(), |rssi| format!("{rssi} dBm"));
         println!(
-            "{:<10} {:>8}  {}",
+            "{:<11} {:>8}  {}",
             devices::kind_label(device.kind),
             rssi,
             device.name
@@ -264,6 +264,7 @@ async fn ride(args: RideArgs) -> Result<()> {
         gears: args
             .gears
             .map(|(chainring, cog)| VirtualGears::new(chainring, cog)),
+        ..RideConfig::default()
     };
     let result = match (route, workout) {
         (Some(route), _) => recorded_ride::run(Ride::new(route, config), &args, &mut devices).await,

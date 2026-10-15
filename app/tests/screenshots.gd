@@ -9,13 +9,21 @@ var _main: Control
 
 
 func _initialize() -> void:
+	_create_main()
+	_run.call_deferred()
+
+
+func _create_main() -> void:
 	_main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(_main)
-	_run.call_deferred()
 
 
 func _run() -> void:
 	var out_dir: String = OS.get_environment("SCREENSHOT_DIR")
+	if OS.get_environment("SCREENSHOT_ERRORS_ONLY") == "1":
+		await _error_details(out_dir)
+		quit()
+		return
 	var torqa: TorqaApp = _main.get_node("Torqa")
 	var world: RideWorld = _main.get_node("World")
 	var start: StartPage = _main.get_node("StartPage")
@@ -351,6 +359,25 @@ func _workout_screens(torqa: TorqaApp, start: StartPage) -> void:
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("workout-editor.png"))
 	editor.hide()
+
+
+func _error_details(out_dir: String) -> void:
+	for locale: String in ["en", "de"]:
+		_main.free()
+		TranslationServer.set_locale(locale)
+		_create_main()
+		await process_frame
+		# The rider's profile selects its language at bind time; this fixture chooses one.
+		TranslationServer.set_locale(locale)
+		var torqa: TorqaApp = _main.get_node("Torqa")
+		torqa.ride_detail("/missing-261.fit", 10)
+		var details: FailureDetails = _main.get("_failures")
+		var toggle: Button = details.get("_toggle")
+		toggle.button_pressed = true
+		await create_timer(0.5).timeout
+		var file: String = "error-details-de.png" if locale == "de" else "error-details.png"
+		root.get_texture().get_image().save_png(out_dir.path_join(file))
+		print("saved " + file)
 
 
 func _wait_for(sig: Signal) -> void:

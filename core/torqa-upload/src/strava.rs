@@ -307,7 +307,9 @@ async fn answered(answer: reqwest::Response) -> Result<serde_json::Value, Upload
             describe(&text)
         ))),
         // Connecting again would not help: the login works, the application is off.
-        StatusCode::FORBIDDEN if inactive(&text) => Err(UploadError::Rejected(INACTIVE.to_owned())),
+        StatusCode::FORBIDDEN if inactive(&text) => {
+            Err(UploadError::InactiveApplication(INACTIVE.to_owned()))
+        }
         StatusCode::TOO_MANY_REQUESTS => Err(UploadError::Rejected(format!(
             "{NAME} takes no more uploads for a while: try again later."
         ))),
@@ -761,7 +763,7 @@ mod tests {
             .unwrap_err();
 
         assert!(
-            matches!(&error, UploadError::Rejected(why) if why.contains("subscription")),
+            matches!(&error, UploadError::InactiveApplication(why) if why.contains("subscription")),
             "not a reason to connect again, but to subscribe: {error:?}"
         );
     }
