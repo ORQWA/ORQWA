@@ -168,11 +168,6 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 
 ## Test hardware available
 
-KICKR Core 2, BLE heart-rate strap, Zwift Click + Cog, Shimano Di2 (RD-R8150). No ANT+ dongle.
-
-## Open points
-
-- Trademark / GitHub org availability check for "Torqa" before publishing.
-- ~~Logo: an orca riding a bike.~~ Done (`docs/brand/`).
-- ~~License compatibility of BikeControl before reusing any Zwift Click protocol knowledge from
-  it.~~ Moot: the Zwift Click is not supported (R59).
+KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero
+Assioma Pro Duo power pedals, Shimano Di2 (RD-R8150). A Zwift Click + Cog too, which Torqa
+does not support (R59).
