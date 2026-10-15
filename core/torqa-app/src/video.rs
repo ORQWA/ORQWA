@@ -3,6 +3,7 @@
 //! hand (where the route starts and ends in it). The rider's distance decides the moment of the
 //! video, through the same matching used for ghosts (R20).
 
+use crate::failure::{Failure, Kind};
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
@@ -52,9 +53,14 @@ pub struct SyncMark {
 ///
 /// # Errors
 /// A readable message if a file is missing or cannot be read.
-fn tacx_source(path: &Path) -> Result<VideoSource, String> {
-    let unreadable =
-        |file: &Path, e: &dyn std::fmt::Display| format!("cannot read {}: {e}", file.display());
+fn tacx_source(path: &Path) -> Result<VideoSource, Failure> {
+    let unreadable = |file: &Path, e: &dyn std::fmt::Display| {
+        Failure::new(
+            Kind::ReadFile,
+            format!("cannot read {}: {e}", file.display()),
+        )
+        .arg(file.display())
+    };
     let bytes = std::fs::read(path).map_err(|e| unreadable(path, &e))?;
     let rlv = tacx::parse_rlv(&bytes).map_err(|e| unreadable(path, &e))?;
     let dir = path.parent().unwrap_or(Path::new("."));
@@ -75,16 +81,26 @@ fn tacx_source(path: &Path) -> Result<VideoSource, String> {
             })
         })
         .ok_or_else(|| {
-            format!(
-                "video {} not found — put it next to {}",
-                rlv.video_file_name(),
-                path.display()
+            Failure::new(
+                Kind::MissingVideo,
+                format!(
+                    "video {} not found — put it next to {}",
+                    rlv.video_file_name(),
+                    path.display()
+                ),
             )
+            .arg(rlv.video_file_name())
         })?;
     let pgmf_name = format!("{stem}.pgmf");
     let pgmf_path =
         find_file(dir, |name| name.eq_ignore_ascii_case(&pgmf_name)).ok_or_else(|| {
-            format!("{pgmf_name} not found — it holds the course's slopes, put it next to the RLV")
+            Failure::new(
+                Kind::MissingSlopes,
+                format!(
+                    "{pgmf_name} not found — it holds the course's slopes, put it next to the RLV"
+                ),
+            )
+            .arg(&pgmf_name)
         })?;
     let pgmf_bytes = std::fs::read(&pgmf_path).map_err(|e| unreadable(&pgmf_path, &e))?;
     let pgmf = tacx::parse_pgmf(&pgmf_bytes).map_err(|e| unreadable(&pgmf_path, &e))?;
@@ -167,8 +183,13 @@ pub struct Probe {
 ///
 /// # Errors
 /// A readable message if it cannot be opened as a video.
-pub fn probe(path: &Path) -> Result<Probe, String> {
-    let unreadable = |e: &dyn std::fmt::Display| format!("cannot read {}: {e}", path.display());
+pub fn probe(path: &Path) -> Result<Probe, Failure> {
+    let unreadable = |e: &dyn std::fmt::Display| {
+        Failure::new(
+            Kind::ReadVideo,
+            format!("cannot read {}: {e}", path.display()),
+        )
+    };
     let duration = Video::open(path)
         .map_err(|e| unreadable(&e))?
         .info()
@@ -182,12 +203,17 @@ pub fn probe(path: &Path) -> Result<Probe, String> {
 ///
 /// # Errors
 /// A readable message if the files cannot be read, or the video has no GPS.
-pub fn source(path: &Path) -> Result<VideoSource, String> {
+pub fn source(path: &Path) -> Result<VideoSource, Failure> {
     let extension = path
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
-    let unreadable = |e: &dyn std::fmt::Display| format!("cannot read {}: {e}", path.display());
+    let unreadable = |e: &dyn std::fmt::Display| {
+        Failure::new(
+            Kind::ReadVideo,
+            format!("cannot read {}: {e}", path.display()),
+        )
+    };
     if extension == "rlv" {
         return tacx_source(path);
     }
@@ -197,7 +223,7 @@ pub fn source(path: &Path) -> Result<VideoSource, String> {
         let dir = path.parent().unwrap_or(Path::new("."));
         let gpx_path = dir.join(&route.gpx_file);
         let gpx = std::fs::read_to_string(&gpx_path)
-            .map_err(|e| format!("cannot read {}: {e}", gpx_path.display()))?;
+            .map_err(|e| Failure::new(Kind::ReadFile, e).arg(gpx_path.display()))?;
         return Ok(VideoSource {
             video: dir.join(&route.video_file),
             name: route.title.clone(),
@@ -209,10 +235,14 @@ pub fn source(path: &Path) -> Result<VideoSource, String> {
     }
     let track = gps_track(path).map_err(|e| unreadable(&e))?;
     if track.len() < 2 {
-        return Err(format!(
-            "{} has no GPS track — import its GPX route, then add the video on the course page",
-            path.display()
-        ));
+        return Err(Failure::new(
+            Kind::VideoGps,
+            format!(
+                "{} has no GPS track — import its GPX route, then add the video on the course page",
+                path.display()
+            ),
+        )
+        .arg(path.display()));
     }
     let name = path
         .file_stem()
@@ -254,11 +284,14 @@ pub fn fit_marks(
     marks: &[SyncMark],
     length: Meters,
     duration: Duration,
-) -> Result<Vec<SyncMark>, String> {
+) -> Result<Vec<SyncMark>, Failure> {
     // Container durations are rounded; a mark on the last frame may lie a little past them.
     let slack = Duration::from_millis(500);
     if marks.len() < 2 {
-        return Err("a video needs a start and an end on the route".to_owned());
+        return Err(Failure::new(
+            Kind::VideoEndpoints,
+            "a video needs a start and an end on the route",
+        ));
     }
     let mut fitted = marks.to_vec();
     fitted[0].distance = Meters(0.0);
@@ -268,13 +301,16 @@ pub fn fit_marks(
         .windows(2)
         .all(|w| w[1].distance.0 > w[0].distance.0 && w[1].time > w[0].time);
     if !ordered {
-        return Err(
-            "each point must come after the one before it, on the route and in the video"
-                .to_owned(),
-        );
+        return Err(Failure::new(
+            Kind::VideoOrder,
+            "each point must come after the one before it, on the route and in the video",
+        ));
     }
     if fitted[last].time > duration + slack {
-        return Err("the route must end within the video".to_owned());
+        return Err(Failure::new(
+            Kind::VideoEnd,
+            "the route must end within the video",
+        ));
     }
     Ok(fitted)
 }
@@ -286,9 +322,9 @@ impl VideoCourse {
     ///
     /// # Errors
     /// A readable message if the video cannot be opened or the marks do not fit it.
-    pub fn new(route: &Route, source: &VideoSource) -> Result<Self, String> {
+    pub fn new(route: &Route, source: &VideoSource) -> Result<Self, Failure> {
         let duration = Video::open(&source.video)
-            .map_err(|e| format!("cannot open {}: {e}", source.video.display()))?
+            .map_err(|e| Failure::new(Kind::OpenFile, e).arg(source.video.display()))?
             .info()
             .duration;
         let marks = if source.marks.is_empty() {
@@ -314,7 +350,7 @@ impl VideoCourse {
                     .map(|m| (m.distance.0, m.time.saturating_sub(offset).as_secs_f64())),
             )
         }
-        .ok_or_else(|| "the video and the route do not match".to_owned())?;
+        .ok_or_else(|| Failure::new(Kind::VideoMismatch, "the video and the route do not match"))?;
         Ok(Self {
             video: source.video.clone(),
             offset,

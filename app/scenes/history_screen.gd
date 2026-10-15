@@ -139,7 +139,7 @@ func _ready() -> void:
 	var header: HBoxContainer = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 14)
 	var back: Button = _back
-	back.text = tr("← Back")
+	back.text = tr("Back")
 	back.pressed.connect(_close)
 	header.add_child(back)
 	var heading: Label = Label.new()
@@ -662,8 +662,7 @@ func _on_upload_failed(path: String, platform: String, message: String, reconnec
 	if _shown_path() != path:
 		return
 	if not reconnect:
-		# The platform's words; a few, e.g. Strava wanting a subscription, are translated.
-		_show_status(tr(message), UiTheme.DANGER)
+		_show_status(message, UiTheme.DANGER)
 		return
 	_show_status(
 		tr("%s no longer accepts the account: connect it again.") % _platform_name(platform),

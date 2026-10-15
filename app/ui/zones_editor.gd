@@ -16,6 +16,8 @@ var _power: Array[SpinBox] = []
 var _heart: Array[SpinBox] = []
 var _power_values: Array[Label] = []
 var _heart_values: Array[Label] = []
+## Each zone's caption with its number and untranslated name, renamed when the language changes.
+var _zone_captions: Dictionary[Label, Array] = {}
 
 
 func _init() -> void:
@@ -73,7 +75,9 @@ func _table(
 		var zone_name: String = zones[i][0]
 		var color: Color = zones[i][1]
 		var caption: Label = Label.new()
-		caption.text = "Z%d %s" % [i + 1, tr(zone_name)]
+		caption.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		_zone_captions[caption] = [i + 1, zone_name]
+		_name_zone(caption)
 		caption.add_theme_color_override("font_color", color)
 		caption.custom_minimum_size = Vector2(170, 0)
 		grid.add_child(caption)
@@ -98,6 +102,18 @@ func _table(
 		values.append(value)
 		grid.add_child(value)
 	return grid
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED:
+		for caption: Label in _zone_captions:
+			_name_zone(caption)
+
+
+func _name_zone(caption: Label) -> void:
+	var zone: Array = _zone_captions[caption]
+	var zone_name: String = zone[1]
+	caption.text = "Z%d %s" % [zone[0], tr(zone_name)]
 
 
 ## A bound moved: those before stay below it, those after above it.

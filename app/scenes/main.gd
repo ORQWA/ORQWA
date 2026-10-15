@@ -5,6 +5,7 @@ extends Control
 ## Video courses are ridden along their video instead of the 3D world (R17).
 var _video: VideoView = VideoView.new()
 var _overlay: OverlayWindow
+var _failures: FailureDetails = FailureDetails.new()
 
 @onready var _torqa: TorqaApp = $Torqa
 @onready var _world: RideWorld = $World
@@ -16,6 +17,13 @@ var _overlay: OverlayWindow
 func _ready() -> void:
 	print("Torqa %s" % TorqaCore.version())
 	theme = UiTheme.build()
+	add_child(_failures)
+	_failures.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_failures.offset_left = -584
+	_failures.offset_right = -24
+	_failures.offset_top = -260
+	_failures.offset_bottom = -24
+	_torqa.failure_reported.connect(_failures.report)
 	add_child(_video)
 	move_child(_video, _world.get_index() + 1)
 	_world.bind(_torqa)
@@ -23,6 +31,7 @@ func _ready() -> void:
 	_start.bind(_torqa)
 	_ride.bind(_torqa, _world)
 	_summary.bind(_torqa)
+	move_child(_failures, get_child_count() - 1)
 	_start.ride_started.connect(_on_ride_started)
 	_overlay = OverlayWindow.new(get_window())
 	# On macOS the window comes up as if transparent (per-pixel transparency is allowed, for

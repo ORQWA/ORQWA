@@ -3,6 +3,7 @@
 //! Rides the rider keeps go up by themselves to the accounts set to upload automatically
 //! (R60).
 
+use crate::failure::{Failure, Kind};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -175,7 +176,7 @@ impl App {
     /// Torqa's access where the platform keeps a grant for it.
     ///
     /// # Errors
-    /// [`AppError::Storage`] if the accounts cannot be read or written.
+    /// [`AppError::Reported`] if the accounts cannot be read or written.
     pub fn disconnect_account(&mut self, rider: &str, platform: &str) -> Result<(), AppError> {
         let mut removed = None;
         self.change_accounts(rider, |accounts| {
@@ -207,7 +208,7 @@ impl App {
     /// Whether rides rider `rider` keeps go up to `platform` without asking (R60).
     ///
     /// # Errors
-    /// [`AppError::NotConnected`] if the rider has no account there, [`AppError::Storage`] if
+    /// [`AppError::NotConnected`] if the rider has no account there, [`AppError::Reported`] if
     /// the accounts cannot be read or written.
     pub fn set_auto_upload(
         &mut self,
@@ -237,11 +238,11 @@ impl App {
     ///
     /// # Errors
     /// [`AppError::UnknownPlatform`] if there is no such platform, [`AppError::NotConnected`]
-    /// if the rider has no account there, [`AppError::Storage`] if the ride cannot be read.
+    /// if the rider has no account there, [`AppError::Reported`] if the ride cannot be read.
     pub fn upload_ride(&mut self, fit: &Path, platform: &str, title: &str) -> Result<(), AppError> {
         let uploader = self.uploader(platform)?;
         let connected = accounts::load(&self.data_dir, &self.profile.id)
-            .map_err(|e| AppError::Storage(format!("cannot read the accounts: {e}")))?
+            .map_err(|e| AppError::Reported(Failure::new(Kind::ReadAccounts, e)))?
             .contains_key(uploader.id());
         if !connected {
             return Err(AppError::NotConnected(uploader.name()));
@@ -333,6 +334,12 @@ impl App {
         });
     }
 
+    /// The platform's name for the rider; its id if Torqa does not know it.
+    fn platform_name<'a>(&self, platform: &'a str) -> &'a str {
+        self.uploader(platform)
+            .map_or(platform, |uploader| uploader.name())
+    }
+
     fn uploader(&self, platform: &str) -> Result<Arc<dyn ActivityUploader>, AppError> {
         self.uploads
             .platforms
@@ -377,14 +384,16 @@ impl App {
         platform: &'static str,
         result: Result<torqa_upload::Account, UploadError>,
     ) -> AppEvent {
-        let failed = |message: String| AppEvent::AccountFailed {
+        let failed = |message: Failure| AppEvent::AccountFailed {
             rider: rider.clone(),
             platform: platform.to_owned(),
             message,
         };
         let account = match result {
             Ok(account) => account,
-            Err(error) => return failed(error.to_string()),
+            Err(error) => {
+                return failed(upload_failure(&error, self.platform_name(platform), false));
+            }
         };
         let label = account.label.clone();
         match self.change_accounts(&rider, |accounts| {
@@ -403,7 +412,7 @@ impl App {
                 platform: platform.to_owned(),
                 label,
             },
-            Err(error) => failed(error.to_string()),
+            Err(error) => failed(Failure::new(Kind::SaveAccount, error)),
         }
     }
 
@@ -443,8 +452,24 @@ impl App {
                 fit,
                 platform: platform.to_owned(),
                 reconnect: matches!(error, UploadError::Unauthorized(_)),
-                message: error.to_string(),
+                message: upload_failure(&error, self.platform_name(platform), true),
             },
+        }
+    }
+}
+
+/// Classifies the platform's answer by its type. The platform's own explanation stays in the
+/// summary as a value: it often says what to do next (wait, tick a box, copy the key again).
+fn upload_failure(error: &UploadError, name: &str, uploading: bool) -> Failure {
+    let failure = |kind| Failure::new(kind, error).arg(name);
+    match error {
+        UploadError::Unreachable(_) => failure(Kind::Unreachable),
+        // Uploading asks to connect again; connecting shows why the login was refused.
+        UploadError::Unauthorized(_) if uploading => failure(Kind::Unauthorized),
+        UploadError::InactiveApplication(_) => Failure::new(Kind::InactiveApplication, error),
+        UploadError::Rejected(why) if uploading => failure(Kind::Upload).arg(why),
+        UploadError::Unauthorized(why) | UploadError::Rejected(why) => {
+            failure(Kind::ConnectAccount).arg(why)
         }
     }
 }
@@ -452,7 +477,7 @@ impl App {
 /// The ride `fit` to upload as `title`; an empty title falls back to the ride's name or route.
 fn activity(fit: &Path, title: &str) -> Result<Activity, AppError> {
     let bytes = std::fs::read(fit)
-        .map_err(|e| AppError::Storage(format!("cannot read {}: {e}", fit.display())))?;
+        .map_err(|e| AppError::Reported(Failure::new(Kind::ReadFile, e).arg(fit.display())))?;
     let title = title.trim();
     let name = if title.is_empty() {
         rides::load(fit).ok().map_or_else(
@@ -511,7 +536,7 @@ fn change_accounts(
     change: impl FnOnce(&mut accounts::Accounts),
 ) -> Result<(), AppError> {
     let storage = |e: torqa_storage::profiles::ProfileError| {
-        AppError::Storage(format!("cannot save the accounts: {e}"))
+        AppError::Reported(Failure::new(Kind::SaveAccount, e))
     };
     let _guard = lock.lock().unwrap_or_else(PoisonError::into_inner);
     let mut stored = accounts::load(data_dir, rider).map_err(storage)?;
@@ -1089,5 +1114,45 @@ mod tests {
 
         assert_eq!(fake.revoked(1).len(), 1);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+
+    #[test]
+    fn offline_rejected_and_expired_accounts_have_distinct_messages() {
+        let reason = |error: &UploadError| error.to_string();
+        let offline = UploadError::Unreachable("DNS failed".to_owned());
+        let expired = UploadError::Unauthorized("401 response".to_owned());
+        let refused = UploadError::Rejected("try again later.".to_owned());
+        for (error, kind, args) in [
+            (&offline, Kind::Unreachable, vec!["Strava".to_owned()]),
+            (&expired, Kind::Unauthorized, vec!["Strava".to_owned()]),
+            (
+                &refused,
+                Kind::Upload,
+                vec!["Strava".to_owned(), reason(&refused)],
+            ),
+        ] {
+            let failure = upload_failure(error, "Strava", true);
+            assert_eq!(failure.kind, kind);
+            assert_eq!(failure.args, args);
+            assert_eq!(failure.details, reason(error));
+        }
+    }
+
+    #[test]
+    fn a_refused_login_says_why_instead_of_asking_to_connect_again() {
+        let key = UploadError::Unauthorized("copy the API key again.".to_owned());
+        let failure = upload_failure(&key, "intervals.icu", false);
+        assert_eq!(failure.kind, Kind::ConnectAccount);
+        assert_eq!(failure.args, ["intervals.icu", "copy the API key again."]);
+        let cancelled = UploadError::Rejected("You did not let Torqa in.".to_owned());
+        assert_eq!(
+            upload_failure(&cancelled, "Strava", false).kind,
+            Kind::ConnectAccount
+        );
     }
 }

@@ -85,14 +85,17 @@ pub enum UploadError {
     Unauthorized(String),
     /// The platform turned the request down, or the login did not finish.
     Rejected(String),
+    /// The platform disabled the rider's API application; it must be reactivated.
+    InactiveApplication(String),
 }
 
 impl fmt::Display for UploadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unreachable(why) | Self::Unauthorized(why) | Self::Rejected(why) => {
-                f.write_str(why)
-            }
+            Self::Unreachable(why)
+            | Self::Unauthorized(why)
+            | Self::Rejected(why)
+            | Self::InactiveApplication(why) => f.write_str(why),
         }
     }
 }
