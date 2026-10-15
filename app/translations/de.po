@@ -379,6 +379,18 @@ msgstr "Verbinde zuerst dein Konto bei %s."
 msgid "Connected"
 msgstr "Verbunden"
 
+msgid "Connecting…"
+msgstr "Verbinde…"
+
+msgid "Reconnecting…"
+msgstr "Verbinde erneut…"
+
+msgid "Not found"
+msgstr "Nicht gefunden"
+
+msgid "Failed"
+msgstr "Fehlgeschlagen"
+
 msgid "Connected as %s"
 msgstr "Verbunden als %s"
 
@@ -1660,8 +1672,8 @@ msgstr "W/kg"
 msgid "Waiting for the trainer…"
 msgstr "Warte auf den Trainer …"
 
-msgid "Wake your trainer by pedalling, then scan."
-msgstr "Aktiviere deinen Trainer durch Treten und suche dann nach Geräten."
+msgid "Wake your trainer by pedalling, then scan. A device connects as soon as you choose it."
+msgstr "Aktiviere deinen Trainer durch Treten und suche dann nach Geräten. Ein Gerät verbindet sich, sobald du es wählst."
 
 msgid "Warm-up  ·  %s left"
 msgstr "Aufwärmen  ·  noch %s"

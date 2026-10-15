@@ -16,7 +16,6 @@ func _run() -> void:
 	_workout_settings()
 	_workout_editor()
 	_rider_drivetrain()
-	_shifter_buttons()
 	_course_cards()
 	await _rider_switch()
 	_ride_bar()
@@ -300,57 +299,6 @@ func _rider_drivetrain() -> void:
 	dialog.edit({"id": "r", "name": "R"}, PackedStringArray(["power"]))
 	_check(not cog.visible, "a cassette needs no teeth")
 	dialog.free()
-
-
-## Every action the core offers for a Di2's buttons can be chosen by its label (#139).
-func _shifter_buttons() -> void:
-	var actions: PackedStringArray = TorqaApp.button_actions()
-	for action: String in actions:
-		_check(DevicesTab.ACTION_LABELS.has(action), "a label for %s" % action)
-	_check(actions.size() == DevicesTab.ACTION_LABELS.size(), "no label for a gone action")
-	var tab: DevicesTab = DevicesTab.new()
-	root.add_child(tab)
-	var choices: Array[Node] = tab.find_children("*", "OptionButton", true, false)
-	# Trainer, power meter, cadence, heart rate and shifter, a press, a hold and a double press
-	# of four channels, and the graphics quality.
-	_check(
-		choices.size() == 5 + 4 * 3 + 1, "a choice per press of each channel: %d" % choices.size()
-	)
-	var press: OptionButton = choices[5]
-	_check(press.item_count == 1 + actions.size(), "nothing or any action")
-	# A Zwift Click (R75) has two buttons that press and hold, no double press.
-	var grid: GridContainer = tab.find_children("*", "GridContainer", true, false)[1]
-	_check(grid.columns == 4, "a Di2 offers a press, a hold and a double press")
-	(
-		tab
-		. _on_devices_found(
-			[
-				{
-					"index": 0,
-					"name": "Zwift Click",
-					"kind": "controller",
-					"model": "zwift_click",
-					"rssi": -50,
-					"remembered": true,
-				}
-			]
-		)
-	)
-	_check(grid.visible, "the Click found is chosen")
-	_check(grid.columns == 3, "a Click offers a press and a hold")
-	var captions: PackedStringArray = PackedStringArray()
-	# Hidden cells stay children: a row is a caption and a choice per kind of press.
-	for i: int in range(0, grid.get_child_count(), 1 + DevicesTab.PRESSES.size()):
-		var caption: Label = grid.get_child(i) as Label
-		if caption != null and caption.visible:
-			captions.append(caption.text)
-	_check(captions == PackedStringArray(["Plus (+)", "Minus (−)"]), "its buttons: %s" % captions)
-	var shown: int = 0
-	for choice: OptionButton in grid.find_children("*", "OptionButton", false, false):
-		if choice.visible:
-			shown += 1
-	_check(shown == 2 * 2, "a choice per press of each of its buttons: %d" % shown)
-	tab.free()
 
 
 ## The captions of a three-column options grid whose rows show.

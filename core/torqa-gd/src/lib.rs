@@ -241,7 +241,9 @@ impl TorqaApp {
     }
 
     /// The trainer, sensors and shifter in use or used last, as
-    /// `[{name, kind, connected}]` with `kind` as in `devices_found` (R69).
+    /// `[{name, kind, state, connected}]` with `kind` as in `devices_found` and `state`
+    /// `connected`, `connecting` (chosen or remembered, on its way or reconnecting) or
+    /// `missing` (used last, not found by the scan) (R69, R76).
     #[func]
     fn devices(&self) -> VarArray {
         let mut array = VarArray::new();
@@ -249,7 +251,8 @@ impl TorqaApp {
             array.push(&vdict! {
                 "name" => device.name.as_str(),
                 "kind" => kind_name(device.kind),
-                "connected" => device.connected,
+                "state" => device.state.name(),
+                "connected" => device.state == torqa_app::DeviceState::Connected,
             });
         }
         array
@@ -1459,6 +1462,24 @@ impl TorqaApp {
             return false;
         };
         self.command(|app| app.connect_heart_rate(index))
+    }
+
+    /// Lets the heart-rate sensor go and forgets it (R76).
+    #[func]
+    fn disconnect_heart_rate(&mut self) -> bool {
+        self.command(App::disconnect_heart_rate)
+    }
+
+    /// Lets the power meter go and forgets it (R76): the trainer measures again.
+    #[func]
+    fn disconnect_power_meter(&mut self) -> bool {
+        self.command(App::disconnect_power_meter)
+    }
+
+    /// Lets the shifter go and forgets it (R76); the keyboard keeps shifting.
+    #[func]
+    fn disconnect_controller(&mut self) -> bool {
+        self.command(App::disconnect_controller)
     }
 
     /// Connects a scanned power meter by its index; its power counts over the trainer's (R71).

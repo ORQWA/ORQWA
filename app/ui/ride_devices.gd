@@ -54,7 +54,8 @@ func refresh() -> void:
 	var all_connected: bool = true
 	for device: Dictionary in devices:
 		var kind: String = device["kind"]
-		var connected: bool = device["connected"]
+		var state_name: String = device["state"]
+		var connected: bool = state_name == "connected"
 		all_connected = all_connected and connected
 		var caption: Label = Label.new()
 		var kind_name: String = kinds.get(kind, kind)
@@ -67,10 +68,21 @@ func refresh() -> void:
 		device_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_rows.add_child(device_name)
 		var state: Label = Label.new()
-		state.text = tr("Connected") if connected else tr("Not connected")
-		state.add_theme_color_override(
-			"font_color", UiTheme.ACCENT if connected else UiTheme.DANGER
-		)
+		# i18n-begin
+		var labels: Dictionary[String, String] = {
+			"connected": "Connected",
+			"connecting": "Connecting…",
+			"missing": "Not found",
+		}
+		# i18n-end
+		var text: String = labels.get(state_name, "Not connected")
+		state.text = tr(text)
+		var color: Color = UiTheme.DANGER
+		if connected:
+			color = UiTheme.SUCCESS
+		elif state_name == "connecting":
+			color = UiTheme.WARNING
+		state.add_theme_color_override("font_color", color)
 		_rows.add_child(state)
 	if devices.is_empty():
 		_note.text = tr("No devices connected yet: connect them in Devices & Settings.")

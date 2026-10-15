@@ -150,15 +150,39 @@ pub struct DeviceInfo {
     pub remembered: bool,
 }
 
-/// A device the rider uses, and whether it is connected now (R69).
+/// A device the rider uses, and how it is doing now (R69, R76).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeviceStatus {
     /// Its name.
     pub name: String,
     /// Whether it is the trainer, the power meter, the heart-rate sensor or the shifter.
     pub kind: DeviceKind,
-    /// Whether it is connected now; if not, it is being reconnected or was not found.
-    pub connected: bool,
+    /// Whether it is connected, on its way, or was not found.
+    pub state: DeviceState,
+}
+
+/// How a device the rider uses is doing (R76).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeviceState {
+    /// Linked and reporting.
+    Connected,
+    /// Chosen or remembered and being connected, or reconnected after a drop; the driver
+    /// keeps trying until it is let go of.
+    Connecting,
+    /// Used last, but the scan did not find it: switched off, asleep or out of reach.
+    Missing,
+}
+
+impl DeviceState {
+    /// The state's name as the front end knows it.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Connected => "connected",
+            Self::Connecting => "connecting",
+            Self::Missing => "missing",
+        }
+    }
 }
 
 /// Key facts about a loaded route.
@@ -1915,21 +1939,24 @@ impl App {
         true
     }
 
-    /// The trainer, heart-rate sensor, power meter and shifter in use or remembered (R41), and whether
-    /// each is connected now (R69).
+    /// The trainer, heart-rate sensor, power meter and shifter in use or remembered (R41), and
+    /// how each is doing now (R69, R76): connected, being connected, or not found.
     #[must_use]
     pub fn devices(&self) -> Vec<DeviceStatus> {
         let remembered = profiles::remembered_devices(&self.data_dir);
         let status = |kind: DeviceKind,
                       live: Option<(&str, bool)>,
                       remembered: Option<profiles::RememberedDevice>| {
-            live.map(|(name, connected)| (name.to_owned(), connected))
-                .or_else(|| remembered.map(|r| (r.name, false)))
-                .map(|(name, connected)| DeviceStatus {
-                    name,
-                    kind,
-                    connected,
-                })
+            live.map(|(name, connected)| {
+                let state = if connected {
+                    DeviceState::Connected
+                } else {
+                    DeviceState::Connecting
+                };
+                (name.to_owned(), state)
+            })
+            .or_else(|| remembered.map(|r| (r.name, DeviceState::Missing)))
+            .map(|(name, state)| DeviceStatus { name, kind, state })
         };
         let controller = self
             .controller_id
@@ -2080,6 +2107,48 @@ impl App {
         self.sensor = Some(self.bluetooth()?.connect(device));
         self.sensor_connected = None;
         Ok(())
+    }
+
+    /// Lets the heart-rate sensor go and no longer reconnects it (R76): the rider chose none.
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if the choice cannot be saved.
+    pub fn disconnect_heart_rate(&mut self) -> Result<(), AppError> {
+        self.sensor = None;
+        self.sensor_id = None;
+        self.sensor_connected = None;
+        if let Some(active) = &mut self.ride {
+            active.ride.on_heart_rate_lost();
+        }
+        profiles::forget_device(&self.data_dir, DeviceRole::HeartRate)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+    }
+
+    /// Lets the power meter go and no longer reconnects it (R76): the trainer measures again.
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if the choice cannot be saved.
+    pub fn disconnect_power_meter(&mut self) -> Result<(), AppError> {
+        self.power_meter = None;
+        self.power_meter_id = None;
+        self.power_meter_connected = None;
+        if let Some(active) = &mut self.ride {
+            active.ride.on_power_meter_lost();
+        }
+        profiles::forget_device(&self.data_dir, DeviceRole::PowerMeter)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+    }
+
+    /// Lets the shifter go and no longer reconnects it (R76); the keyboard keeps shifting.
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if the choice cannot be saved.
+    pub fn disconnect_controller(&mut self) -> Result<(), AppError> {
+        self.shift_inputs.truncate(1);
+        self.shift_inputs_connected.truncate(1);
+        self.controller_id = None;
+        profiles::forget_device(&self.data_dir, DeviceRole::Controller)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
     /// Connects a power meter, replacing any previous one: its power, and its cadence if it
@@ -5644,26 +5713,31 @@ mod tests {
             name: "Polar H9".to_owned(),
         };
         profiles::remember_device(&data, DeviceRole::HeartRate, strap).unwrap();
+        let status = |app: &App| {
+            app.devices()
+                .into_iter()
+                .map(|d| (d.kind, d.state))
+                .collect::<Vec<_>>()
+        };
         app.connect_trainer(TrainerChoice::Fake(FakeRider {
             power: Watts(200.0),
             cadence: Rpm(90.0),
             heart: None,
         }))
         .unwrap();
+        // Chosen, so on its way (R76), until the driver says it is connected.
+        assert_eq!(
+            status(&app)[0],
+            (DeviceKind::Trainer, DeviceState::Connecting)
+        );
         run_until(&mut app, |e| matches!(e, AppEvent::Connected(_)));
 
-        let status = |app: &App| {
-            app.devices()
-                .into_iter()
-                .map(|d| (d.kind, d.connected))
-                .collect::<Vec<_>>()
-        };
-        // The strap used last is not connected: the rider can ask to reconnect it (R69).
+        // The strap used last was not found: the rider can ask to reconnect it (R69).
         assert_eq!(
             status(&app),
             [
-                (DeviceKind::Trainer, true),
-                (DeviceKind::HeartRateSensor, false)
+                (DeviceKind::Trainer, DeviceState::Connected),
+                (DeviceKind::HeartRateSensor, DeviceState::Missing)
             ]
         );
         assert_eq!(app.devices()[1].name, "Polar H9");
@@ -5672,7 +5746,17 @@ mod tests {
         assert!(app.reconnect_devices());
         app.update(Duration::ZERO);
         assert!(app.trainer_connected());
-        assert_eq!(status(&app)[0], (DeviceKind::Trainer, true));
+        assert_eq!(
+            status(&app)[0],
+            (DeviceKind::Trainer, DeviceState::Connected)
+        );
+        // Choosing no strap forgets it: nothing to reconnect next time (R76).
+        app.disconnect_heart_rate().unwrap();
+        assert_eq!(
+            status(&app),
+            [(DeviceKind::Trainer, DeviceState::Connected)]
+        );
+        assert!(profiles::remembered_devices(&data).heart_rate.is_none());
         app.shutdown();
     }
 

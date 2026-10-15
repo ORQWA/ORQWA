@@ -7,8 +7,12 @@ const TEXT: Color = Color(0.94, 0.95, 0.97)
 const MUTED: Color = Color(0.64, 0.68, 0.74)
 const PANEL: Color = Color(0.06, 0.07, 0.09, 0.72)
 const SURFACE: Color = Color(1, 1, 1, 0.07)
-## Actions that delete something.
+## Actions that delete something, and devices not found or failed (R76).
 const DANGER: Color = Color(0.93, 0.33, 0.36)
+## Something on its way, e.g. a device connecting (R76).
+const WARNING: Color = Color(0.98, 0.75, 0.3)
+## Something that worked, e.g. a device connected (R76).
+const SUCCESS: Color = Color(0.36, 0.82, 0.56)
 const RADIUS: int = 14
 # i18n-begin: zone and climb names are shown translated.
 ## Power zones 1–7 (Coggan): name and colour, as commonly used by training platforms.
