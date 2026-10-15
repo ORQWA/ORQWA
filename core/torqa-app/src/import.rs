@@ -1,5 +1,6 @@
 //! Importing a route with everything needed to ride it.
 
+use crate::failure::{Failure, Kind};
 use std::path::Path;
 
 use torqa_domain::files::UsedFiles;
@@ -90,17 +91,17 @@ pub async fn import_route(
     offline: bool,
     used: &UsedFiles,
     progress: Progress<'_>,
-) -> Result<Imported, String> {
+) -> Result<Imported, Failure> {
     progress(LoadStage::Route, 0, 1);
     let xml = tokio::fs::read_to_string(path)
         .await
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+        .map_err(|e| Failure::new(Kind::ReadFile, e).arg(path.display()))?;
     let fallback = path
         .file_stem()
         .map_or_else(|| "Route".to_owned(), |s| s.to_string_lossy().into_owned());
     import_gpx(xml, &fallback, (cache_dir, offline), false, used, progress)
         .await
-        .map_err(|e| format!("cannot import {}: {e}", path.display()))
+        .map_err(|e| Failure::new(Kind::ImportFile, e).arg(path.display()))
 }
 
 /// Imports a GPX track: fetches map data along it (bridges and tunnels shape the elevation
@@ -118,8 +119,9 @@ pub async fn import_gpx(
     video: bool,
     used: &UsedFiles,
     progress: Progress<'_>,
-) -> Result<Imported, String> {
-    let track = torqa_routes::track_points(&xml).map_err(|e| e.to_string())?;
+) -> Result<Imported, Failure> {
+    let track =
+        torqa_routes::track_points(&xml).map_err(|e| Failure::new(Kind::PrepareCourse, e))?;
     progress(LoadStage::Route, 1, 1);
 
     let mut osm = Osm::new(cache_dir.join("osm")).recording(used.clone());
@@ -149,7 +151,7 @@ pub async fn import_gpx(
     };
     let mut route = Route::from_gpx_with(&xml, Some(&mut counting), &map)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| Failure::new(Kind::PrepareCourse, e))?;
     if !video {
         route = route.without_turns_in_place();
     }

@@ -2,6 +2,11 @@
 
 Torqa is written in English and translated with gettext files in `app/translations/`
 (R24). German (`de.po`, Swiss spelling) is the first translation.
+The German catalogue uses informal **du**, Swiss **ss** spelling, and the wording reviewed
+individually in [issue #261](https://github.com/Torqa-Indoor-Cycling/Torqa/issues/261).
+The approved wording is maintained directly in `de.po`, including retained wording, contexts
+and subsequent corrections. German quotation marks are straight double quotes. Preserve
+explicitly approved exceptions to the general terminology.
 
 Rider language selection is described in the [wiki](https://github.com/bossm8/Torqa/wiki/Riders#profile).
 
@@ -27,3 +32,17 @@ Rider language selection is described in the [wiki](https://github.com/bossm8/To
 - Texts built at run time go into `app/translations/extra-msgids.txt`.
 - Names of people, routes, courses and devices are never translated: switch automatic
   translation off on controls that show them.
+- Use gettext contexts when one English word has different meanings:
+  `tr("Ride", "ride_action")` is **Fahren**, while `tr("Ride", "ride_tab")` is **Fahrt**.
+  Keep `msgctxt` in the PO entry. Extraction and completeness checks include the context.
+- Core failures carry `failure::Failure`: a `Kind` with an English message key, untouched
+  arguments and a separate original diagnostic. Choose the kind where the operation fails;
+  never classify errors by matching their formatted English text. Register templates in
+  `Kind::message`'s extraction region. The Godot boundary translates before inserting values.
+- The existing `failed`, `account_failed` and `upload_failed` signals carry localized summaries.
+  `failure_reported` carries `{message, args, details}` and `last_failure()` returns its latest
+  payload for inline controls. `FailureDetails` retains up to 20 failures during the session
+  and translates their summaries again if the rider changes language. Technical diagnostics
+  remain untranslated and are logged; they are shown separately under **Technical details**.
+- Run `python3 -m unittest discover -s scripts/i18n` in the dev container for context and
+  escaping checks, and the `error_smoke.gd` Godot test for the boundary/UI.

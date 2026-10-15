@@ -13,6 +13,7 @@ cargo test --workspace --locked
 cargo deny --all-features check
 # Translatable texts: template up to date, every translation complete (R24).
 python3 "$root/scripts/i18n/extract.py" --check
+python3 -m unittest discover -s "$root/scripts/i18n" -p 'test_*.py'
 
 cd "$root/app"
 gdlint .
@@ -51,3 +52,5 @@ analysis_output="$(run_godot -s res://tests/analysis_smoke.gd)"
 echo "$analysis_output" | grep "ANALYSIS SMOKE TEST PASSED"
 upload_output="$(run_godot -s res://tests/upload_smoke.gd)"
 echo "$upload_output" | grep "UPLOAD SMOKE TEST PASSED"
+error_output="$(run_godot -s res://tests/error_smoke.gd)"
+echo "$error_output" | grep "ERROR SMOKE TEST PASSED"

@@ -162,6 +162,12 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | R65 | **Progress** over the chosen period, week by week (month by month for periods over 13 weeks): the best 1, 5 and 20 min of each, the FTP the rides were saved with and the FTP tests. And an **FTP estimated** from the best efforts of the last 90 days (the critical power of Morton's three-parameter model, or 95 % of the best 20 min where the model does not fit), shown beside the rider's FTP with a button to take it — **never applied without asking**. |
 | R66 | Extends R59 (2026-10-13): a Di2 channel's press, hold or double press can also **pause and resume** the ride, make the **trainer difficulty** 10 % harder or easier (within 0–100 %, as the ride settings show), and in a workout make its **intensity** 5 % harder or easier (50–150 % of every planned power, for constant-power and structured workouts) or **skip to the next step** of a structured workout (the last one ends it). The keyboard does the same: H / E harder and easier, I / L more and less intensity, N the next step. Heart-rate holds and FTP tests keep their powers and steps: a hold would undo the change, and a test's FTP comes from its protocol. |
 
+## Language and errors
+
+| ID | Requirement |
+|---|---|
+| R74 | Extends R24 (2026-10-15, #261): the German interface uses the individually approved wording, informal du and Swiss ss spelling. Core failures carry a translatable explanation separately from their original technical details; filenames and device/platform names stay untouched. Details remain accessible after a ride notification fades and can be expanded without interrupting the ride. |
+
 ## MVP definition
 
 Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mode → save a FIT file.

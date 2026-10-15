@@ -366,9 +366,9 @@ func _show_quality_note() -> void:
 	# i18n-begin
 	var notes: Dictionary[String, String] = {
 		"low": "For weaker computers: shorter view, simpler shadows and sky.",
-		"medium": "60 fps on a MacBook with M1: soft light, shadows and haze.",
+		"medium": "A balance of visual quality and performance.",
 		"high": "For stronger GPUs: softer shadows, bounced light, light fog, more distance.",
-		"ultra": "Everything on, including global illumination: for fast GPUs.",
+		"ultra": "For powerful GPUs: all effects, including global illumination.",
 	}
 	# i18n-end
 	var key: String = _torqa.graphics_quality() if _torqa != null else "medium"

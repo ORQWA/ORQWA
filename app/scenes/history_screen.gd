@@ -139,7 +139,7 @@ func _ready() -> void:
 	var header: HBoxContainer = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 14)
 	var back: Button = _back
-	back.text = tr("← Back")
+	back.text = tr("Back")
 	back.pressed.connect(_close)
 	header.add_child(back)
 	var heading: Label = Label.new()

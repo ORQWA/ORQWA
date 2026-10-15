@@ -3,6 +3,7 @@
 //! Rides the rider keeps go up by themselves to the accounts set to upload automatically
 //! (R60).
 
+use crate::failure::{Failure, Kind};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -241,7 +242,7 @@ impl App {
     pub fn upload_ride(&mut self, fit: &Path, platform: &str, title: &str) -> Result<(), AppError> {
         let uploader = self.uploader(platform)?;
         let connected = accounts::load(&self.data_dir, &self.profile.id)
-            .map_err(|e| AppError::Storage(format!("cannot read the accounts: {e}")))?
+            .map_err(|e| AppError::Reported(Failure::new(Kind::ReadAccounts, e)))?
             .contains_key(uploader.id());
         if !connected {
             return Err(AppError::NotConnected(uploader.name()));
@@ -377,14 +378,14 @@ impl App {
         platform: &'static str,
         result: Result<torqa_upload::Account, UploadError>,
     ) -> AppEvent {
-        let failed = |message: String| AppEvent::AccountFailed {
+        let failed = |message: Failure| AppEvent::AccountFailed {
             rider: rider.clone(),
             platform: platform.to_owned(),
             message,
         };
         let account = match result {
             Ok(account) => account,
-            Err(error) => return failed(error.to_string()),
+            Err(error) => return failed(upload_failure(&error, platform, false)),
         };
         let label = account.label.clone();
         match self.change_accounts(&rider, |accounts| {
@@ -403,7 +404,7 @@ impl App {
                 platform: platform.to_owned(),
                 label,
             },
-            Err(error) => failed(error.to_string()),
+            Err(error) => failed(Failure::new(Kind::SaveAccount, error)),
         }
     }
 
@@ -443,7 +444,7 @@ impl App {
                 fit,
                 platform: platform.to_owned(),
                 reconnect: matches!(error, UploadError::Unauthorized(_)),
-                message: error.to_string(),
+                message: upload_failure(&error, platform, true),
             },
         }
     }
@@ -452,7 +453,7 @@ impl App {
 /// The ride `fit` to upload as `title`; an empty title falls back to the ride's name or route.
 fn activity(fit: &Path, title: &str) -> Result<Activity, AppError> {
     let bytes = std::fs::read(fit)
-        .map_err(|e| AppError::Storage(format!("cannot read {}: {e}", fit.display())))?;
+        .map_err(|e| AppError::Reported(Failure::new(Kind::ReadFile, e).arg(fit.display())))?;
     let title = title.trim();
     let name = if title.is_empty() {
         rides::load(fit).ok().map_or_else(
@@ -511,7 +512,7 @@ fn change_accounts(
     change: impl FnOnce(&mut accounts::Accounts),
 ) -> Result<(), AppError> {
     let storage = |e: torqa_storage::profiles::ProfileError| {
-        AppError::Storage(format!("cannot save the accounts: {e}"))
+        AppError::Reported(Failure::new(Kind::SaveAccount, e))
     };
     let _guard = lock.lock().unwrap_or_else(PoisonError::into_inner);
     let mut stored = accounts::load(data_dir, rider).map_err(storage)?;
@@ -1089,5 +1090,60 @@ mod tests {
 
         assert_eq!(fake.revoked(1).len(), 1);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+/// Classifies the platform result by its type, keeping server text only as diagnostics.
+fn upload_failure(error: &UploadError, platform: &str, uploading: bool) -> Failure {
+    let name = match platform {
+        "strava" => "Strava",
+        "intervals" => "intervals.icu",
+        other => other,
+    };
+    let kind = match error {
+        UploadError::Unreachable(_) => Kind::Unreachable,
+        UploadError::Unauthorized(_) => Kind::Unauthorized,
+        UploadError::InactiveApplication(_) => Kind::InactiveApplication,
+        UploadError::Rejected(_) if uploading => Kind::Upload,
+        UploadError::Rejected(_) => Kind::ConnectAccount,
+    };
+    let failure = Failure::new(kind, error);
+    if kind == Kind::InactiveApplication {
+        failure
+    } else {
+        failure.arg(name)
+    }
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+
+    #[test]
+    fn offline_rejected_and_expired_accounts_have_distinct_messages() {
+        for (error, expected) in [
+            (
+                UploadError::Unreachable("DNS failed".to_owned()),
+                Kind::Unreachable,
+            ),
+            (
+                UploadError::Unauthorized("401 response".to_owned()),
+                Kind::Unauthorized,
+            ),
+            (
+                UploadError::Rejected("server response".to_owned()),
+                Kind::Upload,
+            ),
+        ] {
+            let failure = upload_failure(&error, "strava", true);
+            assert_eq!(failure.kind, expected);
+            assert_eq!(failure.args, ["Strava"]);
+            assert_eq!(failure.details, error.to_string());
+        }
+        let rejected = UploadError::Rejected("login cancelled".to_owned());
+        assert_eq!(
+            upload_failure(&rejected, "intervals", false).kind,
+            Kind::ConnectAccount
+        );
     }
 }

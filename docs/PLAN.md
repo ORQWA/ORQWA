@@ -166,6 +166,8 @@ Built in rideable steps:
   dropped for now (synthesised version did not sound right), to return with convincing
   sounds (#259)
 - [x] i18n: all texts translatable, German translation, language per rider (R24)
+- [x] German reviewed text by text (#261): contextual translations and classified core errors
+  with localized explanations, unchanged diagnostic details and session error history (R74)
 
 ### Phase 5 — Video mode (R17, [ADR 0010](adr/0010-video-decoding.md))
 - [x] Video decoding in the core: frame for any moment, forward/backward/seek, scaled to 1080p

@@ -86,6 +86,9 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 📴 Ride offline on any computer · ⚖️ realistic physics, adjustable difficulty ·
 🎛️ a HUD your way · 🌍 English and German · 🖥️ macOS, Windows and Linux
 
+Error explanations follow your rider's language; [technical details](https://github.com/bossm8/Torqa/wiki/Riders#language-and-error-details)
+remain available separately after notifications disappear.
+
 **Planned:** hardware video decoding, the overlay on Windows and Linux — see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Using Torqa

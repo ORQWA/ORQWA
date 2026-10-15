@@ -13,6 +13,7 @@ use godot::classes::image::Format as ImageFormat;
 use godot::classes::{Engine, INode, Image, Node, TranslationServer};
 use godot::prelude::*;
 use torqa_app::analysis::{BestEffort, Comparison};
+use torqa_app::failure::{Failure, Kind};
 use torqa_app::hud::MetricKind;
 use torqa_app::media::MediaCommand;
 use torqa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
@@ -60,12 +61,15 @@ impl TorqaCore {
 pub struct TorqaApp {
     base: Base<Node>,
     app: Option<App>,
+    last_failure: VarDictionary,
+    startup_failure: Option<Failure>,
 }
 
 #[godot_api]
 impl INode for TorqaApp {
     fn init(base: Base<Node>) -> Self {
         // The editor instantiates nodes too; it must not start runtimes or touch Bluetooth.
+        let mut startup_failure = None;
         let app = if Engine::singleton().is_editor_hint() {
             None
         } else {
@@ -74,10 +78,16 @@ impl INode for TorqaApp {
             App::new(paths::data_dir(), paths::cache_dir())
                 .inspect_err(|error| {
                     godot_error!("Torqa: {error}");
+                    startup_failure = Some(Failure::new(Kind::Runtime, error));
                 })
                 .ok()
         };
-        Self { base, app }
+        Self {
+            base,
+            app,
+            last_failure: VarDictionary::new(),
+            startup_failure,
+        }
     }
 
     fn ready(&mut self) {
@@ -88,6 +98,9 @@ impl INode for TorqaApp {
     }
 
     fn process(&mut self, delta: f64) {
+        if let Some(failure) = self.startup_failure.take() {
+            self.report_failure(&failure);
+        }
         let Some(app) = self.app.as_mut() else {
             return;
         };
@@ -172,6 +185,16 @@ impl TorqaApp {
     /// Something went wrong.
     #[signal]
     fn failed(message: GString);
+
+    /// Structured failure history: message key, arguments and original diagnostics.
+    #[signal]
+    fn failure_reported(failure: VarDictionary);
+
+    /// Most recently reported failure, for inline expandable diagnostic controls.
+    #[func]
+    fn last_failure(&self) -> VarDictionary {
+        self.last_failure.clone()
+    }
 
     /// Rider `rider`'s account on `platform` is connected, as `label` (R29).
     #[signal]
@@ -313,9 +336,7 @@ impl TorqaApp {
                 "has_gps" => probe.has_gps,
             },
             Err(message) => {
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&message);
                 VarDictionary::new()
             }
         }
@@ -995,10 +1016,7 @@ impl TorqaApp {
         let detail = match app.ride_detail(std::path::Path::new(&path.to_string())) {
             Ok(detail) => detail,
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 return VarDictionary::new();
             }
         };
@@ -1645,10 +1663,7 @@ impl TorqaApp {
         match app.save_workout(&plan, Some(replace.as_str()).filter(|r| !r.is_empty())) {
             Ok(id) => GString::from(id.as_str()),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 GString::new()
             }
         }
@@ -1681,10 +1696,7 @@ impl TorqaApp {
         match app.import_workout(std::path::Path::new(&path.to_string())) {
             Ok(id) => GString::from(id.as_str()),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 GString::new()
             }
         }
@@ -1707,10 +1719,7 @@ impl TorqaApp {
         match app.structured_workout(&text("id")) {
             Ok(parsed) => Some(parsed),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 None
             }
         }
@@ -2062,10 +2071,7 @@ impl TorqaApp {
                 GString::from(id.as_str())
             }
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 GString::new()
             }
         }
@@ -2263,10 +2269,7 @@ impl TorqaApp {
         match app.set_hud_layout(&ids) {
             Ok(saved) => saved.iter().map(|id| GString::from(id.as_str())).collect(),
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 PackedStringArray::new()
             }
         }
@@ -2472,6 +2475,33 @@ impl TorqaApp {
 }
 
 impl TorqaApp {
+    fn record_failure(&mut self, failure: &Failure) -> GString {
+        tracing::warn!(kind = ?failure.kind, details = %failure.details, "application operation failed");
+        let message = failure.kind.message();
+        let translated = TranslationServer::singleton()
+            .translate(message)
+            .to_string();
+        let summary = format_failure(&translated, &failure.args);
+        let args = failure
+            .args
+            .iter()
+            .map(|arg| GString::from(arg.as_str()))
+            .collect::<PackedStringArray>();
+        self.last_failure = vdict! {
+            "message" => message,
+            "args" => &args,
+            "details" => failure.details.as_str(),
+        };
+        let payload = self.last_failure.clone();
+        self.signals().failure_reported().emit(&payload);
+        GString::from(summary.as_str())
+    }
+
+    fn report_failure(&mut self, failure: &Failure) {
+        let summary = self.record_failure(failure);
+        self.signals().failed().emit(&summary);
+    }
+
     fn command(&mut self, run: impl FnOnce(&mut App) -> Result<(), torqa_app::AppError>) -> bool {
         let Some(app) = self.app.as_mut() else {
             return false;
@@ -2479,10 +2509,7 @@ impl TorqaApp {
         match run(app) {
             Ok(()) => true,
             Err(error) => {
-                let message = error.to_string();
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&Failure::from(error));
                 false
             }
         }
@@ -2522,10 +2549,11 @@ impl TorqaApp {
                 platform,
                 message,
             } => {
+                let summary = self.record_failure(&message);
                 self.signals().account_failed().emit(
                     &GString::from(rider.as_str()),
                     &GString::from(platform.as_str()),
-                    &GString::from(message.as_str()),
+                    &summary,
                 );
             }
             AppEvent::OpenUrl(url) => {
@@ -2546,10 +2574,11 @@ impl TorqaApp {
                 reconnect,
             } => {
                 let path = fit.display().to_string();
+                let summary = self.record_failure(&message);
                 self.signals().upload_failed().emit(
                     &GString::from(path.as_str()),
                     &GString::from(platform.as_str()),
-                    &GString::from(message.as_str()),
+                    &summary,
                     reconnect,
                 );
             }
@@ -2641,9 +2670,7 @@ impl TorqaApp {
                     .emit(&GString::from(control_name(control)));
             }
             AppEvent::Error(message) => {
-                self.signals()
-                    .failed()
-                    .emit(&GString::from(message.as_str()));
+                self.report_failure(&message);
             }
         }
     }
@@ -3180,5 +3207,29 @@ fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
             MapStyle::Coloured => "coloured",
             MapStyle::Dark => "dark",
         },
+    }
+}
+
+/// Substitute only template slots: a filename containing `%s` must remain untouched.
+fn format_failure(template: &str, args: &[String]) -> String {
+    let mut parts = template.split("%s");
+    let mut result = parts.next().unwrap_or_default().to_owned();
+    for (index, part) in parts.enumerate() {
+        result.push_str(args.get(index).map_or("%s", String::as_str));
+        result.push_str(part);
+    }
+    result
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::format_failure;
+
+    #[test]
+    fn substitution_never_interprets_a_filename_as_another_placeholder() {
+        assert_eq!(
+            format_failure("Could not open %s.", &["/Räder/100%/%s.fit".to_owned()]),
+            "Could not open /Räder/100%/%s.fit."
+        );
     }
 }
