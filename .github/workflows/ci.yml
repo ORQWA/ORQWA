@@ -364,11 +364,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      # v8 understands the archives uploaded as single files with archive: false.
+      # Preserve the single-file uploads as release archives, including ZIPs that the
+      # download action would otherwise extract into their contents.
       - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
+          skip-decompress: true
       - name: Publish all app and CLI archives
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
