@@ -37,9 +37,11 @@ gallery of every model); Blender runs in its own container on the host:
 
 ## Builds
 
-Release builds of the app and the CLI are artifacts of the
-[CI runs](https://github.com/Torqa-Indoor-Cycling/Torqa/actions/workflows/ci.yml?query=branch%3Amain) (download
-them while signed in to GitHub). There are no tagged releases yet.
+Tagged builds of the app and CLI are available on the
+[Releases page](https://github.com/Torqa-Indoor-Cycling/Torqa/releases), without signing in.
+Between releases, download artifacts from the
+[CI runs on main](https://github.com/Torqa-Indoor-Cycling/Torqa/actions/workflows/ci.yml?query=branch%3Amain)
+while signed in to GitHub. Both use the same archives:
 
 The `macos` CI job builds `Torqa-macos-arm64.zip` and `torqa-cli-macos-arm64.tar.gz`. To test
 real trainers on macOS, use the CLI built by CI: see the [command-line guide](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Command-line-tool).
@@ -60,6 +62,23 @@ headless to check that it loads.
 
 Docker on macOS cannot access Bluetooth or the GPU, so macOS builds are produced by GitHub Actions.
 To test 3D rendering or a real trainer, run the built app (or the portable Godot editor) natively.
+
+### Publishing a release
+
+Push a new Git tag on the commit to release, for example `git tag v0.1.0` then
+`git push origin v0.1.0` (choose a new name for each release). Every tag name triggers CI,
+including names containing `/`; branch and PR builds only produce workflow artifacts.
+The tag's commit must contain this workflow. A tag push runs the container checks and the
+native macOS, Windows and both Linux builds. After all succeed, the `release` job verifies
+all eight nonempty app/CLI archives, creates a draft with generated release notes, uploads
+the archives and publishes it. Only that job has `contents: write`, using the automatic
+`GITHUB_TOKEN`; no release secret is needed.
+
+If a build or check fails, fix it and tag the corrected commit with a new tag. If publication
+fails, rerun the failed job from the tag's CI run: an unfinished draft is resumed and its
+assets replaced before publication. A published release is left unchanged on reruns. Tag
+runs are not cancelled by a later push. Check the CI run and the release's assets before
+announcing it; merging the workflow PR alone does not create a release.
 
 ## More
 

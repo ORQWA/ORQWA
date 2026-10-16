@@ -99,10 +99,11 @@ trainer without the app with the [command-line tool](https://github.com/Torqa-In
 
 ## Download
 
-There are no releases yet. The builds for macOS (Apple silicon), Windows and Linux are
-artifacts of the [CI runs on `main`](https://github.com/Torqa-Indoor-Cycling/Torqa/actions/workflows/ci.yml?query=branch%3Amain)
-(download them while signed in to GitHub); [docs/development.md](docs/development.md#builds)
-says which file is which.
+Tagged builds for macOS (Apple silicon), Windows and Linux are published on the
+[Releases page](https://github.com/Torqa-Indoor-Cycling/Torqa/releases), with the app and CLI
+archives attached. Between releases, download artifacts from the
+[CI runs on `main`](https://github.com/Torqa-Indoor-Cycling/Torqa/actions/workflows/ci.yml?query=branch%3Amain)
+while signed in to GitHub. [docs/development.md](docs/development.md#builds) explains the files.
 
 ## Contributing
 
