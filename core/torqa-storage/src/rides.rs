@@ -316,15 +316,30 @@ pub fn save(fit: &Path, record: &RideRecord) -> Result<(), RideError> {
 /// # Errors
 /// If it is missing, malformed or from a newer Torqa.
 pub fn load(fit: &Path) -> Result<RideRecord, RideError> {
-    let text = std::fs::read_to_string(metadata_path(fit))?;
-    let format = serde_json::from_str::<serde_json::Value>(&text)?["format"]
+    from_json(&std::fs::read_to_string(metadata_path(fit))?)
+}
+
+/// The metadata as the file holds it, for the history index to keep (R79).
+///
+/// # Errors
+/// If it cannot be written as JSON.
+pub fn to_json(record: &RideRecord) -> Result<String, RideError> {
+    Ok(serde_json::to_string(&RideFile::from(record))?)
+}
+
+/// A ride's metadata from the text of its file.
+///
+/// # Errors
+/// If it is malformed or from a newer Torqa.
+pub fn from_json(text: &str) -> Result<RideRecord, RideError> {
+    let format = serde_json::from_str::<serde_json::Value>(text)?["format"]
         .as_u64()
         .and_then(|f| u32::try_from(f).ok())
         .unwrap_or(0);
     if format > FORMAT_VERSION {
         return Err(RideError::NewerFormat(format));
     }
-    Ok(serde_json::from_str::<RideFile>(&text)?.into())
+    Ok(serde_json::from_str::<RideFile>(text)?.into())
 }
 
 /// Copies the ride stored in `fit` to `to`, e.g. to upload it by hand (R28). The copy goes to

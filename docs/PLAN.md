@@ -63,8 +63,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - **Storage**: files are the source of truth ([ADR 0002](adr/0002-sync-safe-storage.md)):
   per rider `profiles/<rider>/profile.toml`, `hud.toml` and `rides/` (FIT + JSON summary, with
   what the analysis across rides keeps of each ride, [ADR 0014](adr/0014-ride-analysis-data.md));
-  `courses/*.tqc` shared by all riders. The SQLite index of ADR 0002 is not built yet — the
-  history and the analysis read the JSON summaries directly, fast enough so far. Config TOML, data JSON
+  `courses/*.tqc` shared by all riders. The SQLite index of ADR 0002 (`history.sqlite` in the
+  cache directory, R79) spares the history and the analysis reading every JSON summary; the
+  files stay the truth and the index follows them. Config TOML, data JSON
   ([ADR 0004](adr/0004-config-formats.md)).
 - **Course files** (`.tqc`, [ADR 0007](adr/0007-course-files.md)): manifest, GPX, the
   terrain and map tiles used and a picture of its map, so a course is rebuilt offline
@@ -97,6 +98,8 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Rust workspace skeleton + lint config (clippy pedantic, missing_docs, cargo-deny)
 - [x] Godot project + gdext hello-world
 - [x] GitHub Actions: container job (fmt, clippy, test, deny) + macOS runner job (GDExtension + app export)
+- [x] Tagged releases (#273): after checks and all native builds, publish the eight app/CLI
+  archives for macOS arm64, Windows x86_64 and Linux x86_64/arm64 on GitHub Releases
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
@@ -160,6 +163,8 @@ Built in rideable steps:
   directly into the HUD preview and within it (R51, R54)
 - [x] History & analysis: FIT + JSON summary per ride, NP / IF / TSS / kJ, charts, time in
   zones
+- [x] The history index of ADR 0002 (R79, #262): SQLite in the cache directory, built from
+  the ride files and following them, so hundreds of rides cost one read
 - [x] Climbs (auto-detected, categorised) and personal records per route and climb
 - [x] Ghosts & pacers: own best, power / W/kg pacers, recorded GPX/FIT activities (R20)
 - [ ] Audio (R26): music app control ✅, original video sound ✅ (Phase 5); ambient sound

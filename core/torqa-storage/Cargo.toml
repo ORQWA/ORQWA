@@ -1,6 +1,6 @@
 [package]
 name = "torqa-storage"
-description = "Storage for Torqa: FIT export, course files, rider profiles and their accounts"
+description = "Storage for Torqa: FIT export, course files, rider profiles and their accounts, the history index"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 torqa-domain.workspace = true
+rusqlite.workspace = true
 rustyfit.workspace = true
 embedded-io-adapters.workspace = true
 serde.workspace = true
