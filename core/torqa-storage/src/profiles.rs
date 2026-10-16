@@ -238,16 +238,24 @@ pub struct CoursesView {
     pub group: String,
 }
 
-/// What the Di2 shifter's buttons do (#139): for each D-Fly channel, the action of each kind
-/// of press by name. A press left out, or with an unknown action, does nothing.
+/// What the shifter's buttons do (#139): for each button (a Di2's D-Fly channel, a Click's
+/// numbered button), the action of each kind of press by name. A press left out, or with an
+/// unknown action, does nothing. Files from before the Click v2 name four channels; the rest
+/// stay empty.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
-#[allow(clippy::struct_field_names)] // the D-Fly channels, named as the rider reads them in the file
+#[allow(clippy::struct_field_names)] // the channels, named as the rider reads them in the file
 struct ButtonsFile {
     channel_1: PressesFile,
     channel_2: PressesFile,
     channel_3: PressesFile,
     channel_4: PressesFile,
+    channel_5: PressesFile,
+    channel_6: PressesFile,
+    channel_7: PressesFile,
+    channel_8: PressesFile,
+    channel_9: PressesFile,
+    channel_10: PressesFile,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -279,6 +287,12 @@ impl From<&ButtonMap> for ButtonsFile {
             channel_2: channel(2),
             channel_3: channel(3),
             channel_4: channel(4),
+            channel_5: channel(5),
+            channel_6: channel(6),
+            channel_7: channel(7),
+            channel_8: channel(8),
+            channel_9: channel(9),
+            channel_10: channel(10),
         }
     }
 }
@@ -291,6 +305,12 @@ impl ButtonsFile {
             &self.channel_2,
             &self.channel_3,
             &self.channel_4,
+            &self.channel_5,
+            &self.channel_6,
+            &self.channel_7,
+            &self.channel_8,
+            &self.channel_9,
+            &self.channel_10,
         ];
         for (button, presses) in (1..).zip(channels) {
             for (press, name) in [

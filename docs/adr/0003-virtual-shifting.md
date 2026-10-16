@@ -89,7 +89,7 @@ has been down for 500 ms (told then, not when let go, so a long hold is one pres
 long), a **press** when it comes up before that. There is no double press: waiting for a
 second tap would delay every shift, and a shifter must not lag. The + is button 1 and the −
 button 2 of the shared button map, so the default (1 shifts up, 2 down) fits a Click as it
-fits a Di2, and the Devices tab shows a Click's two rows and two columns.
+fits a Di2, and the button dialog shows a Click's two rows and two columns.
 
 Still out: the Click v2 (two pods, device types 10 and 11; its left pod stops sending after
 about a day without Zwift, its right pod needs further activation writes), the Play (device
@@ -98,3 +98,64 @@ same community projects, and would be separate drivers once someone has the hard
 check them. Zwift has not published any of this and a firmware update may change it; the
 driver stays isolated and optional, as this ADR always said. Rouvy and MyWhoosh took the same
 route (DC Rainmaker, 2025-02).
+
+## Amendment 2026-10-16: the Zwift Click v2 (R77)
+
+The Click v2 followed after all, as a driver of its own (`torqa_devices::zwift_click_v2`)
+written from the community's drivers, with **no pod at hand**: it is marked unchecked until a
+Click v2 owner confirms it (OPEN-QUESTIONS). What those drivers agree on:
+
+- **Two devices.** Each pod advertises on its own as "Zwift Click", Zwift's company id
+  `0x094A` and device type **10** for the right pod (+, Y, Z, A, B) and **11** for the left
+  (−, ↑, ↓, ←, →), with the original Click's characteristics under the Ride's service
+  `0000fc82-0000-1000-8000-00805f9b34fb`, not the Click's: a maintainer's pods answered the
+  first attempt with `device lacks service 00000001-19ca…` (#271, 2026-10-16), and BikeControl
+  looks for the Ride's service first and the Click's second, so the driver takes either. Zwift's own app
+  takes one connection, the left pod relaying the right and the trainer; third-party apps
+  connect each pod. Torqa joins the two found in a scan into one device, "Zwift Click v2", the
+  right pod first and the left as its partner, driven over one handle: one row in the Devices
+  tab, one remembered device, both pods dropped and reconnected together. A pod alone is the
+  device by itself. Without manufacturer data a pod cannot be told from an original Click and
+  is taken for one; that pod would answer the handshake and then say nothing Torqa decodes.
+- **The Ride's plain protocol**, not the Play's encryption: write `RideOn` to `…0003`; the
+  pod indicates `RideOn 02 03 …` on `…0004`. Buttons on `…0002` as message `0x23`, field 1 a
+  varint of a 32-bit map, a bit **clear while its button is down** (`23 08 FF FF FF FF 0F` is
+  all up): ← `0x1`, ↑ `0x2`, → `0x4`, ↓ `0x8`, A `0x10`, B `0x20`, Y `0x40`, Z `0x80`, −
+  `0x100`, + `0x1000`, as BikeControl's code reads them (its generated protobuf enum has Z and
+  the shifts one bit further; the code's table is the one that ships). Idle messages `0x15`
+  and `0x19` say nothing of the buttons. Each pod reports its own buttons, so the driver only
+  reads a pod's own bits from its frames.
+- **The left pod is locked** to Zwift
+  ([BikeControl's account](https://bikecontrol.app/blog/zwift-click-v2-with-other-trainer-apps/)):
+  unless it was in a Zwift session within about 24 hours, it answers the handshake with a
+  vendor challenge `ff 03 …` instead of `RideOn` and tells of no buttons. Unlocking is logging
+  in to Zwift (no subscription needed), connecting the Click, closing Zwift; BikeControl can
+  also relay Zwift's unlock, which Torqa does not. After the handshake Torqa writes `ff 04 00`
+  to a left pod, as QZ does unconditionally: it keeps an unlocked pod unlocked across
+  connections and does nothing to a locked one. A challenge is logged as the pod being
+  locked. The right pod is never locked, so + and a lettered button given "shift down" shift
+  without Zwift at all, as BikeControl's "right side only" mode does.
+- **Pods fall asleep** after roughly a minute without traffic and drop the link
+  (QZ, [#4743](https://github.com/cagnulein/qdomyos-zwift/pull/4743): HCI supervision
+  timeout after ~56 s). QZ writes `RideOn` again every 3 s to both pods; Torqa does the same.
+  MaximumTrainer tried 3, 6 and 20 s and none, suspecting the re-sends of causing drops, so
+  this is the point to check first on hardware.
+
+The presses come from the same state machine as the original Click's (a hold at 500 ms, a
+press when let go before, no double press). The buttons are numbered + 1 and − 2, so the
+default map fits, then Y, Z, A, B, ↑, ↓, ←, → as 3–10: the button map grew from four to ten
+buttons for it (settings files from before keep their four channels). Sources: BikeControl
+(`lib/bluetooth/devices/zwift/`, non-commercial license: read for the protocol, nothing
+copied), QZ's `zwiftclickremote.cpp` (GPL-3.0), MaximumTrainer Redux PR #307 and Makinolo's
+[Ride protocol](https://www.makinolo.com/blog/2024/07/26/zwift-ride-protocol/). The Play and
+the Ride stay out.
+
+## Amendment 2026-10-16: the buttons in a dialog (#271)
+
+The button assignments left the Devices tab for a dialog behind a pen beside the shifter's
+row. A Click v2's ten rows (twenty cells) made the tab taller than a screen, and the tab does
+not scroll; a Di2's twelve cells were already most of it. The dialog lays the rows out for the
+shifter chosen, clamped to the screen with a scroll bar inside, and the pen is disabled while
+no shifter is chosen. The other rows keep the pen's column empty, so their Search buttons and
+states line up.
+

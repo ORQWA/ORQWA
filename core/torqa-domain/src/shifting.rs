@@ -124,8 +124,9 @@ pub struct ButtonPress {
     pub press: Press,
 }
 
-/// The buttons a controller can have assigned, as a Di2 has four D-Fly channels.
-pub const BUTTONS: u8 = 4;
+/// The buttons a controller can have assigned: a Di2 has four D-Fly channels, a Zwift Click v2
+/// ten buttons on its two pods.
+pub const BUTTONS: u8 = 10;
 
 /// What each press of each button does (#139).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -261,14 +262,16 @@ mod tests {
     }
 
     #[test]
-    fn buttons_beyond_the_four_do_nothing() {
+    fn buttons_beyond_the_ten_do_nothing() {
         let mut map = ButtonMap::NONE;
 
         map.assign(0, Press::Short, Some(ButtonAction::ShiftUp));
-        map.assign(5, Press::Short, Some(ButtonAction::ShiftUp));
+        map.assign(11, Press::Short, Some(ButtonAction::ShiftUp));
 
         assert_eq!(map, ButtonMap::NONE);
         assert_eq!(map.action(0, Press::Short), None);
-        assert_eq!(map.action(5, Press::Short), None);
+        assert_eq!(map.action(11, Press::Short), None);
+        map.assign(10, Press::Short, Some(ButtonAction::ShiftUp));
+        assert_eq!(map.action(10, Press::Short), Some(ButtonAction::ShiftUp));
     }
 }

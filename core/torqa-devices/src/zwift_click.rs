@@ -17,8 +17,12 @@ use torqa_domain::shifting::{ButtonPress, Press};
 
 use crate::bytes::ParseError;
 
-/// Zwift's own service, shared by the Click, Play and Ride.
+/// Zwift's own service on the original Click.
 pub const SERVICE: &str = "00000001-19ca-4651-86e5-fa29dcdd09d1";
+/// The service the Click v2's pods, the Play and the Ride put the same characteristics
+/// under instead: Zwift's 16-bit UUID `FC82` (`BikeControl` looks for it first, QZ as well).
+/// A maintainer's pods lacked [`SERVICE`] on the first try (#271).
+pub const RIDE_SERVICE: &str = "0000fc82-0000-1000-8000-00805f9b34fb";
 /// Notifications: the buttons' states, and a status every few seconds.
 pub const BUTTONS: &str = "00000002-19ca-4651-86e5-fa29dcdd09d1";
 /// Written without response: the handshake.
@@ -28,7 +32,8 @@ pub const RESPONSE: &str = "00000004-19ca-4651-86e5-fa29dcdd09d1";
 /// Zwift's Bluetooth company identifier, in the advertising data.
 pub const MANUFACTURER: u16 = 0x094A;
 /// The Click's device type, the first byte of Zwift's advertising data (the Play's pads are
-/// 2 and 3, the Ride's 7 and 8, the two-pod Click v2's 10 and 11).
+/// 2 and 3, the Ride's 7 and 8, the Click v2's pods [`crate::zwift_click_v2::RIGHT_POD`] and
+/// [`crate::zwift_click_v2::LEFT_POD`]).
 pub const DEVICE_TYPE: u8 = 9;
 /// The unit's advertised name, for stacks that pass neither its service nor its maker on.
 pub const NAME: &str = "Zwift Click";
@@ -53,12 +58,42 @@ pub struct Buttons {
     buttons: [Button; 2],
 }
 
+/// One button's press in progress, shared with the Click v2's buttons.
 #[derive(Debug, Clone, Copy, Default)]
-struct Button {
+pub(crate) struct Button {
     /// Since when it has been down, if it is.
     down_since: Option<Instant>,
     /// Whether its current press was already a hold, which is one press however long.
     held: bool,
+}
+
+impl Button {
+    /// The press one state, `down` at `now`, completes: a hold once the button has been down
+    /// for [`HOLD`], a press when it comes up before that.
+    pub(crate) fn update(&mut self, down: bool, now: Instant) -> Option<Press> {
+        match (self.down_since, down) {
+            (None, true) => {
+                self.down_since = Some(now);
+                self.held = false;
+                None
+            }
+            (Some(since), true) => {
+                if !self.held && now.duration_since(since) >= HOLD {
+                    self.held = true;
+                    Some(Press::Long)
+                } else {
+                    None
+                }
+            }
+            (Some(_), false) => {
+                let press = (!self.held).then_some(Press::Short);
+                self.down_since = None;
+                self.held = false;
+                press
+            }
+            (None, false) => None,
+        }
+    }
 }
 
 impl Buttons {
@@ -86,31 +121,11 @@ impl Buttons {
         let mut presses = Vec::new();
         for ((button, down), number) in self.buttons.iter_mut().zip(down).zip(PLUS..) {
             let Some(down) = down else { continue };
-            match (button.down_since, down) {
-                (None, true) => {
-                    button.down_since = Some(now);
-                    button.held = false;
-                }
-                (Some(since), true) => {
-                    if !button.held && now.duration_since(since) >= HOLD {
-                        button.held = true;
-                        presses.push(ButtonPress {
-                            channel: number,
-                            press: Press::Long,
-                        });
-                    }
-                }
-                (Some(_), false) => {
-                    if !button.held {
-                        presses.push(ButtonPress {
-                            channel: number,
-                            press: Press::Short,
-                        });
-                    }
-                    button.down_since = None;
-                    button.held = false;
-                }
-                (None, false) => {}
+            if let Some(press) = button.update(down, now) {
+                presses.push(ButtonPress {
+                    channel: number,
+                    press,
+                });
             }
         }
         Ok(presses)
@@ -118,8 +133,8 @@ impl Buttons {
 }
 
 /// The varint fields of a protocol-buffer message as `(field number, value)`, in order.
-/// Reading stops at the first field of another wire type: the unit sends none.
-fn varint_fields(mut data: &[u8]) -> Result<Vec<(u64, u64)>, ParseError> {
+/// Reading stops at the first field of another wire type: the unit sends none before them.
+pub(crate) fn varint_fields(mut data: &[u8]) -> Result<Vec<(u64, u64)>, ParseError> {
     let mut fields = Vec::new();
     while !data.is_empty() {
         let (tag, rest) = varint(data)?;

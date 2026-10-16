@@ -15,6 +15,7 @@ pub mod heart_rate;
 pub mod shift;
 pub mod speed_cadence;
 pub mod zwift_click;
+pub mod zwift_click_v2;
 
 pub use bytes::ParseError;
 pub use handle::{DeviceError, DeviceEvent, DeviceHandle};

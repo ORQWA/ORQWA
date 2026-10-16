@@ -70,7 +70,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
   </tr>
   <tr>
     <td>⚙️ <b><a href="https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Devices-and-riding#virtual-gears">Virtual gears</a></b><br>
-      24 gears on a single cog, shifted from the keyboard, Shimano Di2 hood buttons or a Zwift Click</td>
+      24 gears on a single cog, shifted from the keyboard, Shimano Di2 hood buttons or a Zwift Click (original or v2)</td>
     <td>🪟 <b><a href="https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Overlay">Overlay</a></b><br>
       Just your HUD, on top of a video or any other window</td>
   </tr>

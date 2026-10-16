@@ -1393,6 +1393,30 @@ msgstr "Plus (+)"
 msgid "Minus (−)"
 msgstr "Minus (−)"
 
+msgid "Y (right pod)"
+msgstr "Y (rechte Einheit)"
+
+msgid "Z (right pod)"
+msgstr "Z (rechte Einheit)"
+
+msgid "A (right pod)"
+msgstr "A (rechte Einheit)"
+
+msgid "B (right pod)"
+msgstr "B (rechte Einheit)"
+
+msgid "Up (left pod)"
+msgstr "Hoch (linke Einheit)"
+
+msgid "Down (left pod)"
+msgstr "Runter (linke Einheit)"
+
+msgid "Left (left pod)"
+msgstr "Links (linke Einheit)"
+
+msgid "Right (left pod)"
+msgstr "Rechts (linke Einheit)"
+
 msgid "Show"
 msgstr "Anzeigen"
 
@@ -1826,3 +1850,13 @@ msgstr "Fahren"
 msgctxt "ride_tab"
 msgid "Ride"
 msgstr "Fahrt"
+
+msgid "What the buttons of %s do"
+msgstr "Was die Tasten von %s tun"
+
+msgid "What the buttons do"
+msgstr "Was die Tasten tun"
+
+msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
+msgstr "Jeder Druck schaltet, wechselt die Ansicht, steuert Musik oder das Workout, oder tut nichts."
+
