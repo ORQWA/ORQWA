@@ -49,6 +49,20 @@ const ACTION_LABELS: Dictionary[String, String] = {
 const PRESSES: Array[String] = ["Press", "Hold", "Double press"]
 ## A Zwift Click's buttons (R75), in the core's numbering (1 and 2).
 const CLICK_BUTTONS: Array[String] = ["Plus (+)", "Minus (−)"]
+## A Zwift Click v2's buttons (R77), in the core's numbering: + and − first, as a Click's, then
+## the right pod's letters and the left pod's arrows.
+const CLICK_V2_BUTTONS: Array[String] = [
+	"Plus (+)",
+	"Minus (−)",
+	"Y (right pod)",
+	"Z (right pod)",
+	"A (right pod)",
+	"B (right pod)",
+	"Up (left pod)",
+	"Down (left pod)",
+	"Left (left pod)",
+	"Right (left pod)",
+]
 ## How a row's device is doing (R76), by state.
 const STATE_LABELS: Dictionary[String, String] = {
 	"searching": "Searching…",
@@ -60,11 +74,14 @@ const STATE_LABELS: Dictionary[String, String] = {
 }
 # i18n-end
 const CHANNELS: int = 4
-## A Zwift Click tells presses and holds apart, not double presses.
+## The most buttons a shifter has, a Click v2's ten: the rows built, shown as far as needed.
+const BUTTON_ROWS: int = 10
+## A Zwift Click, original or v2, tells presses and holds apart, not double presses.
 const CLICK_PRESSES: int = 2
 ## The core's name for a Di2, whose buttons are its four D-Fly channels.
 const DI2: String = "di2"
 const ZWIFT_CLICK: String = "zwift_click"
+const ZWIFT_CLICK_V2: String = "zwift_click_v2"
 ## The core's name for the fake trainer, as its connection is reported.
 const FAKE_TRAINER_NAME: String = "Fake trainer"
 
@@ -80,7 +97,8 @@ var _cadence: OptionButton = OptionButton.new()
 ## A shifter, and what each press of its buttons does: a row per button (a Di2's D-Fly
 ## channels, a Zwift Click's + and −), a column per kind of press the shifter tells apart.
 var _shifter: OptionButton = OptionButton.new()
-## Which shifter each scanned one is, by its index: the core's "di2" or "zwift_click".
+## Which shifter each scanned one is, by its index: the core's "di2", "zwift_click" or
+## "zwift_click_v2".
 var _shifter_models: Dictionary[int, String] = {}
 ## The scanned devices' names by index, as the core reports their connections.
 var _names: Dictionary[int, String] = {}
@@ -569,21 +587,36 @@ func _show_buttons() -> void:
 
 ## Shows the rows and columns of the chosen shifter's buttons and presses, captioned for it.
 func _layout_buttons(model: String) -> void:
-	var buttons: int = CLICK_BUTTONS.size() if model == ZWIFT_CLICK else CHANNELS
-	var presses: int = CLICK_PRESSES if model == ZWIFT_CLICK else PRESSES.size()
+	var captions: Array[String] = _button_captions(model)
+	var buttons: int = captions.size()
+	var presses: int = CLICK_PRESSES if model in [ZWIFT_CLICK, ZWIFT_CLICK_V2] else PRESSES.size()
 	_buttons.columns = 1 + presses
 	for press: int in range(PRESSES.size()):
 		_press_headings[press].visible = press < presses
-	for channel: int in range(CHANNELS):
+	for channel: int in range(BUTTON_ROWS):
 		var caption: Label = _channel_captions[channel]
 		caption.visible = channel < buttons
-		if model == ZWIFT_CLICK and channel < buttons:
-			caption.text = tr(CLICK_BUTTONS[channel])
-		else:
-			caption.text = tr("D-Fly channel %d") % (channel + 1)
+		if channel < buttons:
+			caption.text = captions[channel]
 		for press: int in range(PRESSES.size()):
 			var option: OptionButton = _assignments[channel * PRESSES.size() + press]
 			option.visible = channel < buttons and press < presses
+
+
+## What a shifter's buttons are called, in the core's numbering.
+func _button_captions(model: String) -> Array[String]:
+	var captions: Array[String] = []
+	var named: Array[String] = []
+	if model == ZWIFT_CLICK_V2:
+		named = CLICK_V2_BUTTONS
+	elif model == ZWIFT_CLICK:
+		named = CLICK_BUTTONS
+	for caption: String in named:
+		captions.append(tr(caption))
+	if named.is_empty():
+		for channel: int in range(1, CHANNELS + 1):
+			captions.append(tr("D-Fly channel %d") % channel)
+	return captions
 
 
 func _build_buttons() -> void:
@@ -598,7 +631,7 @@ func _build_buttons() -> void:
 		label.text = heading
 		_press_headings.append(label)
 		_buttons.add_child(label)
-	for channel: int in range(1, CHANNELS + 1):
+	for channel: int in range(1, BUTTON_ROWS + 1):
 		var caption: Label = Label.new()
 		caption.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		_channel_captions.append(caption)

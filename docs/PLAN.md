@@ -210,7 +210,10 @@ Built in rideable steps:
     (H / E, I / L, N)
   - [x] The Zwift Click over Bluetooth (R75, #228): the original unit's + and − as buttons
     1 and 2 of the same assignments (press and hold; no double press), its plain protocol
-    checked on a unit; the Click v2, Play and Ride stay out
+    checked on a unit; the Play and Ride stay out
+  - [x] The Zwift Click v2 (R77): its two pods as one shifter, + and − as buttons 1 and 2
+    and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
+    written from the community's drivers, **not yet checked on the hardware**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their

@@ -19,7 +19,8 @@ func _run() -> void:
 
 
 ## Every action the core offers for a shifter's buttons can be chosen by its label (#139),
-## and a Zwift Click (R75) shows its two buttons with a press and a hold, no double press.
+## a Zwift Click (R75) shows its two buttons with a press and a hold, no double press, and a
+## Click v2 (R77) its ten, + and − first.
 func _shifter_buttons() -> void:
 	var actions: PackedStringArray = TorqaApp.button_actions()
 	for action: String in actions:
@@ -29,9 +30,9 @@ func _shifter_buttons() -> void:
 	root.add_child(tab)
 	var choices: Array[Node] = tab.find_children("*", "OptionButton", true, false)
 	# Trainer, power meter, cadence, heart rate and shifter, a press, a hold and a double press
-	# of four channels, and the graphics quality.
+	# of ten buttons (the most a shifter has), and the graphics quality.
 	_check(
-		choices.size() == 5 + 4 * 3 + 1, "a choice per press of each channel: %d" % choices.size()
+		choices.size() == 5 + 10 * 3 + 1, "a choice per press of each button: %d" % choices.size()
 	)
 	var press: OptionButton = choices[5]
 	_check(press.item_count == 1 + actions.size(), "nothing or any action")
@@ -40,19 +41,42 @@ func _shifter_buttons() -> void:
 	tab._on_devices_found([_click()])
 	_check(grid.visible, "the Click found is chosen")
 	_check(grid.columns == 3, "a Click offers a press and a hold")
+	var captions: PackedStringArray = _captions(grid)
+	_check(captions == PackedStringArray(["Plus (+)", "Minus (−)"]), "its buttons: %s" % captions)
+	_check(_shown_choices(grid) == 2 * 2, "a choice per press of each of its buttons")
+	tab._on_devices_found([_click_v2()])
+	_check(grid.columns == 3, "a Click v2 offers a press and a hold")
+	captions = _captions(grid)
+	_check(captions.size() == 10, "a Click v2's ten buttons: %s" % captions)
+	_check(
+		captions[0] == "Plus (+)" and captions[1] == "Minus (−)",
+		"+ and − first, so the default map shifts: %s" % captions
+	)
+	_check(
+		captions[2] == "Y (right pod)" and captions[9] == "Right (left pod)",
+		"then the right pod's letters and the left pod's arrows: %s" % captions
+	)
+	_check(_shown_choices(grid) == 10 * 2, "a choice per press of each of its buttons")
+	tab.free()
+
+
+## The visible button captions of the assignments grid, in order. Hidden cells stay
+## children: a row is a caption and a choice per kind of press.
+static func _captions(grid: GridContainer) -> PackedStringArray:
 	var captions: PackedStringArray = PackedStringArray()
-	# Hidden cells stay children: a row is a caption and a choice per kind of press.
 	for i: int in range(0, grid.get_child_count(), 1 + DevicesTab.PRESSES.size()):
 		var caption: Label = grid.get_child(i) as Label
 		if caption != null and caption.visible:
 			captions.append(caption.text)
-	_check(captions == PackedStringArray(["Plus (+)", "Minus (−)"]), "its buttons: %s" % captions)
+	return captions
+
+
+static func _shown_choices(grid: GridContainer) -> int:
 	var shown: int = 0
 	for choice: OptionButton in grid.find_children("*", "OptionButton", false, false):
 		if choice.visible:
 			shown += 1
-	_check(shown == 2 * 2, "a choice per press of each of its buttons: %d" % shown)
-	tab.free()
+	return shown
 
 
 ## Each row says how its device is doing (R76), from the core's reports by name: connected,
@@ -111,6 +135,18 @@ static func _click() -> Dictionary:
 		"name": "Zwift Click",
 		"kind": "controller",
 		"model": "zwift_click",
+		"rssi": -50,
+		"remembered": true,
+	}
+
+
+## A scanned Zwift Click v2, its pods as one device, remembered from last time.
+static func _click_v2() -> Dictionary:
+	return {
+		"index": 0,
+		"name": "Zwift Click v2",
+		"kind": "controller",
+		"model": "zwift_click_v2",
 		"rssi": -50,
 		"remembered": true,
 	}
