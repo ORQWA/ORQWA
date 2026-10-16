@@ -1,8 +1,8 @@
 class_name RideDevices
 extends VBoxContainer
-## The trainer, sensors and shifter during a ride, each with whether it is connected, and a
-## button to reconnect those that are not (R69): a strap that dropped while the rider was off
-## the bike, or one not found at start.
+## The trainer, sensors and shifter during a ride, each with whether it is connected (and why
+## not, when connecting failed, R80), and a button to reconnect those that are not (R69): a
+## strap that dropped while the rider was off the bike, or one not found at start.
 
 var _torqa: TorqaApp
 var _rows: GridContainer = GridContainer.new()
@@ -32,6 +32,7 @@ func bind(torqa: TorqaApp) -> void:
 	var changed: Callable = func(_device_name: String) -> void: refresh()
 	_torqa.device_connected.connect(changed)
 	_torqa.device_disconnected.connect(changed)
+	_torqa.device_failed.connect(func(_device_name: String, _reason: String) -> void: refresh())
 	_torqa.devices_found.connect(func(_devices: Array) -> void: _on_scanned())
 	_torqa.remembered_missing.connect(_on_remembered_missing)
 	_torqa.failed.connect(func(_message: String) -> void: _on_failed())
@@ -77,10 +78,14 @@ func refresh() -> void:
 		# i18n-end
 		var text: String = labels.get(state_name, "Not connected")
 		state.text = tr(text)
+		# While the driver keeps trying, the rider sees why the last attempt failed (R80).
+		var failure: String = device.get("failure", "")
+		if not connected and not failure.is_empty():
+			state.text = tr("Failed") + ": " + tr(failure)
 		var color: Color = UiTheme.DANGER
 		if connected:
 			color = UiTheme.SUCCESS
-		elif state_name == "connecting":
+		elif state_name == "connecting" and failure.is_empty():
 			color = UiTheme.WARNING
 		state.add_theme_color_override("font_color", color)
 		_rows.add_child(state)

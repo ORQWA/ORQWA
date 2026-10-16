@@ -47,6 +47,7 @@ fn report(name: &str, event: &DeviceEvent, state: &mut Telemetry) {
     match event {
         DeviceEvent::Connected => println!("{name}: connected"),
         DeviceEvent::Disconnected => println!("{name}: disconnected, reconnecting…"),
+        DeviceEvent::Failed(reason) => println!("{name}: {reason}, trying again"),
         DeviceEvent::Telemetry(telemetry) => state.merge(telemetry),
         DeviceEvent::Buttons(presses) => println!("{name}: {presses:?}"),
     }

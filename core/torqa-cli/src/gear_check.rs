@@ -79,6 +79,9 @@ pub(crate) async fn run(args: &GearCheckArgs, devices: &mut Devices) -> Result<(
                         latest.merge(&telemetry);
                         second.add(&telemetry);
                     }
+                    DeviceEvent::Failed(reason) => {
+                        println!("{}: {reason}, trying again", devices.trainer.name());
+                    }
                     DeviceEvent::Buttons(_) => {}
                 }
             }
@@ -93,6 +96,7 @@ pub(crate) async fn run(args: &GearCheckArgs, devices: &mut Devices) -> Result<(
                     }
                     (name, DeviceEvent::Connected) => println!("{name}: connected"),
                     (name, DeviceEvent::Disconnected) => println!("{name}: disconnected"),
+                    (name, DeviceEvent::Failed(reason)) => println!("{name}: {reason}, trying again"),
                     (_, DeviceEvent::Telemetry(_)) => {}
                 }
             }

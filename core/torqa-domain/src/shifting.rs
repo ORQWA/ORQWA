@@ -208,6 +208,12 @@ pub trait ShiftInput: Send {
     fn connected(&self) -> bool {
         true
     }
+
+    /// Why the last attempt to connect it failed, while it keeps trying (R80); a keyboard
+    /// never fails.
+    fn failure(&self) -> Option<&str> {
+        None
+    }
 }
 
 #[cfg(test)]

@@ -1826,3 +1826,22 @@ msgstr "Fahren"
 msgctxt "ride_tab"
 msgid "Ride"
 msgstr "Fahrt"
+
+msgid "%d W"
+msgstr "%d W"
+
+msgid "%d rpm"
+msgstr "%d U/min"
+
+msgid "connecting timed out"
+msgstr "Verbindungsaufbau hat zu lange gedauert"
+
+msgid "device not found"
+msgstr "Gerät nicht gefunden"
+
+msgid "device driver has stopped"
+msgstr "Gerätetreiber wurde beendet"
+
+msgid "no Bluetooth adapter found"
+msgstr "kein Bluetooth-Adapter gefunden"
+

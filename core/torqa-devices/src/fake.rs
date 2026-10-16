@@ -127,6 +127,32 @@ pub fn spawn(rider: FakeRider, period: Duration) -> DeviceHandle {
     )
 }
 
+/// Starts a fake device that never connects: every attempt fails for `reason`, told as a real
+/// driver tells it (R80), once per `period`. For checking how failures are shown.
+///
+/// Must be called within a Tokio runtime.
+#[must_use]
+pub fn spawn_failing(name: &str, reason: &str, period: Duration) -> DeviceHandle {
+    let reason = reason.to_owned();
+    DeviceHandle::spawn(name.to_owned(), false, move |channels| async move {
+        let mut ticker = interval(period);
+        ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        loop {
+            ticker.tick().await;
+            let told = channels.events.send(DeviceEvent::Disconnected).await;
+            if told.is_err()
+                || channels
+                    .events
+                    .send(DeviceEvent::Failed(reason.clone()))
+                    .await
+                    .is_err()
+            {
+                return;
+            }
+        }
+    })
+}
+
 fn power(rider: FakeRider, control: Option<&TrainerControl>) -> Watts {
     match control {
         Some(TrainerControl::TargetPower(target)) => *target,

@@ -1,6 +1,7 @@
 extends SceneTree
-## Headless checks of the Devices tab: the shifter's buttons (#139, R75) and how each row
-## tells what its device is doing (R76).
+## Headless checks of the Devices tab: the shifter's buttons (#139, R75), how each row tells
+## what its device is doing (R76), and what stands beside it: the device's reading, or why
+## connecting failed (R80).
 ## Run: godot --headless --path app -s res://tests/devices_smoke.gd
 
 var _failed: bool = false
@@ -94,6 +95,31 @@ func _device_states() -> void:
 	tab._on_device_disconnected("Zwift Click")
 	_check(tab.state_of("controller") == "reconnecting", "a drop is told while the driver looks")
 	_check(_shown(states, "Reconnecting…"), "the row says reconnecting")
+	# A failed attempt says why, until the device connects (R80).
+	tab._on_device_failed("Zwift Click", "connecting timed out")
+	_check(tab.state_of("controller") == "failed", "a failed attempt is told")
+	_check(_shown(states, "Failed: connecting timed out"), "the row says why")
+	tab._on_device_connected("Zwift Click")
+	_check(_shown(states, "Connected"), "the reason is gone once connected")
+	_check(not _shown(states, "Failed: connecting timed out"), "and not shown any more")
+	# A connected device's reading stands beside it, in the units of its kind (R80).
+	var trainer_state: Label = tab._state_labels["trainer"]
+	tab._expected["trainer"] = "KICKR CORE"
+	tab._set_state("trainer", "connected")
+	tab._show_reading("trainer", {"power": 200.0, "cadence": 90.0, "heart_rate": null})
+	_check(
+		trainer_state.text == "Connected  200 W · 90 rpm",
+		"power and cadence: %s" % trainer_state.text
+	)
+	tab._set_state("heart_rate", "connected")
+	tab._show_reading("heart_rate", {"power": null, "cadence": null, "heart_rate": 142.0})
+	var strap_state: Label = tab._state_labels["heart_rate"]
+	_check(strap_state.text == "Connected  142 bpm", "the heart rate: %s" % strap_state.text)
+	tab._show_reading("trainer", {})
+	_check(trainer_state.text == "Connected", "nothing beside a quiet trainer")
+	tab._on_device_disconnected("KICKR CORE")
+	tab._show_reading("trainer", {"power": 200.0, "cadence": 90.0, "heart_rate": null})
+	_check(trainer_state.text == "Reconnecting…", "no reading beside a device that dropped")
 	tab._on_remembered_missing(PackedStringArray(["Zwift Click"]))
 	_check(tab.state_of("controller") == "missing", "not found at start")
 	_check(_shown(states, "Not found"), "the row says not found")
