@@ -2,7 +2,8 @@ class_name DevicesTab
 extends VBoxContainer
 ## Trainer, power meter, cadence, heart-rate sensor and shifter — a Shimano Di2 or a Zwift
 ## Click (R5, R7, R41, R71, R72, R75, R76): scanning, choosing, what the shifter's buttons do
-## (#139), and the devices used last reconnecting at start. A device connects the moment it
+## (#139, in a dialog behind the pen beside its row), and the devices used last reconnecting
+## at start. A device connects the moment it
 ## is chosen, and each row says how its device is doing: connecting, connected, reconnecting
 ## after a drop, not found, or failed.
 
@@ -26,43 +27,7 @@ const POWER_METER: String = "power_meter"
 const CADENCE: String = "cadence"
 const HEART_RATE: String = "heart_rate"
 const CONTROLLER: String = "controller"
-## What a shifter's buttons can be given (#139), by the core's name for each action.
 # i18n-begin
-const ACTION_LABELS: Dictionary[String, String] = {
-	"shift_up": "Shift up",
-	"shift_down": "Shift down",
-	"shift_up_two": "Shift up two gears",
-	"shift_down_two": "Shift down two gears",
-	"next_camera": "Next camera",
-	"overlay": "Overlay on / off",
-	"play_pause": "Music: play / pause",
-	"next_track": "Music: next track",
-	"previous_track": "Music: previous track",
-	"pause": "Pause / resume",
-	"difficulty_up": "Trainer difficulty +10 %",
-	"difficulty_down": "Trainer difficulty −10 %",
-	"intensity_up": "Workout intensity +5 %",
-	"intensity_down": "Workout intensity −5 %",
-	"skip_step": "Workout: skip step",
-}
-## The kinds of press, in the core's order.
-const PRESSES: Array[String] = ["Press", "Hold", "Double press"]
-## A Zwift Click's buttons (R75), in the core's numbering (1 and 2).
-const CLICK_BUTTONS: Array[String] = ["Plus (+)", "Minus (−)"]
-## A Zwift Click v2's buttons (R77), in the core's numbering: + and − first, as a Click's, then
-## the right pod's letters and the left pod's arrows.
-const CLICK_V2_BUTTONS: Array[String] = [
-	"Plus (+)",
-	"Minus (−)",
-	"Y (right pod)",
-	"Z (right pod)",
-	"A (right pod)",
-	"B (right pod)",
-	"Up (left pod)",
-	"Down (left pod)",
-	"Left (left pod)",
-	"Right (left pod)",
-]
 ## How a row's device is doing (R76), by state.
 const STATE_LABELS: Dictionary[String, String] = {
 	"searching": "Searching…",
@@ -73,15 +38,6 @@ const STATE_LABELS: Dictionary[String, String] = {
 	"failed": "Failed",
 }
 # i18n-end
-const CHANNELS: int = 4
-## The most buttons a shifter has, a Click v2's ten: the rows built, shown as far as needed.
-const BUTTON_ROWS: int = 10
-## A Zwift Click, original or v2, tells presses and holds apart, not double presses.
-const CLICK_PRESSES: int = 2
-## The core's name for a Di2, whose buttons are its four D-Fly channels.
-const DI2: String = "di2"
-const ZWIFT_CLICK: String = "zwift_click"
-const ZWIFT_CLICK_V2: String = "zwift_click_v2"
 ## The core's name for the fake trainer, as its connection is reported.
 const FAKE_TRAINER_NAME: String = "Fake trainer"
 
@@ -94,9 +50,11 @@ var _heart_rate: OptionButton = OptionButton.new()
 var _power_meter: OptionButton = OptionButton.new()
 ## Where the cadence comes from (R72): a device that measures it, or a cadence sensor.
 var _cadence: OptionButton = OptionButton.new()
-## A shifter, and what each press of its buttons does: a row per button (a Di2's D-Fly
-## channels, a Zwift Click's + and −), a column per kind of press the shifter tells apart.
+## A shifter; what each press of its buttons does is set in [member _button_dialog], opened
+## by the pen beside its row (#271), so the tab stays one screen whatever the shifter.
 var _shifter: OptionButton = OptionButton.new()
+var _button_dialog: ButtonDialog = ButtonDialog.new()
+var _edit_button: Button = Button.new()
 ## Which shifter each scanned one is, by its index: the core's "di2", "zwift_click" or
 ## "zwift_click_v2".
 var _shifter_models: Dictionary[int, String] = {}
@@ -112,10 +70,6 @@ var _search_buttons: Dictionary[String, Button] = {}
 var _searching: String = ""
 ## The name of the device each role waits for or has, to match the core's reports.
 var _expected: Dictionary[String, String] = {}
-var _buttons: GridContainer = GridContainer.new()
-var _press_headings: Array[Label] = []
-var _channel_captions: Array[Label] = []
-var _assignments: Array[OptionButton] = []
 var _status: Label = Label.new()
 ## How detailed the 3D world is drawn on this computer (R43).
 var _quality: OptionButton = OptionButton.new()
@@ -131,20 +85,13 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa.device_disconnected.connect(_on_device_disconnected)
 	_torqa.remembered_missing.connect(_on_remembered_missing)
 	_torqa.failed.connect(func(_message: String) -> void: _scan_button.disabled = false)
+	_button_dialog.bind(torqa)
 	_select_cadence_source()
 	var current: String = _torqa.graphics_quality()
 	for i: int in range(_quality.item_count):
 		if _quality.get_item_metadata(i) == current:
 			_quality.select(i)
 	_show_quality_note()
-	var assigned: Array = _torqa.button_map()
-	for channel: int in range(assigned.size()):
-		var presses: PackedStringArray = assigned[channel]
-		for press: int in range(presses.size()):
-			var option: OptionButton = _assignments[channel * PRESSES.size() + press]
-			for i: int in range(option.item_count):
-				if option.get_item_metadata(i) == presses[press]:
-					option.select(i)
 	# The trainer and strap used last reconnect in the background (R41).
 	if _torqa.reconnect_remembered():
 		_set_searching(true)
@@ -182,7 +129,7 @@ func _init() -> void:
 	note.add_theme_color_override("font_color", UiTheme.MUTED)
 	add_child(note)
 	var grid: GridContainer = GridContainer.new()
-	grid.columns = 4
+	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 10)
 	# i18n-begin
@@ -205,6 +152,19 @@ func _init() -> void:
 		option.custom_minimum_size = Vector2(420, 0)
 		grid.add_child(option)
 		_options[role] = option
+		# A pen opens what there is to set up on the device: a shifter's buttons (#271). The
+		# other rows keep the column, so Search and the states line up.
+		if role == CONTROLLER:
+			_edit_button.text = "✎"
+			_edit_button.tooltip_text = tr("What the buttons do")
+			_edit_button.custom_minimum_size = Vector2(44, 0)
+			_edit_button.disabled = true
+			_edit_button.pressed.connect(_on_edit_pressed)
+			grid.add_child(_edit_button)
+		else:
+			var gap: Control = Control.new()
+			gap.custom_minimum_size = Vector2(44, 0)
+			grid.add_child(gap)
 		# Looks for this kind of device alone and connects the nearest one found (R76).
 		var search: Button = Button.new()
 		search.text = tr("Search")
@@ -249,12 +209,12 @@ func _init() -> void:
 			_choose_shifter()
 			_show_buttons()
 	)
-	_build_buttons()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_color_override("font_color", Color(1, 0.55, 0.45))
 	add_child(_status)
 	_reset_options()
 	_build_graphics()
+	add_child(_button_dialog)
 
 
 func _notification(what: int) -> void:
@@ -264,7 +224,7 @@ func _notification(what: int) -> void:
 		_power_meter.set_item_text(0, tr("None (the trainer measures)"))
 		_label_cadence_sources()
 		_shifter.set_item_text(0, tr("None (keyboard: ↑ / ↓)"))
-		_label_buttons()
+		_edit_button.tooltip_text = tr("What the buttons do")
 		for role: String in _states:
 			_render_state(role)
 
@@ -576,94 +536,17 @@ func _select_cadence_source() -> void:
 			_cadence.select(i)
 
 
-## The buttons matter only with a shifter chosen, and are the chosen shifter's.
+## The buttons matter only with a shifter chosen: the pen opens the chosen shifter's.
 func _show_buttons() -> void:
 	# Built before the options are filled, so there may be nothing chosen yet.
+	_edit_button.disabled = _chosen(CONTROLLER) == NO_SHIFTER
+
+
+## Opens what the chosen shifter's buttons do (#139), captioned for the shifter it is.
+func _on_edit_pressed() -> void:
 	var chosen: int = _chosen(CONTROLLER)
-	_buttons.visible = chosen != NO_SHIFTER
-	var model: String = _shifter_models.get(chosen, DI2)
-	_layout_buttons(model)
-
-
-## Shows the rows and columns of the chosen shifter's buttons and presses, captioned for it.
-func _layout_buttons(model: String) -> void:
-	var captions: Array[String] = _button_captions(model)
-	var buttons: int = captions.size()
-	var presses: int = CLICK_PRESSES if model in [ZWIFT_CLICK, ZWIFT_CLICK_V2] else PRESSES.size()
-	_buttons.columns = 1 + presses
-	for press: int in range(PRESSES.size()):
-		_press_headings[press].visible = press < presses
-	for channel: int in range(BUTTON_ROWS):
-		var caption: Label = _channel_captions[channel]
-		caption.visible = channel < buttons
-		if channel < buttons:
-			caption.text = captions[channel]
-		for press: int in range(PRESSES.size()):
-			var option: OptionButton = _assignments[channel * PRESSES.size() + press]
-			option.visible = channel < buttons and press < presses
-
-
-## What a shifter's buttons are called, in the core's numbering.
-func _button_captions(model: String) -> Array[String]:
-	var captions: Array[String] = []
-	var named: Array[String] = []
-	if model == ZWIFT_CLICK_V2:
-		named = CLICK_V2_BUTTONS
-	elif model == ZWIFT_CLICK:
-		named = CLICK_BUTTONS
-	for caption: String in named:
-		captions.append(tr(caption))
-	if named.is_empty():
-		for channel: int in range(1, CHANNELS + 1):
-			captions.append(tr("D-Fly channel %d") % channel)
-	return captions
-
-
-func _build_buttons() -> void:
-	_buttons.columns = 1 + PRESSES.size()
-	_buttons.add_theme_constant_override("h_separation", 16)
-	_buttons.add_theme_constant_override("v_separation", 10)
-	var corner: Control = Control.new()
-	corner.custom_minimum_size = Vector2(RideOptions.CAPTION_WIDTH, 0)
-	_buttons.add_child(corner)
-	for heading: String in PRESSES:
-		var label: Label = Label.new()
-		label.text = heading
-		_press_headings.append(label)
-		_buttons.add_child(label)
-	for channel: int in range(1, BUTTON_ROWS + 1):
-		var caption: Label = Label.new()
-		caption.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		_channel_captions.append(caption)
-		_buttons.add_child(caption)
-		for press: int in range(PRESSES.size()):
-			var option: OptionButton = OptionButton.new()
-			option.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-			option.custom_minimum_size = Vector2(240, 0)
-			option.add_item("")
-			option.set_item_metadata(0, "")
-			for action: String in TorqaApp.button_actions():
-				option.add_item("")
-				option.set_item_metadata(option.item_count - 1, action)
-			option.item_selected.connect(
-				func(index: int) -> void:
-					var action: String = option.get_item_metadata(index)
-					_torqa.assign_button(channel, press, action)
-			)
-			_assignments.append(option)
-			_buttons.add_child(option)
-	add_child(_buttons)
-	_label_buttons()
-
-
-## Names the buttons and actions in the interface language.
-func _label_buttons() -> void:
-	_show_buttons()
-	for option: OptionButton in _assignments:
-		for i: int in range(option.item_count):
-			var action: String = option.get_item_metadata(i)
-			var label: String = ACTION_LABELS.get(action, action)
-			option.set_item_text(i, tr(label) if action else tr("Nothing"))
+	var model: String = _shifter_models.get(chosen, ButtonDialog.DI2)
+	_button_dialog.open(model, _shifter.get_item_text(_shifter.selected))
 
 
 func _build_graphics() -> void:

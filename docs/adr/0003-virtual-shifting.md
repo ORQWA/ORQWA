@@ -89,7 +89,7 @@ has been down for 500 ms (told then, not when let go, so a long hold is one pres
 long), a **press** when it comes up before that. There is no double press: waiting for a
 second tap would delay every shift, and a shifter must not lag. The + is button 1 and the −
 button 2 of the shared button map, so the default (1 shifts up, 2 down) fits a Click as it
-fits a Di2, and the Devices tab shows a Click's two rows and two columns.
+fits a Di2, and the button dialog shows a Click's two rows and two columns.
 
 Still out: the Click v2 (two pods, device types 10 and 11; its left pod stops sending after
 about a day without Zwift, its right pod needs further activation writes), the Play (device
@@ -107,7 +107,10 @@ Click v2 owner confirms it (OPEN-QUESTIONS). What those drivers agree on:
 
 - **Two devices.** Each pod advertises on its own as "Zwift Click", Zwift's company id
   `0x094A` and device type **10** for the right pod (+, Y, Z, A, B) and **11** for the left
-  (−, ↑, ↓, ←, →), with the original Click's service and characteristics. Zwift's own app
+  (−, ↑, ↓, ←, →), with the original Click's characteristics under the Ride's service
+  `0000fc82-0000-1000-8000-00805f9b34fb`, not the Click's: a maintainer's pods answered the
+  first attempt with `device lacks service 00000001-19ca…` (#271, 2026-10-16), and BikeControl
+  looks for the Ride's service first and the Click's second, so the driver takes either. Zwift's own app
   takes one connection, the left pod relaying the right and the trainer; third-party apps
   connect each pod. Torqa joins the two found in a scan into one device, "Zwift Click v2", the
   right pod first and the left as its partner, driven over one handle: one row in the Devices
@@ -146,3 +149,13 @@ buttons for it (settings files from before keep their four channels). Sources: B
 copied), QZ's `zwiftclickremote.cpp` (GPL-3.0), MaximumTrainer Redux PR #307 and Makinolo's
 [Ride protocol](https://www.makinolo.com/blog/2024/07/26/zwift-ride-protocol/). The Play and
 the Ride stay out.
+
+## Amendment 2026-10-16: the buttons in a dialog (#271)
+
+The button assignments left the Devices tab for a dialog behind a pen beside the shifter's
+row. A Click v2's ten rows (twenty cells) made the tab taller than a screen, and the tab does
+not scroll; a Di2's twelve cells were already most of it. The dialog lays the rows out for the
+shifter chosen, clamped to the screen with a scroll bar inside, and the pen is disabled while
+no shifter is chosen. The other rows keep the pen's column empty, so their Search buttons and
+states line up.
+

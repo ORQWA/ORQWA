@@ -211,7 +211,8 @@ Built in rideable steps:
   - [x] The Zwift Click over Bluetooth (R75, #228): the original unit's + and − as buttons
     1 and 2 of the same assignments (press and hold; no double press), its plain protocol
     checked on a unit; the Play and Ride stay out
-  - [x] The Zwift Click v2 (R77): its two pods as one shifter, + and − as buttons 1 and 2
+  - [x] The Zwift Click v2 (R77): its two pods as one shifter, + and − as buttons 1 and 2;
+    what any shifter's buttons do set in a dialog behind a pen beside its row (#271)
     and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
     written from the community's drivers, **not yet checked on the hardware**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:

@@ -3,6 +3,8 @@
 
 use std::time::{Duration, Instant};
 
+use std::collections::BTreeSet;
+
 use btleplug::api::bleuuid::uuid_from_u16;
 use btleplug::api::{
     Central, CentralEvent, CharPropFlags, Characteristic, Manager as _, Peripheral as _,
@@ -231,7 +233,7 @@ fn zwift_model(
         None => (properties
             .services
             .iter()
-            .any(|s| s.to_string() == zwift_click::SERVICE)
+            .any(|s| is_zwift_service(&s.to_string()))
             || name == zwift_click::NAME)
             .then_some((ControllerModel::ZwiftClick, None)),
     }
@@ -571,14 +573,16 @@ impl Driver {
         &mut self,
         peripheral: &Peripheral,
     ) -> Result<Characteristic, DeviceError> {
+        // The Click v2's pods keep the characteristics under the Ride's service (#271).
+        let expected = if self.device.model == Some(ControllerModel::ZwiftClickV2) {
+            zwift_click::RIDE_SERVICE
+        } else {
+            zwift_click::SERVICE
+        };
+        let characteristics = peripheral.characteristics();
         let characteristic = |uuid: &'static str| {
-            peripheral
-                .characteristics()
-                .into_iter()
-                .find(|c| {
-                    c.service_uuid.to_string() == zwift_click::SERVICE && c.uuid.to_string() == uuid
-                })
-                .ok_or(DeviceError::MissingService(zwift_click::SERVICE))
+            zwift_characteristic(&characteristics, uuid)
+                .ok_or(DeviceError::MissingService(expected))
         };
         let buttons = characteristic(zwift_click::BUTTONS)?;
         let response = characteristic(zwift_click::RESPONSE)?;
@@ -797,6 +801,23 @@ async fn find_peripheral(
         .map_err(|_| DeviceError::NotFound)
 }
 
+/// Whether `service` is one Zwift's shifters put their characteristics under: the original
+/// Click's own, or the Ride's that the Click v2's pods and the Play share.
+fn is_zwift_service(service: &str) -> bool {
+    service == zwift_click::SERVICE || service == zwift_click::RIDE_SERVICE
+}
+
+/// The Zwift characteristic `uuid` among `characteristics`, under either Zwift service.
+fn zwift_characteristic(
+    characteristics: &BTreeSet<Characteristic>,
+    uuid: &str,
+) -> Option<Characteristic> {
+    characteristics
+        .iter()
+        .find(|c| is_zwift_service(&c.service_uuid.to_string()) && c.uuid.to_string() == uuid)
+        .cloned()
+}
+
 fn characteristic(peripheral: &Peripheral, uuid: u16) -> Result<Characteristic, DeviceError> {
     let wanted = uuid_from_u16(uuid);
     peripheral
@@ -804,4 +825,40 @@ fn characteristic(peripheral: &Peripheral, uuid: u16) -> Result<Characteristic, 
         .into_iter()
         .find(|c| c.uuid == wanted)
         .ok_or(DeviceError::MissingCharacteristic(uuid))
+}
+
+#[cfg(test)]
+mod tests {
+    use btleplug::api::CharPropFlags;
+
+    use super::*;
+
+    fn characteristic(service: &str, uuid: &str) -> Characteristic {
+        Characteristic {
+            uuid: uuid.parse().unwrap(),
+            service_uuid: service.parse().unwrap(),
+            properties: CharPropFlags::NOTIFY,
+            descriptors: BTreeSet::new(),
+        }
+    }
+
+    /// A Click v2 pod offers the Click's characteristics under the Ride's service (#271):
+    /// both services serve, a stranger's characteristic of the same UUID does not.
+    #[test]
+    fn the_zwift_characteristics_are_found_under_either_zwift_service() {
+        let pod = BTreeSet::from([
+            characteristic(zwift_click::RIDE_SERVICE, zwift_click::BUTTONS),
+            characteristic(zwift_click::RIDE_SERVICE, zwift_click::CONTROL),
+        ]);
+        let click = BTreeSet::from([characteristic(zwift_click::SERVICE, zwift_click::BUTTONS)]);
+        let stranger = BTreeSet::from([characteristic(
+            "0000180f-0000-1000-8000-00805f9b34fb",
+            zwift_click::BUTTONS,
+        )]);
+        assert!(zwift_characteristic(&pod, zwift_click::BUTTONS).is_some());
+        assert!(zwift_characteristic(&pod, zwift_click::CONTROL).is_some());
+        assert!(zwift_characteristic(&pod, zwift_click::RESPONSE).is_none());
+        assert!(zwift_characteristic(&click, zwift_click::BUTTONS).is_some());
+        assert!(zwift_characteristic(&stranger, zwift_click::BUTTONS).is_none());
+    }
 }

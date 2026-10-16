@@ -1850,3 +1850,13 @@ msgstr "Fahren"
 msgctxt "ride_tab"
 msgid "Ride"
 msgstr "Fahrt"
+
+msgid "What the buttons of %s do"
+msgstr "Was die Tasten von %s tun"
+
+msgid "What the buttons do"
+msgstr "Was die Tasten tun"
+
+msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
+msgstr "Jeder Druck schaltet, wechselt die Ansicht, steuert Musik oder das Workout, oder tut nichts."
+

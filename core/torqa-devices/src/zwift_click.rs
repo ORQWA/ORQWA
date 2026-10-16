@@ -17,8 +17,12 @@ use torqa_domain::shifting::{ButtonPress, Press};
 
 use crate::bytes::ParseError;
 
-/// Zwift's own service, shared by the Click, the Click v2's pods, the Play and the Ride.
+/// Zwift's own service on the original Click.
 pub const SERVICE: &str = "00000001-19ca-4651-86e5-fa29dcdd09d1";
+/// The service the Click v2's pods, the Play and the Ride put the same characteristics
+/// under instead: Zwift's 16-bit UUID `FC82` (`BikeControl` looks for it first, QZ as well).
+/// A maintainer's pods lacked [`SERVICE`] on the first try (#271).
+pub const RIDE_SERVICE: &str = "0000fc82-0000-1000-8000-00805f9b34fb";
 /// Notifications: the buttons' states, and a status every few seconds.
 pub const BUTTONS: &str = "00000002-19ca-4651-86e5-fa29dcdd09d1";
 /// Written without response: the handshake.
