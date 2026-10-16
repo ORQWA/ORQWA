@@ -3,14 +3,15 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["**"]
     paths-ignore: ["docs/**", "**.md"]
   pull_request:
     paths-ignore: ["docs/**", "**.md"]
 
-# A newer push to the same branch or PR makes the running checks moot.
+# Branch checks can be superseded; tag runs must finish publishing their release.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 permissions:
   contents: read
@@ -352,3 +353,25 @@ jobs:
         with:
           path: dist/torqa-cli-linux-${{ matrix.arch }}.tar.gz
           archive: false
+
+  release:
+    name: Publish tagged release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [checks, macos, windows, linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      # v8 understands the archives uploaded as single files with archive: false.
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish all app and CLI archives
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: sh scripts/release/publish.sh

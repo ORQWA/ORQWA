@@ -6,9 +6,13 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-WIKI_URL = "https://github.com/bossm8/Torqa/wiki"
-REPO_URL = "https://github.com/bossm8/Torqa/blob/main/"
-RAW_URL = "https://raw.githubusercontent.com/bossm8/Torqa/main/"
+# The repository's home first, then the owner it moved from: GitHub redirects links to the
+# latter and older wiki revisions carry them, so both pass; new links use the home.
+OWNERS = ("Torqa-Indoor-Cycling/Torqa", "bossm8/Torqa")
+WIKI_URLS = tuple(f"https://github.com/{owner}/wiki" for owner in OWNERS)
+REPO_URLS = tuple(f"https://github.com/{owner}/blob/main/" for owner in OWNERS)
+RAW_URLS = tuple(f"https://raw.githubusercontent.com/{owner}/main/" for owner in OWNERS)
+WIKI_URL = WIKI_URLS[0]
 MOVED = "start courses video riding riders hud workouts overlay uploads ghosts history analysis audio cli".split()
 
 
@@ -33,7 +37,7 @@ def check(root):
         errors.append("wiki checkout must contain Home.md and _Sidebar.md; run make wiki-init")
     navigation = "\n".join(pages[name].read_text() for name in ("Home", "_Sidebar") if name in pages)
     for name, path in pages.items():
-        if not name.startswith("_") and name != "Home" and f"{WIKI_URL}/{name}" not in navigation:
+        if not name.startswith("_") and name != "Home" and not any(f"{url}/{name}" in navigation for url in WIKI_URLS):
             errors.append(f"{path}: page missing from navigation")
         text = path.read_text()
         links = re.findall(r"\]\(([^\s)]+)\)", text)
@@ -41,17 +45,17 @@ def check(root):
         for link in links:
             parsed = urlsplit(link)
             target = None
-            if link == WIKI_URL or link.startswith(WIKI_URL + "/"):
+            if link in WIKI_URLS or link.startswith(tuple(f"{url}/" for url in WIKI_URLS)):
                 page = unquote(parsed.path.split("/")[-1]) or "Home"
-                if link == WIKI_URL:
+                if link in WIKI_URLS:
                     page = "Home"
                 target = pages.get(page)
                 if target is None:
                     errors.append(f"{path}: missing wiki page {link}")
                     continue
-            elif link.startswith(REPO_URL):
+            elif link.startswith(REPO_URLS):
                 target = root / unquote(parsed.path.split("/blob/main/", 1)[1])
-            elif link.startswith(RAW_URL):
+            elif link.startswith(RAW_URLS):
                 target = root / unquote(parsed.path.split("/Torqa/main/", 1)[1])
             elif not parsed.scheme:
                 target = path if not parsed.path else wiki / unquote(parsed.path)

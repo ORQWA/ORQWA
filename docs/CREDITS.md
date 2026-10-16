@@ -25,7 +25,7 @@ The Blender skills in `.claude/skills/blender-*` are from
 ## Data
 
 Map and terrain data credits are shown in the app and stored in every course file; see
-[Courses](https://github.com/bossm8/Torqa/wiki/Courses).
+[Courses](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Courses).
 
 The list of ISO 3166-1 country codes that matches the map's three-letter codes to two-letter
 ones (`core/torqa-osm/src/iso.rs`) is taken from Debian's
