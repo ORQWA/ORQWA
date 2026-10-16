@@ -74,11 +74,19 @@ all eight nonempty app/CLI archives, creates a draft with generated release note
 the archives and publishes it. Only that job has `contents: write`, using the automatic
 `GITHUB_TOKEN`; no release secret is needed.
 
+Build jobs upload each archive as a single file (`archive: false`). The release download
+uses `skip-decompress: true` to keep those files intact: without it the download action
+extracts ZIPs, leaving the publisher without the macOS and Windows release archives.
+
 If a build or check fails, fix it and tag the corrected commit with a new tag. If publication
 fails, rerun the failed job from the tag's CI run: an unfinished draft is resumed and its
 assets replaced before publication. A published release is left unchanged on reruns. Tag
 runs are not cancelled by a later push. Check the CI run and the release's assets before
 announcing it; merging the workflow PR alone does not create a release.
+
+A workflow fix does not change an existing tag's CI run. For a failure caused by the workflow
+itself, merge the fix and tag the corrected commit with a new tag rather than rerunning the
+old workflow.
 
 ## More
 
