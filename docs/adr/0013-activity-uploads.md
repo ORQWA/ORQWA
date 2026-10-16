@@ -108,3 +108,15 @@ Consequences:
   asking to connect again; only a `401` means connecting again.
 - Should Strava offer a public-client (PKCE) flow, Strava can move to an application of
   Torqa's with an id only; accounts connected before keep working as they are.
+
+## Amendment — 2026-10-16: the plan read through the same account (R81, #187)
+
+intervals.icu holds many riders' training plans. `ActivityUploader` gains `holds_plan` and
+`planned(credentials, day)`: a platform that keeps the plan answers with the day's calendar
+entries, each as a ZWO file where it has steps, which `torqa-workouts` parses like an imported
+file. The app asks every such platform with an account when the Workouts tab opens, with the
+computer's local date, and lists what came under ids `planned:<platform>:<entry>` ahead of the
+library; the list lives in memory only, so Torqa stores nothing of the plan and plans nothing
+itself (R21). The credentials go the same way as for uploads, renewed if the platform renews
+them. A planned ride without steps cannot be ridden as a workout and is left out.
+

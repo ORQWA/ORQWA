@@ -132,6 +132,8 @@ pub enum Kind {
     Unauthorized,
     /// The service requires the rider to reactivate their API application.
     InactiveApplication,
+    /// Could not read the workouts planned on %s: %s
+    PlannedWorkouts,
 }
 impl Kind {
     /// Unformatted English gettext key; translate before substituting arguments.
@@ -213,6 +215,7 @@ impl Kind {
             Self::InactiveApplication => {
                 "Strava has switched off your API application: the account that owns it needs a Strava subscription. Subscribe, reactivate the application in Strava's API settings, then upload again."
             }
+            Self::PlannedWorkouts => "Could not read the workouts planned on %s: %s",
         }
         // i18n-end
     }

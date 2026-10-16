@@ -242,6 +242,8 @@ Built in rideable steps:
   - [x] Strava, through each rider's own Strava API application: its Client ID and Secret,
     then the login in the browser back to a loopback address; tokens renewed in the upload's
     turn, access revoked on disconnecting or deleting the rider
+  - [x] Today's planned workouts from intervals.icu on the Workouts tab (R81, #187): read
+    through the same account when the tab opens, chosen with a click, nothing stored
   - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth FTMS only
 - [x] Windows and Linux builds from CI (Linux x86_64 and arm64 on Ubuntu 22.04, ADR 0012)
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash

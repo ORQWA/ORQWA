@@ -398,6 +398,21 @@ pub enum AppEvent {
         /// The platform no longer accepts the account: the rider has to connect it again.
         reconnect: bool,
     },
+    /// The workouts planned for `day` on `platform` were read (R81): [`App::workouts`]
+    /// lists them now.
+    PlannedWorkouts {
+        /// The platform's id.
+        platform: String,
+        /// The day asked for, `YYYY-MM-DD`.
+        day: String,
+    },
+    /// Reading the workouts planned on `platform` failed.
+    PlannedWorkoutsFailed {
+        /// The platform's id.
+        platform: String,
+        /// Why, in words for the rider.
+        message: Failure,
+    },
     /// A background operation failed.
     Error(Failure),
 }
@@ -2494,10 +2509,17 @@ impl App {
         Ok(())
     }
 
-    /// The workouts to choose from (R21): the built-in ones, then the library's files.
+    /// The workouts to choose from (R21): those planned for the day on the rider's platforms
+    /// (R81), then the built-in ones, then the library's files.
     #[must_use]
     pub fn workouts(&self) -> Vec<torqa_workouts::Entry> {
-        torqa_workouts::library(&torqa_workouts::library_dir(&self.data_dir))
+        self.planned_workouts()
+            .into_iter()
+            .map(|(_, entry)| entry)
+            .chain(torqa_workouts::library(&torqa_workouts::library_dir(
+                &self.data_dir,
+            )))
+            .collect()
     }
 
     /// Adds a workout file (ZWO, ERG, MRC or FIT) to the library; returns its id.
@@ -2539,8 +2561,16 @@ impl App {
     /// # Errors
     /// [`AppError::Reported`] if it cannot be read.
     pub fn structured_workout(&self, id: &str) -> Result<Workout, AppError> {
-        let plan = torqa_workouts::load(id)
-            .map_err(|e| AppError::Reported(Failure::new(Kind::LoadWorkout, e)))?;
+        let planned = self
+            .planned_workouts()
+            .into_iter()
+            .find(|(_, entry)| entry.id == id)
+            .map(|(_, entry)| entry.plan);
+        let plan = match planned {
+            Some(plan) => plan,
+            None => torqa_workouts::load(id)
+                .map_err(|e| AppError::Reported(Failure::new(Kind::LoadWorkout, e)))?,
+        };
         Ok(Workout::Structured {
             plan: Arc::new(plan),
             ftp: self.profile.profile.ftp,

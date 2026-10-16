@@ -1,12 +1,14 @@
 //! intervals.icu (R29): the rider's personal API key, sent with Basic auth as the user
 //! `API_KEY`, as its API documents for riders' own data. Its OAuth would need a client secret,
-//! which an open-source app cannot keep (ADR 0013).
+//! which an open-source app cannot keep (ADR 0013). It holds the rider's plan too: the day's
+//! workouts come from its calendar, each as a ZWO file (R81).
 
 use reqwest::StatusCode;
+use serde_json::Value;
 
 use crate::{
-    Account, Activity, ActivityUploader, BoxFuture, Browser, Credentials, Field, UploadError,
-    Uploaded, cannot_reach, client, describe, multipart, query,
+    Account, Activity, ActivityUploader, BoxFuture, Browser, Credentials, Field, PlannedWorkout,
+    UploadError, Uploaded, cannot_reach, client, describe, multipart, query,
 };
 
 const NAME: &str = "intervals.icu";
@@ -119,22 +121,88 @@ impl IntervalsIcu {
             url: format!("{}/activities/{id}", self.site),
         })
     }
+
+    /// The rides on the calendar for `day`, each with its steps as a ZWO file where it has
+    /// any (R81). Planned runs, swims and the like are not Torqa's.
+    async fn planned_on(&self, key: &str, day: &str) -> Result<Vec<PlannedWorkout>, UploadError> {
+        let answer = client()?
+            .get(format!(
+                "{}/api/v1/athlete/0/events?{}",
+                self.site,
+                query(&[("oldest", day), ("newest", day), ("category", "WORKOUT")])
+            ))
+            .basic_auth("API_KEY", Some(key))
+            .send()
+            .await
+            .map_err(|e| cannot_reach(NAME, &e))?;
+        let json = answered(answer).await?;
+        let mut events: Vec<&Value> = json.as_array().into_iter().flatten().collect();
+        // The calendar's order: a morning opener before the afternoon's session.
+        events.sort_by_key(|event| text(event, "start_date_local").unwrap_or_default());
+        let mut planned = Vec::new();
+        for event in events {
+            if !text(event, "type").unwrap_or("Ride").ends_with("Ride") {
+                continue;
+            }
+            let id = match event.get("id") {
+                Some(Value::Number(number)) => number.to_string(),
+                Some(Value::String(id)) => id.clone(),
+                _ => continue,
+            };
+            let name = text(event, "name").unwrap_or("Workout").to_owned();
+            // Only an entry with steps has a workout document; a ride planned by feel has none.
+            let zwo = if event.get("workout_doc").is_some_and(|doc| !doc.is_null()) {
+                Some(self.download(key, &id).await?)
+            } else {
+                None
+            };
+            planned.push(PlannedWorkout { id, name, zwo });
+        }
+        Ok(planned)
+    }
+
+    /// The calendar entry `event` as a ZWO file.
+    async fn download(&self, key: &str, event: &str) -> Result<Vec<u8>, UploadError> {
+        let answer = client()?
+            .get(format!(
+                "{}/api/v1/athlete/0/events/{event}/download.zwo",
+                self.site
+            ))
+            .basic_auth("API_KEY", Some(key))
+            .send()
+            .await
+            .map_err(|e| cannot_reach(NAME, &e))?;
+        let status = answer.status();
+        let bytes = answer.bytes().await.map_err(|e| cannot_reach(NAME, &e))?;
+        accepted(status, &String::from_utf8_lossy(&bytes))?;
+        Ok(bytes.to_vec())
+    }
+}
+
+/// A text field of a JSON object, if it is there.
+fn text<'a>(json: &'a Value, key: &str) -> Option<&'a str> {
+    json.get(key).and_then(Value::as_str)
 }
 
 /// The JSON of a successful answer, or what went wrong.
-async fn answered(answer: reqwest::Response) -> Result<serde_json::Value, UploadError> {
+async fn answered(answer: reqwest::Response) -> Result<Value, UploadError> {
     let status = answer.status();
     let text = answer.text().await.map_err(|e| cannot_reach(NAME, &e))?;
+    accepted(status, &text)?;
+    serde_json::from_str(&text)
+        .map_err(|e| UploadError::Rejected(format!("{NAME} answered something unexpected ({e}).")))
+}
+
+/// What went wrong, unless the answer is a success.
+fn accepted(status: StatusCode, text: &str) -> Result<(), UploadError> {
     match status {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(UploadError::Unauthorized(
             format!("{NAME} does not accept the API key: copy it again from its settings."),
         )),
-        status if status.is_success() => serde_json::from_str(&text).map_err(|e| {
-            UploadError::Rejected(format!("{NAME} answered something unexpected ({e})."))
-        }),
+        status if status.is_success() => Ok(()),
         status => Err(UploadError::Rejected(format!(
             "{NAME} refused: {} ({status}).",
-            describe(&text)
+            describe(text)
         ))),
     }
 }
@@ -190,6 +258,18 @@ impl ActivityUploader for IntervalsIcu {
         activity: &'a Activity,
     ) -> BoxFuture<'a, Result<Uploaded, UploadError>> {
         Box::pin(async move { self.send(&api_key(credentials)?, activity).await })
+    }
+
+    fn holds_plan(&self) -> bool {
+        true
+    }
+
+    fn planned<'a>(
+        &'a self,
+        credentials: &'a mut Credentials,
+        day: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<PlannedWorkout>, UploadError>> {
+        Box::pin(async move { self.planned_on(&api_key(credentials)?, day).await })
     }
 }
 
@@ -293,6 +373,70 @@ mod tests {
         assert!(text.contains(AS_SECRET), "{text}");
         assert!(text.contains("filename=\"torqa-20261012-071500.fit\""));
         assert!(request.windows(8).any(|w| w == activity().fit.as_slice()));
+    }
+
+    #[tokio::test]
+    async fn the_days_planned_rides_come_in_calendar_order_with_their_steps() {
+        let (site, served) = serve(vec![
+            (
+                "200 OK",
+                r#"[{"id":222,"start_date_local":"2026-10-16T17:00:00","category":"WORKOUT","type":"Ride","name":"Easy spin"},
+                    {"id":111,"start_date_local":"2026-10-16T07:00:00","category":"WORKOUT","type":"VirtualRide","name":"Openers","workout_doc":{"steps":[]}},
+                    {"id":333,"start_date_local":"2026-10-16T12:00:00","category":"WORKOUT","type":"Run","name":"Jog","workout_doc":{}}]"#
+                    .to_owned(),
+            ),
+            ("200 OK", "<workout_file/>".to_owned()),
+        ])
+        .await;
+
+        let planned = IntervalsIcu::with_site(&site)
+            .planned(&mut with_key("secret"), "2026-10-16")
+            .await
+            .unwrap();
+
+        // The run is not Torqa's; the ride planned by feel is listed without steps.
+        assert_eq!(
+            planned,
+            [
+                PlannedWorkout {
+                    id: "111".to_owned(),
+                    name: "Openers".to_owned(),
+                    zwo: Some(b"<workout_file/>".to_vec()),
+                },
+                PlannedWorkout {
+                    id: "222".to_owned(),
+                    name: "Easy spin".to_owned(),
+                    zwo: None,
+                },
+            ]
+        );
+        let requests = served.await.unwrap();
+        let list = String::from_utf8_lossy(&requests[0]);
+        assert!(
+            list.starts_with(
+                "GET /api/v1/athlete/0/events?oldest=2026-10-16&newest=2026-10-16&category=WORKOUT "
+            ),
+            "{list}"
+        );
+        assert!(list.contains(AS_SECRET), "{list}");
+        let download = String::from_utf8_lossy(&requests[1]);
+        assert!(
+            download.starts_with("GET /api/v1/athlete/0/events/111/download.zwo "),
+            "{download}"
+        );
+        assert!(download.contains(AS_SECRET), "{download}");
+    }
+
+    #[tokio::test]
+    async fn a_revoked_key_cannot_read_the_plan() {
+        let (site, _served) = serve(vec![("401 Unauthorized", "{}".to_owned())]).await;
+
+        let error = IntervalsIcu::with_site(&site)
+            .planned(&mut with_key("secret"), "2026-10-16")
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error, UploadError::Unauthorized(_)), "{error:?}");
     }
 
     #[tokio::test]

@@ -45,6 +45,19 @@ pub struct Account {
     pub credentials: Credentials,
 }
 
+/// A workout on the rider's calendar at a platform that holds their plan, for one day (R81).
+/// The plan stays the platform's: Torqa reads the day's workouts and rides one, and keeps
+/// nothing of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlannedWorkout {
+    /// The platform's id of the calendar entry.
+    pub id: String,
+    /// Its name on the calendar.
+    pub name: String,
+    /// The workout as a ZWO file, for Torqa's parser; `None` for a planned ride without steps.
+    pub zwo: Option<Vec<u8>>,
+}
+
 /// Something the rider types in to connect an account, e.g. an API key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Field {
@@ -141,5 +154,22 @@ pub trait ActivityUploader: Send + Sync {
     fn disconnect<'a>(&'a self, credentials: &'a Credentials) -> BoxFuture<'a, ()> {
         let _ = credentials;
         Box::pin(async {})
+    }
+
+    /// Whether the platform keeps the rider's training plan, so Torqa can ask for a day's
+    /// workouts (R81). Most only take rides.
+    fn holds_plan(&self) -> bool {
+        false
+    }
+
+    /// The workouts on the rider's calendar for `day` (`YYYY-MM-DD`, the rider's local date),
+    /// in calendar order (R81); none unless [`Self::holds_plan`].
+    fn planned<'a>(
+        &'a self,
+        credentials: &'a mut Credentials,
+        day: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<PlannedWorkout>, UploadError>> {
+        let _ = (credentials, day);
+        Box::pin(async { Ok(Vec::new()) })
     }
 }

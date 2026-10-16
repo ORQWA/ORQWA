@@ -3,7 +3,8 @@ extends HBoxContainer
 ## The Workouts tab (R58): a constant power or a heart rate to hold (R56), or a structured
 ## workout from the library (R21) with its steps shown, ridden on its own (the HUD only) or on
 ## a course in its 3D world → Start. A course's world is built once Start is pressed, as on the
-## course page. Workout files are imported into the library here.
+## course page. Workout files are imported into the library here. With an account on a
+## platform that holds the rider's plan, today's planned workouts are listed to choose (R81).
 
 ## Start was pressed for `workout` (`WorkoutOptions.workout()` with its `name`), on the course
 ## at `course_path` or on its own if empty.
@@ -30,6 +31,11 @@ var _status: Label = Label.new()
 ## Waiting for the chosen course's route, or for its world.
 var _loading_route: bool = false
 var _building: bool = false
+## Today's workouts from the platform holding the rider's plan (R81): a row per workout with
+## a button that chooses it; shown only with such an account connected.
+var _planned_panel: PanelContainer = PanelContainer.new()
+var _planned_rows: VBoxContainer = VBoxContainer.new()
+var _planned_note: Label = Label.new()
 
 
 func bind(torqa: TorqaApp) -> void:
@@ -38,6 +44,8 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa.loading_progress.connect(_on_loading_progress)
 	_torqa.world_ready.connect(_on_world_ready)
 	_torqa.failed.connect(_on_failed)
+	_torqa.planned_workouts.connect(_on_planned_workouts)
+	_torqa.planned_workouts_failed.connect(_on_planned_workouts_failed)
 	_editor.bind(torqa)
 	refresh()
 
@@ -62,6 +70,7 @@ func refresh() -> void:
 		_course_paths.append(path)
 	var index: int = _course_paths.find(chosen)
 	_where.select(index + 1 if index >= 0 else 0)
+	_fetch_planned()
 
 
 ## The chosen course's file, or "" to ride on its own.
@@ -143,6 +152,17 @@ func _init() -> void:
 	add_child(_editor)
 	options_panel.add_child(options_rows)
 	left.add_child(options_panel)
+	var planned_rows: VBoxContainer = VBoxContainer.new()
+	planned_rows.add_theme_constant_override("separation", 10)
+	planned_rows.add_child(UiTheme.caption(tr("Planned for today")))
+	_planned_rows.add_theme_constant_override("separation", 8)
+	planned_rows.add_child(_planned_rows)
+	_planned_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_planned_note.add_theme_color_override("font_color", UiTheme.MUTED)
+	planned_rows.add_child(_planned_note)
+	_planned_panel.add_child(planned_rows)
+	_planned_panel.hide()
+	left.add_child(_planned_panel)
 	add_child(left)
 	_options.changed.connect(_show_plan)
 	_options.import_requested.connect(func() -> void: _import_dialog.popup_centered_ratio(0.7))
@@ -233,14 +253,78 @@ func _show_plan() -> void:
 		return
 	var description: String = plan["description"]
 	_about.text = description
-	var ftp: float = _torqa.profile().get("ftp_w", 200.0)
 	var steps: Array = plan["steps"]
-	_plan_chart.set_steps(steps, ftp)
+	_plan_chart.set_steps(steps, _ftp())
 
 
 func _ftp() -> float:
+	if _torqa == null:
+		return 200.0
 	var ftp: float = _torqa.profile().get("ftp_w", 200.0)
 	return ftp
+
+
+## Asks the platforms holding the rider's plan for today's workouts (R81), by this computer's
+## date; the section shows only when there is such an account.
+func _fetch_planned() -> void:
+	var asked: bool = _torqa.fetch_planned_workouts(Time.get_date_string_from_system())
+	_planned_panel.visible = asked
+	if asked:
+		_planned_note.text = tr("Looking up today's plan…")
+		_planned_note.add_theme_color_override("font_color", UiTheme.MUTED)
+		_planned_note.show()
+
+
+func _on_planned_workouts(_platform: String, _day: String) -> void:
+	var plans: Array = _torqa.workouts()
+	_options.set_plans(plans)
+	_show_planned(plans)
+
+
+func _on_planned_workouts_failed(_platform: String, message: String) -> void:
+	_planned_note.text = message
+	_planned_note.add_theme_color_override("font_color", UiTheme.DANGER)
+	_planned_note.show()
+
+
+## Lists the planned workouts among `plans` (`TorqaApp.workouts()` entries), each with a
+## button that chooses it as the structured workout to ride.
+func _show_planned(plans: Array) -> void:
+	for child: Node in _planned_rows.get_children():
+		_planned_rows.remove_child(child)
+		child.queue_free()
+	var listed: int = 0
+	for plan: Dictionary in plans:
+		var platform: String = plan.get("planned", "")
+		if platform.is_empty():
+			continue
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var choose: Button = Button.new()
+		choose.text = tr("Choose")
+		var id: String = plan["id"]
+		choose.pressed.connect(func() -> void: _choose_planned(id))
+		row.add_child(choose)
+		var label: Label = Label.new()
+		# Workout and platform names are never translated.
+		label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		var seconds: float = plan["duration_s"]
+		label.text = "%s  ·  %s  ·  %s" % [plan["name"], UiTheme.duration(seconds), platform]
+		label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(label)
+		_planned_rows.add_child(row)
+		listed += 1
+	_planned_note.text = tr("Nothing planned for today.")
+	_planned_note.add_theme_color_override("font_color", UiTheme.MUTED)
+	_planned_note.visible = listed == 0
+	_planned_panel.show()
+
+
+## A planned workout becomes the structured workout to ride; Start rides it as any other.
+func _choose_planned(id: String) -> void:
+	_options.set_workout({"kind": "plan", "id": id})
+	_show_plan()
+	_status.text = ""
 
 
 func _on_saved(id: String) -> void:
