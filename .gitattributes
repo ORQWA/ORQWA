@@ -1,0 +1,4 @@
+# Everything text is checked out with LF on every platform: the dev container runs the shell
+# scripts and the Dockerfile straight from the checkout, and sh rejects CRLF (a Windows clone
+# with core.autocrlf=true otherwise breaks the image build and scripts/dev.sh).
+* text=auto eol=lf

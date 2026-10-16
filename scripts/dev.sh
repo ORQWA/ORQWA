@@ -5,6 +5,14 @@ set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
+# From Git Bash on Windows: Docker wants the checkout as a Windows path, and the container
+# paths must not be rewritten into Windows ones (MSYS turns `/workspaces/torqa` into
+# `C:/Program Files/Git/workspaces/torqa` otherwise).
+if command -v cygpath >/dev/null 2>&1; then
+    root="$(cygpath -m "$root")"
+    export MSYS_NO_PATHCONV=1
+fi
+
 docker build -q -t torqa-dev -f "$root/.devcontainer/Dockerfile" "$root" >/dev/null
 
 tty_flags=""
