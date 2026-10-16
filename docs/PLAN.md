@@ -265,6 +265,11 @@ Built in rideable steps:
 - [x] Devices that drop come back by themselves, also after a pause: the driver looks the
   device up again (macOS forgets it at once) instead of retrying its stale link; the in-ride
   settings' Devices tab shows each device and reconnects those that are not (R69)
+- [x] Devices connect the moment they are chosen, and every row says how its device is doing
+  (R76): searching, connecting, connected, reconnecting, not found or failed, in colour; a
+  search per row finds that kind of device alone and connects the nearest, a scan for all is
+  the fallback; the devices used last are shown by name while they reconnect at start, and
+  choosing none lets a device go
 - [x] In-ride settings dialog (camera, difficulty, descents, time of day, weather, HUD) from
   one button or key S; finish & save or abort without saving after a confirmation (R48–R49)
 - [x] The same ride options on the course detail page (R48, with the start page)
