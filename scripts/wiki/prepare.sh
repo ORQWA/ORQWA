@@ -42,4 +42,11 @@ echo 'Wiki changes prepared; published pages have not changed.'
 echo 'Stage the application pointer explicitly: git add wiki'
 published_revision="$(git -C wiki rev-parse "origin/$published")"
 prepared_revision="$(git -C wiki rev-parse HEAD)"
-echo "Review: https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/_compare/$published_revision...$prepared_revision"
+# The branch went to the push remote: a contributor's fork wiki when they cannot push to
+# the published wiki (see docs/development.md), else the published wiki itself.
+pushed_to="$(git -C wiki remote get-url --push origin | sed -E 's#^(git@github\.com:|https://github\.com/)##; s#\.wiki(\.git)?$##; s#\.git$##')"
+echo "Review: https://github.com/$pushed_to/wiki/_compare/$published_revision...$prepared_revision"
+if [ "$pushed_to" != "Torqa-Indoor-Cycling/Torqa" ]; then
+    echo "The branch is on $pushed_to's wiki: ask a maintainer to fetch it into the published wiki before merging,"
+    echo "  git -C wiki fetch https://github.com/$pushed_to.wiki.git $branch && git -C wiki push origin FETCH_HEAD:refs/heads/$branch"
+fi

@@ -99,6 +99,28 @@ and `python3 -m unittest discover -s scripts/wiki -p 'test_*.py'` directly.
    commit, automation opens or updates `docs: sync published wiki revision`, changing only
    the submodule pointer. Review and merge that PR normally; it does not republish changes.
 
+### Without write access to the published wiki
+
+Contributors with triage rights can open application PRs from a fork but cannot push wiki
+branches to the organisation's wiki. Use your fork's wiki as the push target instead, as
+for code: enable **Wikis** in the fork's settings and create its first page (GitHub makes
+the wiki's Git repository then), then point the submodule's push URL at it and keep fetching
+from the published wiki:
+
+```sh
+git -C wiki remote set-url --push origin git@github.com:<you>/Torqa.wiki.git
+git -C wiki push origin origin/master:refs/heads/master   # the published pages, once
+```
+
+`make wiki-prepare` then pushes `docs/<change>` to your fork's wiki and prints the review
+link there. In the application PR, name the branch and your fork; a maintainer fetches it
+into the published wiki before merging (the publisher needs the pinned revision there):
+
+```sh
+git -C wiki fetch https://github.com/<you>/Torqa.wiki.git docs/<change>
+git -C wiki push origin FETCH_HEAD:refs/heads/docs/<change>
+```
+
 ### GitHub setup
 
 The wiki must be enabled and have an initial page before its Git repository can be cloned.
