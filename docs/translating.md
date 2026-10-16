@@ -8,7 +8,7 @@ The approved wording is maintained directly in `de.po`, including retained wordi
 and subsequent corrections. German quotation marks are straight double quotes. Preserve
 explicitly approved exceptions to the general terminology.
 
-Rider language selection is described in the [wiki](https://github.com/bossm8/Torqa/wiki/Riders#profile).
+Rider language selection is described in the [wiki](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Riders#profile).
 
 ## Adding or updating a language
 
