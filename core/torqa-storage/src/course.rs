@@ -309,7 +309,9 @@ pub fn unpack(path: &Path, data_root: &Path) -> Result<Unpacked, CourseError> {
 
     for index in 0..zip.len() {
         let mut entry = zip.by_index(index)?;
-        let Some(name) = entry.name().strip_prefix(DATA).map(ToOwned::to_owned) else {
+        // A name the archive cannot even spell is a zip error, not a path to check.
+        let entry_name = entry.name()?.into_owned();
+        let Some(name) = entry_name.strip_prefix(DATA).map(ToOwned::to_owned) else {
             continue;
         };
         if entry.is_dir() {
@@ -320,7 +322,7 @@ pub fn unpack(path: &Path, data_root: &Path) -> Result<Unpacked, CourseError> {
             .components()
             .all(|c| matches!(c, Component::Normal(_)))
         {
-            return Err(CourseError::UnsafePath(entry.name().to_owned()));
+            return Err(CourseError::UnsafePath(entry_name));
         }
         let target = data_root.join(relative);
         if target.exists() {
@@ -407,7 +409,7 @@ fn rewrite(
         write(&mut out)?;
         for index in 0..zip.len() {
             let entry = zip.by_index_raw(index)?;
-            if !replaced.contains(&entry.name()) {
+            if !replaced.contains(&entry.name()?.as_ref()) {
                 out.raw_copy_file(entry)?;
             }
         }

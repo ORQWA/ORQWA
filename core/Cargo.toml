@@ -49,7 +49,7 @@ tokio = "1.53.1"
 toml = "1.1.6"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+zip = { version = "9.0.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 # Tests build synthetic worlds: optimized they run several times faster, debug assertions
 # still on. Line tables keep the backtraces readable without the full debug info's size.
