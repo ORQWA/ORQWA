@@ -39,6 +39,7 @@ use torqa_session::estimate;
 use torqa_session::ghost::Ghost;
 use torqa_session::workout::Workout;
 use torqa_session::{Ride, RideConfig, RideState};
+use torqa_storage::computer;
 use torqa_storage::course::{self, CourseCountry, Manifest};
 use torqa_storage::profiles::{self, DeviceRole, StoredProfile};
 pub use torqa_storage::profiles::{
@@ -561,11 +562,14 @@ pub struct App {
     uploads: uploads::UploadState,
     data_dir: PathBuf,
     cache_dir: PathBuf,
+    /// This computer's own settings (R78), next to the cache: never synced with the data.
+    computer: PathBuf,
 }
 
 impl App {
     /// Creates the application with rides saved under `data_dir` and downloads cached under
-    /// `cache_dir` (see [`paths`] for platform defaults).
+    /// `cache_dir` (see [`paths`] for platform defaults), where this computer's own settings
+    /// are kept too (R78).
     ///
     /// # Errors
     /// [`AppError::Runtime`] if the async runtime cannot start.
@@ -576,6 +580,12 @@ impl App {
             .build()?;
         let (jobs_tx, jobs_rx) = mpsc::channel();
         let (keys, keyboard) = torqa_devices::shift::keyboard();
+        let computer = cache_dir.join(computer::FILE);
+        let profile = initial_profile(&data_dir);
+        // Settings from before R78 go to the riders and this computer, once (#257).
+        if let Err(error) = profiles::carry_over(&data_dir, &computer) {
+            warn!(%error, "cannot carry the settings over");
+        }
         Ok(Self {
             runtime,
             jobs_tx,
@@ -623,10 +633,11 @@ impl App {
             buttons: Arc::new(torqa_devices::shift::Assignments::new(
                 profiles::button_map(&data_dir),
             )),
-            profile: initial_profile(&data_dir),
+            profile,
             uploads: uploads::UploadState::new(uploads::platforms()),
             data_dir,
             cache_dir,
+            computer,
         })
     }
 
@@ -1718,13 +1729,14 @@ impl App {
         });
     }
 
-    /// How detailed the 3D world is drawn on this computer (R43).
+    /// How detailed the 3D world is drawn on this computer (R43, R78).
     #[must_use]
     pub fn graphics_quality(&self) -> profiles::GraphicsQuality {
-        profiles::graphics_quality(&self.data_dir)
+        computer::graphics_quality(&self.computer)
     }
 
-    /// Chooses how detailed the 3D world is drawn on this computer (R43).
+    /// Chooses how detailed the 3D world is drawn on this computer (R43); another computer
+    /// sharing the data keeps its own choice (R78).
     ///
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
@@ -1732,22 +1744,22 @@ impl App {
         &mut self,
         quality: profiles::GraphicsQuality,
     ) -> Result<(), AppError> {
-        profiles::set_graphics_quality(&self.data_dir, quality)
+        computer::set_graphics_quality(&self.computer, quality)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
-    /// Where the overlay was last on screen (R55); `None` before it was first used.
+    /// Where the rider's overlay was last on screen (R55, R78); `None` before they first used it.
     #[must_use]
     pub fn overlay_window(&self) -> Option<profiles::OverlayWindow> {
-        profiles::overlay_window(&self.data_dir)
+        profiles::overlay_window(&self.data_dir, &self.profile.id)
     }
 
-    /// Remembers where the overlay is on screen.
+    /// Remembers where the rider's overlay is on screen.
     ///
     /// # Errors
     /// [`AppError::Reported`] if it cannot be saved.
     pub fn set_overlay_window(&mut self, window: profiles::OverlayWindow) -> Result<(), AppError> {
-        profiles::set_overlay_window(&self.data_dir, window)
+        profiles::set_overlay_window(&self.data_dir, &self.profile.id, window)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
@@ -1766,18 +1778,18 @@ impl App {
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
-    /// Whether the app fills the screen (#218).
+    /// Whether the app fills the screen on this computer (#218, R78).
     #[must_use]
     pub fn fullscreen(&self) -> bool {
-        profiles::fullscreen(&self.data_dir)
+        computer::fullscreen(&self.computer)
     }
 
-    /// Remembers whether the app fills the screen, to start that way next time.
+    /// Remembers whether the app fills the screen on this computer, to start that way next time.
     ///
     /// # Errors
     /// [`AppError::Reported`] if it cannot be saved.
     pub fn set_fullscreen(&mut self, fullscreen: bool) -> Result<(), AppError> {
-        profiles::set_fullscreen(&self.data_dir, fullscreen)
+        computer::set_fullscreen(&self.computer, fullscreen)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
@@ -4596,6 +4608,55 @@ mod tests {
         };
         let known = course::read_manifest(&again).unwrap().countries.unwrap();
         assert_eq!(known[0].code, "CH");
+    }
+
+    #[test]
+    fn the_overlay_place_is_the_riders_and_the_graphics_the_computers() {
+        let dir = temp_dir("per-rider-per-computer");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let anna = app.profile().id.clone();
+        let window = OverlayWindow {
+            x: 100,
+            y: 50,
+            width: 400,
+            height: 300,
+            scale: Some(1.5),
+        };
+        app.set_overlay_window(window).unwrap();
+        app.set_graphics_quality(profiles::GraphicsQuality::Ultra)
+            .unwrap();
+        app.set_fullscreen(true).unwrap();
+
+        let ben = app
+            .save_profile(
+                None,
+                Profile {
+                    name: "Ben".to_owned(),
+                    ..Profile::default()
+                },
+            )
+            .unwrap();
+
+        assert_eq!(
+            app.overlay_window(),
+            None,
+            "Ben has no place of his own yet"
+        );
+        assert_eq!(app.graphics_quality(), profiles::GraphicsQuality::Ultra);
+        assert!(app.fullscreen(), "the computer's, whoever rides");
+        app.select_profile(&anna).unwrap();
+        assert_eq!(app.overlay_window(), Some(window));
+        assert!(
+            dir.join("cache").join(computer::FILE).exists(),
+            "kept next to the cache, outside the synced data"
+        );
+        assert!(
+            !dir.join("data")
+                .join("profiles")
+                .join(&ben)
+                .join("overlay.toml")
+                .exists()
+        );
     }
 
     #[test]

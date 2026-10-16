@@ -167,6 +167,7 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | ID | Requirement |
 |---|---|
 | R74 | Extends R24 (2026-10-15, #261): the German interface uses the individually approved wording, informal du and Swiss ss spelling. Core failures carry a translatable explanation separately from their original technical details; filenames and device/platform names stay untouched. Details remain accessible after a ride notification fades and can be expanded without interrupting the ride. |
+| R78 | Refines R43 and R55 (2026-10-16, #257): what depends on the **computer** — the graphics quality and full screen — is kept in `computer.toml` next to the cache, never in the data directory, which may be shared between computers (R30): each keeps its own choice. The **overlay's place and size** are the **rider's** (`profiles/<rider>/overlay.toml`), so they follow the rider and sync with the data. Values from before are carried over once: the overlay's place to every rider without their own, the quality and full screen to the computer that starts first; then they are gone from `settings.toml`. |
 
 ## MVP definition
 
