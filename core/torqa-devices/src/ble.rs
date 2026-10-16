@@ -1,12 +1,12 @@
 //! Bluetooth LE discovery and drivers for FTMS trainers, power meters, cadence sensors,
-//! heart-rate sensors and Shimano Di2 shifters.
+//! heart-rate sensors, Shimano Di2 shifters and the Zwift Click.
 
 use std::time::{Duration, Instant};
 
 use btleplug::api::bleuuid::uuid_from_u16;
 use btleplug::api::{
     Central, CentralEvent, CharPropFlags, Characteristic, Manager as _, Peripheral as _,
-    RetrievePeripheralsOptions, ScanFilter, ValueNotification, WriteType,
+    PeripheralProperties, RetrievePeripheralsOptions, ScanFilter, ValueNotification, WriteType,
 };
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use futures::StreamExt;
@@ -20,6 +20,7 @@ use crate::ftms::{self, ControlResult, ResistanceRange};
 use crate::handle::{DeviceError, DeviceEvent, DeviceHandle, DriverChannels};
 use crate::heart_rate;
 use crate::speed_cadence;
+use crate::zwift_click;
 
 const RECONNECT_DELAY: Duration = Duration::from_secs(2);
 /// How long a reconnect scans for a device the system no longer knows.
@@ -38,8 +39,28 @@ pub enum DeviceKind {
     PowerMeter,
     /// A cadence sensor (Cycling Speed and Cadence Service).
     CadenceSensor,
-    /// A shifter whose buttons can shift the virtual gears (Shimano Di2, R7).
+    /// A shifter whose buttons can shift the virtual gears (R7): a [`ControllerModel`].
     Controller,
+}
+
+/// Which shifter a controller is: their buttons and their protocols differ.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ControllerModel {
+    /// Shimano Di2 (R59): four D-Fly channels, each telling presses, holds and double presses.
+    Di2,
+    /// The Zwift Click (R75): a + and a − button, each telling presses and holds.
+    ZwiftClick,
+}
+
+impl ControllerModel {
+    /// The model's name as the front end knows it.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Di2 => "di2",
+            Self::ZwiftClick => "zwift_click",
+        }
+    }
 }
 
 /// A device found by [`Bluetooth::scan`].
@@ -49,6 +70,8 @@ pub struct DiscoveredDevice {
     pub name: String,
     /// Device capability.
     pub kind: DeviceKind,
+    /// Which shifter it is, for a controller.
+    pub model: Option<ControllerModel>,
     /// Signal strength in dBm at discovery, if known.
     pub rssi: Option<i16>,
     peripheral: Peripheral,
@@ -106,35 +129,38 @@ impl Bluetooth {
                 .or(properties.advertisement_name.clone())
                 .unwrap_or_else(|| "Unnamed device".to_owned());
             // Trainers often offer the Cycling Power Service too: they stay trainers.
-            let kind = if properties.services.contains(&uuid_from_u16(ftms::SERVICE)) {
-                DeviceKind::Trainer
+            let (kind, model) = if properties.services.contains(&uuid_from_u16(ftms::SERVICE)) {
+                (DeviceKind::Trainer, None)
             } else if properties
                 .services
                 .contains(&uuid_from_u16(cycling_power::SERVICE))
             {
-                DeviceKind::PowerMeter
+                (DeviceKind::PowerMeter, None)
             } else if properties
                 .services
                 .contains(&uuid_from_u16(heart_rate::SERVICE))
             {
-                DeviceKind::HeartRateSensor
+                (DeviceKind::HeartRateSensor, None)
             } else if properties
                 .services
                 .contains(&uuid_from_u16(speed_cadence::SERVICE))
             {
-                DeviceKind::CadenceSensor
+                (DeviceKind::CadenceSensor, None)
+            } else if is_zwift_click(&properties, &name) {
+                (DeviceKind::Controller, Some(ControllerModel::ZwiftClick))
             } else if properties.services.iter().any(|s| s.to_string() == di2::SERVICE)
                 || properties.manufacturer_data.contains_key(&di2::MANUFACTURER)
                 // Rear derailleurs advertise as their model, e.g. "RDR9250".
                 || name.starts_with("RDR")
             {
-                DeviceKind::Controller
+                (DeviceKind::Controller, Some(ControllerModel::Di2))
             } else {
                 continue;
             };
             devices.push(DiscoveredDevice {
                 name,
                 kind,
+                model,
                 rssi: properties.rssi,
                 peripheral,
             });
@@ -158,10 +184,31 @@ impl Bluetooth {
                 last_control: None,
                 resistance_range: ResistanceRange::default(),
                 buttons: di2::Buttons::default(),
+                click: zwift_click::Buttons::default(),
                 cadence: cycling_power::Cadence::default(),
             }
             .run()
         })
+    }
+}
+
+/// Whether an advertisement is a Zwift Click's. Zwift's advertising data names the model;
+/// without it (some stacks pass it on, some not) the unit's service or its name tells, which
+/// the Play and the Ride share, so those are only kept out where the data is there.
+fn is_zwift_click(properties: &PeripheralProperties, name: &str) -> bool {
+    match properties
+        .manufacturer_data
+        .get(&zwift_click::MANUFACTURER)
+        .and_then(|data| data.first())
+    {
+        Some(&device_type) => device_type == zwift_click::DEVICE_TYPE,
+        None => {
+            properties
+                .services
+                .iter()
+                .any(|s| s.to_string() == zwift_click::SERVICE)
+                || name == zwift_click::NAME
+        }
     }
 }
 
@@ -178,8 +225,10 @@ struct Driver {
     channels: DriverChannels,
     last_control: Option<TrainerControl>,
     resistance_range: ResistanceRange,
-    /// Decodes a shifter's button indications.
+    /// Decodes a Di2 shifter's button indications.
     buttons: di2::Buttons,
+    /// Decodes a Zwift Click's button states.
+    click: zwift_click::Buttons,
     /// A power meter's or cadence sensor's cadence, from its crank counter.
     cadence: cycling_power::Cadence,
 }
@@ -350,6 +399,10 @@ impl Driver {
                     .await?;
                 None
             }
+            DeviceKind::Controller if self.device.model == Some(ControllerModel::ZwiftClick) => {
+                self.set_up_zwift_click(peripheral).await?;
+                None
+            }
             DeviceKind::Controller => {
                 // Indications; the system asks to pair the unit first if it is not yet.
                 let buttons = peripheral
@@ -378,6 +431,31 @@ impl Driver {
             }
         };
         Ok((notifications, control_point))
+    }
+
+    /// Subscribes to a Zwift Click's buttons and starts its session (R75): it only tells of
+    /// its buttons after the handshake, which it answers on the response characteristic.
+    async fn set_up_zwift_click(&mut self, peripheral: &Peripheral) -> Result<(), DeviceError> {
+        let characteristic = |uuid: &'static str| {
+            peripheral
+                .characteristics()
+                .into_iter()
+                .find(|c| {
+                    c.service_uuid.to_string() == zwift_click::SERVICE && c.uuid.to_string() == uuid
+                })
+                .ok_or(DeviceError::MissingService(zwift_click::SERVICE))
+        };
+        let buttons = characteristic(zwift_click::BUTTONS)?;
+        let response = characteristic(zwift_click::RESPONSE)?;
+        let control = characteristic(zwift_click::CONTROL)?;
+        // A button down when the link dropped is let go of as far as Torqa knows.
+        self.click = zwift_click::Buttons::default();
+        peripheral.subscribe(&response).await?;
+        peripheral.subscribe(&buttons).await?;
+        peripheral
+            .write(&control, zwift_click::HANDSHAKE, WriteType::WithoutResponse)
+            .await?;
+        Ok(())
     }
 
     /// Subscribes to trainer data, takes control and restores the last control after a reconnect.
@@ -466,7 +544,24 @@ impl Driver {
                 .inspect_err(|error| warn!(device = %name, %error, "invalid D-Fly buttons"))
                 .ok()?;
             (!presses.is_empty()).then_some(DeviceEvent::Buttons(presses))
+        } else if uuid.to_string() == zwift_click::BUTTONS {
+            debug!(device = %name, ?value, "Click buttons");
+            let presses = self
+                .click
+                .presses(value, Instant::now())
+                .inspect_err(|error| warn!(device = %name, %error, "invalid Click buttons"))
+                .ok()?;
+            (!presses.is_empty()).then_some(DeviceEvent::Buttons(presses))
         } else {
+            if uuid.to_string() == zwift_click::RESPONSE {
+                if value == zwift_click::HANDSHAKE {
+                    debug!(device = %name, "Click session started");
+                } else {
+                    // An old firmware answers the handshake with its key for an encrypted
+                    // session, which Torqa does not speak (ADR 0003).
+                    warn!(device = %name, ?value, "unexpected Click handshake answer");
+                }
+            }
             if uuid == uuid_from_u16(ftms::CONTROL_POINT) {
                 match ftms::parse_control_response(value) {
                     Some(r) if r.result == ControlResult::Success => {

@@ -161,6 +161,7 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | R64 | **Fitness, fatigue and form** over the days of the chosen period, from the rides' TSS (the performance management chart: 42- and 7-day exponentially weighted averages, form the day before's fitness minus fatigue, with form's bands), computed in Torqa offline; and **weekly bars** of the period: time, distance, climbing, TSS, number of rides, and the time in each power and heart-rate zone of the rider's zones today, as the summary counts it. |
 | R65 | **Progress** over the chosen period, week by week (month by month for periods over 13 weeks): the best 1, 5 and 20 min of each, the FTP the rides were saved with and the FTP tests. And an **FTP estimated** from the best efforts of the last 90 days (the critical power of Morton's three-parameter model, or 95 % of the best 20 min where the model does not fit), shown beside the rider's FTP with a button to take it — **never applied without asking**. |
 | R66 | Extends R59 (2026-10-13): a Di2 channel's press, hold or double press can also **pause and resume** the ride, make the **trainer difficulty** 10 % harder or easier (within 0–100 %, as the ride settings show), and in a workout make its **intensity** 5 % harder or easier (50–150 % of every planned power, for constant-power and structured workouts) or **skip to the next step** of a structured workout (the last one ends it). The keyboard does the same: H / E harder and easier, I / L more and less intensity, N the next step. Heart-rate holds and FTP tests keep their powers and steps: a hold would undo the change, and a test's FTP comes from its protocol. |
+| R75 | Extends R59 (2026-10-15, #228): the **Zwift Click** — the original single unit with a + and a − button, sold with the Zwift Cog — shifts the virtual gears directly over Bluetooth, with no app in between. On today's firmware its protocol is plain (a `RideOn` handshake, then the buttons' states), with no encryption and no daily unlock, as checked on a unit (ADR 0003). Its + and − are buttons 1 and 2 of the shifter's assignments (#139, R66): a press and a hold can each be given an action; it has no double press, so a tap shifts the moment the button comes up. It is chosen, remembered and reconnected like a Di2. The two-pod Click v2, the Play and the Ride stay out (R59): they are unlocked daily in Zwift or send other messages, and none was checked. |
 
 ## Language and errors
 
@@ -177,5 +178,5 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero
-Assioma Pro Duo power pedals, Shimano Di2 (RD-R8150). A Zwift Click + Cog too, which Torqa
-does not support (R59).
+Assioma Pro Duo power pedals, Shimano Di2 (RD-R8150), and a Zwift Click + Cog (the original
+Click, R75).

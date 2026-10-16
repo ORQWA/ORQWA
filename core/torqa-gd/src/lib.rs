@@ -18,7 +18,7 @@ use torqa_app::hud::MetricKind;
 use torqa_app::media::MediaCommand;
 use torqa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
 use torqa_app::{library, view};
-use torqa_devices::ble::DeviceKind;
+use torqa_devices::ble::{ControllerModel, DeviceKind};
 use torqa_devices::fake::{FakeHeart, FakeRider};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
 use torqa_domain::shifting::{BUTTONS, Control, Press, Shift};
@@ -124,7 +124,8 @@ impl INode for TorqaApp {
 #[godot_api]
 impl TorqaApp {
     /// A scan finished: an array of dictionaries `{index, name, kind ("trainer",
-    /// "power_meter", "cadence_sensor", "heart_rate" or "controller"), rssi, remembered}`.
+    /// "power_meter", "cadence_sensor", "heart_rate" or "controller"), model (a controller's
+    /// "di2" or "zwift_click", else ""), rssi, remembered}`.
     #[signal]
     fn devices_found(devices: VarArray);
 
@@ -1773,7 +1774,7 @@ impl TorqaApp {
         }
     }
 
-    /// Connects a scanned Shimano Di2 shifter by its index: its D-Fly buttons shift or do what
+    /// Connects a scanned shifter (a Shimano Di2 or a Zwift Click) by its index: its buttons shift or do what
     /// else the rider gave them (R7, #139).
     #[func]
     fn connect_controller(&mut self, index: i64) -> bool {
@@ -1783,7 +1784,7 @@ impl TorqaApp {
         self.command(|app| app.connect_controller(index))
     }
 
-    /// The names of the actions a Di2 shifter's buttons can be given (#139), in the order to
+    /// The names of the actions a shifter's buttons can be given (#139), in the order to
     /// offer them.
     #[func]
     fn button_actions() -> PackedStringArray {
@@ -1793,7 +1794,8 @@ impl TorqaApp {
             .collect()
     }
 
-    /// What the Di2 shifter's buttons do (#139): for each D-Fly channel 1–4, the action names
+    /// What the shifter's buttons do (#139): for each button 1–4 (a Di2's D-Fly channels; a Zwift
+    /// Click's + is 1 and its − 2, with no double press), the action names
     /// of a press, a hold and a double press, "" where it does nothing.
     #[func]
     fn button_map(&self) -> VarArray {
@@ -1816,7 +1818,7 @@ impl TorqaApp {
             .collect()
     }
 
-    /// Gives `press` (0 a press, 1 a hold, 2 a double press) of D-Fly channel `channel` (1–4)
+    /// Gives `press` (0 a press, 1 a hold, 2 a double press) of button `channel` (1–4)
     /// the action called `action`, or nothing with "". False for an unknown press or action.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
@@ -2995,11 +2997,12 @@ fn kind_name(kind: DeviceKind) -> &'static str {
     }
 }
 
-/// Scanned devices as `[{index, name, kind, rssi}]` for `devices_found`.
+/// Scanned devices as `[{index, name, kind, model, rssi, remembered}]` for `devices_found`.
 fn device_array(devices: Vec<torqa_app::DeviceInfo>) -> VarArray {
     let mut array = VarArray::new();
     for device in devices {
         let kind = kind_name(device.kind);
+        let model = device.model.map_or("", ControllerModel::name);
         let rssi = device
             .rssi
             .map_or_else(Variant::nil, |rssi| i64::from(rssi).to_variant());
@@ -3009,6 +3012,7 @@ fn device_array(devices: Vec<torqa_app::DeviceInfo>) -> VarArray {
                 "index" => index,
                 "name" => device.name.as_str(),
                 "kind" => kind,
+                "model" => model,
                 "rssi" => &rssi,
                 "remembered" => device.remembered,
             }

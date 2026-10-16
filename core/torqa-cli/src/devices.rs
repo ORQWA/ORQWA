@@ -23,13 +23,13 @@ pub(crate) struct DeviceArgs {
     /// Also connect a heart-rate sensor, optionally selected by name.
     #[arg(long, num_args = 0..=1, default_missing_value = "")]
     hr: Option<String>,
-    /// Also connect a Shimano Di2 shifter whose D-Fly buttons shift, optionally by name.
+    /// Also connect a shifter (a Shimano Di2 or a Zwift Click) whose buttons shift, optionally by name.
     #[arg(long, num_args = 0..=1, default_missing_value = "")]
     controller: Option<String>,
-    /// The Di2 shifter's D-Fly channel that shifts up.
+    /// The button that shifts up: a Di2's D-Fly channel, or 1 for a Click's +.
     #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u8).range(1..=4))]
     pub(crate) up_channel: u8,
-    /// The Di2 shifter's D-Fly channel that shifts down.
+    /// The button that shifts down: a Di2's D-Fly channel, or 2 for a Click's −.
     #[arg(long, default_value_t = 2, value_parser = clap::value_parser!(u8).range(1..=4))]
     pub(crate) down_channel: u8,
     /// Power of the fake rider in watts.

@@ -318,6 +318,38 @@ func _shifter_buttons() -> void:
 	)
 	var press: OptionButton = choices[5]
 	_check(press.item_count == 1 + actions.size(), "nothing or any action")
+	# A Zwift Click (R75) has two buttons that press and hold, no double press.
+	var grid: GridContainer = tab.find_children("*", "GridContainer", true, false)[1]
+	_check(grid.columns == 4, "a Di2 offers a press, a hold and a double press")
+	(
+		tab
+		. _on_devices_found(
+			[
+				{
+					"index": 0,
+					"name": "Zwift Click",
+					"kind": "controller",
+					"model": "zwift_click",
+					"rssi": -50,
+					"remembered": true,
+				}
+			]
+		)
+	)
+	_check(grid.visible, "the Click found is chosen")
+	_check(grid.columns == 3, "a Click offers a press and a hold")
+	var captions: PackedStringArray = PackedStringArray()
+	# Hidden cells stay children: a row is a caption and a choice per kind of press.
+	for i: int in range(0, grid.get_child_count(), 1 + DevicesTab.PRESSES.size()):
+		var caption: Label = grid.get_child(i) as Label
+		if caption != null and caption.visible:
+			captions.append(caption.text)
+	_check(captions == PackedStringArray(["Plus (+)", "Minus (−)"]), "its buttons: %s" % captions)
+	var shown: int = 0
+	for choice: OptionButton in grid.find_children("*", "OptionButton", false, false):
+		if choice.visible:
+			shown += 1
+	_check(shown == 2 * 2, "a choice per press of each of its buttons: %d" % shown)
 	tab.free()
 
 

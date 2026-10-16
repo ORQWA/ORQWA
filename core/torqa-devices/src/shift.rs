@@ -1,5 +1,6 @@
 //! Shift inputs (R7) behind [`ShiftInput`]: the keyboard, whose keys the front end passes on,
-//! and the D-Fly buttons of a Shimano Di2 shifter, which do what the rider gave them (#139).
+//! and the buttons of a shifter — a Shimano Di2's D-Fly channels or a Zwift Click's + and − —
+//! which do what the rider gave them (#139).
 
 use std::sync::{Arc, Mutex, PoisonError, mpsc};
 
@@ -7,7 +8,7 @@ use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, Shift, ShiftInput
 
 use crate::{DeviceEvent, DeviceHandle};
 
-/// What a Di2 shifter's buttons do, shared with the settings, so a change applies at once.
+/// What a shifter's buttons do, shared with the settings, so a change applies at once.
 #[derive(Debug, Default)]
 pub struct Assignments(Mutex<ButtonMap>);
 
@@ -30,7 +31,7 @@ impl Assignments {
     }
 }
 
-/// Shifts, and the other controls its buttons were given, from a Di2 shifter connected with
+/// Shifts, and the other controls its buttons were given, from a shifter connected with
 /// [`crate::ble::Bluetooth::connect`].
 #[derive(Debug)]
 pub struct Controller {

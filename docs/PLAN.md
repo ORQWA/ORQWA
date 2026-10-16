@@ -204,7 +204,7 @@ Built in rideable steps:
 - [ ] ~~Google Street View (user key) + Mapillary with crossfades~~ — dropped 2026-10-15
 
 ### Phase 7 — Extras
-- [x] Virtual gears + shift inputs (R59: keyboard and Shimano Di2; no Zwift Click):
+- [x] Virtual gears + shift inputs (R59, R75: keyboard, Shimano Di2 and the Zwift Click):
   - [x] Virtual gears on a single cog (24 gears, the road scaled for the trainer, ADR 0003)
     and the keyboard (↑ / ↓) behind `ShiftInput`; the drivetrain per rider
   - [x] Shimano Di2 over Bluetooth: buttons assigned to D-Fly channels shift up and down
@@ -214,6 +214,9 @@ Built in rideable steps:
   - [x] More ride controls on Di2 buttons (R66): pause/resume, trainer difficulty ±10 %,
     workout intensity ±5 % and skipping a structured workout's step; also on the keyboard
     (H / E, I / L, N)
+  - [x] The Zwift Click over Bluetooth (R75, #228): the original unit's + and − as buttons
+    1 and 2 of the same assignments (press and hold; no double press), its plain protocol
+    checked on a unit; the Click v2, Play and Ride stay out
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their

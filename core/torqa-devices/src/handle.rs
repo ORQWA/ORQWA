@@ -15,7 +15,8 @@ pub enum DeviceEvent {
     Connected,
     /// New measurements.
     Telemetry(Telemetry),
-    /// Buttons were pressed on a shifter (Shimano Di2 D-Fly channels, R7).
+    /// Buttons were pressed on a shifter (Shimano Di2 D-Fly channels or the Zwift Click's
+    /// + and −, R7).
     Buttons(Vec<ButtonPress>),
     /// The connection was lost; the driver keeps trying to reconnect.
     Disconnected,
