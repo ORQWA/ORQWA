@@ -2,6 +2,7 @@
 //! profiles (R22) and their accounts on training platforms (R29).
 
 pub mod accounts;
+pub mod computer;
 pub mod course;
 pub mod profiles;
 pub mod rides;

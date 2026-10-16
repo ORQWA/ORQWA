@@ -1,6 +1,7 @@
 //! Rider profiles on disk (R22): `profiles/<id>/profile.toml` in the data directory, next to the
-//! rider's own rides in `profiles/<id>/rides/`. One directory per rider keeps riders from
-//! overwriting each other's files when the data directory is synced (ADR 0002).
+//! rider's own rides in `profiles/<id>/rides/`, HUD layout and overlay place. One directory per
+//! rider keeps riders from overwriting each other's files when the data directory is synced
+//! (ADR 0002). What depends on the computer instead is in [`crate::computer`].
 
 use std::path::{Path, PathBuf};
 
@@ -14,6 +15,7 @@ const PROFILES: &str = "profiles";
 const PROFILE_FILE: &str = "profile.toml";
 const SETTINGS_FILE: &str = "settings.toml";
 const HUD_FILE: &str = "hud.toml";
+const OVERLAY_FILE: &str = "overlay.toml";
 
 /// Reading or writing a profile failed.
 #[derive(Debug, thiserror::Error)]
@@ -208,13 +210,16 @@ struct Settings {
     /// controls; they shift until [`Settings::buttons`] is saved.
     shift_up_channel: Option<u8>,
     shift_down_channel: Option<u8>,
-    /// How detailed the 3D world is drawn on this computer (R43).
+    /// How detailed the 3D world was drawn, from before R78 made it the computer's
+    /// ([`crate::computer`]); carried over once by [`carry_over`], then gone.
     graphics_quality: Option<GraphicsQuality>,
-    /// Where the overlay was last on screen (R55).
+    /// Where the overlay was last on screen, from before R78 made it the rider's; carried over
+    /// once by [`carry_over`], then gone.
     overlay: Option<OverlayWindow>,
     /// Whether the ride view's control bar is folded away to its corner (#189).
     ride_bar_folded: Option<bool>,
-    /// Whether the app fills the screen (#218).
+    /// Whether the app filled the screen, from before R78 made it the computer's; carried over
+    /// once by [`carry_over`], then gone.
     fullscreen: Option<bool>,
     /// How the Courses tab orders and groups the library (R67).
     courses_view: Option<CoursesView>,
@@ -522,6 +527,64 @@ pub fn save_hud(data_dir: &Path, id: &str, metrics: &[String]) -> Result<(), Pro
     )
 }
 
+/// Where the rider's overlay window is on screen (R55, R78), in `profiles/<id>/overlay.toml`.
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct OverlayFile {
+    window: Option<OverlayWindow>,
+}
+
+/// Where the rider's overlay was last on screen; `None` before they first used it.
+#[must_use]
+pub fn overlay_window(data_dir: &Path, id: &str) -> Option<OverlayWindow> {
+    let text = std::fs::read_to_string(profile_dir(data_dir, id).join(OVERLAY_FILE)).ok()?;
+    toml::from_str::<OverlayFile>(&text).ok()?.window
+}
+
+/// Remembers where the rider's overlay is on screen, for the next time (R55).
+///
+/// # Errors
+/// On file system errors.
+pub fn set_overlay_window(
+    data_dir: &Path,
+    id: &str,
+    window: OverlayWindow,
+) -> Result<(), ProfileError> {
+    let file = OverlayFile {
+        window: Some(window),
+    };
+    write_atomically(
+        &profile_dir(data_dir, id).join(OVERLAY_FILE),
+        &toml::to_string_pretty(&file)?,
+    )
+}
+
+/// Carries over, once, what `settings.toml` kept for every rider and computer before R78
+/// (#257): the overlay's place to every rider who has none of their own, the graphics quality
+/// and full screen to this computer's `file` where it has not chosen. Then they are gone from
+/// the data directory, so another computer sharing it starts from its own choices.
+///
+/// # Errors
+/// On file system errors.
+pub fn carry_over(data_dir: &Path, file: &Path) -> Result<(), ProfileError> {
+    let mut settings = settings(data_dir);
+    let quality = settings.graphics_quality.take();
+    let fullscreen = settings.fullscreen.take();
+    let overlay = settings.overlay.take();
+    if quality.is_none() && fullscreen.is_none() && overlay.is_none() {
+        return Ok(());
+    }
+    if let Some(window) = overlay {
+        for rider in list(data_dir) {
+            if overlay_window(data_dir, &rider.id).is_none() {
+                set_overlay_window(data_dir, &rider.id, window)?;
+            }
+        }
+    }
+    crate::computer::take_over(file, quality, fullscreen)?;
+    save_settings(data_dir, &settings)
+}
+
 /// Where a rider's activities are saved.
 #[must_use]
 pub fn rides_dir(data_dir: &Path, id: &str) -> PathBuf {
@@ -631,38 +694,6 @@ pub fn set_button_map(data_dir: &Path, map: &ButtonMap) -> Result<(), ProfileErr
     save_settings(data_dir, &settings)
 }
 
-/// The graphics quality chosen on this installation; Medium until one is chosen.
-#[must_use]
-pub fn graphics_quality(data_dir: &Path) -> GraphicsQuality {
-    settings(data_dir).graphics_quality.unwrap_or_default()
-}
-
-/// Remembers the graphics quality for this installation.
-///
-/// # Errors
-/// On file system errors.
-pub fn set_graphics_quality(data_dir: &Path, quality: GraphicsQuality) -> Result<(), ProfileError> {
-    let mut settings = settings(data_dir);
-    settings.graphics_quality = Some(quality);
-    save_settings(data_dir, &settings)
-}
-
-/// Where the overlay was last on screen; `None` before it was first used.
-#[must_use]
-pub fn overlay_window(data_dir: &Path) -> Option<OverlayWindow> {
-    settings(data_dir).overlay
-}
-
-/// Remembers where the overlay is on screen, for the next time (R55).
-///
-/// # Errors
-/// On file system errors.
-pub fn set_overlay_window(data_dir: &Path, window: OverlayWindow) -> Result<(), ProfileError> {
-    let mut settings = settings(data_dir);
-    settings.overlay = Some(window);
-    save_settings(data_dir, &settings)
-}
-
 /// Whether the ride view's control bar is folded away to its corner (#189); shown until it
 /// is folded.
 #[must_use]
@@ -677,22 +708,6 @@ pub fn ride_bar_folded(data_dir: &Path) -> bool {
 pub fn set_ride_bar_folded(data_dir: &Path, folded: bool) -> Result<(), ProfileError> {
     let mut settings = settings(data_dir);
     settings.ride_bar_folded = Some(folded);
-    save_settings(data_dir, &settings)
-}
-
-/// Whether the app fills the screen (#218); in a window until the rider chooses.
-#[must_use]
-pub fn fullscreen(data_dir: &Path) -> bool {
-    settings(data_dir).fullscreen.unwrap_or(false)
-}
-
-/// Remembers whether the app fills the screen, to start that way next time.
-///
-/// # Errors
-/// On file system errors.
-pub fn set_fullscreen(data_dir: &Path, fullscreen: bool) -> Result<(), ProfileError> {
-    let mut settings = settings(data_dir);
-    settings.fullscreen = Some(fullscreen);
     save_settings(data_dir, &settings)
 }
 
@@ -741,7 +756,7 @@ pub(crate) fn profile_dir(data_dir: &Path, id: &str) -> PathBuf {
     data_dir.join(PROFILES).join(id)
 }
 
-fn write_atomically(path: &Path, text: &str) -> Result<(), ProfileError> {
+pub(crate) fn write_atomically(path: &Path, text: &str) -> Result<(), ProfileError> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -763,32 +778,13 @@ mod tests {
     }
 
     #[test]
-    fn graphics_quality_is_kept_with_the_other_settings() {
-        let dir = temp_dir("quality");
-        assert_eq!(graphics_quality(&dir), GraphicsQuality::Medium);
-        remember_device(
-            &dir,
-            DeviceRole::Trainer,
-            RememberedDevice {
-                id: "kickr".to_owned(),
-                name: "KICKR".to_owned(),
-            },
-        )
-        .unwrap();
-
-        set_graphics_quality(&dir, GraphicsQuality::Ultra).unwrap();
-
-        assert_eq!(graphics_quality(&dir), GraphicsQuality::Ultra);
-        assert!(remembered_devices(&dir).trainer.is_some());
-        assert!(
-            std::fs::read_to_string(dir.join(SETTINGS_FILE))
-                .unwrap()
-                .contains(r#"graphics_quality = "ultra""#)
-        );
+    fn graphics_quality_presets_are_known_by_name() {
         assert_eq!(
             GraphicsQuality::from_name("high"),
             Some(GraphicsQuality::High)
         );
+        assert_eq!(GraphicsQuality::from_name("epic"), None);
+        assert_eq!(GraphicsQuality::Ultra.name(), "ultra");
     }
 
     #[test]
@@ -808,7 +804,7 @@ mod tests {
     #[test]
     fn assigned_buttons_are_kept_by_name() {
         let dir = temp_dir("buttons");
-        set_graphics_quality(&dir, GraphicsQuality::High).unwrap();
+        set_ride_bar_folded(&dir, true).unwrap();
         let mut map = ButtonMap::shifting(2, 1);
         map.assign(
             3,
@@ -820,7 +816,7 @@ mod tests {
         set_button_map(&dir, &map).unwrap();
 
         assert_eq!(button_map(&dir), map);
-        assert_eq!(graphics_quality(&dir), GraphicsQuality::High);
+        assert!(ride_bar_folded(&dir), "the other settings stay");
         let text = std::fs::read_to_string(dir.join(SETTINGS_FILE)).unwrap();
         assert!(text.contains(r#"hold = "next_camera""#), "{text}");
         assert!(!text.contains("shift_up_channel"), "{text}");
@@ -853,28 +849,14 @@ mod tests {
     fn the_folded_ride_bar_is_remembered_with_the_other_settings() {
         let dir = temp_dir("ride-bar");
         assert!(!ride_bar_folded(&dir));
-        set_graphics_quality(&dir, GraphicsQuality::High).unwrap();
+        set_active(&dir, "anna").unwrap();
 
         set_ride_bar_folded(&dir, true).unwrap();
 
         assert!(ride_bar_folded(&dir));
-        assert_eq!(graphics_quality(&dir), GraphicsQuality::High);
+        assert_eq!(active(&dir).as_deref(), Some("anna"));
         set_ride_bar_folded(&dir, false).unwrap();
         assert!(!ride_bar_folded(&dir));
-    }
-
-    #[test]
-    fn full_screen_is_remembered_with_the_other_settings() {
-        let dir = temp_dir("fullscreen");
-        assert!(!fullscreen(&dir), "a window until the rider chooses");
-        set_graphics_quality(&dir, GraphicsQuality::High).unwrap();
-
-        set_fullscreen(&dir, true).unwrap();
-
-        assert!(fullscreen(&dir));
-        assert_eq!(graphics_quality(&dir), GraphicsQuality::High);
-        set_fullscreen(&dir, false).unwrap();
-        assert!(!fullscreen(&dir));
     }
 
     #[test]
@@ -895,10 +877,9 @@ mod tests {
     }
 
     #[test]
-    fn the_overlay_window_is_remembered_with_the_other_settings() {
+    fn the_overlay_place_is_each_riders_own() {
         let dir = temp_dir("overlay");
-        assert_eq!(overlay_window(&dir), None);
-        set_graphics_quality(&dir, GraphicsQuality::High).unwrap();
+        assert_eq!(overlay_window(&dir, "anna"), None);
         let window = OverlayWindow {
             x: -1200,
             y: 40,
@@ -907,25 +888,25 @@ mod tests {
             scale: Some(1.75),
         };
 
-        set_overlay_window(&dir, window).unwrap();
+        set_overlay_window(&dir, "anna", window).unwrap();
 
-        assert_eq!(overlay_window(&dir), Some(window));
-        assert_eq!(graphics_quality(&dir), GraphicsQuality::High);
-        assert_eq!(GraphicsQuality::from_name("epic"), None);
+        assert_eq!(overlay_window(&dir, "anna"), Some(window));
+        assert_eq!(overlay_window(&dir, "ben"), None, "another rider's own");
+        assert!(profile_dir(&dir, "anna").join(OVERLAY_FILE).exists());
     }
 
     #[test]
     fn an_overlay_remembered_before_its_size_could_be_chosen_keeps_its_place() {
         let dir = temp_dir("overlay-before-scale");
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(profile_dir(&dir, "anna")).unwrap();
         std::fs::write(
-            dir.join(SETTINGS_FILE),
-            "[overlay]\nx = 10\ny = 20\nwidth = 300\nheight = 400\n",
+            profile_dir(&dir, "anna").join(OVERLAY_FILE),
+            "[window]\nx = 10\ny = 20\nwidth = 300\nheight = 400\n",
         )
         .unwrap();
 
         assert_eq!(
-            overlay_window(&dir),
+            overlay_window(&dir, "anna"),
             Some(OverlayWindow {
                 x: 10,
                 y: 20,
@@ -934,6 +915,74 @@ mod tests {
                 scale: None,
             })
         );
+    }
+
+    #[test]
+    fn settings_from_before_are_carried_over_once_to_the_riders_and_the_computer() {
+        let dir = temp_dir("carry-over");
+        let computer = dir.join("cache").join(crate::computer::FILE);
+        save(&dir, "anna", &Profile::default()).unwrap();
+        save(&dir, "ben", &Profile::default()).unwrap();
+        let own = OverlayWindow {
+            x: 5,
+            y: 5,
+            width: 200,
+            height: 300,
+            scale: Some(1.0),
+        };
+        set_overlay_window(&dir, "ben", own).unwrap();
+        std::fs::write(
+            dir.join(SETTINGS_FILE),
+            "active_profile = \"anna\"\ngraphics_quality = \"ultra\"\nfullscreen = true\n\n\
+             [overlay]\nx = 10\ny = 20\nwidth = 300\nheight = 400\n",
+        )
+        .unwrap();
+
+        carry_over(&dir, &computer).unwrap();
+
+        assert_eq!(
+            overlay_window(&dir, "anna"),
+            Some(OverlayWindow {
+                x: 10,
+                y: 20,
+                width: 300,
+                height: 400,
+                scale: None,
+            }),
+            "the place everyone shared is the rider's now"
+        );
+        assert_eq!(
+            overlay_window(&dir, "ben"),
+            Some(own),
+            "a rider's own stays"
+        );
+        assert_eq!(
+            crate::computer::graphics_quality(&computer),
+            GraphicsQuality::Ultra
+        );
+        assert!(crate::computer::fullscreen(&computer));
+        assert_eq!(
+            active(&dir).as_deref(),
+            Some("anna"),
+            "the other settings stay"
+        );
+        let text = std::fs::read_to_string(dir.join(SETTINGS_FILE)).unwrap();
+        assert!(
+            !text.contains("graphics_quality")
+                && !text.contains("overlay")
+                && !text.contains("fullscreen"),
+            "gone from the data directory: {text}"
+        );
+
+        // Once: another computer sharing the data directory keeps what it chose since.
+        crate::computer::set_graphics_quality(&computer, GraphicsQuality::Low).unwrap();
+        std::fs::write(dir.join(SETTINGS_FILE), "graphics_quality = \"ultra\"\n").unwrap();
+        carry_over(&dir, &computer).unwrap();
+        assert_eq!(
+            crate::computer::graphics_quality(&computer),
+            GraphicsQuality::Low
+        );
+        carry_over(&dir, &computer).unwrap();
     }
 
     #[test]
