@@ -7,7 +7,7 @@
 
 <p align="center"><strong>Make waves with watts, not payments</strong></p>
 
-<p align="center">Open-source · Local-first · Indoor cycling</p>
+<p align="center">Open-source · Free · Local-first · Indoor cycling</p>
 
 <p align="center">
   <a href="https://github.com/bossm8/Torqa/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/bossm8/Torqa/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
@@ -19,7 +19,7 @@
 
 # Torqa
 
-A modern, offline-first, open-source indoor cycling app. Import a GPX route or a ride video and
+A modern, offline-first, open-source and free indoor cycling app. Import a GPX route or a ride video and
 ride it on your smart trainer, through a generated 3D world or along the video.
 
 <table>
