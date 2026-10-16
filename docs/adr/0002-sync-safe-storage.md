@@ -44,3 +44,22 @@ place to every rider without their own, the quality and full screen to the compu
 app starts first, unless it has chosen already; then they are removed from `settings.toml`,
 so a second computer sharing the data starts from its own defaults rather than the first's.
 
+## Amendment 2026-10-16: the index as built (#262, R79)
+
+The index is `history.sqlite` in the platform's cache directory (`torqa_storage::index`,
+through `rusqlite` with SQLite compiled in, so no platform needs a system library). It holds
+one row per ride: the FIT file's path, the metadata file's size and modification time, and
+the metadata as its JSON. The history asks the index for the rider's rides; a metadata file
+whose size and time the index knows is served from the row, any other is read from disk
+(rebuilt from the FIT file or completed with the analysis data where needed, and indexed as
+it then is), and rows of files that are gone are dropped. What a session has read it keeps
+in memory too, so the history, the records and the analysis, which all go through the same
+list, cost one `stat` per ride after the first look.
+
+Staleness is by size and modification time, not content hashes: every write Torqa makes to a
+metadata file (a name, an upload, a rebuild) changes at least the time, and a sync client
+that replaces a file sets a new one. An index of another layout (`PRAGMA user_version`) or
+missing is built afresh; a rider may delete it at any time. Without a usable index the
+history reads the files as it did before, with a warning in the log. SQLite runs in WAL mode
+with `synchronous = NORMAL`: a crash costs at most the last writes, which the files replace.
+

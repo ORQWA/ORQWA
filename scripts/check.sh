@@ -7,6 +7,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root/core"
 python3 "$root/scripts/wiki/check.py"
 python3 -m unittest discover -s "$root/scripts/wiki" -p 'test_*.py'
+python3 -m unittest discover -s "$root/scripts/release" -p 'test_*.py'
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
