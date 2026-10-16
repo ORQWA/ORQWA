@@ -42,4 +42,4 @@ echo 'Wiki changes prepared; published pages have not changed.'
 echo 'Stage the application pointer explicitly: git add wiki'
 published_revision="$(git -C wiki rev-parse "origin/$published")"
 prepared_revision="$(git -C wiki rev-parse HEAD)"
-echo "Review: https://github.com/bossm8/Torqa/wiki/_compare/$published_revision...$prepared_revision"
+echo "Review: https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/_compare/$published_revision...$prepared_revision"

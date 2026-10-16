@@ -94,6 +94,14 @@ class GitHub:
             self.request("POST", "pulls", {**data, "head": SYNC_BRANCH, "base": "main"})
 
 
+# The wiki's home, and where it was before the repository moved (a main from before the move
+# still names it; GitHub redirects).
+WIKI_REMOTES = (
+    "https://github.com/Torqa-Indoor-Cycling/Torqa.wiki.git",
+    "https://github.com/bossm8/Torqa.wiki.git",
+)
+
+
 def publish(application_remote, api):
     # Work in disposable clones: local agent work and the workflow checkout remain untouched.
     with tempfile.TemporaryDirectory(prefix="torqa-wiki-publish-") as directory:
@@ -109,7 +117,7 @@ def publish(application_remote, api):
                 raise RuntimeError("Application main does not contain a wiki submodule")
             target = entry[2]
             remote = git(app, "config", "-f", ".gitmodules", "--get", "submodule.wiki.url")
-            if remote != "https://github.com/bossm8/Torqa.wiki.git" and not os.environ.get("WIKI_TEST_REMOTES"):
+            if remote not in WIKI_REMOTES and not os.environ.get("WIKI_TEST_REMOTES"):
                 raise RuntimeError("Unexpected wiki remote; refusing to publish")
             wiki = app / "wiki"
             if not (wiki / ".git").exists():
@@ -160,7 +168,7 @@ def publish(application_remote, api):
 
 
 if __name__ == "__main__":
-    repository = os.environ.get("GITHUB_REPOSITORY", "bossm8/Torqa")
+    repository = os.environ.get("GITHUB_REPOSITORY", "Torqa-Indoor-Cycling/Torqa")
     token = os.environ.get("GH_TOKEN")
     if not token:
         raise SystemExit("Pass the workflow's automatic GitHub token in GH_TOKEN")
