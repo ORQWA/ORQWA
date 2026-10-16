@@ -18,7 +18,7 @@ pub use import::{Imported, LoadStage, Progress, countries, course_map, import_gp
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, Mutex, PoisonError, mpsc};
 use std::time::{Duration, SystemTime};
 
 use torqa_devices::ble::{Bluetooth, DeviceKind, DiscoveredDevice};
@@ -41,6 +41,7 @@ use torqa_session::workout::Workout;
 use torqa_session::{Ride, RideConfig, RideState};
 use torqa_storage::computer;
 use torqa_storage::course::{self, CourseCountry, Manifest};
+use torqa_storage::index::HistoryIndex;
 use torqa_storage::profiles::{self, DeviceRole, StoredProfile};
 pub use torqa_storage::profiles::{
     GraphicsQuality, OverlayWindow, button_action_from_name, button_action_name,
@@ -564,6 +565,9 @@ pub struct App {
     cache_dir: PathBuf,
     /// This computer's own settings (R78), next to the cache: never synced with the data.
     computer: PathBuf,
+    /// The rides' metadata read once and kept (R79); `None` if the cache cannot hold it, when
+    /// the history reads every ride's file as before.
+    index: Mutex<Option<HistoryIndex>>,
 }
 
 impl App {
@@ -586,6 +590,9 @@ impl App {
         if let Err(error) = profiles::carry_over(&data_dir, &computer) {
             warn!(%error, "cannot carry the settings over");
         }
+        let index = HistoryIndex::open(&cache_dir.join(torqa_storage::index::FILE))
+            .inspect_err(|error| warn!(%error, "the history reads every ride's file"))
+            .ok();
         Ok(Self {
             runtime,
             jobs_tx,
@@ -638,6 +645,7 @@ impl App {
             data_dir,
             cache_dir,
             computer,
+            index: Mutex::new(index),
         })
     }
 
@@ -1488,14 +1496,10 @@ impl App {
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
-    /// When the active rider last started a ride, by the key of its route. Rides whose
-    /// details cannot be read are left out, as the history rebuilds those.
+    /// When the active rider last started a ride, by the key of its route.
     fn last_ridden(&self) -> HashMap<String, SystemTime> {
         let mut last: HashMap<String, SystemTime> = HashMap::new();
-        for fit in rides::fit_files(&self.rides_dir()) {
-            let Ok(record) = rides::load(&fit) else {
-                continue;
-            };
+        for (_, record) in self.ride_records() {
             if let Some(key) = record.route_key {
                 last.entry(key)
                     .and_modify(|start| *start = (*start).max(record.start))
@@ -2528,26 +2532,42 @@ impl App {
         }]
     }
 
-    /// The active rider's rides, newest first (R31). Rides without metadata, e.g. FIT files
-    /// copied in by hand, are analysed once and get it written; so do rides without the data
-    /// the analysis across rides needs (R62), e.g. saved by an older Torqa.
+    /// The active rider's rides with their metadata, newest first: from the history index
+    /// where it knows them as their files are now (R79), else read from the files. Rides
+    /// without metadata, e.g. FIT files copied in by hand, are analysed once and get it
+    /// written; so do rides without the data the analysis across rides needs (R62), e.g. saved
+    /// by an older Torqa.
+    fn ride_records(&self) -> Vec<(PathBuf, RideRecord)> {
+        let mut load = |fit: &Path| {
+            let record = rides::load(fit)
+                .or_else(|_| self.rebuild_metadata(fit))
+                .map(|record| with_analysis(fit, record));
+            match record {
+                Ok(record) => Some(record),
+                Err(error) => {
+                    warn!(path = %fit.display(), %error, "skipping ride");
+                    None
+                }
+            }
+        };
+        let dir = self.rides_dir();
+        let mut index = self.index.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(index) = index.as_mut() {
+            match index.records(&dir, &mut load) {
+                Ok(records) => return records,
+                Err(error) => warn!(%error, "reading every ride's file instead"),
+            }
+        }
+        rides::fit_files(&dir)
+            .into_iter()
+            .filter_map(|fit| load(&fit).map(|record| (fit, record)))
+            .collect()
+    }
+
+    /// The active rider's rides, newest first (R31), with the records each set.
     #[must_use]
     pub fn history(&self) -> Vec<HistoryEntry> {
-        let records: Vec<(PathBuf, RideRecord)> = rides::fit_files(&self.rides_dir())
-            .into_iter()
-            .filter_map(|fit| {
-                let record = rides::load(&fit)
-                    .or_else(|_| self.rebuild_metadata(&fit))
-                    .map(|record| with_analysis(&fit, record));
-                match record {
-                    Ok(record) => Some((fit, record)),
-                    Err(error) => {
-                        warn!(path = %fit.display(), %error, "skipping ride");
-                        None
-                    }
-                }
-            })
-            .collect();
+        let records = self.ride_records();
         let all: Vec<&RideRecord> = records.iter().map(|(_, r)| r).collect();
         let power_bests = analysis::record_powers(all.iter().copied());
         records
@@ -4319,6 +4339,10 @@ mod tests {
 
         app.delete_ride(path).unwrap();
         assert_eq!(app.history().len(), 0);
+        assert!(
+            dir.join("cache").join(torqa_storage::index::FILE).exists(),
+            "the history was served from the index in the cache (R79)"
+        );
         app.shutdown();
     }
 
