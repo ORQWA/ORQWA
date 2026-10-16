@@ -44,7 +44,7 @@ Between releases, download artifacts from the
 while signed in to GitHub. Both use the same archives:
 
 The `macos` CI job builds `Torqa-macos-arm64.zip` and `torqa-cli-macos-arm64.tar.gz`. To test
-real trainers on macOS, use the CLI built by CI: see the [command-line guide](https://github.com/bossm8/Torqa/wiki/Command-line-tool).
+real trainers on macOS, use the CLI built by CI: see the [command-line guide](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Command-line-tool).
 
 Windows builds come from the `windows` CI job: `Torqa-windows-x86_64.zip` (`Torqa.exe` with
 `torqa_gd.dll` beside it; keep both in one folder) and `torqa-cli-windows-x86_64.zip`, both under
@@ -90,7 +90,7 @@ announcing it; merging the workflow PR alone does not create a release.
 
 ## Usage wiki
 
-Rider guides live in the [GitHub wiki](https://github.com/bossm8/Torqa/wiki), checked out as
+Rider guides live in the [GitHub wiki](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki), checked out as
 the `wiki/` submodule ([ADR 0015](adr/0015-usage-wiki.md)). Clone with
 `git clone --recurse-submodules`, or run `make wiki-init`
 in an existing checkout. Initialization leaves an existing wiki checkout untouched; after
@@ -105,8 +105,8 @@ and `python3 -m unittest discover -s scripts/wiki -p 'test_*.py'` directly.
    `make wiki-init`, then `git -C wiki switch -c docs/my-change`.
    Resume an existing branch with `git -C wiki switch docs/my-change`.
 2. Update the relevant guides, `Home.md`, `_Sidebar.md` and screenshots. Wiki filenames are
-   GitHub page names. Use absolute `https://github.com/bossm8/Torqa/wiki/<page>` links, and
-   `https://raw.githubusercontent.com/bossm8/Torqa/main/docs/images/<file>` for shared images.
+   GitHub page names. Use absolute `https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/<page>` links, and
+   `https://raw.githubusercontent.com/Torqa-Indoor-Cycling/Torqa/main/docs/images/<file>` for shared images.
    Check wiki references before deleting an image from the application repository.
 3. Run `make wiki-prepare BRANCH=docs/my-change`. It validates, commits wiki changes and
    pushes only the preparation branch; it never updates published pages. Name it `docs/<change>`

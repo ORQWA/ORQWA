@@ -32,7 +32,7 @@ fn client() -> Result<reqwest::Client, UploadError> {
         .user_agent(concat!(
             "Torqa/",
             env!("CARGO_PKG_VERSION"),
-            " (+https://github.com/bossm8/torqa)"
+            " (+https://github.com/Torqa-Indoor-Cycling/Torqa)"
         ))
         .timeout(Duration::from_secs(60))
         .build()
