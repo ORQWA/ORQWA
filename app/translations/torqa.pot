@@ -675,7 +675,7 @@ msgstr ""
 msgid "Custom"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:178
+#: app/scenes/button_dialog.gd:180
 msgid "D-Fly channel %d"
 msgstr ""
 
@@ -771,7 +771,7 @@ msgstr ""
 msgid "Distance"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:90 app/scenes/button_dialog.gd:142 app/scenes/history_screen.gd:303 app/scenes/ride_settings_dialog.gd:25
+#: app/scenes/button_dialog.gd:90 app/scenes/button_dialog.gd:144 app/scenes/history_screen.gd:303 app/scenes/ride_settings_dialog.gd:25
 msgid "Done"
 msgstr ""
 
@@ -815,7 +815,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:94
+#: app/scenes/button_dialog.gd:95
 msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
 msgstr ""
 
@@ -1467,7 +1467,7 @@ msgstr ""
 msgid "Not found"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:188
+#: app/scenes/button_dialog.gd:190
 msgid "Nothing"
 msgstr ""
 
