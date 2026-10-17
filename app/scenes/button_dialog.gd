@@ -3,7 +3,7 @@ extends AcceptDialog
 ## What a shifter's buttons do (#139, R75, R77): a row per button (a Di2's four D-Fly
 ## channels, a Zwift Click's + and −, a Click v2's ten), a column per kind of press the
 ## shifter tells apart, each cell an action. Opened from the pen beside the shifter's row
-## under Devices & Settings, so the tab stays one screen whatever the shifter (#271).
+## under Devices, so the tab stays one screen whatever the shifter (#271).
 
 ## The kinds of press, in the core's order.
 # i18n-begin

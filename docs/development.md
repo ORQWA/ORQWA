@@ -21,7 +21,7 @@ before that setting may hold CRLF files; `git ls-files --eol | grep w/crlf` list
 
 | Task | Command (inside the container) |
 |---|---|
-| All checks (fmt, clippy, tests, cargo-deny, translations, gdlint, gdformat, Godot smoke tests) | `scripts/check.sh` |
+| All checks (fmt, clippy, tests, cargo-deny, licence notices, translations, gdlint, gdformat, Godot smoke tests) | `scripts/check.sh` |
 | Build the GDExtension into `app/bin/` | `scripts/build-gdext.sh [debug\|release]` |
 | Render screenshots of the start page, a ride, the summary and the analysis (software Vulkan, with 16 weeks of made-up rides) into `screenshots/` | `scripts/screenshots.sh` |
 | Render only the English/German error-details views, without preparing a route | `SCREENSHOT_ERRORS_ONLY=1 scripts/screenshots.sh` |
@@ -29,6 +29,7 @@ before that setting may hold CRLF files; `git ls-files --eol | grep w/crlf` list
 | Render the 3D models (buildings, plants, clouds) and the riders for review; with `GALLERY=docs/images/models`, also the galleries in `art/README.md` | `scripts/render-models.sh`, `scripts/render-riders.sh` |
 | Regenerate the boot splash PNG after a logo change | `scripts/render-splash.sh` |
 | Refresh the translation template after text changes | `python3 scripts/i18n/extract.py` |
+| Refresh the crates' licence notices the About tab shows, after changing dependencies ([ADR 0018](adr/0018-about-and-notices.md)) | `scripts/notices.sh` |
 | Run the CLI with the fake trainer | `cargo run --manifest-path core/Cargo.toml -p torqa-cli -- ride --fake` |
 
 The 3D models are Blender scripts in `art/` (see [art/README.md](../art/README.md) for them and a
@@ -62,6 +63,11 @@ headless to check that it loads.
 
 Docker on macOS cannot access Bluetooth or the GPU, so macOS builds are produced by GitHub Actions.
 To test 3D rendering or a real trainer, run the built app (or the portable Godot editor) natively.
+
+Every build names the commit it comes from on the settings' About tab and in its first log
+line (`Torqa 0.1.0 (0ad9af1)`), as Git reports it while building, or the `TORQA_COMMIT`
+variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
+the host: a worktree's Git directory lies outside the checkout the container sees.
 
 ### Publishing a release
 

@@ -208,7 +208,7 @@ Built in rideable steps:
   - [x] Virtual gears on a single cog (24 gears, the road scaled for the trainer, ADR 0003)
     and the keyboard (↑ / ↓) behind `ShiftInput`; the drivetrain per rider
   - [x] Shimano Di2 over Bluetooth: buttons assigned to D-Fly channels shift up and down
-    (channels chosen in Devices & Settings), remembered and reconnected like the trainer
+    (channels chosen under Devices), remembered and reconnected like the trainer
   - [x] Di2 buttons assignable (#139): each channel's press, hold and double press shift one
     or two gears, or work the camera, the overlay or the music
   - [x] More ride controls on Di2 buttons (R66): pause/resume, trainer difficulty ±10 %,
@@ -244,7 +244,7 @@ Built in rideable steps:
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)
-- [x] Start page with top tabs (Courses, History, Profile, Devices & Settings); ride view separated
+- [x] Start page with top tabs (Courses, History, Profile, Devices); ride view separated
 - [x] Path card: route in `#2EB0FF` on black (elevation profile on the course page only); since
   #192 on the course's own map, drawn when the course is prepared and kept in the `.tqc`; since
   #203 the land around the whole route, black and white, with the names of its towns
@@ -281,7 +281,7 @@ Built in rideable steps:
 - [x] Export a ride's FIT file from the history or summary to a place the rider picks (R28)
 - [x] The ride chart draws cadence too; clicking a legend key hides or shows its line (R73)
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
-- [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Devices & Settings → Graphics;
+- [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Settings → Graphics;
   the choice is kept and Torqa starts that way
 - [x] The overlay's place is each rider's, graphics quality and full screen this computer's
   (R78, #257): kept next to the cache, out of the synced data folder, carried over once
@@ -290,6 +290,10 @@ Built in rideable steps:
   switching riders lets go of the other rider's devices and reconnects the new one's, a new
   rider starts with the devices in use, a scan picks a strap only if used last, and a device
   used last that a scan misses is no longer forgotten
+- [x] Settings behind a cog at the top right of the start page (R83): Graphics (quality, full
+  screen) moved from the devices tab, now Devices; About with the version, the commit
+  (`build.rs`) and the licence notices of Torqa, Godot, FFmpeg, every Rust crate (cargo-about,
+  checked to be current) and others' models and data (ADR 0018)
 - [x] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
   - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)

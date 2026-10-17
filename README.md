@@ -113,5 +113,7 @@ decisions: [docs/adr/](docs/adr/); third-party assets: [docs/CREDITS.md](docs/CR
 
 ## License
 
-[GPL-3.0](LICENSE). The video-course screenshot shows a frame of a CC BY-NC-SA 4.0 video and is
-under that licence (see [docs/CREDITS.md](docs/CREDITS.md)).
+[GPL-3.0](LICENSE). The app's settings show, under About, the licence of everything built into it:
+the Godot engine, FFmpeg, every Rust crate, and others' models and data. The video-course
+screenshot shows a frame of a CC BY-NC-SA 4.0 video and is under that licence (see
+[docs/CREDITS.md](docs/CREDITS.md)).

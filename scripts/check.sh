@@ -12,6 +12,8 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 cargo deny --all-features check
+# The crates' licence notices the About tab shows are those of today's dependencies (R83).
+"$root/scripts/notices.sh" --check
 # Translatable texts: template up to date, every translation complete (R24).
 python3 "$root/scripts/i18n/extract.py" --check
 python3 -m unittest discover -s "$root/scripts/i18n" -p 'test_*.py'
@@ -48,6 +50,8 @@ devices_output="$(run_godot -s res://tests/devices_smoke.gd)"
 echo "$devices_output" | grep "DEVICES SMOKE TEST PASSED"
 window_output="$(run_godot -s res://tests/window_smoke.gd)"
 echo "$window_output" | grep "WINDOW SMOKE TEST PASSED"
+settings_output="$(run_godot -s res://tests/settings_smoke.gd)"
+echo "$settings_output" | grep "SETTINGS SMOKE TEST PASSED"
 hud_output="$(run_godot -s res://tests/hud_smoke.gd)"
 echo "$hud_output" | grep "HUD SMOKE TEST PASSED"
 course_output="$(run_godot -s res://tests/course_smoke.gd)"

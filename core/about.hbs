@@ -1,0 +1,10 @@
+Rust libraries in Torqa, by licence: {{#each overview}}{{{name}}} ({{count}}){{#unless @last}}, {{/unless}}{{/each}}.
+{{#each licenses}}
+
+────────────────────────────────────────
+
+{{{name}}}
+{{#each used_by}}{{{crate.name}}} {{{crate.version}}}{{#unless @last}}, {{/unless}}{{/each}}
+
+{{{text}}}
+{{/each}}

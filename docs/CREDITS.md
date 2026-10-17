@@ -3,6 +3,10 @@
 Third-party assets in Torqa, with their sources and licences (R47, ADR 0009). Only own work,
 CC0, CC BY and CC BY-SA are allowed.
 
+The app's settings show these credits and every licence notice of the software built into it
+on their About tab (R83, ADR 0018): Torqa's GPL, the Godot engine and its components, FFmpeg's
+libraries (LGPL 2.1 or later) and every Rust crate, from `core/torqa-app/notices/`.
+
 ## Models
 
 Building, vegetation and cloud models (`app/assets/models/buildings/`,

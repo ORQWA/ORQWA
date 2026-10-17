@@ -1,8 +1,8 @@
 class_name StartPage
 extends Control
 ## The start page (R38): tabs for Courses, Workouts (R58), History, Analysis (R61), Profile and
-## Devices & Settings. The ride view is separate; riding starts from a course's detail page or the
-## Workouts tab.
+## Devices, and the cog at the top right for the settings (R83). The ride view is separate;
+## riding starts from a course's detail page or the Workouts tab.
 
 ## A ride has started with `options` (`RideOptions.options()`); a workout's also carry
 ## `workout` (`WorkoutsTab.workout()`) and `on_course`.
@@ -29,6 +29,9 @@ var _history: HistoryScreen = (
 var _analysis: AnalysisTab = AnalysisTab.new()
 var _profile: ProfileTab = ProfileTab.new()
 var _devices: DevicesTab = DevicesTab.new()
+## This computer's graphics and the About tab (R83), behind [member _settings_button].
+var _settings: SettingsDialog = SettingsDialog.new()
+var _settings_button: Button = Button.new()
 ## The options and ghost of the ride waiting for its world.
 var _pending_ride: Array = []
 ## The workout waiting for its course's world, and whether it has one.
@@ -45,6 +48,7 @@ func bind(torqa: TorqaApp) -> void:
 	_analysis.bind(torqa)
 	_profile.bind(torqa)
 	_devices.bind(torqa)
+	_settings.bind(torqa)
 
 
 ## Back from a ride: records, history and courses may have changed.
@@ -75,6 +79,18 @@ func _ready() -> void:
 	_tab_bar.clip_tabs = false
 	_tab_bar.focus_mode = Control.FOCUS_NONE
 	(%Header as HBoxContainer).add_child(_tab_bar)
+	_settings_button.icon = UiIcons.texture("cog")
+	_settings_button.tooltip_text = tr("Settings")
+	_settings_button.focus_mode = Control.FOCUS_NONE
+	_settings_button.size_flags_vertical = Control.SIZE_SHRINK_END
+	_settings_button.add_theme_stylebox_override("normal", UiTheme.icon_button(Color.TRANSPARENT))
+	_settings_button.add_theme_stylebox_override("hover", UiTheme.icon_button(UiTheme.SURFACE))
+	_settings_button.add_theme_stylebox_override(
+		"pressed", UiTheme.icon_button(Color(UiTheme.ACCENT, 0.18))
+	)
+	_settings_button.pressed.connect(_settings.open)
+	(%Header as HBoxContainer).add_child(_settings_button)
+	add_child(_settings)
 	# i18n-begin
 	for page: Array in [
 		[_courses_page, "Courses"],
@@ -82,7 +98,7 @@ func _ready() -> void:
 		[_history, "History"],
 		[_analysis, "Analysis"],
 		[_profile, "Profile"],
-		[_devices, "Devices & Settings"],
+		[_devices, "Devices"],
 	]:
 		# i18n-end
 		var node: Control = page[0]
@@ -169,7 +185,7 @@ func _on_tab_changed(tab: int) -> void:
 func _on_ride_requested(options: Dictionary, ghost: Dictionary) -> void:
 	_detail.show_status("")
 	if not _devices.connect_selected():
-		_detail.show_status(tr("No trainer connected — choose one under Devices & Settings."))
+		_detail.show_status(tr("No trainer connected — choose one under Devices."))
 		_tabs.current_tab = Tab.DEVICES
 		return
 	_pending_ride = [options, ghost]
@@ -178,7 +194,7 @@ func _on_ride_requested(options: Dictionary, ghost: Dictionary) -> void:
 
 func _on_workout_requested(workout: Dictionary, course_path: String) -> void:
 	if not _devices.connect_selected():
-		_workouts.show_status(tr("No trainer connected — choose one under Devices & Settings."))
+		_workouts.show_status(tr("No trainer connected — choose one under Devices."))
 		_tabs.current_tab = Tab.DEVICES
 		return
 	_pending_workout = workout

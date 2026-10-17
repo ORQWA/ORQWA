@@ -52,6 +52,76 @@ impl TorqaCore {
     fn version() -> GString {
         GString::from(torqa_domain::version())
     }
+
+    /// The commit the core is built from, abbreviated; empty when the build could not tell
+    /// (R83).
+    #[func]
+    fn commit() -> GString {
+        GString::from(COMMIT)
+    }
+
+    /// Where Torqa's source code is.
+    #[func]
+    fn source_url() -> GString {
+        GString::from(torqa_app::about::SOURCE)
+    }
+
+    /// The licence notices of Torqa and of everything built into the app, in the order to list
+    /// them (R83): `[{part, text}]`, `part` one of `torqa`, `godot`, `ffmpeg`, `crates` and
+    /// `assets`.
+    #[func]
+    fn notices() -> VarArray {
+        let mut array = VarArray::new();
+        for notice in torqa_app::about::notices(&engine_credits()) {
+            array.push(&vdict! {
+                "part" => notice.part.name(),
+                "text" => notice.text.as_str(),
+            });
+        }
+        array
+    }
+}
+
+/// The commit the build script found (see `build.rs`).
+const COMMIT: &str = env!("TORQA_COMMIT");
+
+/// What the running engine reports of its licence and of the components it is built from.
+fn engine_credits() -> torqa_app::about::EngineCredits {
+    let engine = Engine::singleton();
+    let text = |value: Option<Variant>| value.map(|v| v.to_string()).unwrap_or_default();
+    let mut components = Vec::new();
+    for component in engine.get_copyright_info().iter_shared() {
+        let name = text(component.get("name"));
+        let parts = component
+            .get("parts")
+            .and_then(|v| v.try_to::<VarArray>().ok());
+        for part in parts.iter().flat_map(VarArray::iter_shared) {
+            let Ok(part) = part.try_to::<VarDictionary>() else {
+                continue;
+            };
+            let copyright = part
+                .get("copyright")
+                .and_then(|v| v.try_to::<VarArray>().ok());
+            components.push(torqa_app::about::Component {
+                name: name.clone(),
+                copyright: copyright
+                    .iter()
+                    .flat_map(VarArray::iter_shared)
+                    .map(|holder| holder.to_string())
+                    .collect(),
+                licence: text(part.get("license")),
+            });
+        }
+    }
+    torqa_app::about::EngineCredits {
+        licence: engine.get_license_text().to_string(),
+        components,
+        licences: engine
+            .get_license_info()
+            .iter_shared()
+            .map(|(name, licence)| (name.to_string(), licence.to_string()))
+            .collect(),
+    }
 }
 
 /// The Torqa application as a node: add it to the scene tree, call its commands and listen to
@@ -3253,6 +3323,20 @@ fn format_failure(template: &str, args: &[String]) -> String {
         result.push_str(part);
     }
     result
+}
+
+#[cfg(test)]
+mod build_tests {
+    use super::COMMIT;
+
+    #[test]
+    fn the_commit_is_abbreviated_or_unknown() {
+        assert!(
+            COMMIT.is_empty()
+                || (COMMIT.len() >= 7 && COMMIT.chars().all(|c| c.is_ascii_hexdigit())),
+            "{COMMIT}"
+        );
+    }
 }
 
 #[cfg(test)]
