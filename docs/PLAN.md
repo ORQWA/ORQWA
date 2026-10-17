@@ -280,6 +280,8 @@ Built in rideable steps:
   search per row finds that kind of device alone and connects the nearest, a scan for all is
   the fallback; the devices used last are shown by name while they reconnect at start, and
   choosing none lets a device go
+- [x] Beside a connected device its live reading (power, cadence, heart rate), also between
+  rides; beside a failed one why the attempt failed, while the driver keeps trying (R80)
 - [x] In-ride settings dialog (camera, difficulty, descents, time of day, weather, HUD) from
   one button or key S; finish & save or abort without saving after a confirmation (R48–R49)
 - [x] The same ride options on the course detail page (R48, with the start page)

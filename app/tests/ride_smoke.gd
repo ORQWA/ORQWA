@@ -67,6 +67,10 @@ func _run() -> void:
 	var trainer_connected: bool = trainer.get("connected", false)
 	var kind: String = trainer.get("kind", "")
 	_check(kind == "trainer" and trainer_connected, "devices during the ride: %s" % [devices])
+	# What the trainer reports is at hand for the devices screen too (R80).
+	var reading: Dictionary = _torqa.device_reading("trainer")
+	var reading_power: float = reading.get("power", 0.0)
+	_check(is_equal_approx(reading_power, 250.0), "the trainer's reading: %s" % reading)
 	var ride_devices: RideDevices = RideDevices.new()
 	ride_devices.bind(_torqa)
 	root.add_child(ride_devices)

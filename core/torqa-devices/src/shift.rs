@@ -58,6 +58,8 @@ pub struct Controller {
     model: ControllerModel,
     assignments: Arc<Assignments>,
     connected: bool,
+    /// Why the last attempt to connect failed, while the driver tries again (R80).
+    failure: Option<String>,
     /// Controls pressed for, until [`ShiftInput::controls`] takes them.
     controls: Vec<Control>,
 }
@@ -76,6 +78,7 @@ impl Controller {
             model,
             assignments,
             connected: false,
+            failure: None,
             controls: Vec::new(),
         }
     }
@@ -90,8 +93,12 @@ impl ShiftInput for Controller {
         let mut shifts = Vec::new();
         while let Ok(Some(event)) = self.handle.try_next_event() {
             match event {
-                DeviceEvent::Connected => self.connected = true,
+                DeviceEvent::Connected => {
+                    self.connected = true;
+                    self.failure = None;
+                }
                 DeviceEvent::Disconnected => self.connected = false,
+                DeviceEvent::Failed(reason) => self.failure = Some(reason),
                 DeviceEvent::Buttons(presses) => {
                     for action in self.assignments.get(self.model).actions(&presses) {
                         shifts.extend_from_slice(action.shifts());
@@ -112,6 +119,10 @@ impl ShiftInput for Controller {
 
     fn connected(&self) -> bool {
         self.connected
+    }
+
+    fn failure(&self) -> Option<&str> {
+        self.failure.as_deref()
     }
 }
 
@@ -154,6 +165,8 @@ impl ShiftInput for Keyboard {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use torqa_domain::shifting::{ButtonPress, Press};
 
     use super::*;
@@ -168,6 +181,29 @@ mod tests {
 
     fn press(channel: u8, press: Press) -> ButtonPress {
         ButtonPress { channel, press }
+    }
+
+    #[tokio::test]
+    async fn a_shifter_that_cannot_be_connected_says_why_until_it_is() {
+        let handle =
+            crate::fake::spawn_failing("Zwift Click", "device not found", Duration::from_millis(5));
+        let mut controller = Controller::new(
+            handle,
+            ControllerModel::ZwiftClick,
+            Arc::new(Assignments::default()),
+        );
+        assert_eq!(controller.failure(), None);
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while controller.failure().is_none() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the failure was never told"
+            );
+            tokio::time::sleep(Duration::from_millis(5)).await;
+            assert_eq!(controller.poll(), []);
+        }
+        assert!(!controller.connected());
+        assert_eq!(controller.failure(), Some("device not found"));
     }
 
     #[tokio::test]

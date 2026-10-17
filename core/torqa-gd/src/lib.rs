@@ -219,6 +219,10 @@ impl TorqaApp {
     #[signal]
     fn device_disconnected(name: GString);
 
+    /// An attempt to connect `name` failed for `reason` (R80); its driver tries again.
+    #[signal]
+    fn device_failed(name: GString, reason: GString);
+
     /// The rider reached the finish.
     #[signal]
     fn ride_finished();
@@ -312,9 +316,10 @@ impl TorqaApp {
     }
 
     /// The trainer, sensors and shifter in use or used last, as
-    /// `[{name, kind, state, connected}]` with `kind` as in `devices_found` and `state`
+    /// `[{name, kind, state, connected, failure}]` with `kind` as in `devices_found`, `state`
     /// `connected`, `connecting` (chosen or remembered, on its way or reconnecting) or
-    /// `missing` (used last, not found by the scan) (R69, R76).
+    /// `missing` (used last, not found by the scan) (R69, R76), and `failure` why the last
+    /// attempt to connect failed while the driver tries again, else "" (R80).
     #[func]
     fn devices(&self) -> VarArray {
         let mut array = VarArray::new();
@@ -324,9 +329,31 @@ impl TorqaApp {
                 "kind" => kind_name(device.kind),
                 "state" => device.state.name(),
                 "connected" => device.state == torqa_app::DeviceState::Connected,
+                "failure" => device.failure.as_deref().unwrap_or(""),
             });
         }
         array
+    }
+
+    /// What the device of `kind` (as in `devices_found`) reported in the last seconds, also
+    /// between rides (R80): `{power, cadence, heart_rate, speed_kmh}`, each null when the
+    /// device does not report it; empty when nothing came or the kind is unknown.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn device_reading(&self, kind: GString) -> VarDictionary {
+        let Some(kind) = kind_of(&kind.to_string()) else {
+            return VarDictionary::new();
+        };
+        let Some(reading) = self.app.as_ref().and_then(|app| app.device_reading(kind)) else {
+            return VarDictionary::new();
+        };
+        let optional = |value: Option<f64>| value.map_or_else(Variant::nil, |v| v.to_variant());
+        vdict! {
+            "power" => &optional(reading.power.map(|p| p.0)),
+            "cadence" => &optional(reading.cadence.map(|c| c.0)),
+            "heart_rate" => &optional(reading.heart_rate.map(|h| h.0)),
+            "speed_kmh" => &optional(reading.speed.map(MetersPerSecond::as_kilometers_per_hour)),
+        }
     }
 
     /// Scans for trainers, power meters, cadence and heart-rate sensors and shifters.
@@ -2731,6 +2758,12 @@ impl TorqaApp {
                     .device_disconnected()
                     .emit(&GString::from(name.as_str()));
             }
+            AppEvent::ConnectionFailed { name, reason } => {
+                self.signals().device_failed().emit(
+                    &GString::from(name.as_str()),
+                    &GString::from(reason.as_str()),
+                );
+            }
             AppEvent::RideFinished => self.signals().ride_finished().emit(),
             AppEvent::RideSaved(path) => {
                 let path = path.display().to_string();
@@ -3104,6 +3137,19 @@ fn kind_name(kind: DeviceKind) -> &'static str {
         DeviceKind::CadenceSensor => "cadence_sensor",
         DeviceKind::Controller => "controller",
     }
+}
+
+/// The device kind GDScript names, if any.
+fn kind_of(name: &str) -> Option<DeviceKind> {
+    [
+        DeviceKind::Trainer,
+        DeviceKind::HeartRateSensor,
+        DeviceKind::PowerMeter,
+        DeviceKind::CadenceSensor,
+        DeviceKind::Controller,
+    ]
+    .into_iter()
+    .find(|&kind| kind_name(kind) == name)
 }
 
 /// Scanned devices as `[{index, name, kind, model, rssi, remembered}]` for `devices_found`.

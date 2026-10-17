@@ -20,7 +20,7 @@ pub use import::{Imported, LoadStage, Progress, countries, course_map, import_gp
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError, mpsc};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use torqa_devices::ble::{Bluetooth, ControllerModel, DeviceKind, DiscoveredDevice};
 use torqa_devices::fake::{self, FakeRider};
@@ -162,6 +162,8 @@ pub struct DeviceStatus {
     pub kind: DeviceKind,
     /// Whether it is connected, on its way, or was not found.
     pub state: DeviceState,
+    /// Why the last attempt to connect it failed, while its driver tries again (R80).
+    pub failure: Option<String>,
 }
 
 /// How a device the rider uses is doing (R76).
@@ -289,6 +291,10 @@ pub struct RideDetail {
     pub heart_rate_zones: [Duration; 5],
 }
 
+/// How long a device's last reading counts as live (R80): a strap sends every second, a
+/// trainer several times a second, so a longer silence means the device went quiet.
+pub const READING_AGE: Duration = Duration::from_secs(5);
+
 /// Something that happened since the last [`App::update`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppEvent {
@@ -319,6 +325,13 @@ pub enum AppEvent {
     RememberedMissing(Vec<String>),
     /// A device lost its connection; it reconnects automatically.
     Disconnected(String),
+    /// An attempt to connect a device failed (R80); its driver tries again after a pause.
+    ConnectionFailed {
+        /// The device's name.
+        name: String,
+        /// Why: a timeout, the device out of reach, a Bluetooth error.
+        reason: String,
+    },
     /// The rider reached the finish.
     RideFinished,
     /// The ride was saved as a FIT file.
@@ -533,6 +546,12 @@ pub struct App {
     cadence_sensor: Option<DeviceHandle>,
     cadence_sensor_id: Option<String>,
     cadence_sensor_connected: Option<SystemTime>,
+    /// What each device reported last and when (R80), so the devices screen can show a live
+    /// reading beside a connected device, also between rides.
+    readings: HashMap<DeviceKind, (Telemetry, Instant)>,
+    /// Why the last attempt to connect each device failed, while its driver tries again
+    /// (R80); cleared once it connects or is let go.
+    failures: HashMap<DeviceKind, String>,
     /// The running scan was started to reconnect the remembered devices.
     reconnecting: bool,
     /// The loaded route came from a course file (and is in the library already).
@@ -640,6 +659,8 @@ impl App {
             cadence_sensor: None,
             cadence_sensor_id: None,
             cadence_sensor_connected: None,
+            readings: HashMap::new(),
+            failures: HashMap::new(),
             reconnecting: false,
             from_course: false,
             load: 0,
@@ -1913,6 +1934,7 @@ impl App {
     /// [`AppError::UnknownDevice`] if the index is not a trainer from the last scan.
     pub fn connect_trainer(&mut self, choice: TrainerChoice) -> Result<(), AppError> {
         let _runtime = self.runtime.enter();
+        self.forget_reports(DeviceKind::Trainer);
         let handle = match choice {
             TrainerChoice::Fake(mut rider) => {
                 self.trainer_id = None;
@@ -1976,7 +1998,12 @@ impl App {
                 (name.to_owned(), state)
             })
             .or_else(|| remembered.map(|r| (r.name, DeviceState::Missing)))
-            .map(|(name, state)| DeviceStatus { name, kind, state })
+            .map(|(name, state)| DeviceStatus {
+                name,
+                kind,
+                state,
+                failure: self.failures.get(&kind).cloned(),
+            })
         };
         let controller = self
             .controller_id
@@ -2017,6 +2044,23 @@ impl App {
         .into_iter()
         .flatten()
         .collect()
+    }
+
+    /// What the device of `kind` reported last, if within [`READING_AGE`] (R80): the trainer's
+    /// and the power meter's power and cadence, the cadence sensor's cadence, the strap's heart
+    /// rate; also between rides, for the devices screen. The shifter reports nothing.
+    #[must_use]
+    pub fn device_reading(&self, kind: DeviceKind) -> Option<Telemetry> {
+        self.readings
+            .get(&kind)
+            .filter(|(_, at)| at.elapsed() <= READING_AGE)
+            .map(|(telemetry, _)| *telemetry)
+    }
+
+    /// A device chosen anew or let go: its last reading and failure are not its successor's.
+    fn forget_reports(&mut self, kind: DeviceKind) {
+        self.readings.remove(&kind);
+        self.failures.remove(&kind);
     }
 
     /// Connects again the Bluetooth devices that are not connected now, e.g. during a ride
@@ -2098,18 +2142,21 @@ impl App {
         }
     }
 
-    /// Drops the link to the device in `role`; a ride under way stops counting on it.
+    /// Drops the link to the device in `role`, and what it reported (R80); a ride under way
+    /// stops counting on it.
     fn let_go(&mut self, role: DeviceRole) {
         match role {
             DeviceRole::Trainer => {
                 self.trainer = None;
                 self.trainer_id = None;
                 self.trainer_connected = None;
+                self.forget_reports(DeviceKind::Trainer);
             }
             DeviceRole::HeartRate => {
                 self.sensor = None;
                 self.sensor_id = None;
                 self.sensor_connected = None;
+                self.forget_reports(DeviceKind::HeartRateSensor);
                 if let Some(active) = &mut self.ride {
                     active.ride.on_heart_rate_lost();
                 }
@@ -2118,6 +2165,7 @@ impl App {
                 self.power_meter = None;
                 self.power_meter_id = None;
                 self.power_meter_connected = None;
+                self.forget_reports(DeviceKind::PowerMeter);
                 if let Some(active) = &mut self.ride {
                     active.ride.on_power_meter_lost();
                 }
@@ -2126,6 +2174,7 @@ impl App {
                 self.cadence_sensor = None;
                 self.cadence_sensor_id = None;
                 self.cadence_sensor_connected = None;
+                self.forget_reports(DeviceKind::CadenceSensor);
                 if let Some(active) = &mut self.ride {
                     active.ride.on_cadence_sensor_lost();
                 }
@@ -2134,6 +2183,7 @@ impl App {
                 self.shift_inputs.truncate(1);
                 self.shift_inputs_connected.truncate(1);
                 self.controller_id = None;
+                self.forget_reports(DeviceKind::Controller);
             }
         }
     }
@@ -2219,6 +2269,7 @@ impl App {
         }
         let _runtime = self.runtime.enter();
         self.remember(DeviceRole::HeartRate, &device);
+        self.forget_reports(DeviceKind::HeartRateSensor);
         self.sensor_id = Some(id);
         self.sensor = Some(self.bluetooth()?.connect(device));
         self.sensor_connected = None;
@@ -2265,6 +2316,7 @@ impl App {
         }
         let _runtime = self.runtime.enter();
         self.remember(DeviceRole::PowerMeter, &device);
+        self.forget_reports(DeviceKind::PowerMeter);
         self.power_meter_id = Some(id);
         self.power_meter = Some(self.bluetooth()?.connect(device));
         self.power_meter_connected = None;
@@ -2290,6 +2342,7 @@ impl App {
         }
         let _runtime = self.runtime.enter();
         self.remember(DeviceRole::CadenceSensor, &device);
+        self.forget_reports(DeviceKind::CadenceSensor);
         self.cadence_sensor_id = Some(id);
         self.cadence_sensor = Some(self.bluetooth()?.connect(device));
         self.cadence_sensor_connected = None;
@@ -2331,6 +2384,7 @@ impl App {
         }
         let _runtime = self.runtime.enter();
         self.remember(DeviceRole::Controller, &device);
+        self.forget_reports(DeviceKind::Controller);
         // A scan finds every shifter with its model: the Di2 fallback is never taken.
         let model = device.model.unwrap_or(ControllerModel::Di2);
         let handle = self.bluetooth()?.connect(device);
@@ -3141,12 +3195,9 @@ impl App {
         Ok(record)
     }
 
-    /// Processes everything that happened since the last call and advances the ride by `dt`.
-    pub fn update(&mut self, dt: Duration) -> Vec<AppEvent> {
-        let mut events = Vec::new();
-        self.poll_jobs(&mut events);
-        self.poll_trainer(&mut events);
-        self.poll_sensors(&mut events);
+    /// Feeds the ride the shifts asked for, passes on the other controls, and reports the
+    /// shifter's connection and why it fails to connect (R80).
+    fn poll_shift_inputs(&mut self, events: &mut Vec<AppEvent>) {
         for (input, was_connected) in self
             .shift_inputs
             .iter_mut()
@@ -3173,7 +3224,32 @@ impl App {
                     AppEvent::Disconnected(name)
                 });
             }
+            if connected {
+                self.failures.remove(&DeviceKind::Controller);
+            } else if let Some(reason) = input.failure()
+                && self
+                    .failures
+                    .get(&DeviceKind::Controller)
+                    .map(String::as_str)
+                    != Some(reason)
+            {
+                self.failures
+                    .insert(DeviceKind::Controller, reason.to_owned());
+                events.push(AppEvent::ConnectionFailed {
+                    name: input.name().to_owned(),
+                    reason: reason.to_owned(),
+                });
+            }
         }
+    }
+
+    /// Processes everything that happened since the last call and advances the ride by `dt`.
+    pub fn update(&mut self, dt: Duration) -> Vec<AppEvent> {
+        let mut events = Vec::new();
+        self.poll_jobs(&mut events);
+        self.poll_trainer(&mut events);
+        self.poll_sensors(&mut events);
+        self.poll_shift_inputs(&mut events);
 
         if let Some(active) = &mut self.ride
             && active.started.is_some()
@@ -3488,21 +3564,32 @@ impl App {
                             active.ride.resend_control();
                         }
                     }
+                    self.failures.remove(&DeviceKind::Trainer);
                     events.push(AppEvent::Connected(trainer.name().to_owned()));
                 }
                 Ok(Some(DeviceEvent::Disconnected)) => {
                     if let Some(active) = &mut self.ride {
                         active.ride.on_trainer_lost();
                     }
+                    self.readings.remove(&DeviceKind::Trainer);
                     // Each failed attempt to reconnect reports again; the rider hears it once.
                     if self.trainer_connected.take().is_some() {
                         events.push(AppEvent::Disconnected(trainer.name().to_owned()));
                     }
                 }
+                Ok(Some(DeviceEvent::Failed(reason))) => {
+                    self.failures.insert(DeviceKind::Trainer, reason.clone());
+                    events.push(AppEvent::ConnectionFailed {
+                        name: trainer.name().to_owned(),
+                        reason,
+                    });
+                }
                 Ok(Some(DeviceEvent::Telemetry(telemetry))) => {
                     if let Some(active) = &mut self.ride {
                         active.ride.on_telemetry(&telemetry);
                     }
+                    self.readings
+                        .insert(DeviceKind::Trainer, (telemetry, Instant::now()));
                 }
                 Ok(Some(DeviceEvent::Buttons(_))) => {}
                 Ok(None) => break,
@@ -3510,6 +3597,7 @@ impl App {
                     events.push(AppEvent::Error(Failure::new(Kind::Trainer, error)));
                     self.trainer = None;
                     self.trainer_connected = None;
+                    self.readings.remove(&DeviceKind::Trainer);
                     break;
                 }
             }
@@ -3518,49 +3606,64 @@ impl App {
 
     /// Feeds the ride what the heart-rate strap, power meter and cadence sensor reported.
     fn poll_sensors(&mut self, events: &mut Vec<AppEvent>) {
-        let sensors: [(
-            &mut Option<DeviceHandle>,
-            &mut Option<SystemTime>,
-            Kind,
-            SensorFeed,
-        ); 3] = [
+        let sensors: [SensorSlot<'_>; 3] = [
             (
                 &mut self.sensor,
                 &mut self.sensor_connected,
-                Kind::HeartRate,
+                (DeviceKind::HeartRateSensor, Kind::HeartRate),
                 (Ride::on_telemetry, Ride::on_heart_rate_lost),
             ),
             (
                 &mut self.power_meter,
                 &mut self.power_meter_connected,
-                Kind::PowerMeter,
+                (DeviceKind::PowerMeter, Kind::PowerMeter),
                 (Ride::on_power_meter, Ride::on_power_meter_lost),
             ),
             (
                 &mut self.cadence_sensor,
                 &mut self.cadence_sensor_connected,
-                Kind::Cadence,
+                (DeviceKind::CadenceSensor, Kind::Cadence),
                 (Ride::on_cadence_sensor, Ride::on_cadence_sensor_lost),
             ),
         ];
         for (slot, connected, what, feed) in sensors {
             let ride = self.ride.as_mut().map(|active| &mut active.ride);
-            poll_sensor(slot, connected, what, ride, feed, events);
+            let mut reports = Reports {
+                readings: &mut self.readings,
+                failures: &mut self.failures,
+            };
+            poll_sensor(slot, connected, what, ride, feed, &mut reports, events);
         }
     }
 }
 
+/// Where the sensors' last readings and failures are kept (R80).
+struct Reports<'a> {
+    readings: &'a mut HashMap<DeviceKind, (Telemetry, Instant)>,
+    failures: &'a mut HashMap<DeviceKind, String>,
+}
+
 /// How a ride takes a sensor's measurements, and its loss.
 type SensorFeed = (fn(&mut Ride, &Telemetry), fn(&mut Ride));
+
+/// A sensor's handle and when it connected, what it is for the failures and the readings,
+/// and how a ride takes what it reports.
+type SensorSlot<'a> = (
+    &'a mut Option<DeviceHandle>,
+    &'a mut Option<SystemTime>,
+    (DeviceKind, Kind),
+    SensorFeed,
+);
 
 /// Reads a sensor's events into the ride, if one is under way. A sensor whose driver stopped
 /// is let go.
 fn poll_sensor(
     slot: &mut Option<DeviceHandle>,
     connected: &mut Option<SystemTime>,
-    what: Kind,
+    (kind, what): (DeviceKind, Kind),
     mut ride: Option<&mut Ride>,
     (on_reading, on_lost): SensorFeed,
+    reports: &mut Reports<'_>,
     events: &mut Vec<AppEvent>,
 ) {
     let Some(sensor) = slot else {
@@ -3570,21 +3673,31 @@ fn poll_sensor(
         match sensor.try_next_event() {
             Ok(Some(DeviceEvent::Connected)) => {
                 *connected = Some(SystemTime::now());
+                reports.failures.remove(&kind);
                 events.push(AppEvent::Connected(sensor.name().to_owned()));
             }
             Ok(Some(DeviceEvent::Disconnected)) => {
                 if let Some(ride) = ride.as_deref_mut() {
                     on_lost(ride);
                 }
+                reports.readings.remove(&kind);
                 // Each failed attempt to reconnect reports again; the rider hears it once.
                 if connected.take().is_some() {
                     events.push(AppEvent::Disconnected(sensor.name().to_owned()));
                 }
             }
+            Ok(Some(DeviceEvent::Failed(reason))) => {
+                reports.failures.insert(kind, reason.clone());
+                events.push(AppEvent::ConnectionFailed {
+                    name: sensor.name().to_owned(),
+                    reason,
+                });
+            }
             Ok(Some(DeviceEvent::Telemetry(telemetry))) => {
                 if let Some(ride) = ride.as_deref_mut() {
                     on_reading(ride, &telemetry);
                 }
+                reports.readings.insert(kind, (telemetry, Instant::now()));
             }
             Ok(Some(DeviceEvent::Buttons(_))) => {}
             Ok(None) => break,
@@ -3595,6 +3708,7 @@ fn poll_sensor(
                 }
                 *slot = None;
                 *connected = None;
+                reports.readings.remove(&kind);
                 break;
             }
         }
@@ -5865,6 +5979,20 @@ mod tests {
             (DeviceKind::Trainer, DeviceState::Connecting)
         );
         run_until(&mut app, |e| matches!(e, AppEvent::Connected(_)));
+        // What it reports is at hand between rides too, for the devices screen (R80).
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while app.device_reading(DeviceKind::Trainer).is_none() {
+            assert!(
+                Instant::now() < deadline,
+                "no reading from the fake trainer"
+            );
+            std::thread::sleep(Duration::from_millis(16));
+            app.update(Duration::from_millis(16));
+        }
+        let reading = app.device_reading(DeviceKind::Trainer).unwrap();
+        assert_eq!(reading.power, Some(Watts(200.0)));
+        assert_eq!(reading.cadence, Some(Rpm(90.0)));
+        assert!(app.device_reading(DeviceKind::HeartRateSensor).is_none());
 
         // The strap used last was not found: the rider can ask to reconnect it (R69).
         assert_eq!(
@@ -6046,6 +6174,83 @@ mod tests {
             "the buttons shift as Ben set them"
         );
         assert_eq!(app.cadence_source(), CadenceSource::PowerMeter);
+        app.shutdown();
+    }
+
+    #[test]
+    fn a_failed_attempt_to_connect_says_why_beside_the_device_until_it_is_let_go() {
+        let dir = temp_dir("device-failure");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let period = Duration::from_millis(20);
+        {
+            let _runtime = app.runtime.enter();
+            app.sensor = Some(fake::spawn_failing(
+                "Polar H9",
+                "connecting timed out",
+                period,
+            ));
+            let buttons = Arc::clone(&app.buttons);
+            app.controller_id = Some("click".to_owned());
+            app.add_shift_input(Box::new(torqa_devices::shift::Controller::new(
+                fake::spawn_failing("Zwift Click", "device not found", period),
+                ControllerModel::ZwiftClick,
+                buttons,
+            )));
+        }
+        let failed = |name: &str, reason: &str| AppEvent::ConnectionFailed {
+            name: name.to_owned(),
+            reason: reason.to_owned(),
+        };
+        let mut events = run_until(
+            &mut app,
+            |e| matches!(e, AppEvent::ConnectionFailed { name, .. } if name == "Polar H9"),
+        );
+        events.extend(run_until(
+            &mut app,
+            |e| matches!(e, AppEvent::ConnectionFailed { name, .. } if name == "Zwift Click"),
+        ));
+        assert!(events.contains(&failed("Polar H9", "connecting timed out")));
+        assert!(events.contains(&failed("Zwift Click", "device not found")));
+        // A link never made is not lost: the rider hears of the failure, not of a drop.
+        assert!(
+            !events
+                .iter()
+                .any(|e| matches!(e, AppEvent::Disconnected(_)))
+        );
+
+        // The devices show the reason while their drivers keep trying (R80).
+        let devices = app.devices();
+        let reasons = devices
+            .iter()
+            .map(|d| (d.kind, d.state, d.failure.as_deref()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            reasons,
+            [
+                (
+                    DeviceKind::HeartRateSensor,
+                    DeviceState::Connecting,
+                    Some("connecting timed out")
+                ),
+                (
+                    DeviceKind::Controller,
+                    DeviceState::Connecting,
+                    Some("device not found")
+                ),
+            ]
+        );
+        assert!(app.device_reading(DeviceKind::HeartRateSensor).is_none());
+        // The shifter's reason is told once, not with every attempt.
+        let again = run_until(
+            &mut app,
+            |e| matches!(e, AppEvent::ConnectionFailed { name, .. } if name == "Polar H9"),
+        );
+        assert!(!again.contains(&failed("Zwift Click", "device not found")));
+
+        // Let go, the devices take their reasons with them.
+        app.disconnect_heart_rate().unwrap();
+        app.disconnect_controller().unwrap();
+        assert_eq!(app.devices(), []);
         app.shutdown();
     }
 

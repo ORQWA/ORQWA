@@ -33,7 +33,7 @@ const RECONNECT_SCAN: Duration = Duration::from_secs(5);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// What a discovered device can do.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeviceKind {
     /// A controllable trainer (FTMS).
     Trainer,
@@ -299,11 +299,17 @@ impl Driver {
                 end = attempt => end,
                 () = closed.closed() => break,
             };
-            match end {
+            let failure = match end {
                 Ok(SessionEnd::HandleDropped) => break,
-                Ok(SessionEnd::Disconnected) => info!(device = %self.device.name, "disconnected"),
-                Err(error) => warn!(device = %self.device.name, %error, "connection failed"),
-            }
+                Ok(SessionEnd::Disconnected) => {
+                    info!(device = %self.device.name, "disconnected");
+                    None
+                }
+                Err(error) => {
+                    warn!(device = %self.device.name, %error, "connection failed");
+                    Some(error.to_string())
+                }
+            };
             self.disconnect_partner().await;
             if self
                 .channels
@@ -311,6 +317,17 @@ impl Driver {
                 .send(DeviceEvent::Disconnected)
                 .await
                 .is_err()
+            {
+                break;
+            }
+            // The rider sees why, beside the device, while the driver tries again (R80).
+            if let Some(reason) = failure
+                && self
+                    .channels
+                    .events
+                    .send(DeviceEvent::Failed(reason))
+                    .await
+                    .is_err()
             {
                 break;
             }

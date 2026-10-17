@@ -5,8 +5,9 @@ extends VBoxContainer
 ## (#139, in a dialog behind the pen beside its row), and the devices used last reconnecting
 ## at start. A device connects the moment it
 ## is chosen, and each row says how its device is doing: connecting, connected, reconnecting
-## after a drop, not found, or failed. All of it is the active rider's (R82): switching riders
-## brings their own devices.
+## after a drop, not found, or failed. Beside a connected device stands what it reports, and
+## beside a failed one why it failed (R80). All of it is the active rider's (R82): switching
+## riders brings their own devices.
 
 const FAKE_TRAINER: int = -1
 const NO_HEART_RATE: int = -1
@@ -22,12 +23,21 @@ const NO_SHIFTER: int = -1
 ## shown by name so the rider knows what Torqa is looking for; choosing it looks again.
 const REMEMBERED: int = -9
 const SCAN_SECONDS: float = 5.0
+## How often a connected device's reading beside its row is refreshed (R80).
+const READING_SECONDS: float = 0.5
 ## The device roles, by the core's name for each kind of device.
 const TRAINER: String = "trainer"
 const POWER_METER: String = "power_meter"
 const CADENCE: String = "cadence"
 const HEART_RATE: String = "heart_rate"
 const CONTROLLER: String = "controller"
+## The core's kind of device each role's reading is asked for (R80); a shifter reports none.
+const READING_KINDS: Dictionary[String, String] = {
+	TRAINER: "trainer",
+	POWER_METER: "power_meter",
+	CADENCE: "cadence_sensor",
+	HEART_RATE: "heart_rate",
+}
 # i18n-begin
 ## How a row's device is doing (R76), by state.
 const STATE_LABELS: Dictionary[String, String] = {
@@ -73,6 +83,11 @@ var _search_buttons: Dictionary[String, Button] = {}
 var _searching: String = ""
 ## The name of the device each role waits for or has, to match the core's reports.
 var _expected: Dictionary[String, String] = {}
+## Why a role's connection failed, shown beside Failed, and the reading shown beside
+## Connected, as last rendered (R80).
+var _reasons: Dictionary[String, String] = {}
+var _readings: Dictionary[String, String] = {}
+var _since_reading: float = 0.0
 var _status: Label = Label.new()
 
 
@@ -81,6 +96,7 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa.devices_found.connect(_on_devices_found)
 	_torqa.device_connected.connect(_on_device_connected)
 	_torqa.device_disconnected.connect(_on_device_disconnected)
+	_torqa.device_failed.connect(_on_device_failed)
 	_torqa.remembered_missing.connect(_on_remembered_missing)
 	_torqa.failed.connect(func(_message: String) -> void: _scan_button.disabled = false)
 	_torqa.profile_changed.connect(_on_profile_changed)
@@ -139,6 +155,8 @@ func _init() -> void:
 		# Device names are never translated; the fixed entries are, in code.
 		option.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		option.custom_minimum_size = Vector2(420, 0)
+		# A reason that wraps makes the row taller; the controls keep their height.
+		option.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		grid.add_child(option)
 		_options[role] = option
 		# A pen opens what there is to set up on the device: a shifter's buttons (#271). The
@@ -148,6 +166,7 @@ func _init() -> void:
 			_edit_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			_edit_button.tooltip_text = tr("What the buttons do")
 			_edit_button.custom_minimum_size = Vector2(44, 0)
+			_edit_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			_edit_button.disabled = true
 			_edit_button.pressed.connect(_on_edit_pressed)
 			grid.add_child(_edit_button)
@@ -159,12 +178,17 @@ func _init() -> void:
 		var search: Button = Button.new()
 		search.text = tr("Search")
 		search.custom_minimum_size = Vector2(110, 0)
+		search.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		search.pressed.connect(func() -> void: _on_search(role))
 		grid.add_child(search)
 		_search_buttons[role] = search
 		var state: Label = Label.new()
 		state.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		state.custom_minimum_size = Vector2(160, 0)
+		# Room for a reading, or a reason: the rest of the row's width, then it wraps rather
+		# than widens the page (a German reason or a Bluetooth stack's message runs long).
+		state.custom_minimum_size = Vector2(260, 0)
+		state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		grid.add_child(state)
 		_state_labels[role] = state
@@ -391,6 +415,51 @@ func _on_device_disconnected(device_name: String) -> void:
 			_set_state(role, "reconnecting")
 
 
+## An attempt to connect failed (R80): the row waiting for the device says why, while the
+## driver tries again; the next report of a connection clears it.
+func _on_device_failed(device_name: String, reason: String) -> void:
+	for role: String in _expected:
+		if _expected[role] == device_name:
+			_reasons[role] = reason
+			_set_state(role, "failed")
+
+
+## Twice a second, a connected device's reading is shown beside it (R80).
+func _process(delta: float) -> void:
+	if _torqa == null:
+		return
+	_since_reading += delta
+	if _since_reading < READING_SECONDS:
+		return
+	_since_reading = 0.0
+	for role: String in READING_KINDS:
+		if _states[role] == "connected":
+			_show_reading(role, _torqa.device_reading(READING_KINDS[role]))
+
+
+## Shows what the role's device reports: the trainer's and the power meter's power and
+## cadence, a cadence sensor's cadence, a strap's heart rate; nothing while it is quiet.
+func _show_reading(role: String, reading: Dictionary) -> void:
+	var parts: PackedStringArray = PackedStringArray()
+	if role in [TRAINER, POWER_METER] and reading.get("power") != null:
+		var power: float = reading["power"]
+		parts.append(tr("%d W") % roundi(power))
+	if role in [TRAINER, POWER_METER, CADENCE] and reading.get("cadence") != null:
+		var cadence: float = reading["cadence"]
+		parts.append(tr("%d rpm") % roundi(cadence))
+	if role == HEART_RATE and reading.get("heart_rate") != null:
+		var heart_rate: float = reading["heart_rate"]
+		parts.append(tr("%d bpm") % roundi(heart_rate))
+	var text: String = " · ".join(parts)
+	if _readings.get(role, "") == text:
+		return
+	if text.is_empty():
+		_readings.erase(role)
+	else:
+		_readings[role] = text
+	_render_state(role)
+
+
 ## The reconnect at start missed some devices (R41): their rows say so, by name, and
 ## choosing one of them looks again.
 func _on_remembered_missing(names: PackedStringArray) -> void:
@@ -552,15 +621,25 @@ func _look_again(role: String) -> bool:
 
 func _set_state(role: String, state: String) -> void:
 	_states[role] = state
+	if state != "failed":
+		_reasons.erase(role)
+	if state != "connected":
+		_readings.erase(role)
 	_render_state(role)
 
 
 ## Shows the role's state in the interface language and its colour: green connected, amber
-## on its way, red not found or failed.
+## on its way, red not found or failed; beside it the device's reading or why it failed.
 func _render_state(role: String) -> void:
 	var label: Label = _state_labels[role]
 	var state: String = _states[role]
-	label.text = tr(STATE_LABELS[state]) if STATE_LABELS.has(state) else ""
+	var text: String = tr(STATE_LABELS[state]) if STATE_LABELS.has(state) else ""
+	if state == "failed" and _reasons.has(role):
+		# The core's reasons are English; the known ones are translated, a stack's own passes.
+		text += ": " + tr(_reasons[role])
+	elif state == "connected" and _readings.has(role):
+		text += "  " + _readings[role]
+	label.text = text
 	var color: Color = UiTheme.MUTED
 	if state == "connected":
 		color = UiTheme.SUCCESS

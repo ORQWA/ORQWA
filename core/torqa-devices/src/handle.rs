@@ -20,6 +20,9 @@ pub enum DeviceEvent {
     Buttons(Vec<ButtonPress>),
     /// The connection was lost; the driver keeps trying to reconnect.
     Disconnected,
+    /// An attempt to connect failed, for this reason (a timeout, the device gone out of
+    /// reach, a Bluetooth error); the driver tries again after a pause (R80).
+    Failed(String),
 }
 
 /// Errors of device drivers.
