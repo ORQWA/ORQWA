@@ -1885,7 +1885,7 @@ msgid "%d W"
 msgstr "%d W"
 
 msgid "%d rpm"
-msgstr "%d U/min"
+msgstr "%d rpm"
 
 msgid "connecting timed out"
 msgstr "Verbindungsaufbau hat zu lange gedauert"
