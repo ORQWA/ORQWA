@@ -13,8 +13,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub use torqa_domain::upload::{
-    Account, Activity, ActivityUploader, BoxFuture, Browser, Credentials, Field, UploadError,
-    Uploaded,
+    Account, Activity, ActivityUploader, BoxFuture, Browser, Credentials, Field, PlannedWorkout,
+    UploadError, Uploaded,
 };
 
 /// Every platform rides can be uploaded to, in the order they are offered to the rider.

@@ -293,6 +293,26 @@ impl TorqaApp {
     #[signal]
     fn upload_failed(path: GString, platform: GString, message: GString, reconnect: bool);
 
+    /// The workouts planned for `day` on `platform` were read (R81): `workouts()` lists them.
+    #[signal]
+    fn planned_workouts(platform: GString, day: GString);
+
+    /// Reading the workouts planned on `platform` failed, for the reason in `message`.
+    #[signal]
+    fn planned_workouts_failed(platform: GString, message: GString);
+
+    /// Asks the platforms holding the rider's plan for the workouts of `day` (`YYYY-MM-DD`,
+    /// this computer's date) in the background (R81): `planned_workouts` or
+    /// `planned_workouts_failed` follows per platform. False, and nothing asked, without an
+    /// account on such a platform.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn fetch_planned_workouts(&mut self, day: GString) -> bool {
+        self.app
+            .as_mut()
+            .is_some_and(|app| app.fetch_planned_workouts(&day.to_string()))
+    }
+
     /// A shifter's button asked for a ride control (#139), to be carried out as its key is:
     /// `next_camera`, `overlay`, the music's `play_pause`, `next` and `previous`, `pause`,
     /// `difficulty_up` and `_down`, the workout's `intensity_up` and `_down`, or `skip_step`.
@@ -1713,9 +1733,15 @@ impl TorqaApp {
             return VarArray::new();
         };
         let ftp = app.profile().profile.ftp;
+        let planned = app.planned_workouts();
         let mut array = VarArray::new();
         for entry in app.workouts() {
             let steps = plan_steps(&entry.plan, ftp, false);
+            // The platform a planned workout comes from (R81), "" for the library's.
+            let platform = planned
+                .iter()
+                .find(|(_, p)| p.id == entry.id)
+                .map_or("", |(name, _)| name);
             array.push(
                 &vdict! {
                     "id" => entry.id.as_str(),
@@ -1723,6 +1749,7 @@ impl TorqaApp {
                     "description" => entry.plan.description.as_str(),
                     "duration_s" => entry.plan.duration().as_secs_f64(),
                     "builtin" => entry.id.starts_with(torqa_workouts::BUILTIN),
+                    "planned" => platform,
                     "steps" => &steps,
                 }
                 .to_variant(),
@@ -2720,6 +2747,18 @@ impl TorqaApp {
                     reconnect,
                 );
             }
+            AppEvent::PlannedWorkouts { platform, day } => {
+                self.signals().planned_workouts().emit(
+                    &GString::from(platform.as_str()),
+                    &GString::from(day.as_str()),
+                );
+            }
+            AppEvent::PlannedWorkoutsFailed { platform, message } => {
+                let summary = self.record_failure(&message);
+                self.signals()
+                    .planned_workouts_failed()
+                    .emit(&GString::from(platform.as_str()), &summary);
+            }
             _ => {}
         }
     }
@@ -2775,7 +2814,9 @@ impl TorqaApp {
             | AppEvent::AccountFailed { .. }
             | AppEvent::OpenUrl(_)
             | AppEvent::UploadFinished { .. }
-            | AppEvent::UploadFailed { .. }) => self.emit_upload(event),
+            | AppEvent::UploadFailed { .. }
+            | AppEvent::PlannedWorkouts { .. }
+            | AppEvent::PlannedWorkoutsFailed { .. }) => self.emit_upload(event),
             AppEvent::CourseAdded(path) => {
                 let path = path.display().to_string();
                 self.signals()

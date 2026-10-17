@@ -110,6 +110,10 @@ func set_plans(plans: Array, select_id: String = "") -> void:
 	for plan: Dictionary in plans:
 		var plan_name: String = plan["name"]
 		var seconds: float = plan["duration_s"]
+		# A workout planned on the rider's platform for today says where it is from (R81).
+		var planned: String = plan.get("planned", "")
+		if not planned.is_empty():
+			plan_name = "%s: %s" % [planned, plan_name]
 		_plan.add_item("%s  ·  %s" % [plan_name, UiTheme.duration(seconds)])
 	var index: int = 0
 	for i: int in range(plans.size()):

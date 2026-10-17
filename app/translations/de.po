@@ -1908,3 +1908,18 @@ msgstr "Was die Tasten tun"
 msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
 msgstr "Jeder Druck schaltet, wechselt die Ansicht, steuert Musik oder das Workout, oder tut nichts."
 
+msgid "Planned for today"
+msgstr "Für heute geplant"
+
+msgid "Choose"
+msgstr "Auswählen"
+
+msgid "Looking up today's plan…"
+msgstr "Der heutige Plan wird abgerufen …"
+
+msgid "Nothing planned for today."
+msgstr "Für heute ist nichts geplant."
+
+msgid "Could not read the workouts planned on %s: %s"
+msgstr "Die auf %s geplanten Workouts konnten nicht gelesen werden: %s"
+
