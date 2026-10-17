@@ -285,6 +285,11 @@ Built in rideable steps:
   the choice is kept and Torqa starts that way
 - [x] The overlay's place is each rider's, graphics quality and full screen this computer's
   (R78, #257): kept next to the cache, out of the synced data folder, carried over once
+- [x] The devices are each rider's (R82): remembered devices, cadence source and shifter
+  buttons in `profiles/<rider>/devices.toml`, carried over once from `settings.toml`;
+  switching riders lets go of the other rider's devices and reconnects the new one's, a new
+  rider starts with the devices in use, a scan picks a strap only if used last, and a device
+  used last that a scan misses is no longer forgotten
 - [x] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
   - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)

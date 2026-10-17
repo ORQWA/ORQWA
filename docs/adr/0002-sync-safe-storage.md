@@ -63,3 +63,15 @@ missing is built afresh; a rider may delete it at any time. Without a usable ind
 history reads the files as it did before, with a warning in the log. SQLite runs in WAL mode
 with `synchronous = NORMAL`: a crash costs at most the last writes, which the files replace.
 
+## Amendment 2026-10-17: devices per rider (R82)
+
+The amendment for #257 left the remembered devices, the cadence's source and the shifter's
+buttons in `settings.toml`, shared by every rider. Riders sharing a computer often bring
+their own strap, pedals or shifter, so these now live with the rider in
+`profiles/<id>/devices.toml` and follow them to another computer, like the HUD layout. A
+device's system identifier differs between computers; its advertised name, already the
+fallback when the identifier changed, finds it there.
+
+`profiles::carry_over` gives the shared values once to every rider without a `devices.toml`
+(the D-Fly channels from before #139 as button assignments), then removes them from
+`settings.toml`. That file now keeps the active rider, the ride bar and the Courses view.

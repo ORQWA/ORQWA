@@ -664,7 +664,7 @@ impl App {
             keys,
             controller_id: None,
             buttons: Arc::new(torqa_devices::shift::Assignments::new(
-                profiles::button_map(&data_dir),
+                profiles::button_map(&data_dir, &profile.id),
             )),
             profile,
             uploads: uploads::UploadState::new(uploads::platforms()),
@@ -693,7 +693,9 @@ impl App {
         &self.profile
     }
 
-    /// Switches to another rider, remembered for the next start.
+    /// Switches to another rider, remembered for the next start. The devices in use that are
+    /// not the rider's are let go, and the shifter's buttons do what the rider gave them (R82);
+    /// [`App::reconnect_remembered`] then connects the rider's own.
     ///
     /// # Errors
     /// [`AppError::UnknownProfile`] if there is no such profile.
@@ -706,27 +708,38 @@ impl App {
         if let Err(error) = profiles::set_active(&self.data_dir, id) {
             warn!(%error, "cannot remember the active profile");
         }
+        self.take_riders_devices();
         Ok(())
     }
 
     /// Saves a profile (a new one if `id` is `None`) and makes it the active one; returns its id.
+    /// A new rider starts with the devices of the rider before (R82), so nothing connected is
+    /// let go.
     ///
     /// # Errors
     /// [`AppError::Reported`] if it cannot be written.
     pub fn save_profile(&mut self, id: Option<&str>, profile: Profile) -> Result<String, AppError> {
+        let new = id.is_none();
         let id = id.map_or_else(
             || profiles::new_id(&self.data_dir, &profile.name),
             ToOwned::to_owned,
         );
         profiles::save(&self.data_dir, &id, &profile)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveProfile, e)))?;
+        if new && let Err(error) = profiles::copy_devices(&self.data_dir, &self.profile.id, &id) {
+            warn!(%error, "the new rider starts without devices");
+        }
         if let Err(error) = profiles::set_active(&self.data_dir, &id) {
             warn!(%error, "cannot remember the active profile");
         }
+        let switched = id != self.profile.id;
         self.profile = StoredProfile {
             id: id.clone(),
             profile,
         };
+        if switched {
+            self.take_riders_devices();
+        }
         Ok(id)
     }
 
@@ -1929,7 +1942,7 @@ impl App {
     /// [`AppEvent::RememberedMissing`] for those not found. Returns false, without touching
     /// Bluetooth, if no device is remembered.
     pub fn reconnect_remembered(&mut self) -> bool {
-        let remembered = profiles::remembered_devices(&self.data_dir);
+        let remembered = self.remembered();
         if remembered.trainer.is_none()
             && remembered.heart_rate.is_none()
             && remembered.power_meter.is_none()
@@ -1947,7 +1960,7 @@ impl App {
     /// how each is doing now (R69, R76): connected, being connected, or not found.
     #[must_use]
     pub fn devices(&self) -> Vec<DeviceStatus> {
-        let remembered = profiles::remembered_devices(&self.data_dir);
+        let remembered = self.remembered();
         let status = |kind: DeviceKind,
                       live: Option<(&str, bool)>,
                       remembered: Option<profiles::RememberedDevice>| {
@@ -2033,20 +2046,116 @@ impl App {
         self.reconnect_remembered()
     }
 
+    /// The devices the rider connected last (R82).
+    fn remembered(&self) -> profiles::RememberedDevices {
+        profiles::remembered_devices(&self.data_dir, &self.profile.id)
+    }
+
     fn remember(&self, role: DeviceRole, device: &DiscoveredDevice) {
         let remembered = profiles::RememberedDevice {
             id: device.id(),
             name: device.name.clone(),
         };
-        if let Err(error) = profiles::remember_device(&self.data_dir, role, remembered) {
+        if let Err(error) =
+            profiles::remember_device(&self.data_dir, &self.profile.id, role, remembered)
+        {
             warn!(%error, "cannot remember the device");
+        }
+    }
+
+    /// No longer reconnects the rider's device in `role`.
+    fn forget(&self, role: DeviceRole) -> Result<(), AppError> {
+        profiles::forget_device(&self.data_dir, &self.profile.id, role)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+    }
+
+    /// The system's identifier and the name of the Bluetooth device linked in `role`, if any.
+    fn linked(&self, role: DeviceRole) -> Option<(&str, &str)> {
+        match role {
+            DeviceRole::Trainer => self
+                .trainer_id
+                .as_deref()
+                .zip(self.trainer.as_ref().map(DeviceHandle::name)),
+            DeviceRole::HeartRate => self
+                .sensor_id
+                .as_deref()
+                .zip(self.sensor.as_ref().map(DeviceHandle::name)),
+            DeviceRole::PowerMeter => self
+                .power_meter_id
+                .as_deref()
+                .zip(self.power_meter.as_ref().map(DeviceHandle::name)),
+            DeviceRole::CadenceSensor => self
+                .cadence_sensor_id
+                .as_deref()
+                .zip(self.cadence_sensor.as_ref().map(DeviceHandle::name)),
+            DeviceRole::Controller => self
+                .controller_id
+                .as_deref()
+                .zip(self.shift_inputs.get(1).map(|i| i.name())),
+        }
+    }
+
+    /// Drops the link to the device in `role`; a ride under way stops counting on it.
+    fn let_go(&mut self, role: DeviceRole) {
+        match role {
+            DeviceRole::Trainer => {
+                self.trainer = None;
+                self.trainer_id = None;
+                self.trainer_connected = None;
+            }
+            DeviceRole::HeartRate => {
+                self.sensor = None;
+                self.sensor_id = None;
+                self.sensor_connected = None;
+                if let Some(active) = &mut self.ride {
+                    active.ride.on_heart_rate_lost();
+                }
+            }
+            DeviceRole::PowerMeter => {
+                self.power_meter = None;
+                self.power_meter_id = None;
+                self.power_meter_connected = None;
+                if let Some(active) = &mut self.ride {
+                    active.ride.on_power_meter_lost();
+                }
+            }
+            DeviceRole::CadenceSensor => {
+                self.cadence_sensor = None;
+                self.cadence_sensor_id = None;
+                self.cadence_sensor_connected = None;
+                if let Some(active) = &mut self.ride {
+                    active.ride.on_cadence_sensor_lost();
+                }
+            }
+            DeviceRole::Controller => {
+                self.shift_inputs.truncate(1);
+                self.shift_inputs_connected.truncate(1);
+                self.controller_id = None;
+            }
+        }
+    }
+
+    /// The rider's devices replace those of the rider before (R82): the shifter's buttons do
+    /// what this rider gave them, and a device linked now stays only if it is theirs. The fake
+    /// trainer is nobody's and stays.
+    fn take_riders_devices(&mut self) {
+        self.buttons
+            .set(profiles::button_map(&self.data_dir, &self.profile.id));
+        let theirs = self.remembered();
+        for role in DeviceRole::ALL {
+            let others = self
+                .linked(role)
+                .is_some_and(|(id, name)| !theirs.get(role).is_some_and(|d| d.is(id, name)));
+            if others {
+                self.let_go(role);
+            }
         }
     }
 
     /// Connects the remembered devices found by a reconnect scan; returns the names of those
     /// not found.
     fn connect_remembered(&mut self) -> Vec<String> {
-        let remembered = profiles::remembered_devices(&self.data_dir);
+        let remembered = self.remembered();
         let mut missing = Vec::new();
         for (wanted, kind) in [
             (remembered.trainer, DeviceKind::Trainer),
@@ -2084,7 +2193,7 @@ impl App {
 
     /// Whether a scanned device is one of the remembered ones.
     fn is_remembered(&self, device: &DiscoveredDevice) -> bool {
-        let remembered = profiles::remembered_devices(&self.data_dir);
+        let remembered = self.remembered();
         let wanted = match device.kind {
             DeviceKind::Trainer => remembered.trainer,
             DeviceKind::HeartRateSensor => remembered.heart_rate,
@@ -2092,7 +2201,7 @@ impl App {
             DeviceKind::CadenceSensor => remembered.cadence_sensor,
             DeviceKind::Controller => remembered.controller,
         };
-        wanted.is_some_and(|w| w.id == device.id() || w.name == device.name)
+        wanted.is_some_and(|w| w.is(&device.id(), &device.name))
     }
 
     /// Connects a heart-rate sensor, replacing any previous one.
@@ -2118,14 +2227,8 @@ impl App {
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn disconnect_heart_rate(&mut self) -> Result<(), AppError> {
-        self.sensor = None;
-        self.sensor_id = None;
-        self.sensor_connected = None;
-        if let Some(active) = &mut self.ride {
-            active.ride.on_heart_rate_lost();
-        }
-        profiles::forget_device(&self.data_dir, DeviceRole::HeartRate)
-            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+        self.let_go(DeviceRole::HeartRate);
+        self.forget(DeviceRole::HeartRate)
     }
 
     /// Lets the power meter go and no longer reconnects it (R76): the trainer measures again.
@@ -2133,14 +2236,8 @@ impl App {
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn disconnect_power_meter(&mut self) -> Result<(), AppError> {
-        self.power_meter = None;
-        self.power_meter_id = None;
-        self.power_meter_connected = None;
-        if let Some(active) = &mut self.ride {
-            active.ride.on_power_meter_lost();
-        }
-        profiles::forget_device(&self.data_dir, DeviceRole::PowerMeter)
-            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+        self.let_go(DeviceRole::PowerMeter);
+        self.forget(DeviceRole::PowerMeter)
     }
 
     /// Lets the shifter go and no longer reconnects it (R76); the keyboard keeps shifting.
@@ -2148,11 +2245,8 @@ impl App {
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn disconnect_controller(&mut self) -> Result<(), AppError> {
-        self.shift_inputs.truncate(1);
-        self.shift_inputs_connected.truncate(1);
-        self.controller_id = None;
-        profiles::forget_device(&self.data_dir, DeviceRole::Controller)
-            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+        self.let_go(DeviceRole::Controller);
+        self.forget(DeviceRole::Controller)
     }
 
     /// Connects a power meter, replacing any previous one: its power, and its cadence if it
@@ -2185,7 +2279,7 @@ impl App {
     /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn connect_cadence_sensor(&mut self, index: usize) -> Result<(), AppError> {
         let device = self.discovered_device(index, DeviceKind::CadenceSensor)?;
-        profiles::set_cadence_source(&self.data_dir, CadenceSource::Automatic)
+        profiles::set_cadence_source(&self.data_dir, &self.profile.id, CadenceSource::Automatic)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))?;
         let id = device.id();
         if self.cadence_sensor.is_some() && self.cadence_sensor_id.as_deref() == Some(id.as_str()) {
@@ -2202,10 +2296,10 @@ impl App {
         Ok(())
     }
 
-    /// Which device's cadence counts (R72).
+    /// Which device's cadence counts for the rider (R72, R82).
     #[must_use]
     pub fn cadence_source(&self) -> CadenceSource {
-        profiles::cadence_source(&self.data_dir)
+        profiles::cadence_source(&self.data_dir, &self.profile.id)
     }
 
     /// Takes the cadence from `source` from the next ride on, without a cadence sensor: the
@@ -2214,14 +2308,9 @@ impl App {
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn set_cadence_source(&mut self, source: CadenceSource) -> Result<(), AppError> {
-        self.cadence_sensor = None;
-        self.cadence_sensor_id = None;
-        self.cadence_sensor_connected = None;
-        if let Some(active) = &mut self.ride {
-            active.ride.on_cadence_sensor_lost();
-        }
-        profiles::forget_device(&self.data_dir, DeviceRole::CadenceSensor)
-            .and_then(|()| profiles::set_cadence_source(&self.data_dir, source))
+        self.let_go(DeviceRole::CadenceSensor);
+        self.forget(DeviceRole::CadenceSensor)?;
+        profiles::set_cadence_source(&self.data_dir, &self.profile.id, source)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
@@ -2255,13 +2344,13 @@ impl App {
         self.buttons.get()
     }
 
-    /// Gives the shifter's buttons what `map` says, at once and for next time.
+    /// Gives the shifter's buttons what `map` says, at once and for the rider's next time.
     ///
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
     pub fn set_button_map(&mut self, map: ButtonMap) -> Result<(), AppError> {
         self.buttons.set(map);
-        profiles::set_button_map(&self.data_dir, &map)
+        profiles::set_button_map(&self.data_dir, &self.profile.id, &map)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
@@ -5736,7 +5825,8 @@ mod tests {
             id: "strap".to_owned(),
             name: "Polar H9".to_owned(),
         };
-        profiles::remember_device(&data, DeviceRole::HeartRate, strap).unwrap();
+        let rider = app.profile().id.clone();
+        profiles::remember_device(&data, &rider, DeviceRole::HeartRate, strap).unwrap();
         let status = |app: &App| {
             app.devices()
                 .into_iter()
@@ -5780,7 +5870,158 @@ mod tests {
             status(&app),
             [(DeviceKind::Trainer, DeviceState::Connected)]
         );
-        assert!(profiles::remembered_devices(&data).heart_rate.is_none());
+        assert!(
+            profiles::remembered_devices(&data, &rider)
+                .heart_rate
+                .is_none()
+        );
+        app.shutdown();
+    }
+
+    /// Links a Bluetooth device in `role` as the system's `id`, without Bluetooth: a fake
+    /// driver stands in for it.
+    fn link(app: &mut App, role: DeviceRole, id: &str) {
+        let handle = {
+            let _runtime = app.runtime.enter();
+            let rider = FakeRider {
+                power: Watts(0.0),
+                cadence: Rpm(0.0),
+                heart: None,
+            };
+            fake::spawn(rider, Duration::from_secs(1))
+        };
+        let id = Some(id.to_owned());
+        match role {
+            DeviceRole::Trainer => (app.trainer, app.trainer_id) = (Some(handle), id),
+            DeviceRole::HeartRate => (app.sensor, app.sensor_id) = (Some(handle), id),
+            DeviceRole::PowerMeter => (app.power_meter, app.power_meter_id) = (Some(handle), id),
+            DeviceRole::CadenceSensor => {
+                (app.cadence_sensor, app.cadence_sensor_id) = (Some(handle), id);
+            }
+            DeviceRole::Controller => unreachable!("a shifter is linked as a shift input"),
+        }
+    }
+
+    fn linked_id(app: &App, role: DeviceRole) -> Option<String> {
+        app.linked(role).map(|(id, _)| id.to_owned())
+    }
+
+    #[test]
+    fn riders_switch_to_their_own_devices_and_a_shared_one_stays_connected() {
+        let dir = temp_dir("rider-devices");
+        let data = dir.join("data");
+        let mut app = App::new(data.clone(), dir.join("cache")).unwrap();
+        let anna = app.profile().id.clone();
+        for (role, id, name) in [
+            (DeviceRole::Trainer, "kickr", "KICKR CORE"),
+            (DeviceRole::HeartRate, "anna-strap", "Polar H9 A"),
+        ] {
+            let device = profiles::RememberedDevice {
+                id: id.to_owned(),
+                name: name.to_owned(),
+            };
+            profiles::remember_device(&data, &anna, role, device).unwrap();
+            link(&mut app, role, id);
+        }
+
+        // A new rider starts with the devices in use: adding Ben lets nothing go.
+        let ben = Profile {
+            name: "Ben".to_owned(),
+            ..Profile::default()
+        };
+        let ben = app.save_profile(None, ben).unwrap();
+        assert_eq!(
+            linked_id(&app, DeviceRole::Trainer).as_deref(),
+            Some("kickr")
+        );
+        assert_eq!(
+            linked_id(&app, DeviceRole::HeartRate).as_deref(),
+            Some("anna-strap")
+        );
+        // Ben rides without Anna's strap: it is let go and forgotten for him alone.
+        app.disconnect_heart_rate().unwrap();
+        assert!(
+            profiles::remembered_devices(&data, &anna)
+                .heart_rate
+                .is_some()
+        );
+
+        app.select_profile(&anna).unwrap();
+        assert!(app.reconnect_remembered(), "Anna's strap is looked for");
+        assert_eq!(
+            app.devices()
+                .iter()
+                .map(|d| (d.name.as_str(), d.state))
+                .collect::<Vec<_>>(),
+            [
+                ("Fake trainer", DeviceState::Connecting),
+                ("Polar H9 A", DeviceState::Missing)
+            ],
+            "the trainer they share stays linked"
+        );
+        link(&mut app, DeviceRole::HeartRate, "anna-strap");
+
+        app.select_profile(&ben).unwrap();
+        assert_eq!(
+            linked_id(&app, DeviceRole::Trainer).as_deref(),
+            Some("kickr")
+        );
+        assert_eq!(
+            linked_id(&app, DeviceRole::HeartRate),
+            None,
+            "Anna's strap is not Ben's"
+        );
+        app.shutdown();
+    }
+
+    #[test]
+    fn the_fake_trainer_is_nobodys_and_stays_when_riders_switch() {
+        let dir = temp_dir("rider-fake");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let anna = app.profile().id.clone();
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(200.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+
+        let ben = Profile {
+            name: "Ben".to_owned(),
+            ..Profile::default()
+        };
+        app.save_profile(None, ben).unwrap();
+        app.select_profile(&anna).unwrap();
+
+        assert!(app.trainer.is_some());
+        app.shutdown();
+    }
+
+    #[test]
+    fn each_rider_has_their_own_buttons_and_cadence_source() {
+        let dir = temp_dir("rider-buttons");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let anna = app.profile().id.clone();
+        let ben = Profile {
+            name: "Ben".to_owned(),
+            ..Profile::default()
+        };
+        let ben = app.save_profile(None, ben).unwrap();
+        let swapped = ButtonMap::shifting(2, 1);
+
+        app.set_button_map(swapped).unwrap();
+        app.set_cadence_source(CadenceSource::PowerMeter).unwrap();
+        app.select_profile(&anna).unwrap();
+
+        assert_eq!(app.button_map(), ButtonMap::default());
+        assert_eq!(app.cadence_source(), CadenceSource::Automatic);
+        app.select_profile(&ben).unwrap();
+        assert_eq!(
+            app.button_map(),
+            swapped,
+            "the buttons shift as Ben set them"
+        );
+        assert_eq!(app.cadence_source(), CadenceSource::PowerMeter);
         app.shutdown();
     }
 
