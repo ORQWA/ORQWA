@@ -191,6 +191,18 @@ func _run() -> void:
 	detail.back_requested.emit()
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery.png"))
+	# The filters' panel open, a chip on (R85).
+	var chips: GridContainer = courses.get("_chips")
+	for chip: Node in chips.find_children("*", "Button", true, false):
+		if (chip as Button).text == "Mountainous":
+			(chip as Button).button_pressed = true
+	var filters: Button = courses.get("_filters")
+	filters.pressed.emit()
+	await create_timer(0.5).timeout
+	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery-filters.png"))
+	var filter_panel: PopupPanel = courses.get("_filter_panel")
+	filter_panel.hide()
+	courses.clear_filters()
 	for tab: Array in [
 		[StartPage.Tab.ANALYSIS, "start-analysis"],
 		[StartPage.Tab.PROFILE, "start-profile"],

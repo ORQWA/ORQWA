@@ -162,6 +162,11 @@ static func build() -> Theme:
 	theme.set_stylebox("panel", "PopupMenu", popup)
 	theme.set_stylebox("hover", "PopupMenu", _box(Color(ACCENT, 0.35), 6, 8, 4))
 	theme.set_color("font_color", "PopupMenu", TEXT)
+	# A panel opening under a button, e.g. the gallery's filters (R85).
+	var popover: StyleBoxFlat = _box(Color(0.09, 0.1, 0.12, 0.98), 12, 16, 14)
+	popover.border_color = Color(1, 1, 1, 0.1)
+	popover.set_border_width_all(1)
+	theme.set_stylebox("panel", "PopupPanel", popover)
 	return theme
 
 

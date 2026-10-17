@@ -264,6 +264,9 @@ Built in rideable steps:
 - [x] The countries a course passes, from the OpenFreeMap tiles' borders and country labels,
   to group, filter and search by and listed on the cards; older courses learn theirs in the
   background (R68, #230)
+- [x] The gallery's search, filters, sort and group in one row with its title and Import; the
+  filter chips in a panel under a Filters button, the chips turned on listed under the toolbar
+  (R85)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
 - [x] Auto-reconnect last-used devices (R41)
 - [x] Devices that drop come back by themselves, also after a pause: the driver looks the
