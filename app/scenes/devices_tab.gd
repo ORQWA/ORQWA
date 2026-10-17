@@ -5,7 +5,8 @@ extends VBoxContainer
 ## (#139, in a dialog behind the pen beside its row), and the devices used last reconnecting
 ## at start. A device connects the moment it
 ## is chosen, and each row says how its device is doing: connecting, connected, reconnecting
-## after a drop, not found, or failed.
+## after a drop, not found, or failed. All of it is the active rider's (R82): switching riders
+## brings their own devices.
 
 const FAKE_TRAINER: int = -1
 const NO_HEART_RATE: int = -1
@@ -42,6 +43,8 @@ const STATE_LABELS: Dictionary[String, String] = {
 const FAKE_TRAINER_NAME: String = "Fake trainer"
 
 var _torqa: TorqaApp
+## The rider whose devices the rows show (R82), by id.
+var _rider: String = ""
 var _scan_button: Button = Button.new()
 var _scan_label: Label = Label.new()
 var _trainer: OptionButton = OptionButton.new()
@@ -85,6 +88,8 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa.device_disconnected.connect(_on_device_disconnected)
 	_torqa.remembered_missing.connect(_on_remembered_missing)
 	_torqa.failed.connect(func(_message: String) -> void: _scan_button.disabled = false)
+	_torqa.profile_changed.connect(_on_profile_changed)
+	_rider = _torqa.profile().get("id", "")
 	_button_dialog.bind(torqa)
 	_select_cadence_source()
 	var current: String = _torqa.graphics_quality()
@@ -92,11 +97,7 @@ func bind(torqa: TorqaApp) -> void:
 		if _quality.get_item_metadata(i) == current:
 			_quality.select(i)
 	_show_quality_note()
-	# The trainer and strap used last reconnect in the background (R41).
-	if _torqa.reconnect_remembered():
-		_set_searching(true)
-		_scan_label.text = tr("Reconnecting your devices…")
-		_show_remembered()
+	_reconnect_remembered()
 
 
 ## Makes sure the chosen trainer, power meter, cadence, heart-rate sensor and shifter are
@@ -228,6 +229,32 @@ func _notification(what: int) -> void:
 			_render_state(role)
 
 
+## The devices used last reconnect in the background (R41), shown by name until found.
+func _reconnect_remembered() -> void:
+	if _torqa.reconnect_remembered():
+		_set_searching(true)
+		_scan_label.text = tr("Reconnecting your devices…")
+	_show_remembered()
+
+
+## Another rider rides (R82): the core let go of the devices that are not theirs. The rows
+## start afresh with what is left and the rider's cadence source, and the rider's own devices
+## reconnect as at start. Saving the same rider changes nothing here.
+func _on_profile_changed() -> void:
+	var rider: String = _torqa.profile().get("id", "")
+	if rider == _rider:
+		return
+	_rider = rider
+	_searching = ""
+	_expected.clear()
+	for role: String in _states:
+		_set_state(role, "")
+	_status.text = ""
+	_scan_label.text = tr("Wake the devices first.")
+	_reset_options()
+	_reconnect_remembered()
+
+
 func _on_scan_pressed() -> void:
 	_set_searching(true)
 	_scan_label.text = tr("Scanning…")
@@ -282,12 +309,11 @@ func _on_devices_found(devices: Array) -> void:
 		if device["kind"] == "trainer":
 			trainers += 1
 	_scan_label.text = tr("Found %d device(s)") % devices.size()
-	# Prefer the devices used last, else a real trainer over the fake one. A power meter only
-	# when chosen once: pedals nearby may be on another bike.
+	# Prefer the devices used last, else a real trainer over the fake one. A power meter or a
+	# strap only when used last: pedals nearby may be on another bike, a strap on another
+	# rider (R82).
 	if trainers > 0:
 		_trainer.select(1)
-	if _heart_rate.item_count > 1:
-		_heart_rate.select(1)
 	for option: OptionButton in [_trainer, _power_meter, _cadence, _heart_rate, _shifter]:
 		for i: int in range(option.item_count):
 			var index: int = option.get_item_metadata(i)
@@ -404,7 +430,11 @@ func _show_remembered() -> void:
 		var device_name: String = device["name"]
 		_expected[role] = device_name
 		_set_state(role, "connected" if device["state"] == "connected" else "connecting")
-		_show_placeholder(role, device_name)
+		# The fake trainer, kept from the rider before, has its own choice.
+		if role == TRAINER and device_name == FAKE_TRAINER_NAME:
+			_trainer.select(0)
+		else:
+			_show_placeholder(role, device_name)
 
 
 ## Shows `device_name` as the role's choice although the scan has not listed it.

@@ -179,7 +179,8 @@ impl TorqaApp {
     #[signal]
     fn remembered_missing(names: PackedStringArray);
 
-    /// The active rider changed: another one selected, or one saved or created.
+    /// The active rider changed: another one selected, one saved or created, or the active
+    /// one deleted.
     #[signal]
     fn profile_changed();
 
@@ -1986,7 +1987,9 @@ impl TorqaApp {
         )
     }
 
-    /// Switches to another rider.
+    /// Switches to another rider (emits `profile_changed`): the devices in use that are not
+    /// theirs are let go, and their shifter's buttons and cadence source apply (R82);
+    /// `reconnect_remembered` then connects their own.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn select_profile(&mut self, id: GString) -> bool {
@@ -1998,11 +2001,17 @@ impl TorqaApp {
     }
 
     /// Deletes a rider with their rides (emits `failed` for the only rider); deleting the
-    /// active one switches to another.
+    /// active one switches to another, as `select_profile` does.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn delete_profile(&mut self, id: GString) -> bool {
-        self.command(|app| app.delete_profile(&id.to_string()))
+        let id = id.to_string();
+        let active = self.app.as_ref().is_some_and(|app| app.profile().id == id);
+        let deleted = self.command(|app| app.delete_profile(&id));
+        if deleted && active {
+            self.signals().profile_changed().emit();
+        }
+        deleted
     }
 
     /// Saves a rider (a new one if `id` is empty) from a dictionary shaped like `profile()`

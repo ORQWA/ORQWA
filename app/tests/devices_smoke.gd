@@ -1,6 +1,6 @@
 extends SceneTree
-## Headless checks of the Devices tab: the shifter's buttons (#139, R75) and how each row
-## tells what its device is doing (R76).
+## Headless checks of the Devices tab: the shifter's buttons (#139, R75), how each row
+## tells what its device is doing (R76), and that the devices are each rider's own (R82).
 ## Run: godot --headless --path app -s res://tests/devices_smoke.gd
 
 var _failed: bool = false
@@ -14,6 +14,7 @@ func _run() -> void:
 	_shifter_buttons()
 	_device_states()
 	_missed_devices()
+	await _rider_devices()
 	if not _failed:
 		print("DEVICES SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -146,7 +147,8 @@ func _device_states() -> void:
 
 
 ## A scan that misses a device used last (asleep, out of reach) keeps it chosen, by name:
-## not finding it is not choosing none, which would forget it.
+## not finding it is not choosing none, which would forget it. A strap found nearby is only
+## chosen if the rider used it last: it may be another rider's (R82).
 func _missed_devices() -> void:
 	var tab: DevicesTab = DevicesTab.new()
 	root.add_child(tab)
@@ -169,7 +171,57 @@ func _missed_devices() -> void:
 	)
 	tab._on_remembered_missing(PackedStringArray(["Polar H9"]))
 	_check(tab.state_of("heart_rate") == "missing", "and is told not found")
+	tab._expected.clear()
+	tab._set_state("heart_rate", "")
+	tab._on_devices_found([others_strap])
+	_check(heart_rate.selected == 0, "a strap nearby is not chosen for the rider")
 	tab.free()
+
+
+## Each rider has their own devices (R82): switching riders starts the rows afresh with the
+## new rider's cadence source; saving the same rider leaves them as they are.
+func _rider_devices() -> void:
+	var torqa: TorqaApp = TorqaApp.new()
+	root.add_child(torqa)
+	await process_frame
+	var tab: DevicesTab = DevicesTab.new()
+	root.add_child(tab)
+	tab.bind(torqa)
+	var cadence: OptionButton = tab.find_children("*", "OptionButton", true, false)[2]
+	var first: Dictionary = torqa.profile()
+	var first_id: String = first["id"]
+	var before: String = torqa.cadence_source()
+	var other: String = "power_meter" if before != "power_meter" else "trainer"
+	tab._set_state("controller", "connected")
+	torqa.save_profile(first_id, first)
+	_check(tab.state_of("controller") == "connected", "saving the rider keeps the rows")
+	var ben: Dictionary = first.duplicate()
+	ben["name"] = "Ben (devices smoke test)"
+	var ben_id: String = torqa.save_profile("", ben)
+	_check(tab.state_of("controller") == "", "another rider's rows start afresh")
+	torqa.set_cadence_source(other)
+	torqa.select_profile(first_id)
+	_check(
+		cadence.get_item_text(cadence.selected) == _cadence_label(before),
+		"the first rider's cadence: %s" % cadence.get_item_text(cadence.selected)
+	)
+	torqa.select_profile(ben_id)
+	_check(
+		cadence.get_item_text(cadence.selected) == _cadence_label(other),
+		"Ben's cadence: %s" % cadence.get_item_text(cadence.selected)
+	)
+	torqa.delete_profile(ben_id)
+	var active: String = torqa.profile()["id"]
+	_check(active == first_id, "back to the first rider")
+	tab.free()
+	torqa.free()
+
+
+static func _cadence_label(source: String) -> String:
+	var labels: Dictionary[String, String] = {
+		"automatic": "Automatic", "trainer": "Trainer", "power_meter": "Power meter"
+	}
+	return labels[source]
 
 
 ## A scanned Zwift Click, remembered from last time.
