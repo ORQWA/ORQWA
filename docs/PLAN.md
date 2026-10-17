@@ -297,6 +297,8 @@ Built in rideable steps:
   screen) moved from the devices tab, now Devices; About with the version, the commit
   (`build.rs`) and the licence notices of Torqa, Godot, FFmpeg, every Rust crate (cargo-about,
   checked to be current) and others' models and data (ADR 0018)
+- [x] Each shifter model has its own button assignments (R84): a Di2's channels no longer
+  change a Click's + and −; the assignments kept for every shifter before stay each model's
 - [x] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
   - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)
