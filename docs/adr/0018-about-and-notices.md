@@ -40,3 +40,13 @@ hands them to the About tab, which only shows them.
 - The texts are as their licensors wrote them, in English; only the titles are translated.
 - Builds from a source archive without Git show no commit.
 - `torqa-cli` carries no notices; it would need its own if it is distributed further.
+
+## Amendment 2026-10-17: the version a release shows
+
+Release v0.2.0 showed version 0.1.0: a tag sets no version, and the workspace still said
+0.1.0. The version stays in the source rather than coming from the tag at build time, so a
+build from a source archive, without Git, still knows it. It is set in `core/Cargo.toml` and,
+for the macOS bundle, in `app/export_presets.cfg`; `scripts/release/version.py` fails
+`scripts/check.sh` while they disagree, and fails a tag's CI run, and so its release, unless
+the tag is `v` followed by that version. Releasing means merging the new version first, then
+tagging it (docs/development.md).
