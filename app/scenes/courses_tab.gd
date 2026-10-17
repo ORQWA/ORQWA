@@ -46,15 +46,29 @@ const TERRAIN_LABELS: Dictionary[String, String] = {
 const METERS_PER_MILE: float = 1609.344
 ## Room between the cards, across and down.
 const CARD_GAP: int = 20
+## How wide the filter panel's rows of chips are before they wrap: seven countries fit.
+const CHIPS_WIDTH: float = 600.0
 
 var _torqa: TorqaApp
+var _heading: Label = Label.new()
+## Search, filters, sort and group, in one row with the title and Import (R85).
 var _toolbar: HBoxContainer = HBoxContainer.new()
 var _search: LineEdit = LineEdit.new()
+## Opens the filter panel; highlighted while chips are on.
+var _filters: Button = Button.new()
 var _sort: OptionButton = OptionButton.new()
 var _direction: Button = Button.new()
 var _group: OptionButton = OptionButton.new()
-var _chips: HFlowContainer = HFlowContainer.new()
+## The chips by kind, under the Filters button rather than on the page, so that a library
+## spanning many countries takes no more rows (R85).
+var _filter_panel: PopupPanel = PopupPanel.new()
+## A caption and a flow of chips for each kind.
+var _chips: GridContainer = GridContainer.new()
 var _clear: Button = UiTheme.chip_action(tr("Clear filters"), "cross")
+## The chips turned on, under the toolbar while the panel is closed too; a click on one turns
+## it off.
+var _active: HFlowContainer = HFlowContainer.new()
+var _clear_active: Button = UiTheme.chip_action(tr("Clear filters"), "cross")
 ## What the core offers to choose from (`TorqaApp.course_library_choices()`); the length bands
 ## follow the rider's units.
 var _choices: Dictionary = {}
@@ -134,13 +148,18 @@ func refresh() -> void:
 		_add_group(group)
 	_empty.visible = total == 0
 	_toolbar.visible = total > 0
-	_chips.visible = total > 0
+	# With nothing to search, the title takes the row so that Import stays at its end.
+	_heading.size_flags_horizontal = (
+		Control.SIZE_FILL if _toolbar.visible else Control.SIZE_EXPAND_FILL
+	)
 	_no_match.visible = total > 0 and groups.is_empty()
 	_show_clear(filtered())
+	_show_active()
+	_show_filters_button()
 
 
-## Clear filters keeps its place among the chips while there is nothing to clear, so that
-## choosing a chip neither moves nor wraps the others.
+## Clear filters keeps its place in the panel while there is nothing to clear, so that the
+## open panel does not change its size under the mouse.
 func _show_clear(active: bool) -> void:
 	_clear.modulate.a = 1.0 if active else 0.0
 	_clear.disabled = not active
@@ -176,21 +195,19 @@ func clear_filters() -> void:
 	_search.text = ""
 	for kind: String in _chosen:
 		_chosen[kind] = PackedStringArray()
-	for chip: Node in _chips.get_children():
-		var button: Button = chip as Button
-		if button != null and button.toggle_mode:
-			button.set_pressed_no_signal(false)
+	_build_chips()
 	refresh()
 
 
 func _init() -> void:
 	add_theme_constant_override("separation", 16)
 	var header: HBoxContainer = HBoxContainer.new()
-	var heading: Label = Label.new()
-	heading.text = tr("Your courses")
-	heading.add_theme_font_size_override("font_size", 22)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(heading)
+	header.add_theme_constant_override("separation", 24)
+	_heading.text = tr("Your courses")
+	_heading.add_theme_font_size_override("font_size", 22)
+	header.add_child(_heading)
+	_build_toolbar()
+	header.add_child(_toolbar)
 	_import_button.text = tr("Import")
 	_import_button.tooltip_text = tr("GPX routes, videos with GPS, route videos and course files")
 	_import_button.custom_minimum_size = Vector2(160, 44)
@@ -216,13 +233,13 @@ func _init() -> void:
 	_status.hide()
 	add_child(_status)
 
-	_build_toolbar()
-	add_child(_toolbar)
-	_chips.add_theme_constant_override("h_separation", 8)
-	_chips.add_theme_constant_override("v_separation", 8)
-	_clear.pressed.connect(clear_filters)
-	_chips.add_child(_clear)
-	add_child(_chips)
+	_build_filter_panel()
+	_active.add_theme_constant_override("h_separation", 8)
+	_active.add_theme_constant_override("v_separation", 8)
+	_clear_active.pressed.connect(clear_filters)
+	_active.add_child(_clear_active)
+	_active.hide()
+	add_child(_active)
 	_empty.text = tr("No courses yet. Import a GPX route or a video to prepare your first course.")
 	_empty.add_theme_color_override("font_color", UiTheme.MUTED)
 	add_child(_empty)
@@ -281,9 +298,10 @@ func _init() -> void:
 	add_child(_no_gps_dialog)
 
 
-## Search, sort and group above the gallery.
+## Search, filters, sort and group above the gallery.
 func _build_toolbar() -> void:
 	_toolbar.add_theme_constant_override("separation", 12)
+	_toolbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.placeholder_text = tr("Search courses")
 	_search.clear_button_enabled = true
 	_search.right_icon = UiIcons.texture("search", 18, UiTheme.MUTED)
@@ -291,6 +309,12 @@ func _build_toolbar() -> void:
 	_search.custom_minimum_size = Vector2(240, 40)
 	_search.text_changed.connect(func(_text: String) -> void: refresh())
 	_toolbar.add_child(_search)
+	_filters.text = tr("Filters")
+	_filters.custom_minimum_size = Vector2(0, 40)
+	_filters.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_filters.pressed.connect(_open_filter_panel)
+	_toolbar.add_child(_filters)
+	_toolbar.add_child(VSeparator.new())
 	_toolbar.add_child(_toolbar_label(tr("Sort")))
 	_sort.custom_minimum_size = Vector2(180, 40)
 	_sort.item_selected.connect(_on_sort_selected)
@@ -303,6 +327,78 @@ func _build_toolbar() -> void:
 	_group.custom_minimum_size = Vector2(140, 40)
 	_group.item_selected.connect(func(_index: int) -> void: _view_changed())
 	_toolbar.add_child(_group)
+
+
+## The panel of chips: a row for each kind, captioned, and a way to turn them all off.
+func _build_filter_panel() -> void:
+	var rows: VBoxContainer = VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 12)
+	_chips.columns = 2
+	_chips.add_theme_constant_override("h_separation", 20)
+	_chips.add_theme_constant_override("v_separation", 12)
+	rows.add_child(_chips)
+	_clear.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_clear.pressed.connect(clear_filters)
+	rows.add_child(_clear)
+	_filter_panel.add_child(rows)
+	_filter_panel.popup_hide.connect(_show_filters_button)
+	add_child(_filter_panel)
+
+
+## Opens the filter panel under the Filters button. A click outside closes it, on the button
+## too: the panel takes that click.
+func _open_filter_panel() -> void:
+	var button: Rect2 = Rect2(_filters.get_screen_position(), _filters.size)
+	var width: float = _filter_panel.get_contents_minimum_size().x
+	# Below the button, from its left edge unless that would run past the window's.
+	var left: float = minf(button.position.x, get_viewport_rect().end.x - width)
+	_filter_panel.popup(Rect2i(Vector2i(roundi(left), roundi(button.end.y) + 6), Vector2i.ZERO))
+	_show_filters_button()
+
+
+## The Filters button highlighted while chips are on, which are listed under the toolbar rather
+## than counted on it; the arrow says whether the panel is open.
+func _show_filters_button() -> void:
+	var on: bool = false
+	for names: PackedStringArray in _chosen.values():
+		on = on or not names.is_empty()
+	_filters.icon = UiIcons.texture("up" if _filter_panel.visible else "down", 16)
+	for state: String in ["normal", "hover"]:
+		if on:
+			_filters.add_theme_stylebox_override(state, UiTheme.button_chip())
+		else:
+			_filters.remove_theme_stylebox_override(state)
+
+
+## The chips turned on, in the order chosen, each with a cross; with Clear filters at the end.
+## Hidden while none is on.
+func _show_active() -> void:
+	for child: Node in _active.get_children():
+		if child != _clear_active:
+			_active.remove_child(child)
+			child.queue_free()
+	for kind: String in _chosen:
+		for choice: String in _chosen[kind]:
+			var chip: Button = UiTheme.toggle_chip(_choice_label(kind, choice))
+			if kind == "countries":
+				chip.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			chip.set_pressed_no_signal(true)
+			chip.icon = UiIcons.texture("cross", 14)
+			chip.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			chip.toggled.connect(func(_on: bool) -> void: _remove_filter(kind, choice))
+			_active.add_child(chip)
+	_active.move_child(_clear_active, -1)
+	_active.visible = _toolbar.visible and _active.get_child_count() > 1
+
+
+## Turns chip `choice` of `kind` off from outside the panel; the panel's chip follows.
+func _remove_filter(kind: String, choice: String) -> void:
+	var names: PackedStringArray = _chosen[kind]
+	if choice in names:
+		names.remove_at(names.find(choice))
+	_chosen[kind] = names
+	_build_chips()
+	refresh()
 
 
 func _toolbar_label(text: String) -> Label:
@@ -347,13 +443,12 @@ func _build_menus() -> void:
 		_group.set_item_metadata(_group.item_count - 1, group_name)
 
 
-## One row of chips: type | terrain | length | country, and a way to turn them all off. Country
-## chips show once the library spans more than one country.
+## A row of chips for each kind: type, terrain, length and country. Country chips show once the
+## library spans more than one country.
 func _build_chips() -> void:
 	for child: Node in _chips.get_children():
-		if child != _clear:
-			_chips.remove_child(child)
-			child.queue_free()
+		_chips.remove_child(child)
+		child.queue_free()
 	var kinds: PackedStringArray = _choices["kinds"]
 	var terrains: PackedStringArray = _choices["terrains"]
 	var lengths: PackedStringArray = PackedStringArray()
@@ -369,12 +464,11 @@ func _build_chips() -> void:
 	# A band or country the rider chose stays chosen only if it is still there.
 	_chosen["lengths"] = _kept(_chosen["lengths"], lengths)
 	_chosen["countries"] = _kept(_chosen["countries"], countries)
-	_add_chips(tr("Type"), "kinds", kinds, false)
-	_add_chips(tr("Terrain"), "terrains", terrains, true)
-	_add_chips(tr("Length"), "lengths", lengths, true)
+	_add_chips(tr("Type"), "kinds", kinds)
+	_add_chips(tr("Terrain"), "terrains", terrains)
+	_add_chips(tr("Length"), "lengths", lengths)
 	if not countries.is_empty():
-		_add_chips(tr("Country"), "countries", countries, true)
-	_chips.move_child(_clear, -1)
+		_add_chips(tr("Country"), "countries", countries)
 
 
 static func _kept(chosen: PackedStringArray, offered: PackedStringArray) -> PackedStringArray:
@@ -385,15 +479,16 @@ static func _kept(chosen: PackedStringArray, offered: PackedStringArray) -> Pack
 	return kept
 
 
-func _add_chips(caption: String, kind: String, names: PackedStringArray, divided: bool) -> void:
-	if divided:
-		var divider: VSeparator = VSeparator.new()
-		divider.custom_minimum_size = Vector2(16, 0)
-		_chips.add_child(divider)
+func _add_chips(caption: String, kind: String, names: PackedStringArray) -> void:
 	var label: Label = _toolbar_label(caption)
 	label.add_theme_font_size_override("font_size", 13)
-	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_chips.add_child(label)
+	var flow: HFlowContainer = HFlowContainer.new()
+	flow.custom_minimum_size = Vector2(CHIPS_WIDTH, 0)
+	flow.add_theme_constant_override("h_separation", 8)
+	flow.add_theme_constant_override("v_separation", 8)
 	for chip_name: String in names:
 		var chip: Button = UiTheme.toggle_chip(_choice_label(kind, chip_name))
 		if kind == "countries":
@@ -401,7 +496,11 @@ func _add_chips(caption: String, kind: String, names: PackedStringArray, divided
 			chip.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		chip.set_pressed_no_signal(chip_name in _chosen[kind])
 		chip.toggled.connect(_on_chip_toggled.bind(kind, chip_name))
-		_chips.add_child(chip)
+		flow.add_child(chip)
+	_chips.add_child(flow)
+	if flow.get_child_count() > 0:
+		# As tall as a chip, so the caption stands level with the first row of them.
+		label.custom_minimum_size.y = (flow.get_child(0) as Control).get_combined_minimum_size().y
 
 
 ## The label of chip or group `choice` of `kind` (`kinds`, `terrains`, `lengths` or

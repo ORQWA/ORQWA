@@ -17,6 +17,7 @@ func _run() -> void:
 	_edit_dialog()
 	_estimates()
 	_card_countries()
+	await _course_loading()
 	await _course_gallery()
 	await _card_widths()
 	if not _failed:
@@ -183,8 +184,49 @@ func _estimates() -> void:
 	)
 
 
+## While a course's route is prepared, a spinner turns on its page and Ride waits (R40). A
+## course that cannot be opened stops it with the reason; opening it again tries again.
+func _course_loading() -> void:
+	var torqa: TorqaApp = TorqaApp.new()
+	root.add_child(torqa)
+	var failures: PackedStringArray = PackedStringArray()
+	torqa.failed.connect(func(message: String) -> void: failures.append(message))
+	var page: CourseDetail = CourseDetail.new()
+	root.add_child(page)
+	page.bind(torqa)
+	var spinner: Spinner = page.get("_spinner")
+	var ride: Button = page.get("_ride_button")
+	var status: Label = page.get("_status")
+	var lost: Dictionary = {
+		"path": OS.get_user_data_dir().path_join("no-such-course.tqc"),
+		"name": "Lost",
+		"length_m": 2400.0,
+		"elevation_gain_m": 149.4,
+		"max_grade": 17.6,
+	}
+	for attempt: int in [1, 2]:
+		page.open(lost)
+		_check(
+			spinner.is_visible_in_tree() and ride.disabled and not status.text.is_empty(),
+			"attempt %d: a spinner while the course loads, with what it does" % attempt
+		)
+		var waited: float = 0.0
+		while failures.size() < attempt and waited < 10.0:
+			await process_frame
+			waited += root.get_process_delta_time()
+		_check(failures.size() == attempt, "attempt %d: the course fails to open" % attempt)
+		_check(
+			not spinner.visible and ride.disabled and status.text == failures[-1],
+			"attempt %d: the spinner stops, the reason shows: %s" % [attempt, status.text]
+		)
+	page.free()
+	torqa.free()
+
+
 ## The gallery's toolbar and chips (R67) ask the core for what the rider chose; clearing
-## the filters keeps the order and groups.
+## the filters keeps the order and groups. The title, search, filters, sort, group and Import
+## share one row, the chips waiting in a panel under the Filters button, so that a library
+## spanning many countries takes no more room on the page (R85).
 func _course_gallery() -> void:
 	var torqa: TorqaApp = TorqaApp.new()
 	root.add_child(torqa)
@@ -202,41 +244,96 @@ func _course_gallery() -> void:
 		asked_sort == "name" and not asked_descending and asked_group == "none",
 		"the view as remembered: %s" % asked
 	)
-	var chips: HFlowContainer = tab.get("_chips")
+	_as_if_courses(tab)
+	await process_frame
+	await process_frame
+	var heading: Label = tab.get("_heading")
+	var filters: Button = tab.get("_filters")
+	var search: LineEdit = tab.get("_search")
+	var sort: OptionButton = tab.get("_sort")
+	var import_button: Button = tab.get("_import_button")
+	var middle: float = heading.get_global_rect().get_center().y
+	for control: Control in [search, filters, sort, import_button]:
+		var centre: float = control.get_global_rect().get_center().y
+		_check(absf(centre - middle) < 4.0, "%s in the title's row" % control.get_class())
+	var grid: GridContainer = tab.get("_chips")
 	var texts: PackedStringArray = PackedStringArray()
-	var hilly: Button = null
-	for child: Node in chips.get_children():
-		var chip: Button = child as Button
-		if chip != null and chip.toggle_mode:
-			texts.append(chip.text)
-			if chip.text == "Hilly":
-				hilly = chip
+	for chip: Button in _chips(grid):
+		texts.append(chip.text)
 	_check(
 		"3D" in texts and "< 25 km" in texts and "25–50 km" in texts and "≥ 100 km" in texts,
 		"chips for type, terrain and length: %s" % texts
 	)
-	# A chip chosen shows Clear filters beside them; nothing in the row grows or moves. The
-	# chips show whatever the library holds.
-	chips.show()
+
+	# A click on Filters opens the panel, a click on it again closes it.
+	var panel: PopupPanel = tab.get("_filter_panel")
+	_check(filters.text == "Filters" and not panel.visible, "nothing on, the panel closed")
+	await _click(filters)
+	_check(panel.visible, "a click on Filters opens the panel")
 	await process_frame
-	await process_frame
-	var chip_size: Vector2 = hilly.size
-	var row_height: float = chips.size.y
-	tab.call("_show_clear", true)
-	await process_frame
-	await process_frame
-	_check(
-		hilly.size == chip_size and is_equal_approx(chips.size.y, row_height),
-		(
-			"chips keep their size: %s → %s, row %s → %s"
-			% [chip_size, hilly.size, row_height, chips.size.y]
-		)
-	)
-	hilly.button_pressed = true
+	var panel_size: Vector2i = panel.size
+	_chip(tab, "Hilly").button_pressed = true
 	var terrains: PackedStringArray = tab.query()["terrains"]
 	_check(terrains == PackedStringArray(["hilly"]), "a chip narrows down: %s" % terrains)
+	_as_if_courses(tab)
+	await process_frame
+	await process_frame
+	_check(panel.size == panel_size, "the panel keeps its size: %s → %s" % [panel_size, panel.size])
+	# The chips on are listed below, not counted on the button: it keeps its place under the
+	# panel.
+	_check(filters.text == "Filters", "no count on the button: %s" % filters.text)
+	_check(
+		panel.position.x == roundi(filters.get_global_rect().position.x),
+		"the panel stays under the button: %s, %s" % [panel.position, filters.get_global_rect()]
+	)
+	var active: HFlowContainer = tab.get("_active")
+	var listed: Array[Button] = _chips(active)
+	_check(
+		listed.size() == 1 and listed[0].text == "Hilly", "the chip on is listed under the toolbar"
+	)
+	_as_if_courses(tab)
+	await process_frame
+	await _click(filters)
+	_check(not panel.visible, "a click on Filters closes the panel")
+	# Turned off where it is listed, it is off in the panel too.
+	listed[0].button_pressed = false
+	var none: PackedStringArray = tab.query()["terrains"]
+	_check(none.is_empty(), "the listed chip turns its filter off: %s" % none)
+	_check(not _chip(tab, "Hilly").button_pressed, "and the panel's chip")
+	_check(_chips(active).is_empty() and not active.visible, "nothing listed while nothing is on")
+
+	# However many countries the library spans, the gallery stays where it is and the panel
+	# holds them all.
+	var gallery: Control = tab.get("_gallery")
+	var gallery_top: float = gallery.get_global_rect().position.y
+	var countries: Array = []
+	for code: String in ["CH", "FR", "IT", "AT", "DE", "JP", "ES", "PT", "NO", "SE", "BE", "NL"]:
+		countries.append({"code": code, "name": "Country %s" % code})
+	tab.set("_countries", countries)
+	tab.call("_build_chips")
+	filters.pressed.emit()
+	await process_frame
+	await process_frame
+	var country_chips: Array[Button] = []
+	for chip: Button in _chips(grid):
+		if chip.text.begins_with("Country "):
+			country_chips.append(chip)
+	var last: Rect2 = country_chips[country_chips.size() - 1].get_global_rect()
+	_check(
+		country_chips.size() == 12 and Rect2(Vector2.ZERO, panel.size).encloses(last),
+		(
+			"the panel holds every country: %d, the last at %s in %s"
+			% [country_chips.size(), last, panel.size]
+		)
+	)
+	_check(
+		is_equal_approx(gallery.get_global_rect().position.y, gallery_top),
+		"the gallery stays where it is"
+	)
+	panel.hide()
+
+	_chip(tab, "Hilly").button_pressed = true
 	# Another order starts in its own direction: the latest courses first.
-	var sort: OptionButton = tab.get("_sort")
 	for i: int in sort.item_count:
 		if sort.get_item_metadata(i) == "added":
 			sort.select(i)
@@ -250,7 +347,6 @@ func _course_gallery() -> void:
 	var remembered: Dictionary = torqa.courses_view()
 	var remembered_sort: String = remembered["sort"]
 	_check(remembered_sort == "added", "the order is remembered: %s" % remembered)
-	var search: LineEdit = tab.get("_search")
 	search.text = "gurten"
 	search.text_changed.emit("gurten")
 	_check(tab.filtered(), "a search filters")
@@ -263,10 +359,51 @@ func _course_gallery() -> void:
 		cleared_search.is_empty() and cleared_terrains.is_empty() and cleared_sort == "added",
 		"filters cleared, the order kept: %s" % cleared
 	)
-	_check(not hilly.button_pressed, "the chip is off again")
+	_check(not _chip(tab, "Hilly").button_pressed, "the chip is off again")
 	torqa.set_courses_view("name", false, "none")
 	tab.free()
 	torqa.free()
+
+
+## The toolbar as a library with courses shows it, whatever the test's library holds.
+func _as_if_courses(tab: CoursesTab) -> void:
+	var toolbar: HBoxContainer = tab.get("_toolbar")
+	var heading: Label = tab.get("_heading")
+	toolbar.show()
+	heading.size_flags_horizontal = Control.SIZE_FILL
+
+
+## The chips (buttons that turn on and off) under `node`.
+func _chips(node: Node) -> Array[Button]:
+	var chips: Array[Button] = []
+	for child: Node in node.find_children("*", "Button", true, false):
+		var chip: Button = child as Button
+		if chip.toggle_mode:
+			chips.append(chip)
+	return chips
+
+
+## The gallery's filter chip that reads `text`.
+func _chip(tab: CoursesTab, text: String) -> Button:
+	var grid: GridContainer = tab.get("_chips")
+	for chip: Button in _chips(grid):
+		if chip.text == text:
+			return chip
+	return null
+
+
+## A left click on `control`, as the mouse delivers it.
+func _click(control: Control) -> void:
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.position = control.get_global_rect().get_center()
+	press.global_position = press.position
+	press.pressed = true
+	root.push_input(press, true)
+	var release: InputEventMouseButton = press.duplicate()
+	release.pressed = false
+	root.push_input(release, true)
+	await process_frame
 
 
 ## The gallery's cards fill its whole width, however wide the window (R39): as many side by

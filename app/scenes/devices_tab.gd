@@ -2,10 +2,12 @@ class_name DevicesTab
 extends VBoxContainer
 ## Trainer, power meter, cadence, heart-rate sensor and shifter — a Shimano Di2 or a Zwift
 ## Click (R5, R7, R41, R71, R72, R75, R76): scanning, choosing, what the shifter's buttons do
-## (#139), and the devices used last reconnecting at start. A device connects the moment it
+## (#139, in a dialog behind the pen beside its row), and the devices used last reconnecting
+## at start. A device connects the moment it
 ## is chosen, and each row says how its device is doing: connecting, connected, reconnecting
 ## after a drop, not found, or failed. Beside a connected device stands what it reports, and
-## beside a failed one why it failed (R80).
+## beside a failed one why it failed (R80). All of it is the active rider's (R82): switching
+## riders brings their own devices.
 
 const FAKE_TRAINER: int = -1
 const NO_HEART_RATE: int = -1
@@ -36,29 +38,7 @@ const READING_KINDS: Dictionary[String, String] = {
 	CADENCE: "cadence_sensor",
 	HEART_RATE: "heart_rate",
 }
-## What a shifter's buttons can be given (#139), by the core's name for each action.
 # i18n-begin
-const ACTION_LABELS: Dictionary[String, String] = {
-	"shift_up": "Shift up",
-	"shift_down": "Shift down",
-	"shift_up_two": "Shift up two gears",
-	"shift_down_two": "Shift down two gears",
-	"next_camera": "Next camera",
-	"overlay": "Overlay on / off",
-	"play_pause": "Music: play / pause",
-	"next_track": "Music: next track",
-	"previous_track": "Music: previous track",
-	"pause": "Pause / resume",
-	"difficulty_up": "Trainer difficulty +10 %",
-	"difficulty_down": "Trainer difficulty −10 %",
-	"intensity_up": "Workout intensity +5 %",
-	"intensity_down": "Workout intensity −5 %",
-	"skip_step": "Workout: skip step",
-}
-## The kinds of press, in the core's order.
-const PRESSES: Array[String] = ["Press", "Hold", "Double press"]
-## A Zwift Click's buttons (R75), in the core's numbering (1 and 2).
-const CLICK_BUTTONS: Array[String] = ["Plus (+)", "Minus (−)"]
 ## How a row's device is doing (R76), by state.
 const STATE_LABELS: Dictionary[String, String] = {
 	"searching": "Searching…",
@@ -69,16 +49,12 @@ const STATE_LABELS: Dictionary[String, String] = {
 	"failed": "Failed",
 }
 # i18n-end
-const CHANNELS: int = 4
-## A Zwift Click tells presses and holds apart, not double presses.
-const CLICK_PRESSES: int = 2
-## The core's name for a Di2, whose buttons are its four D-Fly channels.
-const DI2: String = "di2"
-const ZWIFT_CLICK: String = "zwift_click"
 ## The core's name for the fake trainer, as its connection is reported.
 const FAKE_TRAINER_NAME: String = "Fake trainer"
 
 var _torqa: TorqaApp
+## The rider whose devices the rows show (R82), by id.
+var _rider: String = ""
 var _scan_button: Button = Button.new()
 var _scan_label: Label = Label.new()
 var _trainer: OptionButton = OptionButton.new()
@@ -87,10 +63,13 @@ var _heart_rate: OptionButton = OptionButton.new()
 var _power_meter: OptionButton = OptionButton.new()
 ## Where the cadence comes from (R72): a device that measures it, or a cadence sensor.
 var _cadence: OptionButton = OptionButton.new()
-## A shifter, and what each press of its buttons does: a row per button (a Di2's D-Fly
-## channels, a Zwift Click's + and −), a column per kind of press the shifter tells apart.
+## A shifter; what each press of its buttons does is set in [member _button_dialog], opened
+## by the pen beside its row (#271), so the tab stays one screen whatever the shifter.
 var _shifter: OptionButton = OptionButton.new()
-## Which shifter each scanned one is, by its index: the core's "di2" or "zwift_click".
+var _button_dialog: ButtonDialog = ButtonDialog.new()
+var _edit_button: Button = Button.new()
+## Which shifter each scanned one is, by its index: the core's "di2", "zwift_click" or
+## "zwift_click_v2".
 var _shifter_models: Dictionary[int, String] = {}
 ## The scanned devices' names by index, as the core reports their connections.
 var _names: Dictionary[int, String] = {}
@@ -109,16 +88,7 @@ var _expected: Dictionary[String, String] = {}
 var _reasons: Dictionary[String, String] = {}
 var _readings: Dictionary[String, String] = {}
 var _since_reading: float = 0.0
-var _buttons: GridContainer = GridContainer.new()
-var _press_headings: Array[Label] = []
-var _channel_captions: Array[Label] = []
-var _assignments: Array[OptionButton] = []
 var _status: Label = Label.new()
-## How detailed the 3D world is drawn on this computer (R43).
-var _quality: OptionButton = OptionButton.new()
-var _quality_note: Label = Label.new()
-## Full screen or a window (#218), as F11 switches it too.
-var _fullscreen: CheckBox = CheckBox.new()
 
 
 func bind(torqa: TorqaApp) -> void:
@@ -129,36 +99,20 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa.device_failed.connect(_on_device_failed)
 	_torqa.remembered_missing.connect(_on_remembered_missing)
 	_torqa.failed.connect(func(_message: String) -> void: _scan_button.disabled = false)
+	_torqa.profile_changed.connect(_on_profile_changed)
+	_rider = _torqa.profile().get("id", "")
+	_button_dialog.bind(torqa)
 	_select_cadence_source()
-	var current: String = _torqa.graphics_quality()
-	for i: int in range(_quality.item_count):
-		if _quality.get_item_metadata(i) == current:
-			_quality.select(i)
-	_show_quality_note()
-	var assigned: Array = _torqa.button_map()
-	for channel: int in range(assigned.size()):
-		var presses: PackedStringArray = assigned[channel]
-		for press: int in range(presses.size()):
-			var option: OptionButton = _assignments[channel * PRESSES.size() + press]
-			for i: int in range(option.item_count):
-				if option.get_item_metadata(i) == presses[press]:
-					option.select(i)
-	# The trainer and strap used last reconnect in the background (R41).
-	if _torqa.reconnect_remembered():
-		_set_searching(true)
-		_scan_label.text = tr("Reconnecting your devices…")
-		_show_remembered()
+	_reconnect_remembered()
 
 
 ## Makes sure the chosen trainer, power meter, cadence, heart-rate sensor and shifter are
 ## connected, as choosing them already did; false if the trainer cannot be connected.
 func connect_selected() -> bool:
-	var trainer: bool = _choose_trainer()
-	_choose_power_meter()
-	_choose_cadence()
-	_choose_heart_rate()
-	_choose_shifter()
-	return trainer
+	var connected: bool = true
+	for role: String in _options:
+		connected = _choose(role) and connected
+	return connected
 
 
 ## How the role's device is doing: "" (none chosen), "connecting", "connected",
@@ -180,7 +134,7 @@ func _init() -> void:
 	note.add_theme_color_override("font_color", UiTheme.MUTED)
 	add_child(note)
 	var grid: GridContainer = GridContainer.new()
-	grid.columns = 4
+	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 10)
 	# i18n-begin
@@ -203,6 +157,20 @@ func _init() -> void:
 		option.custom_minimum_size = Vector2(420, 0)
 		grid.add_child(option)
 		_options[role] = option
+		# A pen opens what there is to set up on the device: a shifter's buttons (#271). The
+		# other rows keep the column, so Search and the states line up.
+		if role == CONTROLLER:
+			_edit_button.icon = UiIcons.texture("pencil")
+			_edit_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			_edit_button.tooltip_text = tr("What the buttons do")
+			_edit_button.custom_minimum_size = Vector2(44, 0)
+			_edit_button.disabled = true
+			_edit_button.pressed.connect(_on_edit_pressed)
+			grid.add_child(_edit_button)
+		else:
+			var gap: Control = Control.new()
+			gap.custom_minimum_size = Vector2(44, 0)
+			grid.add_child(gap)
 		# Looks for this kind of device alone and connects the nearest one found (R76).
 		var search: Button = Button.new()
 		search.text = tr("Search")
@@ -227,7 +195,7 @@ func _init() -> void:
 	_scan_button.custom_minimum_size = Vector2(220, 44)
 	_scan_button.pressed.connect(_on_scan_pressed)
 	scan_row.add_child(_scan_button)
-	_scan_label.text = tr("Wake the device first: pedal, or put the strap on.")
+	_scan_label.text = tr("Wake the devices first.")
 	_scan_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	scan_row.add_child(_scan_label)
 	add_child(scan_row)
@@ -249,12 +217,11 @@ func _init() -> void:
 			_choose_shifter()
 			_show_buttons()
 	)
-	_build_buttons()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_color_override("font_color", Color(1, 0.55, 0.45))
 	add_child(_status)
 	_reset_options()
-	_build_graphics()
+	add_child(_button_dialog)
 
 
 func _notification(what: int) -> void:
@@ -264,9 +231,35 @@ func _notification(what: int) -> void:
 		_power_meter.set_item_text(0, tr("None (the trainer measures)"))
 		_label_cadence_sources()
 		_shifter.set_item_text(0, tr("None (keyboard: ↑ / ↓)"))
-		_label_buttons()
+		_edit_button.tooltip_text = tr("What the buttons do")
 		for role: String in _states:
 			_render_state(role)
+
+
+## The devices used last reconnect in the background (R41), shown by name until found.
+func _reconnect_remembered() -> void:
+	if _torqa.reconnect_remembered():
+		_set_searching(true)
+		_scan_label.text = tr("Reconnecting your devices…")
+	_show_remembered()
+
+
+## Another rider rides (R82): the core let go of the devices that are not theirs. The rows
+## start afresh with what is left and the rider's cadence source, and the rider's own devices
+## reconnect as at start. Saving the same rider changes nothing here.
+func _on_profile_changed() -> void:
+	var rider: String = _torqa.profile().get("id", "")
+	if rider == _rider:
+		return
+	_rider = rider
+	_searching = ""
+	_expected.clear()
+	for role: String in _states:
+		_set_state(role, "")
+	_status.text = ""
+	_scan_label.text = tr("Wake the devices first.")
+	_reset_options()
+	_reconnect_remembered()
 
 
 func _on_scan_pressed() -> void:
@@ -323,12 +316,11 @@ func _on_devices_found(devices: Array) -> void:
 		if device["kind"] == "trainer":
 			trainers += 1
 	_scan_label.text = tr("Found %d device(s)") % devices.size()
-	# Prefer the devices used last, else a real trainer over the fake one. A power meter only
-	# when chosen once: pedals nearby may be on another bike.
+	# Prefer the devices used last, else a real trainer over the fake one. A power meter or a
+	# strap only when used last: pedals nearby may be on another bike, a strap on another
+	# rider (R82).
 	if trainers > 0:
 		_trainer.select(1)
-	if _heart_rate.item_count > 1:
-		_heart_rate.select(1)
 	for option: OptionButton in [_trainer, _power_meter, _cadence, _heart_rate, _shifter]:
 		for i: int in range(option.item_count):
 			var index: int = option.get_item_metadata(i)
@@ -345,11 +337,33 @@ func _on_devices_found(devices: Array) -> void:
 		var chosen: int = option.get_item_metadata(option.selected)
 		if found and not remembered.has(chosen):
 			option.select(first)
+	# Chosen is connected (R76): the devices used last, or the ones preferred, right away. A
+	# device a row has or waits for that the scan did not list (asleep, out of reach) stays
+	# its choice by name: missing it is not the rider choosing none, which would forget it.
+	for role: String in _options:
+		var kept: String = _expected.get(role, "")
+		if (
+			(role == searched and found)
+			or kept.is_empty()
+			or kept == FAKE_TRAINER_NAME
+			or _lists(role, kept)
+		):
+			_choose(role)
+		else:
+			_show_placeholder(role, kept)
 	_show_buttons()
-	# Chosen is connected (R76): the devices used last, or the ones preferred, right away.
-	connect_selected()
 	if not searched.is_empty() and not found:
 		_set_state(searched, "missing")
+
+
+## Whether the scan listed `device_name` among the role's choices.
+func _lists(role: String, device_name: String) -> bool:
+	var option: OptionButton = _options[role]
+	for i: int in range(option.item_count):
+		var index: int = option.get_item_metadata(i)
+		if _names.get(index, "") == device_name:
+			return true
+	return false
 
 
 ## The first scanned device in a choice (the nearest: the scan lists them by signal), or −1.
@@ -448,10 +462,7 @@ func _on_remembered_missing(names: PackedStringArray) -> void:
 		if names.has(expected):
 			_set_state(role, "missing")
 			_show_placeholder(role, expected)
-	_status.text = (
-		tr("%s not found — wake it by pedalling (or put on the strap), then scan.")
-		% ", ".join(names)
-	)
+	_status.text = tr("Not found: %s. Wake the devices, then scan again.") % ", ".join(names)
 
 
 ## While the devices used last reconnect at start, their rows show their names and that
@@ -471,7 +482,11 @@ func _show_remembered() -> void:
 		var device_name: String = device["name"]
 		_expected[role] = device_name
 		_set_state(role, "connected" if device["state"] == "connected" else "connecting")
-		_show_placeholder(role, device_name)
+		# The fake trainer, kept from the rider before, has its own choice.
+		if role == TRAINER and device_name == FAKE_TRAINER_NAME:
+			_trainer.select(0)
+		else:
+			_show_placeholder(role, device_name)
 
 
 ## Shows `device_name` as the role's choice although the scan has not listed it.
@@ -490,6 +505,22 @@ func _show_placeholder(role: String, device_name: String) -> void:
 func _chosen(role: String) -> int:
 	var selected: Variant = _options[role].get_selected_metadata()
 	return -1 if selected == null else selected
+
+
+## Connects the role's choice at once (R76); false only for a trainer that cannot be.
+func _choose(role: String) -> bool:
+	match role:
+		TRAINER:
+			return _choose_trainer()
+		POWER_METER:
+			_choose_power_meter()
+		CADENCE:
+			_choose_cadence()
+		HEART_RATE:
+			_choose_heart_rate()
+		CONTROLLER:
+			_choose_shifter()
+	return true
 
 
 ## Connects the chosen trainer at once (R76): the fake one, or a scanned one.
@@ -631,146 +662,17 @@ func _select_cadence_source() -> void:
 			_cadence.select(i)
 
 
-## The buttons matter only with a shifter chosen, and are the chosen shifter's.
+## The buttons matter only with a shifter chosen: the pen opens the chosen shifter's.
 func _show_buttons() -> void:
 	# Built before the options are filled, so there may be nothing chosen yet.
+	_edit_button.disabled = _chosen(CONTROLLER) == NO_SHIFTER
+
+
+## Opens what the chosen shifter's buttons do (#139), captioned for the shifter it is.
+func _on_edit_pressed() -> void:
 	var chosen: int = _chosen(CONTROLLER)
-	_buttons.visible = chosen != NO_SHIFTER
-	var model: String = _shifter_models.get(chosen, DI2)
-	_layout_buttons(model)
-
-
-## Shows the rows and columns of the chosen shifter's buttons and presses, captioned for it.
-func _layout_buttons(model: String) -> void:
-	var buttons: int = CLICK_BUTTONS.size() if model == ZWIFT_CLICK else CHANNELS
-	var presses: int = CLICK_PRESSES if model == ZWIFT_CLICK else PRESSES.size()
-	_buttons.columns = 1 + presses
-	for press: int in range(PRESSES.size()):
-		_press_headings[press].visible = press < presses
-	for channel: int in range(CHANNELS):
-		var caption: Label = _channel_captions[channel]
-		caption.visible = channel < buttons
-		if model == ZWIFT_CLICK and channel < buttons:
-			caption.text = tr(CLICK_BUTTONS[channel])
-		else:
-			caption.text = tr("D-Fly channel %d") % (channel + 1)
-		for press: int in range(PRESSES.size()):
-			var option: OptionButton = _assignments[channel * PRESSES.size() + press]
-			option.visible = channel < buttons and press < presses
-
-
-func _build_buttons() -> void:
-	_buttons.columns = 1 + PRESSES.size()
-	_buttons.add_theme_constant_override("h_separation", 16)
-	_buttons.add_theme_constant_override("v_separation", 10)
-	var corner: Control = Control.new()
-	corner.custom_minimum_size = Vector2(RideOptions.CAPTION_WIDTH, 0)
-	_buttons.add_child(corner)
-	for heading: String in PRESSES:
-		var label: Label = Label.new()
-		label.text = heading
-		_press_headings.append(label)
-		_buttons.add_child(label)
-	for channel: int in range(1, CHANNELS + 1):
-		var caption: Label = Label.new()
-		caption.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		_channel_captions.append(caption)
-		_buttons.add_child(caption)
-		for press: int in range(PRESSES.size()):
-			var option: OptionButton = OptionButton.new()
-			option.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-			option.custom_minimum_size = Vector2(240, 0)
-			option.add_item("")
-			option.set_item_metadata(0, "")
-			for action: String in TorqaApp.button_actions():
-				option.add_item("")
-				option.set_item_metadata(option.item_count - 1, action)
-			option.item_selected.connect(
-				func(index: int) -> void:
-					var action: String = option.get_item_metadata(index)
-					_torqa.assign_button(channel, press, action)
-			)
-			_assignments.append(option)
-			_buttons.add_child(option)
-	add_child(_buttons)
-	_label_buttons()
-
-
-## Names the buttons and actions in the interface language.
-func _label_buttons() -> void:
-	_show_buttons()
-	for option: OptionButton in _assignments:
-		for i: int in range(option.item_count):
-			var action: String = option.get_item_metadata(i)
-			var label: String = ACTION_LABELS.get(action, action)
-			option.set_item_text(i, tr(label) if action else tr("Nothing"))
-
-
-func _build_graphics() -> void:
-	var heading: Label = Label.new()
-	heading.text = tr("Graphics")
-	heading.add_theme_font_size_override("font_size", 22)
-	add_child(heading)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	var caption: Label = Label.new()
-	caption.text = tr("Quality")
-	caption.custom_minimum_size = Vector2(180, 0)
-	row.add_child(caption)
-	# i18n-begin
-	for preset: Array in [
-		["low", "Low"], ["medium", "Medium"], ["high", "High"], ["ultra", "Ultra"]
-	]:
-		# i18n-end
-		var key: String = preset[0]
-		var label: String = preset[1]
-		_quality.add_item(tr(label))
-		_quality.set_item_metadata(_quality.item_count - 1, key)
-	_quality.custom_minimum_size = Vector2(240, 0)
-	_quality.item_selected.connect(_on_quality_selected)
-	row.add_child(_quality)
-	add_child(row)
-	_quality_note.add_theme_color_override("font_color", UiTheme.MUTED)
-	_quality_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_quality_note)
-	var screen_row: HBoxContainer = HBoxContainer.new()
-	screen_row.add_theme_constant_override("separation", 16)
-	var screen_caption: Label = Label.new()
-	screen_caption.text = tr("Screen")
-	screen_caption.custom_minimum_size = Vector2(180, 0)
-	screen_row.add_child(screen_caption)
-	_fullscreen.text = tr("Full screen (F11)")
-	_fullscreen.toggled.connect(func(on: bool) -> void: FullScreen.set_on(get_window(), _torqa, on))
-	screen_row.add_child(_fullscreen)
-	add_child(screen_row)
-
-
-func _ready() -> void:
-	# F11 or the system may switch it while this page is open.
-	get_window().size_changed.connect(
-		func() -> void: _fullscreen.set_pressed_no_signal(FullScreen.is_on(get_window()))
-	)
-	_fullscreen.set_pressed_no_signal(FullScreen.is_on(get_window()))
-
-
-func _on_quality_selected(index: int) -> void:
-	var key: String = _quality.get_item_metadata(index)
-	_torqa.set_graphics_quality(key)
-	_show_quality_note()
-
-
-func _show_quality_note() -> void:
-	# i18n-begin
-	var notes: Dictionary[String, String] = {
-		"low": "For weaker computers: shorter view, simpler shadows and sky.",
-		"medium": "A balance of visual quality and performance.",
-		"high": "For stronger GPUs: softer shadows, bounced light, light fog, more distance.",
-		"ultra": "For powerful GPUs: all effects, including global illumination.",
-	}
-	# i18n-end
-	var key: String = _torqa.graphics_quality() if _torqa != null else "medium"
-	var note: String = notes.get(key, notes["medium"])
-	_quality_note.text = tr(note) + " " + tr("Applies from the next ride.")
+	var model: String = _shifter_models.get(chosen, ButtonDialog.DI2)
+	_button_dialog.open(model, _shifter.get_item_text(_shifter.selected))
 
 
 func _reset_options() -> void:

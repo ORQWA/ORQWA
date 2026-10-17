@@ -138,8 +138,28 @@ func _run() -> void:
 
 	await _workout()
 
+	# The course's page (R40): loaded already, it is ready at once; opened while the course
+	# loads, a spinner turns and Ride waits until its route is in.
+	var page: CourseDetail = CourseDetail.new()
+	root.add_child(page)
+	page.bind(_torqa)
+	var spinner: Spinner = page.get("_spinner")
+	var ride: Button = page.get("_ride_button")
+	page.open(found)
+	_check(not spinner.visible and not ride.disabled, "a loaded course is ready at once")
 	_torqa.open_course(course_path)
+	page.open(found)
+	_check(spinner.is_visible_in_tree() and ride.disabled, "a spinner while the course loads")
 	var reopened: Array = await _wait_for(_torqa.route_loaded)
+	var figures: VBoxContainer = page.get("_figures")
+	var estimated: bool = figures.find_children("*", "Label", true, false).any(
+		func(label: Label) -> bool: return label.text.begins_with("Time at")
+	)
+	_check(
+		not spinner.visible and not ride.disabled and estimated,
+		"the spinner stops once the course is loaded, its estimate shown"
+	)
+	page.free()
 	var reopened_route: Dictionary = reopened[0]
 	var reopened_name: String = reopened_route["name"]
 	_check(reopened_name == "Smoke", "course reopened: %s" % reopened_route)
@@ -192,14 +212,18 @@ func _run() -> void:
 	_torqa.select_profile(id)
 
 	# Di2 buttons (#139): any press of a channel can be given an action, or none.
-	_check(_torqa.assign_button(3, 1, "next_camera"), "holding channel 3 moves the camera")
-	var buttons: Array = _torqa.button_map()
+	_check(_torqa.assign_button("di2", 3, 1, "next_camera"), "holding channel 3 moves the camera")
+	var buttons: Array = _torqa.button_map("di2")
 	var third: PackedStringArray = buttons[2]
 	_check(third[1] == "next_camera" and third[0] == "", "assigned: %s" % [buttons])
-	_check(not _torqa.assign_button(3, 1, "fly"), "unknown actions are refused")
-	_check(_torqa.assign_button(4, 0, "pause"), "channel 4 pauses the ride")
-	_torqa.assign_button(4, 0, "")
-	_torqa.assign_button(3, 1, "")
+	_check(not _torqa.assign_button("di2", 3, 1, "fly"), "unknown actions are refused")
+	_check(_torqa.assign_button("di2", 1, 0, "pause"), "channel 1 pauses the ride")
+	# Each shifter has its own (R84): the Di2's channel 1 is not a Click's +.
+	var plus: PackedStringArray = _torqa.button_map("zwift_click")[0]
+	_check(plus[0] == "shift_up", "a Click's + still shifts: %s" % [plus])
+	_check(not _torqa.assign_button("zwift_play", 1, 0, "pause"), "unknown shifters are refused")
+	_torqa.assign_button("di2", 1, 0, "shift_up")
+	_torqa.assign_button("di2", 3, 1, "")
 	DirAccess.remove_absolute(course_path)
 	print("RIDE SMOKE TEST PASSED (%s)" % _saved_path)
 	quit(0)

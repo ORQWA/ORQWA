@@ -16,7 +16,13 @@ const PATHS: Dictionary[String, String] = {
 		+ '<rect x="12" y="9" width="7" height="7" rx="1.5" fill="COLOR" stroke="none"/>'
 	),
 	"flag": '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
-	"back": '<path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>',
+	# The chevron is cut out of the disc, so whatever lies behind shows through in any colour.
+	"back":
+	(
+		'<defs><mask id="cut"><rect width="24" height="24" fill="white" stroke="none"/>'
+		+ '<path d="M13.5 7.5L9 12l4.5 4.5" stroke="black" stroke-width="2.4"/></mask></defs>'
+		+ '<circle cx="12" cy="12" r="9.5" fill="COLOR" stroke="none" mask="url(#cut)"/>'
+	),
 	"fold": '<path d="M15 6l-6 6 6 6"/>',
 	"unfold": '<path d="M9 6l6 6-6 6"/>',
 	"down": '<path d="M6 9l6 6 6-6"/>',

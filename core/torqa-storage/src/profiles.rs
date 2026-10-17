@@ -1,13 +1,14 @@
 //! Rider profiles on disk (R22): `profiles/<id>/profile.toml` in the data directory, next to the
-//! rider's own rides in `profiles/<id>/rides/`, HUD layout and overlay place. One directory per
-//! rider keeps riders from overwriting each other's files when the data directory is synced
-//! (ADR 0002). What depends on the computer instead is in [`crate::computer`].
+//! rider's own rides in `profiles/<id>/rides/`, HUD layout, overlay place and devices. One
+//! directory per rider keeps riders from overwriting each other's files when the data directory
+//! is synced (ADR 0002). What depends on the computer instead is in [`crate::computer`].
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
-use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, Press};
+use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, ControllerModel, Press};
 use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
 
@@ -16,6 +17,7 @@ const PROFILE_FILE: &str = "profile.toml";
 const SETTINGS_FILE: &str = "settings.toml";
 const HUD_FILE: &str = "hud.toml";
 const OVERLAY_FILE: &str = "overlay.toml";
+const DEVICES_FILE: &str = "devices.toml";
 
 /// Reading or writing a profile failed.
 #[derive(Debug, thiserror::Error)]
@@ -192,22 +194,17 @@ impl From<ProfileFile> for Profile {
 struct Settings {
     /// The profile chosen last.
     active_profile: Option<String>,
-    /// The trainer connected last, reconnected at start (R41).
+    /// The devices, the cadence's source and the shifter's buttons, from before R82 made them
+    /// the rider's ([`DevicesFile`]); carried over once by [`carry_over`], then gone.
     trainer: Option<RememberedDevice>,
-    /// The heart-rate sensor connected last.
     heart_rate: Option<RememberedDevice>,
-    /// The power meter connected last (R71).
     power_meter: Option<RememberedDevice>,
-    /// The cadence sensor connected last (R72).
     cadence_sensor: Option<RememberedDevice>,
-    /// Which device's cadence counts (R72), by [`CadenceSource::name`].
     cadence_source: Option<String>,
-    /// The controller (shifter) connected last.
     controller: Option<RememberedDevice>,
-    /// What the Di2 shifter's buttons do (#139).
     buttons: Option<ButtonsFile>,
     /// The D-Fly channels that shifted up and down before buttons could be given other
-    /// controls; they shift until [`Settings::buttons`] is saved.
+    /// controls (#139): carried over as the buttons where those were never saved.
     shift_up_channel: Option<u8>,
     shift_down_channel: Option<u8>,
     /// How detailed the 3D world was drawn, from before R78 made it the computer's
@@ -238,19 +235,27 @@ pub struct CoursesView {
     pub group: String,
 }
 
-/// What the Di2 shifter's buttons do (#139): for each D-Fly channel, the action of each kind
-/// of press by name. A press left out, or with an unknown action, does nothing.
-#[derive(Debug, Default, Serialize, Deserialize)]
+/// What the shifter's buttons do (#139): for each button (a Di2's D-Fly channel, a Click's
+/// numbered button), the action of each kind of press by name. A press left out, or with an
+/// unknown action, does nothing. Files from before the Click v2 name four channels; the rest
+/// stay empty.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
-#[allow(clippy::struct_field_names)] // the D-Fly channels, named as the rider reads them in the file
+#[allow(clippy::struct_field_names)] // the channels, named as the rider reads them in the file
 struct ButtonsFile {
     channel_1: PressesFile,
     channel_2: PressesFile,
     channel_3: PressesFile,
     channel_4: PressesFile,
+    channel_5: PressesFile,
+    channel_6: PressesFile,
+    channel_7: PressesFile,
+    channel_8: PressesFile,
+    channel_9: PressesFile,
+    channel_10: PressesFile,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 struct PressesFile {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -279,6 +284,12 @@ impl From<&ButtonMap> for ButtonsFile {
             channel_2: channel(2),
             channel_3: channel(3),
             channel_4: channel(4),
+            channel_5: channel(5),
+            channel_6: channel(6),
+            channel_7: channel(7),
+            channel_8: channel(8),
+            channel_9: channel(9),
+            channel_10: channel(10),
         }
     }
 }
@@ -291,6 +302,12 @@ impl ButtonsFile {
             &self.channel_2,
             &self.channel_3,
             &self.channel_4,
+            &self.channel_5,
+            &self.channel_6,
+            &self.channel_7,
+            &self.channel_8,
+            &self.channel_9,
+            &self.channel_10,
         ];
         for (button, presses) in (1..).zip(channels) {
             for (press, name) in [
@@ -403,6 +420,15 @@ pub struct RememberedDevice {
     pub name: String,
 }
 
+impl RememberedDevice {
+    /// Whether the device the system knows as `id`, advertised as `name`, is this one: by its
+    /// identifier, else by its name, as the identifier differs on another computer.
+    #[must_use]
+    pub fn is(&self, id: &str, name: &str) -> bool {
+        self.id == id || self.name == name
+    }
+}
+
 /// The devices to reconnect at start.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RememberedDevices {
@@ -418,6 +444,20 @@ pub struct RememberedDevices {
     pub controller: Option<RememberedDevice>,
 }
 
+impl RememberedDevices {
+    /// The device remembered in `role`, if any.
+    #[must_use]
+    pub fn get(&self, role: DeviceRole) -> Option<&RememberedDevice> {
+        match role {
+            DeviceRole::Trainer => self.trainer.as_ref(),
+            DeviceRole::HeartRate => self.heart_rate.as_ref(),
+            DeviceRole::PowerMeter => self.power_meter.as_ref(),
+            DeviceRole::CadenceSensor => self.cadence_sensor.as_ref(),
+            DeviceRole::Controller => self.controller.as_ref(),
+        }
+    }
+}
+
 /// What a remembered device is for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeviceRole {
@@ -431,6 +471,82 @@ pub enum DeviceRole {
     CadenceSensor,
     /// A controller that shifts.
     Controller,
+}
+
+impl DeviceRole {
+    /// Every role, the trainer first.
+    pub const ALL: [Self; 5] = [
+        Self::Trainer,
+        Self::HeartRate,
+        Self::PowerMeter,
+        Self::CadenceSensor,
+        Self::Controller,
+    ];
+}
+
+/// The rider's devices (R82), in `profiles/<id>/devices.toml`: the ones to reconnect, where the
+/// cadence comes from and what each shifter's buttons do. Riders on one computer each bring
+/// their own strap or shifter, and their choices follow them to another sharing the data.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct DevicesFile {
+    trainer: Option<RememberedDevice>,
+    heart_rate: Option<RememberedDevice>,
+    power_meter: Option<RememberedDevice>,
+    cadence_sensor: Option<RememberedDevice>,
+    controller: Option<RememberedDevice>,
+    /// Which device's cadence counts (R72), by [`CadenceSource::name`].
+    cadence_source: Option<String>,
+    /// What every shifter's buttons did before each model had its own (R84): what a model
+    /// without its own still does, until the rider gives one its own.
+    buttons: Option<ButtonsFile>,
+    /// What each shifter model's buttons do (#139, R84), by [`ControllerModel::name`]; the
+    /// first two shift until the model's are saved.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    shifter_buttons: BTreeMap<String, ButtonsFile>,
+}
+
+impl DevicesFile {
+    fn slot(&mut self, role: DeviceRole) -> &mut Option<RememberedDevice> {
+        match role {
+            DeviceRole::Trainer => &mut self.trainer,
+            DeviceRole::HeartRate => &mut self.heart_rate,
+            DeviceRole::PowerMeter => &mut self.power_meter,
+            DeviceRole::CadenceSensor => &mut self.cadence_sensor,
+            DeviceRole::Controller => &mut self.controller,
+        }
+    }
+}
+
+impl Settings {
+    /// Takes the device settings kept for every rider before R82, if there were any.
+    fn take_devices(&mut self) -> Option<DevicesFile> {
+        let up = self.shift_up_channel.take();
+        let down = self.shift_down_channel.take();
+        let buttons = self.buttons.take().or_else(|| {
+            (up.is_some() || down.is_some()).then(|| {
+                ButtonsFile::from(&ButtonMap::shifting(up.unwrap_or(1), down.unwrap_or(2)))
+            })
+        });
+        let devices = DevicesFile {
+            trainer: self.trainer.take(),
+            heart_rate: self.heart_rate.take(),
+            power_meter: self.power_meter.take(),
+            cadence_sensor: self.cadence_sensor.take(),
+            controller: self.controller.take(),
+            cadence_source: self.cadence_source.take(),
+            buttons,
+            shifter_buttons: BTreeMap::new(),
+        };
+        let any = devices.trainer.is_some()
+            || devices.heart_rate.is_some()
+            || devices.power_meter.is_some()
+            || devices.cadence_sensor.is_some()
+            || devices.controller.is_some()
+            || devices.cadence_source.is_some()
+            || devices.buttons.is_some();
+        any.then_some(devices)
+    }
 }
 
 /// All readable profiles, by name. Unreadable ones are skipped.
@@ -560,9 +676,11 @@ pub fn set_overlay_window(
 }
 
 /// Carries over, once, what `settings.toml` kept for every rider and computer before R78
-/// (#257): the overlay's place to every rider who has none of their own, the graphics quality
-/// and full screen to this computer's `file` where it has not chosen. Then they are gone from
-/// the data directory, so another computer sharing it starts from its own choices.
+/// (#257) and R82: the overlay's place and the devices (with the cadence's source and the
+/// shifter's buttons) to every rider who has none of their own, the graphics quality and full
+/// screen to this computer's `file` where it has not chosen. Then they are gone from the data
+/// directory, so another computer sharing it starts from its own choices, and each rider from
+/// their own devices.
 ///
 /// # Errors
 /// On file system errors.
@@ -571,14 +689,20 @@ pub fn carry_over(data_dir: &Path, file: &Path) -> Result<(), ProfileError> {
     let quality = settings.graphics_quality.take();
     let fullscreen = settings.fullscreen.take();
     let overlay = settings.overlay.take();
-    if quality.is_none() && fullscreen.is_none() && overlay.is_none() {
+    let devices = settings.take_devices();
+    if quality.is_none() && fullscreen.is_none() && overlay.is_none() && devices.is_none() {
         return Ok(());
     }
-    if let Some(window) = overlay {
-        for rider in list(data_dir) {
-            if overlay_window(data_dir, &rider.id).is_none() {
-                set_overlay_window(data_dir, &rider.id, window)?;
-            }
+    for rider in list(data_dir) {
+        if let Some(window) = overlay
+            && overlay_window(data_dir, &rider.id).is_none()
+        {
+            set_overlay_window(data_dir, &rider.id, window)?;
+        }
+        if let Some(devices) = &devices
+            && !devices_path(data_dir, &rider.id).exists()
+        {
+            save_devices(data_dir, &rider.id, devices)?;
         }
     }
     crate::computer::take_over(file, quality, fullscreen)?;
@@ -597,101 +721,138 @@ pub fn active(data_dir: &Path) -> Option<String> {
     settings(data_dir).active_profile
 }
 
-/// The devices connected last.
+fn devices_path(data_dir: &Path, id: &str) -> PathBuf {
+    profile_dir(data_dir, id).join(DEVICES_FILE)
+}
+
+/// The rider's devices; none, automatic cadence and shifting buttons before they chose any.
+fn devices(data_dir: &Path, id: &str) -> DevicesFile {
+    std::fs::read_to_string(devices_path(data_dir, id))
+        .ok()
+        .and_then(|text| toml::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+fn save_devices(data_dir: &Path, id: &str, devices: &DevicesFile) -> Result<(), ProfileError> {
+    write_atomically(
+        &devices_path(data_dir, id),
+        &toml::to_string_pretty(devices)?,
+    )
+}
+
+/// The devices the rider connected last (R82).
 #[must_use]
-pub fn remembered_devices(data_dir: &Path) -> RememberedDevices {
-    let settings = settings(data_dir);
+pub fn remembered_devices(data_dir: &Path, id: &str) -> RememberedDevices {
+    let devices = devices(data_dir, id);
     RememberedDevices {
-        trainer: settings.trainer,
-        heart_rate: settings.heart_rate,
-        power_meter: settings.power_meter,
-        cadence_sensor: settings.cadence_sensor,
-        controller: settings.controller,
+        trainer: devices.trainer,
+        heart_rate: devices.heart_rate,
+        power_meter: devices.power_meter,
+        cadence_sensor: devices.cadence_sensor,
+        controller: devices.controller,
     }
 }
 
-/// Remembers a device in its `role` to reconnect next time.
+/// Remembers a device in its `role` to reconnect for the rider next time.
 ///
 /// # Errors
 /// On file system errors.
 pub fn remember_device(
     data_dir: &Path,
+    id: &str,
     role: DeviceRole,
     device: RememberedDevice,
 ) -> Result<(), ProfileError> {
-    set_remembered(data_dir, role, Some(device))
+    set_remembered(data_dir, id, role, Some(device))
 }
 
-/// Stops reconnecting the device in `role` at start.
+/// Stops reconnecting the rider's device in `role`.
 ///
 /// # Errors
 /// On file system errors.
-pub fn forget_device(data_dir: &Path, role: DeviceRole) -> Result<(), ProfileError> {
-    set_remembered(data_dir, role, None)
+pub fn forget_device(data_dir: &Path, id: &str, role: DeviceRole) -> Result<(), ProfileError> {
+    set_remembered(data_dir, id, role, None)
 }
 
 fn set_remembered(
     data_dir: &Path,
+    id: &str,
     role: DeviceRole,
     device: Option<RememberedDevice>,
 ) -> Result<(), ProfileError> {
-    let mut settings = settings(data_dir);
-    let slot = match role {
-        DeviceRole::Trainer => &mut settings.trainer,
-        DeviceRole::HeartRate => &mut settings.heart_rate,
-        DeviceRole::PowerMeter => &mut settings.power_meter,
-        DeviceRole::CadenceSensor => &mut settings.cadence_sensor,
-        DeviceRole::Controller => &mut settings.controller,
-    };
-    *slot = device;
-    save_settings(data_dir, &settings)
+    let mut devices = devices(data_dir, id);
+    *devices.slot(role) = device;
+    save_devices(data_dir, id, &devices)
 }
 
-/// Which device's cadence counts (R72); automatic until chosen.
+/// Gives the rider `to` the devices, cadence source and buttons of the rider `from`: a new
+/// rider starts with those in use, so adding one lets nothing connected go.
+///
+/// # Errors
+/// On file system errors.
+pub fn copy_devices(data_dir: &Path, from: &str, to: &str) -> Result<(), ProfileError> {
+    save_devices(data_dir, to, &devices(data_dir, from))
+}
+
+/// Which device's cadence counts for the rider (R72); automatic until chosen.
 #[must_use]
-pub fn cadence_source(data_dir: &Path) -> CadenceSource {
-    settings(data_dir)
+pub fn cadence_source(data_dir: &Path, id: &str) -> CadenceSource {
+    devices(data_dir, id)
         .cadence_source
         .and_then(|name| CadenceSource::from_name(&name))
         .unwrap_or_default()
 }
 
-/// Remembers which device's cadence counts (R72).
+/// Remembers which device's cadence counts for the rider (R72).
 ///
 /// # Errors
 /// On file system errors.
-pub fn set_cadence_source(data_dir: &Path, source: CadenceSource) -> Result<(), ProfileError> {
-    let mut settings = settings(data_dir);
-    settings.cadence_source = Some(source.name().to_owned());
-    save_settings(data_dir, &settings)
+pub fn set_cadence_source(
+    data_dir: &Path,
+    id: &str,
+    source: CadenceSource,
+) -> Result<(), ProfileError> {
+    let mut devices = devices(data_dir, id);
+    devices.cadence_source = Some(source.name().to_owned());
+    save_devices(data_dir, id, &devices)
 }
 
-/// What the Di2 shifter's buttons do (#139); until that is saved, the channels chosen before
-/// shift up and down (1 and 2 if none were).
+/// What the buttons of the rider's shifter `model` do (#139, R84); the first two shift up and
+/// down until they chose.
 #[must_use]
-pub fn button_map(data_dir: &Path) -> ButtonMap {
-    let settings = settings(data_dir);
-    settings.buttons.map_or_else(
-        || {
-            ButtonMap::shifting(
-                settings.shift_up_channel.unwrap_or(1),
-                settings.shift_down_channel.unwrap_or(2),
-            )
-        },
-        |buttons| buttons.map(),
-    )
+pub fn button_map(data_dir: &Path, id: &str, model: ControllerModel) -> ButtonMap {
+    let devices = devices(data_dir, id);
+    devices
+        .shifter_buttons
+        .get(model.name())
+        .or(devices.buttons.as_ref())
+        .map_or_else(ButtonMap::default, ButtonsFile::map)
 }
 
-/// Remembers what the Di2 shifter's buttons do.
+/// Remembers what the buttons of the rider's shifter `model` do; the other models' stay.
 ///
 /// # Errors
 /// On file system errors.
-pub fn set_button_map(data_dir: &Path, map: &ButtonMap) -> Result<(), ProfileError> {
-    let mut settings = settings(data_dir);
-    settings.buttons = Some(ButtonsFile::from(map));
-    settings.shift_up_channel = None;
-    settings.shift_down_channel = None;
-    save_settings(data_dir, &settings)
+pub fn set_button_map(
+    data_dir: &Path,
+    id: &str,
+    model: ControllerModel,
+    map: &ButtonMap,
+) -> Result<(), ProfileError> {
+    let mut devices = devices(data_dir, id);
+    // What every model did before stays each one's own.
+    if let Some(shared) = devices.buttons.take() {
+        for other in ControllerModel::ALL {
+            devices
+                .shifter_buttons
+                .entry(other.name().to_owned())
+                .or_insert_with(|| shared.clone());
+        }
+    }
+    devices
+        .shifter_buttons
+        .insert(model.name().to_owned(), ButtonsFile::from(map));
+    save_devices(data_dir, id, &devices)
 }
 
 /// Whether the ride view's control bar is folded away to its corner (#189); shown until it
@@ -788,23 +949,18 @@ mod tests {
     }
 
     #[test]
-    fn buttons_shift_on_the_channels_chosen_before_they_could_be_assigned() {
-        let dir = temp_dir("buttons-before");
-        assert_eq!(button_map(&dir), ButtonMap::shifting(1, 2));
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(
-            dir.join(SETTINGS_FILE),
-            "shift_up_channel = 2\nshift_down_channel = 1\n",
-        )
-        .unwrap();
+    fn buttons_shift_until_the_rider_gives_them_something_else() {
+        let dir = temp_dir("buttons-default");
 
-        assert_eq!(button_map(&dir), ButtonMap::shifting(2, 1));
+        for model in ControllerModel::ALL {
+            assert_eq!(button_map(&dir, "anna", model), ButtonMap::shifting(1, 2));
+        }
     }
 
     #[test]
-    fn assigned_buttons_are_kept_by_name() {
+    fn assigned_buttons_are_each_riders_own_and_kept_by_name() {
         let dir = temp_dir("buttons");
-        set_ride_bar_folded(&dir, true).unwrap();
+        set_cadence_source(&dir, "anna", CadenceSource::Trainer).unwrap();
         let mut map = ButtonMap::shifting(2, 1);
         map.assign(
             3,
@@ -813,13 +969,79 @@ mod tests {
         );
         map.assign(1, Press::Double, None);
 
-        set_button_map(&dir, &map).unwrap();
+        set_button_map(&dir, "anna", ControllerModel::Di2, &map).unwrap();
 
-        assert_eq!(button_map(&dir), map);
-        assert!(ride_bar_folded(&dir), "the other settings stay");
-        let text = std::fs::read_to_string(dir.join(SETTINGS_FILE)).unwrap();
+        assert_eq!(button_map(&dir, "anna", ControllerModel::Di2), map);
+        assert_eq!(
+            button_map(&dir, "ben", ControllerModel::Di2),
+            ButtonMap::default(),
+            "another rider's own"
+        );
+        assert_eq!(
+            cadence_source(&dir, "anna"),
+            CadenceSource::Trainer,
+            "the rider's other device settings stay"
+        );
+        let text = std::fs::read_to_string(devices_path(&dir, "anna")).unwrap();
         assert!(text.contains(r#"hold = "next_camera""#), "{text}");
-        assert!(!text.contains("shift_up_channel"), "{text}");
+        assert!(!dir.join(SETTINGS_FILE).exists(), "nothing for every rider");
+    }
+
+    #[test]
+    fn each_shifter_models_buttons_are_its_own() {
+        let dir = temp_dir("buttons-models");
+        let mut di2 = ButtonMap::shifting(1, 2);
+        di2.assign(1, Press::Short, Some(ButtonAction::Control(Control::Pause)));
+        let click = ButtonMap::shifting(2, 1);
+
+        set_button_map(&dir, "anna", ControllerModel::Di2, &di2).unwrap();
+        set_button_map(&dir, "anna", ControllerModel::ZwiftClick, &click).unwrap();
+
+        assert_eq!(button_map(&dir, "anna", ControllerModel::Di2), di2);
+        assert_eq!(button_map(&dir, "anna", ControllerModel::ZwiftClick), click);
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::ZwiftClickV2),
+            ButtonMap::default(),
+            "a model not given any shifts"
+        );
+        let text = std::fs::read_to_string(devices_path(&dir, "anna")).unwrap();
+        assert!(
+            text.contains("[shifter_buttons.zwift_click.channel_1]"),
+            "{text}"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn buttons_every_shifter_shared_stay_each_models_until_it_is_given_its_own() {
+        let dir = temp_dir("buttons-shared");
+        std::fs::create_dir_all(profile_dir(&dir, "anna")).unwrap();
+        std::fs::write(
+            devices_path(&dir, "anna"),
+            "[buttons.channel_1]\npress = \"shift_down\"\n\n\
+             [buttons.channel_3]\nhold = \"next_camera\"\n",
+        )
+        .unwrap();
+        let shared = button_map(&dir, "anna", ControllerModel::Di2);
+        assert_eq!(
+            shared.action(1, Press::Short),
+            Some(ButtonAction::ShiftDown)
+        );
+        assert_eq!(
+            shared.action(3, Press::Long),
+            Some(ButtonAction::Control(Control::NextCamera))
+        );
+
+        set_button_map(&dir, "anna", ControllerModel::Di2, &ButtonMap::default()).unwrap();
+
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::Di2),
+            ButtonMap::default()
+        );
+        for model in [ControllerModel::ZwiftClick, ControllerModel::ZwiftClickV2] {
+            assert_eq!(button_map(&dir, "anna", model), shared, "{model:?}");
+        }
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
@@ -831,14 +1053,14 @@ mod tests {
             );
         }
         let dir = temp_dir("buttons-unknown");
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(profile_dir(&dir, "anna")).unwrap();
         std::fs::write(
-            dir.join(SETTINGS_FILE),
-            "[buttons.channel_1]\npress = \"launch\"\nhold = \"shift_up\"\n",
+            devices_path(&dir, "anna"),
+            "[shifter_buttons.di2.channel_1]\npress = \"launch\"\nhold = \"shift_up\"\n",
         )
         .unwrap();
 
-        let map = button_map(&dir);
+        let map = button_map(&dir, "anna", ControllerModel::Di2);
 
         assert_eq!(map.action(1, Press::Short), None);
         assert_eq!(map.action(1, Press::Long), Some(ButtonAction::ShiftUp));
@@ -986,6 +1208,63 @@ mod tests {
     }
 
     #[test]
+    fn devices_from_before_are_carried_over_once_to_every_rider() {
+        let dir = temp_dir("carry-over-devices");
+        let computer = dir.join("cache").join(crate::computer::FILE);
+        save(&dir, "anna", &Profile::default()).unwrap();
+        save(&dir, "ben", &Profile::default()).unwrap();
+        let own = RememberedDevice {
+            id: "hci0/dev_CC".to_owned(),
+            name: "Ben's strap".to_owned(),
+        };
+        remember_device(&dir, "ben", DeviceRole::HeartRate, own.clone()).unwrap();
+        std::fs::write(
+            dir.join(SETTINGS_FILE),
+            "active_profile = \"anna\"\ncadence_source = \"trainer\"\n\
+             shift_up_channel = 2\nshift_down_channel = 1\n\n\
+             [trainer]\nid = \"hci0/dev_AA\"\nname = \"KICKR CORE\"\n\n\
+             [heart_rate]\nid = \"hci0/dev_BB\"\nname = \"Polar H9\"\n",
+        )
+        .unwrap();
+
+        carry_over(&dir, &computer).unwrap();
+
+        let anna = remembered_devices(&dir, "anna");
+        assert_eq!(anna.trainer.map(|d| d.name).as_deref(), Some("KICKR CORE"));
+        assert_eq!(anna.heart_rate.map(|d| d.name).as_deref(), Some("Polar H9"));
+        assert_eq!(cadence_source(&dir, "anna"), CadenceSource::Trainer);
+        for model in ControllerModel::ALL {
+            assert_eq!(
+                button_map(&dir, "anna", model),
+                ButtonMap::shifting(2, 1),
+                "the channels chosen before still shift"
+            );
+        }
+        let ben = remembered_devices(&dir, "ben");
+        assert_eq!(ben.heart_rate, Some(own), "a rider's own stay");
+        assert_eq!(ben.trainer, None, "and are not mixed with everyone's");
+        assert_eq!(
+            active(&dir).as_deref(),
+            Some("anna"),
+            "the other settings stay"
+        );
+        let text = std::fs::read_to_string(dir.join(SETTINGS_FILE)).unwrap();
+        assert!(
+            !text.contains("trainer")
+                && !text.contains("heart_rate")
+                && !text.contains("cadence")
+                && !text.contains("channel"),
+            "gone from the shared settings: {text}"
+        );
+
+        // Once: what a rider chose since stays.
+        forget_device(&dir, "anna", DeviceRole::HeartRate).unwrap();
+        carry_over(&dir, &computer).unwrap();
+        assert_eq!(remembered_devices(&dir, "anna").heart_rate, None);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn profiles_round_trip_and_list_by_name() {
         let data = temp_dir("roundtrip");
         let zoe = Profile {
@@ -1111,41 +1390,88 @@ mod tests {
     }
 
     #[test]
-    fn remembers_devices_alongside_the_active_profile() {
+    fn each_rider_remembers_their_own_devices() {
         let data = temp_dir("devices");
-        assert_eq!(remembered_devices(&data), RememberedDevices::default());
+        assert_eq!(
+            remembered_devices(&data, "anna"),
+            RememberedDevices::default()
+        );
         let kickr = RememberedDevice {
             id: "hci0/dev_AA".to_owned(),
             name: "KICKR CORE".to_owned(),
         };
-
-        set_active(&data, "anna").unwrap();
-        remember_device(&data, DeviceRole::Trainer, kickr.clone()).unwrap();
-        set_active(&data, "zoe").unwrap();
         let pedals = RememberedDevice {
             id: "hci0/dev_BB".to_owned(),
             name: "ASSIOMA12345R".to_owned(),
         };
-        remember_device(&data, DeviceRole::PowerMeter, pedals.clone()).unwrap();
+        set_active(&data, "anna").unwrap();
 
-        assert_eq!(remembered_devices(&data).trainer, Some(kickr));
-        assert_eq!(remembered_devices(&data).power_meter, Some(pedals));
-        assert_eq!(remembered_devices(&data).heart_rate, None);
-        forget_device(&data, DeviceRole::PowerMeter).unwrap();
-        assert_eq!(remembered_devices(&data).power_meter, None);
-        assert!(remembered_devices(&data).trainer.is_some());
-        assert_eq!(active(&data), Some("zoe".to_owned()));
+        remember_device(&data, "anna", DeviceRole::Trainer, kickr.clone()).unwrap();
+        remember_device(&data, "anna", DeviceRole::PowerMeter, pedals.clone()).unwrap();
+        remember_device(&data, "zoe", DeviceRole::Trainer, kickr.clone()).unwrap();
+
+        let anna = remembered_devices(&data, "anna");
+        assert_eq!(anna.trainer, Some(kickr.clone()));
+        assert_eq!(anna.get(DeviceRole::PowerMeter), Some(&pedals));
+        assert_eq!(anna.heart_rate, None);
+        assert_eq!(
+            remembered_devices(&data, "zoe").power_meter,
+            None,
+            "Anna's pedals are not Zoë's"
+        );
+        forget_device(&data, "anna", DeviceRole::PowerMeter).unwrap();
+        assert_eq!(remembered_devices(&data, "anna").power_meter, None);
+        assert_eq!(remembered_devices(&data, "anna").trainer, Some(kickr));
+        assert_eq!(active(&data).as_deref(), Some("anna"), "the settings stay");
         std::fs::remove_dir_all(data).unwrap();
     }
 
     #[test]
-    fn remembers_the_cadence_source() {
+    fn a_device_is_known_by_its_identifier_or_else_by_its_name() {
+        let strap = RememberedDevice {
+            id: "hci0/dev_AA".to_owned(),
+            name: "Polar H9 ABCD".to_owned(),
+        };
+
+        assert!(strap.is("hci0/dev_AA", "Polar H9 ABCD"));
+        assert!(strap.is("5F1C-other-computer", "Polar H9 ABCD"));
+        assert!(!strap.is("hci0/dev_BB", "Polar H9 EFGH"));
+    }
+
+    #[test]
+    fn a_new_rider_can_start_with_another_riders_devices() {
+        let data = temp_dir("devices-copy");
+        let click = RememberedDevice {
+            id: "hci0/dev_CC".to_owned(),
+            name: "Zwift Click".to_owned(),
+        };
+        remember_device(&data, "anna", DeviceRole::Controller, click.clone()).unwrap();
+        set_cadence_source(&data, "anna", CadenceSource::PowerMeter).unwrap();
+        let map = ButtonMap::shifting(2, 1);
+        set_button_map(&data, "anna", ControllerModel::ZwiftClick, &map).unwrap();
+
+        copy_devices(&data, "anna", "ben").unwrap();
+
+        assert_eq!(remembered_devices(&data, "ben").controller, Some(click));
+        assert_eq!(cadence_source(&data, "ben"), CadenceSource::PowerMeter);
+        assert_eq!(button_map(&data, "ben", ControllerModel::ZwiftClick), map);
+        forget_device(&data, "ben", DeviceRole::Controller).unwrap();
+        assert!(
+            remembered_devices(&data, "anna").controller.is_some(),
+            "a copy: the riders choose apart from then on"
+        );
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn each_rider_chooses_where_their_cadence_comes_from() {
         let data = temp_dir("cadence");
-        assert_eq!(cadence_source(&data), CadenceSource::Automatic);
+        assert_eq!(cadence_source(&data, "anna"), CadenceSource::Automatic);
 
-        set_cadence_source(&data, CadenceSource::Trainer).unwrap();
+        set_cadence_source(&data, "anna", CadenceSource::Trainer).unwrap();
 
-        assert_eq!(cadence_source(&data), CadenceSource::Trainer);
+        assert_eq!(cadence_source(&data, "anna"), CadenceSource::Trainer);
+        assert_eq!(cadence_source(&data, "ben"), CadenceSource::Automatic);
         std::fs::remove_dir_all(data).unwrap();
     }
 

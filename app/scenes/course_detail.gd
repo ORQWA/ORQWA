@@ -4,7 +4,7 @@ extends HBoxContainer
 ## elevation profile with climbs and the rider's records on it, next to the ride options (R48)
 ## and who to race (R20) → Ride. The pencil beside the name renames the course and adds, aligns
 ## or removes its video (R17); the bin beside it deletes the course. Opening the page loads
-## only the route; the 3D world is built once Ride is pressed.
+## only the route, a spinner turning until it is in; the 3D world is built once Ride is pressed.
 
 signal back_requested
 ## Ride was pressed with `options` (`RideOptions.options()`) against `ghost` (`GhostPicker`).
@@ -30,6 +30,9 @@ var _ghost: GhostPicker = GhostPicker.new()
 var _ride_button: Button = Button.new()
 var _loading_bar: ProgressBar = ProgressBar.new()
 var _status: Label = Label.new()
+## Turns beside the status while the route is prepared: climbs, records, the estimated time
+## and Ride wait for it.
+var _spinner: Spinner = Spinner.new()
 var _delete_button: Button = Button.new()
 var _confirm_delete: ConfirmationDialog = ConfirmationDialog.new()
 var _edit_dialog: CourseEditDialog = CourseEditDialog.new()
@@ -70,10 +73,14 @@ func open(course: Dictionary) -> void:
 	_loading_bar.hide()
 	_ride_button.disabled = true
 	_loading_route = true
-	if _torqa.loaded_course() != _path:
-		_torqa.open_course(_path)
-	elif _torqa.has_route():
+	_spinner.show()
+	_status.text = tr("Loading the course") + " …"
+	if _torqa.loaded_course() == _path and _torqa.has_route():
 		_show_route()
+	else:
+		# Also when it is the loaded course but has no route: it failed to open, perhaps for a
+		# missing video the rider has put back since.
+		_torqa.open_course(_path)
 
 
 ## After a ride on it: the rider's records may have changed.
@@ -110,12 +117,12 @@ func _init() -> void:
 	var left: VBoxContainer = VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 14)
-	var top: HBoxContainer = HBoxContainer.new()
 	var back: Button = Button.new()
-	back.text = tr("Courses")
+	back.icon = UiIcons.texture("back")
+	back.tooltip_text = tr("Back")
+	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(func() -> void: back_requested.emit())
-	top.add_child(back)
-	left.add_child(top)
+	_title.add_leading(back)
 	_title.edit_requested.connect(_open_editor)
 	_delete_button.icon = UiIcons.texture("bin")
 	_delete_button.tooltip_text = tr("Delete course")
@@ -157,9 +164,16 @@ func _init() -> void:
 	_loading_bar.show_percentage = false
 	_loading_bar.custom_minimum_size = Vector2(0, 8)
 	right.add_child(_loading_bar)
+	var status_row: HBoxContainer = HBoxContainer.new()
+	status_row.add_theme_constant_override("separation", 10)
+	_spinner.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_spinner.hide()
+	status_row.add_child(_spinner)
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_color_override("font_color", UiTheme.MUTED)
-	right.add_child(_status)
+	status_row.add_child(_status)
+	right.add_child(status_row)
 	_ride_button.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_ride_button.text = tr("Ride", "ride_action")
 	_ride_button.custom_minimum_size = Vector2(0, 56)
@@ -255,7 +269,10 @@ func _on_route_loaded(_route: Dictionary) -> void:
 
 ## The route is loaded: climbs, records and riding.
 func _show_route() -> void:
+	if _loading_route:
+		_status.text = ""
 	_loading_route = false
+	_spinner.hide()
 	_ride_button.disabled = false
 	_show_option_groups()
 	_show_figures()
@@ -317,6 +334,7 @@ func _on_failed(message: String) -> void:
 	if visible and (_loading_route or _building):
 		_loading_route = false
 		_building = false
+		_spinner.hide()
 		_loading_bar.hide()
 		_status.text = message
 

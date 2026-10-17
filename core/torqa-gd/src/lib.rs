@@ -52,6 +52,76 @@ impl TorqaCore {
     fn version() -> GString {
         GString::from(torqa_domain::version())
     }
+
+    /// The commit the core is built from, abbreviated; empty when the build could not tell
+    /// (R83).
+    #[func]
+    fn commit() -> GString {
+        GString::from(COMMIT)
+    }
+
+    /// Where Torqa's source code is.
+    #[func]
+    fn source_url() -> GString {
+        GString::from(torqa_app::about::SOURCE)
+    }
+
+    /// The licence notices of Torqa and of everything built into the app, in the order to list
+    /// them (R83): `[{part, text}]`, `part` one of `torqa`, `godot`, `ffmpeg`, `crates` and
+    /// `assets`.
+    #[func]
+    fn notices() -> VarArray {
+        let mut array = VarArray::new();
+        for notice in torqa_app::about::notices(&engine_credits()) {
+            array.push(&vdict! {
+                "part" => notice.part.name(),
+                "text" => notice.text.as_str(),
+            });
+        }
+        array
+    }
+}
+
+/// The commit the build script found (see `build.rs`).
+const COMMIT: &str = env!("TORQA_COMMIT");
+
+/// What the running engine reports of its licence and of the components it is built from.
+fn engine_credits() -> torqa_app::about::EngineCredits {
+    let engine = Engine::singleton();
+    let text = |value: Option<Variant>| value.map(|v| v.to_string()).unwrap_or_default();
+    let mut components = Vec::new();
+    for component in engine.get_copyright_info().iter_shared() {
+        let name = text(component.get("name"));
+        let parts = component
+            .get("parts")
+            .and_then(|v| v.try_to::<VarArray>().ok());
+        for part in parts.iter().flat_map(VarArray::iter_shared) {
+            let Ok(part) = part.try_to::<VarDictionary>() else {
+                continue;
+            };
+            let copyright = part
+                .get("copyright")
+                .and_then(|v| v.try_to::<VarArray>().ok());
+            components.push(torqa_app::about::Component {
+                name: name.clone(),
+                copyright: copyright
+                    .iter()
+                    .flat_map(VarArray::iter_shared)
+                    .map(|holder| holder.to_string())
+                    .collect(),
+                licence: text(part.get("license")),
+            });
+        }
+    }
+    torqa_app::about::EngineCredits {
+        licence: engine.get_license_text().to_string(),
+        components,
+        licences: engine
+            .get_license_info()
+            .iter_shared()
+            .map(|(name, licence)| (name.to_string(), licence.to_string()))
+            .collect(),
+    }
 }
 
 /// The Torqa application as a node: add it to the scene tree, call its commands and listen to
@@ -183,7 +253,8 @@ impl TorqaApp {
     #[signal]
     fn remembered_missing(names: PackedStringArray);
 
-    /// The active rider changed: another one selected, or one saved or created.
+    /// The active rider changed: another one selected, one saved or created, or the active
+    /// one deleted.
     #[signal]
     fn profile_changed();
 
@@ -1842,15 +1913,20 @@ impl TorqaApp {
             .collect()
     }
 
-    /// What the shifter's buttons do (#139): for each button 1–4 (a Di2's D-Fly channels; a Zwift
-    /// Click's + is 1 and its − 2, with no double press), the action names
-    /// of a press, a hold and a double press, "" where it does nothing.
+    /// What the buttons of the shifter `model` (`"di2"`, `"zwift_click"` or
+    /// `"zwift_click_v2"`) do (#139, R84): for each button 1–10 (a Di2's D-Fly channels 1–4; a
+    /// Zwift Click's + is 1 and its − 2, with no double press), the action names of a press, a
+    /// hold and a double press, "" where it does nothing. Empty for an unknown model.
     #[func]
-    fn button_map(&self) -> VarArray {
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn button_map(&self, model: GString) -> VarArray {
+        let Some(model) = ControllerModel::from_name(&model.to_string()) else {
+            return VarArray::new();
+        };
         let map = self
             .app
             .as_ref()
-            .map_or_else(Default::default, torqa_app::App::button_map);
+            .map_or_else(Default::default, |app| app.button_map(model));
         (1..=BUTTONS)
             .map(|channel| {
                 Press::ALL
@@ -1866,11 +1942,15 @@ impl TorqaApp {
             .collect()
     }
 
-    /// Gives `press` (0 a press, 1 a hold, 2 a double press) of button `channel` (1–4)
-    /// the action called `action`, or nothing with "". False for an unknown press or action.
+    /// Gives `press` (0 a press, 1 a hold, 2 a double press) of button `channel` (1–10) of
+    /// the shifter `model` the action called `action`, or nothing with ""; the other models'
+    /// buttons stay as they are (R84). False for an unknown model, press or action.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
-    fn assign_button(&mut self, channel: i64, press: i64, action: GString) -> bool {
+    fn assign_button(&mut self, model: GString, channel: i64, press: i64, action: GString) -> bool {
+        let Some(model) = ControllerModel::from_name(&model.to_string()) else {
+            return false;
+        };
         let action = action.to_string();
         let assigned = if action.is_empty() {
             None
@@ -1890,9 +1970,9 @@ impl TorqaApp {
             return false;
         }
         self.command(|app| {
-            let mut map = app.button_map();
+            let mut map = app.button_map(model);
             map.assign(channel, press, assigned);
-            app.set_button_map(map)
+            app.set_button_map(model, map)
         })
     }
 
@@ -2013,7 +2093,9 @@ impl TorqaApp {
         )
     }
 
-    /// Switches to another rider.
+    /// Switches to another rider (emits `profile_changed`): the devices in use that are not
+    /// theirs are let go, and their shifter's buttons and cadence source apply (R82);
+    /// `reconnect_remembered` then connects their own.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn select_profile(&mut self, id: GString) -> bool {
@@ -2025,11 +2107,17 @@ impl TorqaApp {
     }
 
     /// Deletes a rider with their rides (emits `failed` for the only rider); deleting the
-    /// active one switches to another.
+    /// active one switches to another, as `select_profile` does.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn delete_profile(&mut self, id: GString) -> bool {
-        self.command(|app| app.delete_profile(&id.to_string()))
+        let id = id.to_string();
+        let active = self.app.as_ref().is_some_and(|app| app.profile().id == id);
+        let deleted = self.command(|app| app.delete_profile(&id));
+        if deleted && active {
+            self.signals().profile_changed().emit();
+        }
+        deleted
     }
 
     /// Saves a rider (a new one if `id` is empty) from a dictionary shaped like `profile()`
@@ -3290,6 +3378,20 @@ fn format_failure(template: &str, args: &[String]) -> String {
         result.push_str(part);
     }
     result
+}
+
+#[cfg(test)]
+mod build_tests {
+    use super::COMMIT;
+
+    #[test]
+    fn the_commit_is_abbreviated_or_unknown() {
+        assert!(
+            COMMIT.is_empty()
+                || (COMMIT.len() >= 7 && COMMIT.chars().all(|c| c.is_ascii_hexdigit())),
+            "{COMMIT}"
+        );
+    }
 }
 
 #[cfg(test)]

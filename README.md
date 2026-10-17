@@ -30,11 +30,13 @@ ride it on your smart trainer, through a generated 3D world or along the video.
     </td>
   </tr>
   <tr>
-    <td width="50%" align="center">
+    <td colspan="2" align="center">
       <img src="docs/images/readme/video-course.jpg" alt="Riding a video course in Torqa"><br>
       <sub>Along a real video, played at your speed</sub>
     </td>
-    <td width="50%" align="center">
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
       <img src="docs/images/readme/overlay.jpg" alt="Torqa's overlay on top of a browser window"><br>
       <sub>Just your HUD, on top of any window</sub>
     </td>
@@ -70,7 +72,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
   </tr>
   <tr>
     <td>⚙️ <b><a href="https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Devices-and-riding#virtual-gears">Virtual gears</a></b><br>
-      24 gears on a single cog, shifted from the keyboard, Shimano Di2 hood buttons or a Zwift Click</td>
+      24 gears on a single cog, shifted from the keyboard, Shimano Di2 hood buttons or a Zwift Click (original or v2)</td>
     <td>🪟 <b><a href="https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Overlay">Overlay</a></b><br>
       Just your HUD, on top of a video or any other window</td>
   </tr>
@@ -113,5 +115,7 @@ decisions: [docs/adr/](docs/adr/); third-party assets: [docs/CREDITS.md](docs/CR
 
 ## License
 
-[GPL-3.0](LICENSE). The video-course screenshot shows a frame of a CC BY-NC-SA 4.0 video and is
-under that licence (see [docs/CREDITS.md](docs/CREDITS.md)).
+[GPL-3.0](LICENSE). The app's settings show, under About, the licence of everything built into it:
+the Godot engine, FFmpeg, every Rust crate, and others' models and data. The video-course
+screenshot shows a frame of a CC BY-NC-SA 4.0 video and is under that licence (see
+[docs/CREDITS.md](docs/CREDITS.md)).

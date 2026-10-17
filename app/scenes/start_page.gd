@@ -1,8 +1,8 @@
 class_name StartPage
 extends Control
 ## The start page (R38): tabs for Courses, Workouts (R58), History, Analysis (R61), Profile and
-## Devices & Settings. The ride view is separate; riding starts from a course's detail page or the
-## Workouts tab.
+## Devices, and the cog at the top right for the settings (R83). The ride view is separate;
+## riding starts from a course's detail page or the Workouts tab.
 
 ## A ride has started with `options` (`RideOptions.options()`); a workout's also carry
 ## `workout` (`WorkoutsTab.workout()`) and `on_course`.
@@ -10,8 +10,15 @@ signal ride_started(options: Dictionary)
 
 enum Tab { COURSES, WORKOUTS, HISTORY, ANALYSIS, PROFILE, DEVICES }
 
+## Where the wordmark's letters sit in its drawing (its viewBox): their baseline is this share
+## of its height above the bottom, the middle of their capitals this share above the baseline.
+const WORDMARK_DESCENT: float = 58.0 / 184.0
+const WORDMARK_CAP_MIDDLE: float = 53.0 / 184.0
+
 var _torqa: TorqaApp
 var _tabs: TabContainer = TabContainer.new()
+## The tabs' captions, in the header beside the logo so the two share one row.
+var _tab_bar: TabBar = TabBar.new()
 var _courses_page: Control = Control.new()
 var _courses: CoursesTab = CoursesTab.new()
 var _detail: CourseDetail = CourseDetail.new()
@@ -22,6 +29,9 @@ var _history: HistoryScreen = (
 var _analysis: AnalysisTab = AnalysisTab.new()
 var _profile: ProfileTab = ProfileTab.new()
 var _devices: DevicesTab = DevicesTab.new()
+## This computer's graphics and the About tab (R83), behind [member _settings_button].
+var _settings: SettingsDialog = SettingsDialog.new()
+var _settings_button: Button = Button.new()
 ## The options and ghost of the ride waiting for its world.
 var _pending_ride: Array = []
 ## The workout waiting for its course's world, and whether it has one.
@@ -38,6 +48,7 @@ func bind(torqa: TorqaApp) -> void:
 	_analysis.bind(torqa)
 	_profile.bind(torqa)
 	_devices.bind(torqa)
+	_settings.bind(torqa)
 
 
 ## Back from a ride: records, history and courses may have changed.
@@ -59,6 +70,27 @@ func ride_options() -> Dictionary:
 func _ready() -> void:
 	(%Rows as VBoxContainer).add_child(_tabs)
 	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tabs.tabs_visible = false
+	var gap: Control = Control.new()
+	gap.custom_minimum_size = Vector2(16, 0)
+	(%Header as HBoxContainer).add_child(gap)
+	_tab_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tab_bar.size_flags_vertical = Control.SIZE_SHRINK_END
+	_tab_bar.clip_tabs = false
+	_tab_bar.focus_mode = Control.FOCUS_NONE
+	(%Header as HBoxContainer).add_child(_tab_bar)
+	_settings_button.icon = UiIcons.texture("cog")
+	_settings_button.tooltip_text = tr("Settings")
+	_settings_button.focus_mode = Control.FOCUS_NONE
+	_settings_button.size_flags_vertical = Control.SIZE_SHRINK_END
+	_settings_button.add_theme_stylebox_override("normal", UiTheme.icon_button(Color.TRANSPARENT))
+	_settings_button.add_theme_stylebox_override("hover", UiTheme.icon_button(UiTheme.SURFACE))
+	_settings_button.add_theme_stylebox_override(
+		"pressed", UiTheme.icon_button(Color(UiTheme.ACCENT, 0.18))
+	)
+	_settings_button.pressed.connect(_settings.open)
+	(%Header as HBoxContainer).add_child(_settings_button)
+	add_child(_settings)
 	# i18n-begin
 	for page: Array in [
 		[_courses_page, "Courses"],
@@ -66,14 +98,14 @@ func _ready() -> void:
 		[_history, "History"],
 		[_analysis, "Analysis"],
 		[_profile, "Profile"],
-		[_devices, "Devices & Settings"],
+		[_devices, "Devices"],
 	]:
 		# i18n-end
 		var node: Control = page[0]
 		var title: String = page[1]
 		node.name = title
 		_tabs.add_child(node)
-		_tabs.set_tab_title(_tabs.get_tab_count() - 1, tr(title))
+		_tab_bar.add_tab(tr(title))
 	_courses.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_courses_page.add_child(_courses)
 	_detail.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -89,9 +121,35 @@ func _ready() -> void:
 	_workouts.ready_to_start.connect(_start_workout)
 	_profile.profile_changed.connect(_courses.refresh)
 	_tabs.tab_changed.connect(_on_tab_changed)
+	_tab_bar.tab_changed.connect(func(tab: int) -> void: _tabs.current_tab = tab)
 	# The course page sits over the gallery in its tab: a click on the Courses tab, already
 	# the current one, brings the gallery back like the page's own button does (#188).
-	_tabs.get_tab_bar().tab_clicked.connect(_on_tab_clicked)
+	_tab_bar.tab_clicked.connect(_on_tab_clicked)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED and is_node_ready():
+		_align_brand()
+
+
+## The wordmark stands on the tabs' baseline and the mark centres on its capitals, so logo and
+## tabs read as one line. Derived from the tab font, which only the app's theme sets.
+func _align_brand() -> void:
+	var font: Font = _tab_bar.get_theme_font("font")
+	var baseline: float = (
+		_tab_bar.get_theme_stylebox("tab_selected").get_margin(SIDE_BOTTOM)
+		+ font.get_descent(_tab_bar.get_theme_font_size("font_size"))
+	)
+	var wordmark: TextureRect = %Wordmark
+	var letters: float = wordmark.custom_minimum_size.x / wordmark.texture.get_width()
+	letters *= wordmark.texture.get_height()
+	# Drawn at the top of a taller rect (keep aspect), so the space below lifts the letters.
+	wordmark.custom_minimum_size.y = letters + maxf(0, baseline - WORDMARK_DESCENT * letters)
+	var logo: TextureRect = %Logo
+	var mark: float = logo.custom_minimum_size.x / logo.texture.get_width()
+	mark *= logo.texture.get_height()
+	var cap_middle: float = baseline + WORDMARK_CAP_MIDDLE * letters
+	logo.custom_minimum_size.y = mark + maxf(0, cap_middle - mark / 2)
 
 
 func _on_tab_clicked(tab: int) -> void:
@@ -111,6 +169,9 @@ func _show_gallery() -> void:
 
 
 func _on_tab_changed(tab: int) -> void:
+	# Pages switched in code, e.g. to Devices for a missing trainer, move the caption too.
+	if _tab_bar.current_tab != tab:
+		_tab_bar.current_tab = tab
 	if tab == Tab.HISTORY:
 		_history.open()
 	elif tab == Tab.ANALYSIS:
@@ -124,7 +185,7 @@ func _on_tab_changed(tab: int) -> void:
 func _on_ride_requested(options: Dictionary, ghost: Dictionary) -> void:
 	_detail.show_status("")
 	if not _devices.connect_selected():
-		_detail.show_status(tr("No trainer connected — choose one under Devices & Settings."))
+		_detail.show_status(tr("No trainer connected — choose one under Devices."))
 		_tabs.current_tab = Tab.DEVICES
 		return
 	_pending_ride = [options, ghost]
@@ -133,7 +194,7 @@ func _on_ride_requested(options: Dictionary, ghost: Dictionary) -> void:
 
 func _on_workout_requested(workout: Dictionary, course_path: String) -> void:
 	if not _devices.connect_selected():
-		_workouts.show_status(tr("No trainer connected — choose one under Devices & Settings."))
+		_workouts.show_status(tr("No trainer connected — choose one under Devices."))
 		_tabs.current_tab = Tab.DEVICES
 		return
 	_pending_workout = workout

@@ -90,7 +90,7 @@ func refresh() -> void:
 		state.add_theme_color_override("font_color", color)
 		_rows.add_child(state)
 	if devices.is_empty():
-		_note.text = tr("No devices connected yet: connect them in Devices & Settings.")
+		_note.text = tr("No devices connected yet: connect them under Devices on the start page.")
 	elif all_connected:
 		_note.text = ""
 	_reconnect.visible = not devices.is_empty()

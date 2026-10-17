@@ -180,7 +180,7 @@ func _run() -> void:
 	root.get_texture().get_image().save_png(out_dir.path_join("upload-menu.png"))
 	upload.get_popup().hide()
 	(_main.get_node("HistoryScreen") as HistoryScreen).closed.emit()
-	var start_tabs: TabContainer = start.find_children("*", "TabContainer", true, false)[0]
+	var start_tabs: TabContainer = start.get("_tabs")
 	start_tabs.current_tab = StartPage.Tab.HISTORY
 	await create_timer(1.0).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("history.png"))
@@ -191,6 +191,18 @@ func _run() -> void:
 	detail.back_requested.emit()
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery.png"))
+	# The filters' panel open, a chip on (R85).
+	var chips: GridContainer = courses.get("_chips")
+	for chip: Node in chips.find_children("*", "Button", true, false):
+		if (chip as Button).text == "Mountainous":
+			(chip as Button).button_pressed = true
+	var filters: Button = courses.get("_filters")
+	filters.pressed.emit()
+	await create_timer(0.5).timeout
+	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery-filters.png"))
+	var filter_panel: PopupPanel = courses.get("_filter_panel")
+	filter_panel.hide()
+	courses.clear_filters()
 	for tab: Array in [
 		[StartPage.Tab.ANALYSIS, "start-analysis"],
 		[StartPage.Tab.PROFILE, "start-profile"],
@@ -224,6 +236,18 @@ func _run() -> void:
 				root.get_texture().get_image().save_png(out_dir.path_join(shot + ".png"))
 				if dialog_shown != null:
 					dialog_shown.hide()
+	# The settings from the cog at the top right (R83): Graphics, then About.
+	var settings: SettingsDialog = start.get("_settings")
+	var settings_button: Button = start.get("_settings_button")
+	settings_button.pressed.emit()
+	var settings_tabs: TabContainer = settings.get("_tabs")
+	for page: Array in [[0, "settings-graphics"], [1, "settings-about"]]:
+		var index: int = page[0]
+		var file: String = page[1]
+		settings_tabs.current_tab = index
+		await create_timer(0.5).timeout
+		root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
+	settings.hide()
 	print("saved history")
 	await _workout_screens(torqa, start)
 	quit(0)
@@ -290,7 +314,7 @@ func _connect_account(start: StartPage, which: int) -> AccountDialog:
 ## The Workouts tab (R58) and a heart-rate workout on its own (R56), with its settings.
 func _workout_screens(torqa: TorqaApp, start: StartPage) -> void:
 	var out_dir: String = OS.get_environment("SCREENSHOT_DIR")
-	var start_tabs: TabContainer = start.find_children("*", "TabContainer", true, false)[0]
+	var start_tabs: TabContainer = start.get("_tabs")
 	start_tabs.current_tab = StartPage.Tab.WORKOUTS
 	var tab: WorkoutsTab = start.find_children("*", "WorkoutsTab", true, false)[0]
 	var options: WorkoutOptions = tab.find_children("*", "WorkoutOptions", true, false)[0]

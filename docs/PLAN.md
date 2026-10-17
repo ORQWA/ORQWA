@@ -101,6 +101,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Tagged releases (#273): after checks and all native builds, publish the eight app/CLI
   archives for macOS arm64, Windows x86_64 and Linux x86_64/arm64 on GitHub Releases;
   preserve ZIP uploads as archives when downloading them for publication
+- [x] Release versions: the version stays in `core/Cargo.toml` and the macOS preset, checked to
+  agree on every change and, for a release, to be the tag's (`v<version>`), after v0.2.0
+  shipped saying 0.1.0 (ADR 0018 amendment)
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
@@ -208,7 +211,7 @@ Built in rideable steps:
   - [x] Virtual gears on a single cog (24 gears, the road scaled for the trainer, ADR 0003)
     and the keyboard (↑ / ↓) behind `ShiftInput`; the drivetrain per rider
   - [x] Shimano Di2 over Bluetooth: buttons assigned to D-Fly channels shift up and down
-    (channels chosen in Devices & Settings), remembered and reconnected like the trainer
+    (channels chosen under Devices), remembered and reconnected like the trainer
   - [x] Di2 buttons assignable (#139): each channel's press, hold and double press shift one
     or two gears, or work the camera, the overlay or the music
   - [x] More ride controls on Di2 buttons (R66): pause/resume, trainer difficulty ±10 %,
@@ -216,7 +219,11 @@ Built in rideable steps:
     (H / E, I / L, N)
   - [x] The Zwift Click over Bluetooth (R75, #228): the original unit's + and − as buttons
     1 and 2 of the same assignments (press and hold; no double press), its plain protocol
-    checked on a unit; the Click v2, Play and Ride stay out
+    checked on a unit; the Play and Ride stay out
+  - [x] The Zwift Click v2 (R77): its two pods as one shifter, + and − as buttons 1 and 2;
+    what any shifter's buttons do set in a dialog behind a pen beside its row (#271)
+    and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
+    written from the community's drivers, **not yet checked on the hardware**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their
@@ -240,7 +247,7 @@ Built in rideable steps:
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)
-- [x] Start page with top tabs (Courses, History, Profile, Devices & Settings); ride view separated
+- [x] Start page with top tabs (Courses, History, Profile, Devices); ride view separated
 - [x] Path card: route in `#2EB0FF` on black (elevation profile on the course page only); since
   #192 on the course's own map, drawn when the course is prepared and kept in the `.tqc`; since
   #203 the land around the whole route, black and white, with the names of its towns
@@ -260,6 +267,9 @@ Built in rideable steps:
 - [x] The countries a course passes, from the OpenFreeMap tiles' borders and country labels,
   to group, filter and search by and listed on the cards; older courses learn theirs in the
   background (R68, #230)
+- [x] The gallery's search, filters, sort and group in one row with its title and Import; the
+  filter chips in a panel under a Filters button, the chips turned on listed under the toolbar
+  (R85)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
 - [x] Auto-reconnect last-used devices (R41)
 - [x] Devices that drop come back by themselves, also after a pause: the driver looks the
@@ -279,10 +289,21 @@ Built in rideable steps:
 - [x] Export a ride's FIT file from the history or summary to a place the rider picks (R28)
 - [x] The ride chart draws cadence too; clicking a legend key hides or shows its line (R73)
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
-- [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Devices & Settings → Graphics;
+- [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Settings → Graphics;
   the choice is kept and Torqa starts that way
 - [x] The overlay's place is each rider's, graphics quality and full screen this computer's
   (R78, #257): kept next to the cache, out of the synced data folder, carried over once
+- [x] The devices are each rider's (R82): remembered devices, cadence source and shifter
+  buttons in `profiles/<rider>/devices.toml`, carried over once from `settings.toml`;
+  switching riders lets go of the other rider's devices and reconnects the new one's, a new
+  rider starts with the devices in use, a scan picks a strap only if used last, and a device
+  used last that a scan misses is no longer forgotten
+- [x] Settings behind a cog at the top right of the start page (R83): Graphics (quality, full
+  screen) moved from the devices tab, now Devices; About with the version, the commit
+  (`build.rs`) and the licence notices of Torqa, Godot, FFmpeg, every Rust crate (cargo-about,
+  checked to be current) and others' models and data (ADR 0018)
+- [x] Each shifter model has its own button assignments (R84): a Di2's channels no longer
+  change a Click's + and −; the assignments kept for every shifter before stay each model's
 - [x] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
   - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)
@@ -291,6 +312,8 @@ Built in rideable steps:
     and the zones (#191, #194)
   - [x] The course page's title line like a ride's: a pencil for Edit course (name, video), a
     bin to delete it
+  - [x] A spinner above Ride while the course page loads its route; a course that failed to
+    open tries again when reopened
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
 ### Phase 9 — Graphics (R43–R47, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md))

@@ -587,7 +587,7 @@ func _watch_frame_time(delta: float) -> void:
 	if _slow_for > SLOW_FOR_S and _torqa.graphics_quality() != "low":
 		_budget_noted = true
 		_show_toast(
-			tr("Below 60 fps: a lower graphics quality (Devices & Settings) runs smoother.")
+			tr("Below 60 fps: a lower graphics quality (Settings → Graphics) runs smoother.")
 		)
 
 

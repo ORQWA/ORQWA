@@ -84,6 +84,24 @@ static func build() -> Theme:
 	theme.set_stylebox("normal", "LineEdit", field)
 	theme.set_stylebox("focus", "LineEdit", _box(Color(1, 1, 1, 0.12), 10, 12, 8))
 	theme.set_color("font_color", "LineEdit", TEXT)
+	# Long texts to read, such as the licences, and lists to pick from beside them.
+	theme.set_stylebox("normal", "TextEdit", field)
+	theme.set_stylebox("read_only", "TextEdit", field)
+	theme.set_stylebox("focus", "TextEdit", StyleBoxEmpty.new())
+	theme.set_color("font_color", "TextEdit", TEXT)
+	theme.set_color("font_readonly_color", "TextEdit", TEXT)
+	theme.set_stylebox("panel", "ItemList", _box(SURFACE, 10, 6, 6))
+	theme.set_stylebox("focus", "ItemList", StyleBoxEmpty.new())
+	theme.set_stylebox("hovered", "ItemList", _box(SURFACE, 8, 8, 4))
+	for state: String in [
+		"selected", "selected_focus", "hovered_selected", "hovered_selected_focus"
+	]:
+		theme.set_stylebox(state, "ItemList", _box(Color(ACCENT, 0.18), 8, 8, 4))
+	theme.set_color("font_color", "ItemList", MUTED)
+	theme.set_color("font_hovered_color", "ItemList", TEXT)
+	theme.set_color("font_selected_color", "ItemList", TEXT)
+	theme.set_constant("v_separation", "ItemList", 6)
+	theme.set_color("guide_color", "ItemList", Color(0, 0, 0, 0))
 
 	theme.set_stylebox("background", "ProgressBar", _box(Color(1, 1, 1, 0.1), 6, 0, 4))
 	theme.set_stylebox("fill", "ProgressBar", _box(ACCENT, 6, 0, 4))
@@ -118,14 +136,20 @@ static func build() -> Theme:
 	theme.set_stylebox("tab_selected", "TabContainer", current_tab)
 	theme.set_stylebox("tab_unselected", "TabContainer", tab)
 	theme.set_stylebox("tab_hovered", "TabContainer", tab)
+	# The main navigation beside the logo: the current tab a soft accent pill.
+	theme.set_stylebox("tab_selected", "TabBar", _box(Color(ACCENT, 0.18), 10, 14, 6))
+	theme.set_stylebox("tab_unselected", "TabBar", _box(Color(0, 0, 0, 0), 10, 14, 6))
+	theme.set_stylebox("tab_hovered", "TabBar", _box(SURFACE, 10, 14, 6))
+	theme.set_constant("h_separation", "TabBar", 4)
+	for tabs: String in ["TabContainer", "TabBar"]:
+		theme.set_color("font_selected_color", tabs, TEXT)
+		theme.set_color("font_unselected_color", tabs, MUTED)
+		theme.set_color("font_hovered_color", tabs, TEXT)
 	theme.set_stylebox("tabbar_background", "TabContainer", StyleBoxEmpty.new())
 	var tab_panel: StyleBoxFlat = _box(Color(0, 0, 0, 0), 0, 0, 16)
 	tab_panel.border_color = Color(1, 1, 1, 0.08)
 	tab_panel.border_width_top = 1
 	theme.set_stylebox("panel", "TabContainer", tab_panel)
-	theme.set_color("font_selected_color", "TabContainer", TEXT)
-	theme.set_color("font_unselected_color", "TabContainer", MUTED)
-	theme.set_color("font_hovered_color", "TabContainer", TEXT)
 
 	# Scroll bars: a slim light thumb, no track.
 	for bar: String in ["VScrollBar", "HScrollBar"]:
@@ -138,6 +162,11 @@ static func build() -> Theme:
 	theme.set_stylebox("panel", "PopupMenu", popup)
 	theme.set_stylebox("hover", "PopupMenu", _box(Color(ACCENT, 0.35), 6, 8, 4))
 	theme.set_color("font_color", "PopupMenu", TEXT)
+	# A panel opening under a button, e.g. the gallery's filters (R85).
+	var popover: StyleBoxFlat = _box(Color(0.09, 0.1, 0.12, 0.98), 12, 16, 14)
+	popover.border_color = Color(1, 1, 1, 0.1)
+	popover.set_border_width_all(1)
+	theme.set_stylebox("panel", "PopupPanel", popover)
 	return theme
 
 

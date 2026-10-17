@@ -40,20 +40,24 @@ layout_mode = 2
 theme_override_constants/separation = 8
 
 [node name="Header" type="HBoxContainer" parent="Margin/Rows"]
+unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 10
 
 [node name="Logo" type="TextureRect" parent="Margin/Rows/Header"]
-custom_minimum_size = Vector2(46, 46)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 36)
 layout_mode = 2
+size_flags_vertical = 8
 texture = ExtResource("2_logo")
 expand_mode = 1
-stretch_mode = 5
+stretch_mode = 4
 
 [node name="Wordmark" type="TextureRect" parent="Margin/Rows/Header"]
-custom_minimum_size = Vector2(96, 34)
+unique_name_in_owner = true
+custom_minimum_size = Vector2(75, 28)
 layout_mode = 2
-size_flags_vertical = 4
+size_flags_vertical = 8
 texture = ExtResource("3_wordmark")
 expand_mode = 1
-stretch_mode = 5
+stretch_mode = 4
