@@ -52,6 +52,8 @@ func bind(torqa: TorqaApp) -> void:
 
 ## Brings the rider's zones and the course list up to date, e.g. after another rider was chosen.
 func refresh() -> void:
+	# First: asking lets go of what is no longer the rider's plan for today.
+	_fetch_planned()
 	var ftp: float = _torqa.profile().get("ftp_w", 200.0)
 	_options.configure(_torqa.heart_rate_zones(), ftp)
 	_options.set_plans(_torqa.workouts())
@@ -70,7 +72,6 @@ func refresh() -> void:
 		_course_paths.append(path)
 	var index: int = _course_paths.find(chosen)
 	_where.select(index + 1 if index >= 0 else 0)
-	_fetch_planned()
 
 
 ## The chosen course's file, or "" to ride on its own.
@@ -246,8 +247,8 @@ func _show_plan() -> void:
 	_plan_chart.visible = not plan.is_empty()
 	var kind: String = _options.workout()["kind"]
 	_plan_buttons.visible = kind == "plan"
-	var builtin: bool = plan.get("builtin", false)
-	_edit_button.text = tr("Edit a copy…") if builtin else tr("Edit…")
+	var copy: bool = WorkoutEditor.edited_as_copy(plan)
+	_edit_button.text = tr("Edit a copy…") if copy else tr("Edit…")
 	_edit_button.visible = not plan.is_empty()
 	if plan.is_empty():
 		return
@@ -265,14 +266,15 @@ func _ftp() -> float:
 
 
 ## Asks the platforms holding the rider's plan for today's workouts (R81), by this computer's
-## date; the section shows only when there is such an account.
+## date, listing what is still known meanwhile; the section shows only with such an account.
 func _fetch_planned() -> void:
-	var asked: bool = _torqa.fetch_planned_workouts(Time.get_date_string_from_system())
-	_planned_panel.visible = asked
-	if asked:
-		_planned_note.text = tr("Looking up today's plan…")
-		_planned_note.add_theme_color_override("font_color", UiTheme.MUTED)
-		_planned_note.show()
+	if not _torqa.fetch_planned_workouts(Time.get_date_string_from_system()):
+		_planned_panel.hide()
+		return
+	_show_planned(_torqa.workouts())
+	_planned_note.text = tr("Looking up today's plan…")
+	_planned_note.add_theme_color_override("font_color", UiTheme.MUTED)
+	_planned_note.show()
 
 
 func _on_planned_workouts(_platform: String, _day: String) -> void:

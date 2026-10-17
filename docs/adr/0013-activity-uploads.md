@@ -119,4 +119,3 @@ computer's local date, and lists what came under ids `planned:<platform>:<entry>
 library; the list lives in memory only, so Torqa stores nothing of the plan and plans nothing
 itself (R21). The credentials go the same way as for uploads, renewed if the platform renews
 them. A planned ride without steps cannot be ridden as a workout and is left out.
-

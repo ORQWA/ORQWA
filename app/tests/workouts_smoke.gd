@@ -1,7 +1,8 @@
 extends SceneTree
 ## Headless checks of the Workouts tab's planned workouts (R81): the day's workouts from the
-## platform holding the rider's plan are listed with a button that chooses each, the section
-## is hidden without such an account, and says so when nothing is planned.
+## platform holding the rider's plan are listed with a button that chooses each, are edited
+## only as copies, the section is hidden without such an account, and says so when nothing is
+## planned.
 ## Run: godot --headless --path app -s res://tests/workouts_smoke.gd
 
 var _failed: bool = false
@@ -45,6 +46,9 @@ func _planned() -> void:
 	var chosen_plan: Dictionary = chosen["plan"]
 	var chosen_id: String = chosen_plan.get("id", "")
 	_check(chosen_id == "planned:intervals:1", "chosen on a click: %s" % chosen)
+	# The plan stays the platform's: edited as a copy in the library, never deleted.
+	var edit: Button = tab._edit_button
+	_check(edit.text == "Edit a copy…", "a planned workout is edited as a copy: %s" % edit.text)
 	tab._show_planned([plans[1]])
 	_check(rows.find_children("*", "Button", true, false).is_empty(), "nothing listed")
 	_check(

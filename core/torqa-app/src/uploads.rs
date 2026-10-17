@@ -67,9 +67,16 @@ pub(crate) struct UploadState {
     in_flight: HashSet<(PathBuf, &'static str)>,
     /// The account being connected, to give up on when the rider cancels.
     connecting: Option<tokio::task::JoinHandle<()>>,
-    /// The workouts planned for a day on each platform holding the rider's plan, as last
-    /// read (R81), with the day they are for.
-    planned: Vec<(&'static str, String, Vec<Entry>)>,
+    /// The workouts planned on each platform holding a rider's plan, as last read (R81).
+    planned: Vec<DayPlan>,
+}
+
+/// What a platform holding rider `rider`'s plan had planned for `day` (R81).
+struct DayPlan {
+    rider: String,
+    platform: &'static str,
+    day: String,
+    entries: Vec<Entry>,
 }
 
 impl UploadState {
@@ -99,8 +106,9 @@ pub(crate) enum Done {
     },
     /// A platform's login, to show in the rider's browser.
     OpenUrl(String),
-    /// The workouts planned for `day` were read from `platform`, or not.
+    /// The workouts planned for `day` were read from rider `rider`'s `platform`, or not.
     Planned {
+        rider: String,
         platform: &'static str,
         day: String,
         result: Result<Vec<PlannedWorkout>, UploadError>,
@@ -197,6 +205,9 @@ impl App {
         self.change_accounts(rider, |accounts| {
             removed = accounts.remove(platform);
         })?;
+        self.uploads
+            .planned
+            .retain(|plan| plan.rider != rider || plan.platform != platform);
         if let (Some(account), Ok(uploader)) = (removed, self.uploader(platform)) {
             self.revoke(uploader, account.credentials);
         }
@@ -349,7 +360,6 @@ impl App {
         });
     }
 
-    /// The platform's name for the rider; its id if Torqa does not know it.
     /// Asks every platform that holds the active rider's plan, and has an account, for the
     /// workouts planned for `day` (`YYYY-MM-DD`, the rider's local date), in the background
     /// (R81); [`AppEvent::PlannedWorkouts`] follows per platform, and [`App::workouts`] then
@@ -359,6 +369,10 @@ impl App {
         let stored = accounts::load(&self.data_dir, &rider).unwrap_or_else(|error| {
             tracing::warn!(%error, "cannot read the rider's accounts");
             accounts::Accounts::new()
+        });
+        // Another day's plan, or one of a platform the rider has left, is no longer today's.
+        self.uploads.planned.retain(|plan| {
+            plan.rider == rider && plan.day == day && stored.contains_key(plan.platform)
         });
         let mut asked = false;
         for uploader in self.uploads.platforms.clone() {
@@ -377,6 +391,7 @@ impl App {
                 })
                 .await;
                 let _ = tx.send(JobResult::Upload(Box::new(Done::Planned {
+                    rider,
                     platform: uploader.id(),
                     day,
                     result,
@@ -386,20 +401,22 @@ impl App {
         asked
     }
 
-    /// The workouts planned on the platforms holding the rider's plan, as last read (R81),
-    /// each with its platform's name; ids start with [`PLANNED`].
+    /// The workouts planned on the platforms holding the active rider's plan, as last read
+    /// (R81), each with its platform's name; ids start with [`PLANNED`].
     #[must_use]
     pub fn planned_workouts(&self) -> Vec<(&'static str, Entry)> {
         self.uploads
             .planned
             .iter()
-            .flat_map(|(platform, _, entries)| {
-                let name = self.platform_name(platform);
-                entries.iter().map(move |entry| (name, entry.clone()))
+            .filter(|plan| plan.rider == self.profile.id)
+            .flat_map(|plan| {
+                let name = self.platform_name(plan.platform);
+                plan.entries.iter().map(move |entry| (name, entry.clone()))
             })
             .collect()
     }
 
+    /// The platform's name for the rider; its id if Torqa does not know it.
     fn platform_name<'a>(&self, platform: &'a str) -> &'a str {
         self.uploader(platform)
             .map_or(platform, |uploader| uploader.name())
@@ -440,16 +457,18 @@ impl App {
             }
             Done::OpenUrl(url) => AppEvent::OpenUrl(url),
             Done::Planned {
+                rider,
                 platform,
                 day,
                 result,
-            } => self.planned_read(platform, day, result),
+            } => self.planned_read(rider, platform, day, result),
         }
     }
 
     /// Keeps what a platform planned for the day, as entries [`App::workouts`] lists (R81).
     fn planned_read(
         &mut self,
+        rider: String,
         platform: &'static str,
         day: String,
         result: Result<Vec<PlannedWorkout>, UploadError>,
@@ -467,8 +486,15 @@ impl App {
             .into_iter()
             .filter_map(|workout| planned_entry(platform, workout))
             .collect();
-        self.uploads.planned.retain(|(p, ..)| *p != platform);
-        self.uploads.planned.push((platform, day.clone(), entries));
+        self.uploads
+            .planned
+            .retain(|plan| plan.rider != rider || plan.platform != platform);
+        self.uploads.planned.push(DayPlan {
+            rider,
+            platform,
+            day: day.clone(),
+            entries,
+        });
         AppEvent::PlannedWorkouts {
             platform: platform.to_owned(),
             day,
@@ -556,8 +582,6 @@ impl App {
     }
 }
 
-/// Classifies the platform's answer by its type. The platform's own explanation stays in the
-/// summary as a value: it often says what to do next (wait, tick a box, copy the key again).
 /// A planned workout as an entry of the workout list, under the calendar's name; one without
 /// steps cannot be ridden and is left out.
 fn planned_entry(platform: &str, workout: PlannedWorkout) -> Option<Entry> {
@@ -595,6 +619,8 @@ fn plan_failure(error: &UploadError, name: &str) -> Failure {
     }
 }
 
+/// Classifies the platform's answer by its type. The platform's own explanation stays in the
+/// summary as a value: it often says what to do next (wait, tick a box, copy the key again).
 fn upload_failure(error: &UploadError, name: &str, uploading: bool) -> Failure {
     let failure = |kind| Failure::new(kind, error).arg(name);
     match error {
@@ -991,12 +1017,38 @@ mod tests {
             "{workout:?}"
         );
 
-        // Another day replaces the list; a revoked account says so.
+        // Another day replaces the list.
         assert!(app.fetch_planned_workouts("2026-10-17"));
         run_until(&mut app, |e| matches!(e, AppEvent::PlannedWorkouts { .. }));
         assert_eq!(app.planned_workouts(), []);
-        app.disconnect_account(&app.profile().id.clone(), "fake")
-            .unwrap();
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_plan_is_listed_only_for_its_rider_and_only_while_connected() {
+        let (mut app, _, dir) = app("planned-rider");
+        let planner = app.profile().id.clone();
+        connect(&mut app, "good");
+        assert!(app.fetch_planned_workouts("2026-10-16"));
+        run_until(&mut app, |e| matches!(e, AppEvent::PlannedWorkouts { .. }));
+        assert_eq!(app.planned_workouts().len(), 1);
+
+        let other = torqa_domain::profile::Profile {
+            name: "Bob".to_owned(),
+            ..torqa_domain::profile::Profile::default()
+        };
+        app.save_profile(None, other).unwrap();
+        assert_eq!(app.planned_workouts(), [], "not another rider's plan");
+        assert!(app.workouts().iter().all(|w| !w.id.starts_with(PLANNED)));
+
+        app.select_profile(&planner).unwrap();
+        assert_eq!(
+            app.planned_workouts().len(),
+            1,
+            "the rider's own plan again"
+        );
+        app.disconnect_account(&planner, "fake").unwrap();
+        assert_eq!(app.planned_workouts(), [], "not without the account");
         assert!(!app.fetch_planned_workouts("2026-10-16"));
         std::fs::remove_dir_all(dir).unwrap();
     }

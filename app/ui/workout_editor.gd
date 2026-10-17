@@ -36,14 +36,23 @@ func bind(torqa: TorqaApp) -> void:
 	_torqa = torqa
 
 
+## Whether `plan` (a `TorqaApp.workouts()` entry) is not the rider's own file, so it is
+## edited as a copy and cannot be deleted: a built-in one, or one planned on the rider's
+## platform (R81), whose plan stays there.
+static func edited_as_copy(plan: Dictionary) -> bool:
+	var builtin: bool = plan.get("builtin", false)
+	var planned: String = plan.get("planned", "")
+	return builtin or not planned.is_empty()
+
+
 ## Opens the editor on `plan` (a `TorqaApp.workouts()` entry), or on a new workout if empty,
 ## for a rider with `ftp_w`.
 func edit(plan: Dictionary, ftp_w: float) -> void:
 	_ftp_w = ftp_w
-	var builtin: bool = plan.get("builtin", false)
-	_replace = "" if plan.is_empty() or builtin else plan["id"]
+	var copy: bool = edited_as_copy(plan)
+	_replace = "" if plan.is_empty() or copy else plan["id"]
 	var plan_name: String = plan.get("name", "")
-	if builtin:
+	if copy:
 		plan_name = tr("%s (copy)") % plan_name
 	_name_edit.text = plan_name
 	_description.text = plan.get("description", "")
