@@ -742,6 +742,9 @@ msgstr "Weniger anzeigen"
 msgid "Fill in every field."
 msgstr "Fülle alle Felder aus."
 
+msgid "Filters"
+msgstr "Filter"
+
 msgid "Find the cadence you will hold in the test"
 msgstr "Finde die Trittfrequenz, die du im Test halten wirst"
 
