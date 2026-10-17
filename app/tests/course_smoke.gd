@@ -17,6 +17,7 @@ func _run() -> void:
 	_edit_dialog()
 	_estimates()
 	_card_countries()
+	await _course_loading()
 	await _course_gallery()
 	await _card_widths()
 	if not _failed:
@@ -181,6 +182,45 @@ func _estimates() -> void:
 		shown == PackedStringArray(["5 min", "15 min", "1 h 00", "1 h 45", "2 h 10"]),
 		"estimates to 5 minutes: %s" % shown
 	)
+
+
+## While a course's route is prepared, a spinner turns on its page and Ride waits (R40). A
+## course that cannot be opened stops it with the reason; opening it again tries again.
+func _course_loading() -> void:
+	var torqa: TorqaApp = TorqaApp.new()
+	root.add_child(torqa)
+	var failures: PackedStringArray = PackedStringArray()
+	torqa.failed.connect(func(message: String) -> void: failures.append(message))
+	var page: CourseDetail = CourseDetail.new()
+	root.add_child(page)
+	page.bind(torqa)
+	var spinner: Spinner = page.get("_spinner")
+	var ride: Button = page.get("_ride_button")
+	var status: Label = page.get("_status")
+	var lost: Dictionary = {
+		"path": OS.get_user_data_dir().path_join("no-such-course.tqc"),
+		"name": "Lost",
+		"length_m": 2400.0,
+		"elevation_gain_m": 149.4,
+		"max_grade": 17.6,
+	}
+	for attempt: int in [1, 2]:
+		page.open(lost)
+		_check(
+			spinner.is_visible_in_tree() and ride.disabled and not status.text.is_empty(),
+			"attempt %d: a spinner while the course loads, with what it does" % attempt
+		)
+		var waited: float = 0.0
+		while failures.size() < attempt and waited < 10.0:
+			await process_frame
+			waited += root.get_process_delta_time()
+		_check(failures.size() == attempt, "attempt %d: the course fails to open" % attempt)
+		_check(
+			not spinner.visible and ride.disabled and status.text == failures[-1],
+			"attempt %d: the spinner stops, the reason shows: %s" % [attempt, status.text]
+		)
+	page.free()
+	torqa.free()
 
 
 ## The gallery's toolbar and chips (R67) ask the core for what the rider chose; clearing
