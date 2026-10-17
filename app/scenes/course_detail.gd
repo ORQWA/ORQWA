@@ -110,12 +110,12 @@ func _init() -> void:
 	var left: VBoxContainer = VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 14)
-	var top: HBoxContainer = HBoxContainer.new()
 	var back: Button = Button.new()
-	back.text = tr("Courses")
+	back.icon = UiIcons.texture("back")
+	back.tooltip_text = tr("Back")
+	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(func() -> void: back_requested.emit())
-	top.add_child(back)
-	left.add_child(top)
+	_title.add_leading(back)
 	_title.edit_requested.connect(_open_editor)
 	_delete_button.icon = UiIcons.texture("bin")
 	_delete_button.tooltip_text = tr("Delete course")

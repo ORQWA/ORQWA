@@ -61,6 +61,13 @@ func add_action(button: Button) -> void:
 	add_child(button)
 
 
+## Places `button` before the title, on its line, e.g. the way back to where it was opened from.
+func add_leading(button: Button) -> void:
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	add_child(button)
+	move_child(button, 0)
+
+
 ## Puts the cursor in the title with all of it selected, ready to type a new one.
 func start_editing() -> void:
 	_edit.grab_focus()

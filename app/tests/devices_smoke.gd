@@ -39,7 +39,7 @@ func _shifter_buttons() -> void:
 	# The tab itself stays one screen: one pen, on the shifter's row, disabled without one.
 	var pens: Array[Button] = []
 	for button: Button in tab.find_children("*", "Button", true, false):
-		if button.text == "✎":
+		if button.tooltip_text == "What the buttons do":
 			pens.append(button)
 	_check(pens.size() == 1, "one pen, beside the shifter: %d" % pens.size())
 	var pen: Button = pens[0]
