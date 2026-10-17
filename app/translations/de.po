@@ -67,6 +67,30 @@ msgstr "%s akzeptiert die Anmeldung nicht mehr. Verbinde dein Konto erneut."
 msgid "%s not found"
 msgstr "%s nicht gefunden"
 
+msgid "About"
+msgstr "Über Torqa"
+
+msgid "Below 60 fps: a lower graphics quality (Settings → Graphics) runs smoother."
+msgstr "Unter 60 fps: Eine niedrigere Grafikqualität (Einstellungen → Grafik) läuft flüssiger."
+
+msgid "Copy"
+msgstr "Kopieren"
+
+msgid "Copy the version, e.g. for a bug report"
+msgstr "Version kopieren, etwa für eine Fehlermeldung"
+
+msgid "Licences"
+msgstr "Lizenzen"
+
+msgid "Models and data"
+msgstr "Modelle und Daten"
+
+msgid "No devices connected yet: connect them under Devices on the start page."
+msgstr "Noch keine Geräte verbunden. Verbinde sie auf der Startseite unter Geräte."
+
+msgid "No trainer connected — choose one under Devices."
+msgstr "Kein Trainer verbunden — wähle einen unter Geräte."
+
 msgid "Not found: %s. Wake the devices, then scan again."
 msgstr "Nicht gefunden: %s. Wecke die Geräte auf und suche erneut."
 
@@ -211,6 +235,21 @@ msgstr "Aufsteigend"
 msgid "Ascent to go"
 msgstr "Anstieg übrig"
 
+msgid "Rust libraries"
+msgstr "Rust-Bibliotheken"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Torqa is free software under the GNU General Public License, version 3:"
+msgstr "Torqa ist freie Software unter der GNU General Public License, Version 3:"
+
+msgid "Version %s"
+msgstr "Version %s"
+
+msgid "Version %s, commit %s"
+msgstr "Version %s, Commit %s"
+
 msgid "Zwift Click, or Di2 with buttons on D-Fly channels (E-TUBE); choose what each press does"
 msgstr "Zwift Click oder Di2 mit Tasten auf D-Fly-Kanälen (E-TUBE); wähle, was ein Tastendruck bewirkt"
 
@@ -243,9 +282,6 @@ msgstr "Zurück"
 
 msgid "Back to the whole ride screen (O or Esc)"
 msgstr "Zurück zur vollständigen Fahransicht (O oder Esc)"
-
-msgid "Below 60 fps: a lower graphics quality (Devices & Settings) runs smoother."
-msgstr "Unter 60 fps: Eine niedrigere Grafikqualität (Geräte und Einstellungen) läuft flüssiger."
 
 msgid "Bike weight"
 msgstr "Fahrradgewicht"
@@ -582,9 +618,6 @@ msgstr "Beschreibung"
 
 msgid "Devices"
 msgstr "Geräte"
-
-msgid "Devices & Settings"
-msgstr "Geräte und Einstellungen"
 
 msgid "Discard ride"
 msgstr "Aktivität verwerfen"
@@ -1054,9 +1087,6 @@ msgstr "Keine passenden Routen"
 msgid "No courses yet. Import a GPX route or a video to prepare your first course."
 msgstr "Noch keine Routen. Importiere eine GPX-Route oder ein Video, um deine erste Route vorzubereiten."
 
-msgid "No devices connected yet: connect them in Devices & Settings."
-msgstr "Noch keine Geräte verbunden. Verbinde sie unter Geräte und Einstellungen."
-
 msgid "No music player responded."
 msgstr "Keine Reaktion vom Musikplayer."
 
@@ -1068,9 +1098,6 @@ msgstr "Noch keine Aktivitäten. Beendete Aktivitäten erscheinen hier."
 
 msgid "No route is loaded."
 msgstr "Keine Route geladen."
-
-msgid "No trainer connected — choose one under Devices & Settings."
-msgstr "Kein Trainer verbunden — wähle einen unter Geräte und Einstellungen."
 
 msgid "No trainer is connected."
 msgstr "Kein Trainer verbunden."

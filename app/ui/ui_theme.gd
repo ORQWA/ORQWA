@@ -84,6 +84,24 @@ static func build() -> Theme:
 	theme.set_stylebox("normal", "LineEdit", field)
 	theme.set_stylebox("focus", "LineEdit", _box(Color(1, 1, 1, 0.12), 10, 12, 8))
 	theme.set_color("font_color", "LineEdit", TEXT)
+	# Long texts to read, such as the licences, and lists to pick from beside them.
+	theme.set_stylebox("normal", "TextEdit", field)
+	theme.set_stylebox("read_only", "TextEdit", field)
+	theme.set_stylebox("focus", "TextEdit", StyleBoxEmpty.new())
+	theme.set_color("font_color", "TextEdit", TEXT)
+	theme.set_color("font_readonly_color", "TextEdit", TEXT)
+	theme.set_stylebox("panel", "ItemList", _box(SURFACE, 10, 6, 6))
+	theme.set_stylebox("focus", "ItemList", StyleBoxEmpty.new())
+	theme.set_stylebox("hovered", "ItemList", _box(SURFACE, 8, 8, 4))
+	for state: String in [
+		"selected", "selected_focus", "hovered_selected", "hovered_selected_focus"
+	]:
+		theme.set_stylebox(state, "ItemList", _box(Color(ACCENT, 0.18), 8, 8, 4))
+	theme.set_color("font_color", "ItemList", MUTED)
+	theme.set_color("font_hovered_color", "ItemList", TEXT)
+	theme.set_color("font_selected_color", "ItemList", TEXT)
+	theme.set_constant("v_separation", "ItemList", 6)
+	theme.set_color("guide_color", "ItemList", Color(0, 0, 0, 0))
 
 	theme.set_stylebox("background", "ProgressBar", _box(Color(1, 1, 1, 0.1), 6, 0, 4))
 	theme.set_stylebox("fill", "ProgressBar", _box(ACCENT, 6, 0, 4))

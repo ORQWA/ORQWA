@@ -56,4 +56,22 @@ COPY scripts/build-ffmpeg.sh /tmp/build-ffmpeg.sh
 RUN sh /tmp/build-ffmpeg.sh /opt/ffmpeg && rm /tmp/build-ffmpeg.sh
 ENV FFMPEG_DIR=/opt/ffmpeg
 
+# cargo-about writes the crates' licence notices the app shows (scripts/notices.sh, ADR 0018).
+# Declared after FFmpeg so that adding or bumping it keeps the slow FFmpeg layer cached;
+# checksums from the release's .sha256 files.
+ARG CARGO_ABOUT_VERSION=0.9.2
+ARG CARGO_ABOUT_SHA256_X86_64=9099a59e820c38a68b9d65f300662a567d56562f9a10f6aa4c7e86c17c2566af
+ARG CARGO_ABOUT_SHA256_AARCH64=af5169282fb6f84e13471493f405437e43ac517744c9ae12fbe2cdf0a6f0e5a8
+RUN arch="$(uname -m)" \
+    && case "$arch" in \
+        x86_64) sha256="$CARGO_ABOUT_SHA256_X86_64" ;; \
+        aarch64) sha256="$CARGO_ABOUT_SHA256_AARCH64" ;; \
+        *) echo "unsupported architecture" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL -o /tmp/cargo-about.tar.gz "https://github.com/EmbarkStudios/cargo-about/releases/download/${CARGO_ABOUT_VERSION}/cargo-about-${CARGO_ABOUT_VERSION}-${arch}-unknown-linux-musl.tar.gz" \
+    && echo "$sha256  /tmp/cargo-about.tar.gz" | sha256sum -c - \
+    && tar -xz -C /tmp -f /tmp/cargo-about.tar.gz \
+    && mv "/tmp/cargo-about-${CARGO_ABOUT_VERSION}-${arch}-unknown-linux-musl/cargo-about" /usr/local/cargo/bin/ \
+    && rm -rf /tmp/cargo-about*
+
 WORKDIR /workspaces/torqa

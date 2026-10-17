@@ -1,0 +1,28 @@
+# cargo-about: the crates' licence notices the app's About tab shows, written by
+# scripts/notices.sh (ADR 0018). The same licences as deny.toml allows.
+accepted = [
+    "GPL-3.0",
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MPL-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CDLA-Permissive-2.0",
+    "WTFPL",
+    "CC0-1.0",
+]
+# The platforms Torqa is released for (ci.yml), so platform-only crates are credited too.
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+# Only what ships in the app: not the tools that build it, nor Torqa's own crates.
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+private = { ignore = true }

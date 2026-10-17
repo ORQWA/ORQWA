@@ -15,6 +15,10 @@ fi
 
 docker build -q -t torqa-dev -f "$root/.devcontainer/Dockerfile" "$root" >/dev/null
 
+# The commit for the About tab (R83): a worktree's Git directory lies outside the mounted
+# checkout, so the build inside cannot ask Git itself.
+commit="$(git -C "$root" rev-parse --short=7 HEAD 2>/dev/null || true)"
+
 tty_flags=""
 if [ -t 0 ] && [ -t 1 ]; then
     tty_flags="-it"
@@ -22,6 +26,7 @@ fi
 
 # shellcheck disable=SC2086 # tty_flags is intentionally empty or a single flag
 exec docker run --rm $tty_flags \
+    -e TORQA_COMMIT="$commit" \
     -v "$root:/workspaces/torqa" \
     -v torqa-cargo-registry:/usr/local/cargo/registry \
     -v torqa-target:/workspaces/torqa/core/target \

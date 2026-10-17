@@ -15,7 +15,8 @@ var _failures: FailureDetails = FailureDetails.new()
 
 
 func _ready() -> void:
-	print("Torqa %s" % TorqaCore.version())
+	var commit: String = TorqaCore.commit()
+	print("Torqa %s" % TorqaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
 	theme = UiTheme.build()
 	add_child(_failures)
 	_failures.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)

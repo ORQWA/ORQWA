@@ -2,6 +2,7 @@
 //! frame-driven API. Front ends (the Godot app, tests) call commands and [`App::update`] once per
 //! frame; all asynchronous work runs on an internal runtime, so callers never block or await.
 
+pub mod about;
 pub mod analysis;
 pub mod failure;
 use failure::{Failure, Kind};
@@ -54,7 +55,8 @@ use torqa_world::World;
 use tracing::warn;
 pub use video::SyncMark;
 
-/// Credits for the data a course bundles, stored in course files (ODbL, CC BY).
+/// Credits for the data a course bundles, stored in course files (ODbL, CC BY) and listed on
+/// the About tab.
 const ATTRIBUTION: [&str; 3] = [
     "© OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors (ODbL)",
     "Terrain: Mapterhorn (CC BY 4.0)",
