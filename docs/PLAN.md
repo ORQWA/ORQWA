@@ -293,6 +293,8 @@ Built in rideable steps:
     and the zones (#191, #194)
   - [x] The course page's title line like a ride's: a pencil for Edit course (name, video), a
     bin to delete it
+  - [x] A spinner above Ride while the course page loads its route; a course that failed to
+    open tries again when reopened
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
 ### Phase 9 — Graphics (R43–R47, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md))

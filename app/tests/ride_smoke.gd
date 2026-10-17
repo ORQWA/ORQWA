@@ -134,8 +134,28 @@ func _run() -> void:
 
 	await _workout()
 
+	# The course's page (R40): loaded already, it is ready at once; opened while the course
+	# loads, a spinner turns and Ride waits until its route is in.
+	var page: CourseDetail = CourseDetail.new()
+	root.add_child(page)
+	page.bind(_torqa)
+	var spinner: Spinner = page.get("_spinner")
+	var ride: Button = page.get("_ride_button")
+	page.open(found)
+	_check(not spinner.visible and not ride.disabled, "a loaded course is ready at once")
 	_torqa.open_course(course_path)
+	page.open(found)
+	_check(spinner.is_visible_in_tree() and ride.disabled, "a spinner while the course loads")
 	var reopened: Array = await _wait_for(_torqa.route_loaded)
+	var figures: VBoxContainer = page.get("_figures")
+	var estimated: bool = figures.find_children("*", "Label", true, false).any(
+		func(label: Label) -> bool: return label.text.begins_with("Time at")
+	)
+	_check(
+		not spinner.visible and not ride.disabled and estimated,
+		"the spinner stops once the course is loaded, its estimate shown"
+	)
+	page.free()
 	var reopened_route: Dictionary = reopened[0]
 	var reopened_name: String = reopened_route["name"]
 	_check(reopened_name == "Smoke", "course reopened: %s" % reopened_route)
