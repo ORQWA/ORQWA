@@ -138,8 +138,9 @@ func _analysis_tab() -> void:
 	root.add_child(main)
 	await process_frame
 	var start: StartPage = main.get_node("StartPage")
+	var tab_bar: TabBar = start.get("_tab_bar")
+	_check(tab_bar.get_tab_title(StartPage.Tab.ANALYSIS) == "Analysis", "an Analysis tab")
 	var tabs: TabContainer = start.get("_tabs")
-	_check(tabs.get_tab_title(StartPage.Tab.ANALYSIS) == "Analysis", "an Analysis tab")
 	tabs.current_tab = StartPage.Tab.ANALYSIS
 	var analysis: AnalysisTab = start.get("_analysis")
 	var empty: Label = analysis.get("_empty")

@@ -118,14 +118,20 @@ static func build() -> Theme:
 	theme.set_stylebox("tab_selected", "TabContainer", current_tab)
 	theme.set_stylebox("tab_unselected", "TabContainer", tab)
 	theme.set_stylebox("tab_hovered", "TabContainer", tab)
+	# The main navigation beside the logo: the current tab a soft accent pill.
+	theme.set_stylebox("tab_selected", "TabBar", _box(Color(ACCENT, 0.18), 10, 14, 6))
+	theme.set_stylebox("tab_unselected", "TabBar", _box(Color(0, 0, 0, 0), 10, 14, 6))
+	theme.set_stylebox("tab_hovered", "TabBar", _box(SURFACE, 10, 14, 6))
+	theme.set_constant("h_separation", "TabBar", 4)
+	for tabs: String in ["TabContainer", "TabBar"]:
+		theme.set_color("font_selected_color", tabs, TEXT)
+		theme.set_color("font_unselected_color", tabs, MUTED)
+		theme.set_color("font_hovered_color", tabs, TEXT)
 	theme.set_stylebox("tabbar_background", "TabContainer", StyleBoxEmpty.new())
 	var tab_panel: StyleBoxFlat = _box(Color(0, 0, 0, 0), 0, 0, 16)
 	tab_panel.border_color = Color(1, 1, 1, 0.08)
 	tab_panel.border_width_top = 1
 	theme.set_stylebox("panel", "TabContainer", tab_panel)
-	theme.set_color("font_selected_color", "TabContainer", TEXT)
-	theme.set_color("font_unselected_color", "TabContainer", MUTED)
-	theme.set_color("font_hovered_color", "TabContainer", TEXT)
 
 	# Scroll bars: a slim light thumb, no track.
 	for bar: String in ["VScrollBar", "HScrollBar"]:

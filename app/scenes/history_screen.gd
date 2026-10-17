@@ -139,7 +139,10 @@ func _ready() -> void:
 	var header: HBoxContainer = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 14)
 	var back: Button = _back
-	back.text = tr("Back")
+	back.icon = UiIcons.texture("back")
+	back.tooltip_text = tr("Back")
+	back.focus_mode = Control.FOCUS_NONE
+	back.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(_close)
 	header.add_child(back)
 	var heading: Label = Label.new()

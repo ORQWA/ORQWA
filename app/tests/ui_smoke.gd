@@ -726,10 +726,10 @@ func _courses_tab() -> void:
 	var start: StartPage = main.get_node("StartPage")
 	var detail: Control = start.get("_detail")
 	var courses: Control = start.get("_courses")
-	var tabs: TabContainer = start.get("_tabs")
+	var tab_bar: TabBar = start.get("_tab_bar")
 	courses.hide()
 	detail.show()
-	tabs.get_tab_bar().tab_clicked.emit(StartPage.Tab.COURSES)
+	tab_bar.tab_clicked.emit(StartPage.Tab.COURSES)
 	_check(courses.visible and not detail.visible, "the Courses tab brings the gallery back")
 	# An import that hangs is given up on (#219): the library is usable again.
 	courses.call("_start_loading", "gpx", "route.gpx")
