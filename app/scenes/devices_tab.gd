@@ -155,6 +155,8 @@ func _init() -> void:
 		# Device names are never translated; the fixed entries are, in code.
 		option.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		option.custom_minimum_size = Vector2(420, 0)
+		# A reason that wraps makes the row taller; the controls keep their height.
+		option.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		grid.add_child(option)
 		_options[role] = option
 		# A pen opens what there is to set up on the device: a shifter's buttons (#271). The
@@ -164,6 +166,7 @@ func _init() -> void:
 			_edit_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			_edit_button.tooltip_text = tr("What the buttons do")
 			_edit_button.custom_minimum_size = Vector2(44, 0)
+			_edit_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			_edit_button.disabled = true
 			_edit_button.pressed.connect(_on_edit_pressed)
 			grid.add_child(_edit_button)
@@ -175,13 +178,16 @@ func _init() -> void:
 		var search: Button = Button.new()
 		search.text = tr("Search")
 		search.custom_minimum_size = Vector2(110, 0)
+		search.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		search.pressed.connect(func() -> void: _on_search(role))
 		grid.add_child(search)
 		_search_buttons[role] = search
 		var state: Label = Label.new()
 		state.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		# Room for a reading, or a reason, which wraps rather than widens the row.
+		# Room for a reading, or a reason: the rest of the row's width, then it wraps rather
+		# than widens the page (a German reason or a Bluetooth stack's message runs long).
 		state.custom_minimum_size = Vector2(260, 0)
+		state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		grid.add_child(state)
