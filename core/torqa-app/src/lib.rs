@@ -584,7 +584,8 @@ pub struct App {
     keys: torqa_devices::shift::KeyboardKeys,
     /// Identifier of the connected controller, to avoid reconnecting it.
     controller_id: Option<String>,
-    /// What the shifter's buttons do (#139), by button number (a Di2's channels, a Click's + and −).
+    /// What each shifter model's buttons do (#139, R84), by button number (a Di2's channels, a
+    /// Click's + and −).
     buttons: Arc<torqa_devices::shift::Assignments>,
     profile: StoredProfile,
     /// The training platforms rides can be uploaded to and the uploads under way (R29).
@@ -665,9 +666,9 @@ impl App {
             shift_inputs_connected: vec![true],
             keys,
             controller_id: None,
-            buttons: Arc::new(torqa_devices::shift::Assignments::new(
-                profiles::button_map(&data_dir, &profile.id),
-            )),
+            buttons: Arc::new(torqa_devices::shift::Assignments::new(|model| {
+                profiles::button_map(&data_dir, &profile.id, model)
+            })),
             profile,
             uploads: uploads::UploadState::new(uploads::platforms()),
             data_dir,
@@ -2137,12 +2138,12 @@ impl App {
         }
     }
 
-    /// The rider's devices replace those of the rider before (R82): the shifter's buttons do
+    /// The rider's devices replace those of the rider before (R82): the shifters' buttons do
     /// what this rider gave them, and a device linked now stays only if it is theirs. The fake
     /// trainer is nobody's and stays.
     fn take_riders_devices(&mut self) {
         self.buttons
-            .set(profiles::button_map(&self.data_dir, &self.profile.id));
+            .set_all(|model| profiles::button_map(&self.data_dir, &self.profile.id, model));
         let theirs = self.remembered();
         for role in DeviceRole::ALL {
             let others = self
@@ -2330,29 +2331,37 @@ impl App {
         }
         let _runtime = self.runtime.enter();
         self.remember(DeviceRole::Controller, &device);
+        // A scan finds every shifter with its model: the Di2 fallback is never taken.
+        let model = device.model.unwrap_or(ControllerModel::Di2);
         let handle = self.bluetooth()?.connect(device);
         self.controller_id = Some(id);
         let buttons = Arc::clone(&self.buttons);
         self.add_shift_input(Box::new(torqa_devices::shift::Controller::new(
-            handle, buttons,
+            handle, model, buttons,
         )));
         Ok(())
     }
 
-    /// What the shifter's buttons do (#139): a Di2's D-Fly channels 1–4, or a Zwift Click's +
-    /// (button 1) and − (button 2), which has no double press.
+    /// What the buttons of a shifter `model` do (#139, R84): a Di2's D-Fly channels 1–4, a
+    /// Zwift Click's + (button 1) and − (button 2), which has no double press, or a Click v2's
+    /// ten.
     #[must_use]
-    pub fn button_map(&self) -> ButtonMap {
-        self.buttons.get()
+    pub fn button_map(&self, model: ControllerModel) -> ButtonMap {
+        self.buttons.get(model)
     }
 
-    /// Gives the shifter's buttons what `map` says, at once and for the rider's next time.
+    /// Gives the buttons of a shifter `model` what `map` says, at once and for the rider's next
+    /// time; the other models' stay as they are.
     ///
     /// # Errors
     /// [`AppError::Reported`] if the choice cannot be saved.
-    pub fn set_button_map(&mut self, map: ButtonMap) -> Result<(), AppError> {
-        self.buttons.set(map);
-        profiles::set_button_map(&self.data_dir, &self.profile.id, &map)
+    pub fn set_button_map(
+        &mut self,
+        model: ControllerModel,
+        map: ButtonMap,
+    ) -> Result<(), AppError> {
+        self.buttons.set(model, map);
+        profiles::set_button_map(&self.data_dir, &self.profile.id, model, &map)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
@@ -4360,7 +4369,7 @@ mod tests {
     fn the_shifters_buttons_are_assigned_for_next_time() {
         let dir = temp_dir("buttons");
         let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
-        assert_eq!(app.button_map(), ButtonMap::default());
+        assert_eq!(app.button_map(ControllerModel::Di2), ButtonMap::default());
         let mut map = ButtonMap::shifting(2, 1);
         map.assign(
             3,
@@ -4370,11 +4379,20 @@ mod tests {
             )),
         );
 
-        app.set_button_map(map).unwrap();
+        app.set_button_map(ControllerModel::Di2, map).unwrap();
+        assert_eq!(
+            app.button_map(ControllerModel::ZwiftClick),
+            ButtonMap::default(),
+            "a Di2's channels leave a Click's buttons alone"
+        );
         app.shutdown();
 
         let app = App::new(dir.join("data"), dir.join("cache")).unwrap();
-        assert_eq!(app.button_map(), map);
+        assert_eq!(app.button_map(ControllerModel::Di2), map);
+        assert_eq!(
+            app.button_map(ControllerModel::ZwiftClick),
+            ButtonMap::default()
+        );
     }
 
     #[test]
@@ -6011,15 +6029,19 @@ mod tests {
         let ben = app.save_profile(None, ben).unwrap();
         let swapped = ButtonMap::shifting(2, 1);
 
-        app.set_button_map(swapped).unwrap();
+        app.set_button_map(ControllerModel::ZwiftClick, swapped)
+            .unwrap();
         app.set_cadence_source(CadenceSource::PowerMeter).unwrap();
         app.select_profile(&anna).unwrap();
 
-        assert_eq!(app.button_map(), ButtonMap::default());
+        assert_eq!(
+            app.button_map(ControllerModel::ZwiftClick),
+            ButtonMap::default()
+        );
         assert_eq!(app.cadence_source(), CadenceSource::Automatic);
         app.select_profile(&ben).unwrap();
         assert_eq!(
-            app.button_map(),
+            app.button_map(ControllerModel::ZwiftClick),
             swapped,
             "the buttons shift as Ben set them"
         );

@@ -128,6 +128,39 @@ pub struct ButtonPress {
 /// ten buttons on its two pods.
 pub const BUTTONS: u8 = 10;
 
+/// Which shifter a controller is: their buttons and their protocols differ, so each has its
+/// own [`ButtonMap`] (R84).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ControllerModel {
+    /// Shimano Di2 (R59): four D-Fly channels, each telling presses, holds and double presses.
+    Di2,
+    /// The Zwift Click (R75): a + and a − button, each telling presses and holds.
+    ZwiftClick,
+    /// The Zwift Click v2 (R77): two pods, + and − and eight more buttons, presses and holds.
+    ZwiftClickV2,
+}
+
+impl ControllerModel {
+    /// Every shifter model.
+    pub const ALL: [Self; 3] = [Self::Di2, Self::ZwiftClick, Self::ZwiftClickV2];
+
+    /// The model's name as the front end and the settings files know it.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Di2 => "di2",
+            Self::ZwiftClick => "zwift_click",
+            Self::ZwiftClickV2 => "zwift_click_v2",
+        }
+    }
+
+    /// The model called `name`, if any.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|model| model.name() == name)
+    }
+}
+
 /// What each press of each button does (#139).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ButtonMap {

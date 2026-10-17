@@ -2,32 +2,50 @@
 //! and the buttons of a shifter — a Shimano Di2's D-Fly channels or a Zwift Click's + and − —
 //! which do what the rider gave them (#139).
 
-use std::sync::{Arc, Mutex, PoisonError, mpsc};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, mpsc};
 
-use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, Shift, ShiftInput};
+use torqa_domain::shifting::{
+    ButtonAction, ButtonMap, Control, ControllerModel, Shift, ShiftInput,
+};
 
 use crate::{DeviceEvent, DeviceHandle};
 
-/// What a shifter's buttons do, shared with the settings, so a change applies at once.
+/// What each shifter model's buttons do (R84), shared with the settings, so a change applies
+/// at once. A model not given any shifts with its first two buttons.
 #[derive(Debug, Default)]
-pub struct Assignments(Mutex<ButtonMap>);
+pub struct Assignments(Mutex<HashMap<ControllerModel, ButtonMap>>);
 
 impl Assignments {
-    /// The buttons doing what `map` gives them.
+    /// Each model's buttons doing what `map` gives them for it.
     #[must_use]
-    pub fn new(map: ButtonMap) -> Self {
-        Self(Mutex::new(map))
+    pub fn new(map: impl Fn(ControllerModel) -> ButtonMap) -> Self {
+        let assignments = Self::default();
+        assignments.set_all(map);
+        assignments
     }
 
-    /// Gives the buttons what `map` says.
-    pub fn set(&self, map: ButtonMap) {
-        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = map;
+    /// Gives the buttons of a `model` what `map` says.
+    pub fn set(&self, model: ControllerModel, map: ButtonMap) {
+        self.maps().insert(model, map);
     }
 
-    /// What the buttons do.
+    /// Gives each model's buttons what `map` says for it, e.g. another rider's.
+    pub fn set_all(&self, map: impl Fn(ControllerModel) -> ButtonMap) {
+        *self.maps() = ControllerModel::ALL
+            .into_iter()
+            .map(|model| (model, map(model)))
+            .collect();
+    }
+
+    /// What the buttons of a `model` do.
     #[must_use]
-    pub fn get(&self) -> ButtonMap {
-        *self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    pub fn get(&self, model: ControllerModel) -> ButtonMap {
+        self.maps().get(&model).copied().unwrap_or_default()
+    }
+
+    fn maps(&self) -> MutexGuard<'_, HashMap<ControllerModel, ButtonMap>> {
+        self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
@@ -36,6 +54,8 @@ impl Assignments {
 #[derive(Debug)]
 pub struct Controller {
     handle: DeviceHandle,
+    /// Which shifter it is, whose assignments its buttons follow.
+    model: ControllerModel,
     assignments: Arc<Assignments>,
     connected: bool,
     /// Controls pressed for, until [`ShiftInput::controls`] takes them.
@@ -43,11 +63,17 @@ pub struct Controller {
 }
 
 impl Controller {
-    /// Shifts from the shifter behind `handle`, its buttons doing what `assignments` say.
+    /// Shifts from the `model` of shifter behind `handle`, its buttons doing what
+    /// `assignments` say for that model.
     #[must_use]
-    pub fn new(handle: DeviceHandle, assignments: Arc<Assignments>) -> Self {
+    pub fn new(
+        handle: DeviceHandle,
+        model: ControllerModel,
+        assignments: Arc<Assignments>,
+    ) -> Self {
         Self {
             handle,
+            model,
             assignments,
             connected: false,
             controls: Vec::new(),
@@ -67,7 +93,7 @@ impl ShiftInput for Controller {
                 DeviceEvent::Connected => self.connected = true,
                 DeviceEvent::Disconnected => self.connected = false,
                 DeviceEvent::Buttons(presses) => {
-                    for action in self.assignments.get().actions(&presses) {
+                    for action in self.assignments.get(self.model).actions(&presses) {
                         shifts.extend_from_slice(action.shifts());
                         if let ButtonAction::Control(control) = action {
                             self.controls.push(control);
@@ -132,6 +158,18 @@ mod tests {
 
     use super::*;
 
+    /// A shifter called `name` that connects and sends `presses`.
+    fn shifter(name: &str, presses: Vec<ButtonPress>) -> DeviceHandle {
+        DeviceHandle::spawn(name.to_owned(), false, |channels| async move {
+            let _ = channels.events.send(DeviceEvent::Connected).await;
+            let _ = channels.events.send(DeviceEvent::Buttons(presses)).await;
+        })
+    }
+
+    fn press(channel: u8, press: Press) -> ButtonPress {
+        ButtonPress { channel, press }
+    }
+
     #[tokio::test]
     async fn presses_shift_or_ask_for_the_controls_their_buttons_were_given() {
         let mut map = ButtonMap::shifting(2, 1);
@@ -140,18 +178,18 @@ mod tests {
             Press::Short,
             Some(ButtonAction::Control(Control::NextCamera)),
         );
-        let press = |channel, press| ButtonPress { channel, press };
         let presses = vec![
             press(2, Press::Short),
             press(3, Press::Short),
             press(1, Press::Double),
             press(4, Press::Short),
         ];
-        let handle = DeviceHandle::spawn("RDR8150".to_owned(), false, |channels| async move {
-            let _ = channels.events.send(DeviceEvent::Connected).await;
-            let _ = channels.events.send(DeviceEvent::Buttons(presses)).await;
-        });
-        let mut controller = Controller::new(handle, Arc::new(Assignments::new(map)));
+        let assignments = Arc::new(Assignments::new(|_| map));
+        let mut controller = Controller::new(
+            shifter("RDR8150", presses),
+            ControllerModel::Di2,
+            assignments,
+        );
         tokio::task::yield_now().await;
 
         let shifts = controller.poll();
@@ -160,6 +198,28 @@ mod tests {
         assert_eq!(controller.controls(), [Control::NextCamera]);
         assert_eq!(controller.controls(), [], "taken once");
         assert!(controller.connected());
+    }
+
+    #[tokio::test]
+    async fn a_shifters_buttons_do_what_they_were_given_for_its_model_alone() {
+        let assignments = Arc::new(Assignments::default());
+        let mut di2 = ButtonMap::NONE;
+        di2.assign(1, Press::Short, Some(ButtonAction::Control(Control::Pause)));
+        assignments.set(ControllerModel::Di2, di2);
+        let mut click = Controller::new(
+            shifter("Zwift Click", vec![press(1, Press::Short)]),
+            ControllerModel::ZwiftClick,
+            Arc::clone(&assignments),
+        );
+        tokio::task::yield_now().await;
+
+        assert_eq!(click.poll(), [Shift::Up], "the Click's + shifts as it did");
+        assert_eq!(click.controls(), []);
+        assert_eq!(assignments.get(ControllerModel::Di2), di2);
+        assert_eq!(
+            assignments.get(ControllerModel::ZwiftClickV2),
+            ButtonMap::default()
+        );
     }
 
     #[test]

@@ -1886,15 +1886,20 @@ impl TorqaApp {
             .collect()
     }
 
-    /// What the shifter's buttons do (#139): for each button 1–4 (a Di2's D-Fly channels; a Zwift
-    /// Click's + is 1 and its − 2, with no double press), the action names
-    /// of a press, a hold and a double press, "" where it does nothing.
+    /// What the buttons of the shifter `model` (`"di2"`, `"zwift_click"` or
+    /// `"zwift_click_v2"`) do (#139, R84): for each button 1–10 (a Di2's D-Fly channels 1–4; a
+    /// Zwift Click's + is 1 and its − 2, with no double press), the action names of a press, a
+    /// hold and a double press, "" where it does nothing. Empty for an unknown model.
     #[func]
-    fn button_map(&self) -> VarArray {
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn button_map(&self, model: GString) -> VarArray {
+        let Some(model) = ControllerModel::from_name(&model.to_string()) else {
+            return VarArray::new();
+        };
         let map = self
             .app
             .as_ref()
-            .map_or_else(Default::default, torqa_app::App::button_map);
+            .map_or_else(Default::default, |app| app.button_map(model));
         (1..=BUTTONS)
             .map(|channel| {
                 Press::ALL
@@ -1910,11 +1915,15 @@ impl TorqaApp {
             .collect()
     }
 
-    /// Gives `press` (0 a press, 1 a hold, 2 a double press) of button `channel` (1–4)
-    /// the action called `action`, or nothing with "". False for an unknown press or action.
+    /// Gives `press` (0 a press, 1 a hold, 2 a double press) of button `channel` (1–10) of
+    /// the shifter `model` the action called `action`, or nothing with ""; the other models'
+    /// buttons stay as they are (R84). False for an unknown model, press or action.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
-    fn assign_button(&mut self, channel: i64, press: i64, action: GString) -> bool {
+    fn assign_button(&mut self, model: GString, channel: i64, press: i64, action: GString) -> bool {
+        let Some(model) = ControllerModel::from_name(&model.to_string()) else {
+            return false;
+        };
         let action = action.to_string();
         let assigned = if action.is_empty() {
             None
@@ -1934,9 +1943,9 @@ impl TorqaApp {
             return false;
         }
         self.command(|app| {
-            let mut map = app.button_map();
+            let mut map = app.button_map(model);
             map.assign(channel, press, assigned);
-            app.set_button_map(map)
+            app.set_button_map(model, map)
         })
     }
 

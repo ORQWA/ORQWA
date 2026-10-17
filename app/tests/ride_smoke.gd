@@ -208,14 +208,18 @@ func _run() -> void:
 	_torqa.select_profile(id)
 
 	# Di2 buttons (#139): any press of a channel can be given an action, or none.
-	_check(_torqa.assign_button(3, 1, "next_camera"), "holding channel 3 moves the camera")
-	var buttons: Array = _torqa.button_map()
+	_check(_torqa.assign_button("di2", 3, 1, "next_camera"), "holding channel 3 moves the camera")
+	var buttons: Array = _torqa.button_map("di2")
 	var third: PackedStringArray = buttons[2]
 	_check(third[1] == "next_camera" and third[0] == "", "assigned: %s" % [buttons])
-	_check(not _torqa.assign_button(3, 1, "fly"), "unknown actions are refused")
-	_check(_torqa.assign_button(4, 0, "pause"), "channel 4 pauses the ride")
-	_torqa.assign_button(4, 0, "")
-	_torqa.assign_button(3, 1, "")
+	_check(not _torqa.assign_button("di2", 3, 1, "fly"), "unknown actions are refused")
+	_check(_torqa.assign_button("di2", 1, 0, "pause"), "channel 1 pauses the ride")
+	# Each shifter has its own (R84): the Di2's channel 1 is not a Click's +.
+	var plus: PackedStringArray = _torqa.button_map("zwift_click")[0]
+	_check(plus[0] == "shift_up", "a Click's + still shifts: %s" % [plus])
+	_check(not _torqa.assign_button("zwift_play", 1, 0, "pause"), "unknown shifters are refused")
+	_torqa.assign_button("di2", 1, 0, "shift_up")
+	_torqa.assign_button("di2", 3, 1, "")
 	DirAccess.remove_absolute(course_path)
 	print("RIDE SMOKE TEST PASSED (%s)" % _saved_path)
 	quit(0)

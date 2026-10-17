@@ -13,6 +13,7 @@ use btleplug::api::{
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use futures::StreamExt;
 use tokio::time::{sleep, timeout};
+pub use torqa_domain::shifting::ControllerModel;
 use torqa_domain::telemetry::{Telemetry, TrainerControl};
 use tracing::{debug, info, warn};
 
@@ -44,29 +45,6 @@ pub enum DeviceKind {
     CadenceSensor,
     /// A shifter whose buttons can shift the virtual gears (R7): a [`ControllerModel`].
     Controller,
-}
-
-/// Which shifter a controller is: their buttons and their protocols differ.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ControllerModel {
-    /// Shimano Di2 (R59): four D-Fly channels, each telling presses, holds and double presses.
-    Di2,
-    /// The Zwift Click (R75): a + and a − button, each telling presses and holds.
-    ZwiftClick,
-    /// The Zwift Click v2 (R77): two pods, + and − and eight more buttons, presses and holds.
-    ZwiftClickV2,
-}
-
-impl ControllerModel {
-    /// The model's name as the front end knows it.
-    #[must_use]
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Di2 => "di2",
-            Self::ZwiftClick => "zwift_click",
-            Self::ZwiftClickV2 => "zwift_click_v2",
-        }
-    }
 }
 
 /// A device found by [`Bluetooth::scan`].
