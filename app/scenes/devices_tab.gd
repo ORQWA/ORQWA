@@ -155,7 +155,8 @@ func _init() -> void:
 		# A pen opens what there is to set up on the device: a shifter's buttons (#271). The
 		# other rows keep the column, so Search and the states line up.
 		if role == CONTROLLER:
-			_edit_button.text = "✎"
+			_edit_button.icon = UiIcons.texture("pencil")
+			_edit_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			_edit_button.tooltip_text = tr("What the buttons do")
 			_edit_button.custom_minimum_size = Vector2(44, 0)
 			_edit_button.disabled = true
@@ -187,7 +188,7 @@ func _init() -> void:
 	_scan_button.custom_minimum_size = Vector2(220, 44)
 	_scan_button.pressed.connect(_on_scan_pressed)
 	scan_row.add_child(_scan_button)
-	_scan_label.text = tr("Wake the device first: pedal, or put the strap on.")
+	_scan_label.text = tr("Wake the devices first.")
 	_scan_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	scan_row.add_child(_scan_label)
 	add_child(scan_row)
@@ -363,10 +364,7 @@ func _on_remembered_missing(names: PackedStringArray) -> void:
 		if names.has(expected):
 			_set_state(role, "missing")
 			_show_placeholder(role, expected)
-	_status.text = (
-		tr("%s not found — wake it by pedalling (or put on the strap), then scan.")
-		% ", ".join(names)
-	)
+	_status.text = tr("Not found: %s. Wake the devices, then scan again.") % ", ".join(names)
 
 
 ## While the devices used last reconnect at start, their rows show their names and that

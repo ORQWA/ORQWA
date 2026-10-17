@@ -67,8 +67,8 @@ msgstr "%s akzeptiert die Anmeldung nicht mehr. Verbinde dein Konto erneut."
 msgid "%s not found"
 msgstr "%s nicht gefunden"
 
-msgid "%s not found — wake it by pedalling (or put on the strap), then scan."
-msgstr "%s nicht gefunden — aktiviere das Gerät durch Treten (oder lege den Brustgurt an) und suche erneut."
+msgid "Not found: %s. Wake the devices, then scan again."
+msgstr "Nicht gefunden: %s. Wecke die Geräte auf und suche erneut."
 
 msgid "%s not found — wake it, then reconnect again."
 msgstr "%s nicht gefunden — aktiviere das Gerät und verbinde es erneut."
@@ -1705,8 +1705,8 @@ msgstr "W/kg"
 msgid "Waiting for the trainer…"
 msgstr "Warte auf den Trainer …"
 
-msgid "Wake the device first: pedal, or put the strap on."
-msgstr "Aktiviere das Gerät zuerst: tritt in die Pedale oder lege den Brustgurt an."
+msgid "Wake the devices first."
+msgstr "Wecke die Geräte zuerst auf."
 
 msgid "Warm-up  ·  %s left"
 msgstr "Aufwärmen  ·  noch %s"
