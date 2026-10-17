@@ -3,11 +3,12 @@
 //! directory per rider keeps riders from overwriting each other's files when the data directory
 //! is synced (ADR 0002). What depends on the computer instead is in [`crate::computer`].
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
-use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, Press};
+use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, ControllerModel, Press};
 use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
 
@@ -484,7 +485,7 @@ impl DeviceRole {
 }
 
 /// The rider's devices (R82), in `profiles/<id>/devices.toml`: the ones to reconnect, where the
-/// cadence comes from and what the shifter's buttons do. Riders on one computer each bring
+/// cadence comes from and what each shifter's buttons do. Riders on one computer each bring
 /// their own strap or shifter, and their choices follow them to another sharing the data.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -496,8 +497,13 @@ struct DevicesFile {
     controller: Option<RememberedDevice>,
     /// Which device's cadence counts (R72), by [`CadenceSource::name`].
     cadence_source: Option<String>,
-    /// What the shifter's buttons do (#139); the first two shift until it is saved.
+    /// What every shifter's buttons did before each model had its own (R84): what a model
+    /// without its own still does, until the rider gives one its own.
     buttons: Option<ButtonsFile>,
+    /// What each shifter model's buttons do (#139, R84), by [`ControllerModel::name`]; the
+    /// first two shift until the model's are saved.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    shifter_buttons: BTreeMap<String, ButtonsFile>,
 }
 
 impl DevicesFile {
@@ -530,6 +536,7 @@ impl Settings {
             controller: self.controller.take(),
             cadence_source: self.cadence_source.take(),
             buttons,
+            shifter_buttons: BTreeMap::new(),
         };
         let any = devices.trainer.is_some()
             || devices.heart_rate.is_some()
@@ -810,22 +817,41 @@ pub fn set_cadence_source(
     save_devices(data_dir, id, &devices)
 }
 
-/// What the rider's shifter's buttons do (#139); the first two shift up and down until they
-/// chose.
+/// What the buttons of the rider's shifter `model` do (#139, R84); the first two shift up and
+/// down until they chose.
 #[must_use]
-pub fn button_map(data_dir: &Path, id: &str) -> ButtonMap {
-    devices(data_dir, id)
-        .buttons
-        .map_or_else(ButtonMap::default, |buttons| buttons.map())
+pub fn button_map(data_dir: &Path, id: &str, model: ControllerModel) -> ButtonMap {
+    let devices = devices(data_dir, id);
+    devices
+        .shifter_buttons
+        .get(model.name())
+        .or(devices.buttons.as_ref())
+        .map_or_else(ButtonMap::default, ButtonsFile::map)
 }
 
-/// Remembers what the rider's shifter's buttons do.
+/// Remembers what the buttons of the rider's shifter `model` do; the other models' stay.
 ///
 /// # Errors
 /// On file system errors.
-pub fn set_button_map(data_dir: &Path, id: &str, map: &ButtonMap) -> Result<(), ProfileError> {
+pub fn set_button_map(
+    data_dir: &Path,
+    id: &str,
+    model: ControllerModel,
+    map: &ButtonMap,
+) -> Result<(), ProfileError> {
     let mut devices = devices(data_dir, id);
-    devices.buttons = Some(ButtonsFile::from(map));
+    // What every model did before stays each one's own.
+    if let Some(shared) = devices.buttons.take() {
+        for other in ControllerModel::ALL {
+            devices
+                .shifter_buttons
+                .entry(other.name().to_owned())
+                .or_insert_with(|| shared.clone());
+        }
+    }
+    devices
+        .shifter_buttons
+        .insert(model.name().to_owned(), ButtonsFile::from(map));
     save_devices(data_dir, id, &devices)
 }
 
@@ -926,7 +952,9 @@ mod tests {
     fn buttons_shift_until_the_rider_gives_them_something_else() {
         let dir = temp_dir("buttons-default");
 
-        assert_eq!(button_map(&dir, "anna"), ButtonMap::shifting(1, 2));
+        for model in ControllerModel::ALL {
+            assert_eq!(button_map(&dir, "anna", model), ButtonMap::shifting(1, 2));
+        }
     }
 
     #[test]
@@ -941,11 +969,11 @@ mod tests {
         );
         map.assign(1, Press::Double, None);
 
-        set_button_map(&dir, "anna", &map).unwrap();
+        set_button_map(&dir, "anna", ControllerModel::Di2, &map).unwrap();
 
-        assert_eq!(button_map(&dir, "anna"), map);
+        assert_eq!(button_map(&dir, "anna", ControllerModel::Di2), map);
         assert_eq!(
-            button_map(&dir, "ben"),
+            button_map(&dir, "ben", ControllerModel::Di2),
             ButtonMap::default(),
             "another rider's own"
         );
@@ -960,6 +988,63 @@ mod tests {
     }
 
     #[test]
+    fn each_shifter_models_buttons_are_its_own() {
+        let dir = temp_dir("buttons-models");
+        let mut di2 = ButtonMap::shifting(1, 2);
+        di2.assign(1, Press::Short, Some(ButtonAction::Control(Control::Pause)));
+        let click = ButtonMap::shifting(2, 1);
+
+        set_button_map(&dir, "anna", ControllerModel::Di2, &di2).unwrap();
+        set_button_map(&dir, "anna", ControllerModel::ZwiftClick, &click).unwrap();
+
+        assert_eq!(button_map(&dir, "anna", ControllerModel::Di2), di2);
+        assert_eq!(button_map(&dir, "anna", ControllerModel::ZwiftClick), click);
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::ZwiftClickV2),
+            ButtonMap::default(),
+            "a model not given any shifts"
+        );
+        let text = std::fs::read_to_string(devices_path(&dir, "anna")).unwrap();
+        assert!(
+            text.contains("[shifter_buttons.zwift_click.channel_1]"),
+            "{text}"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn buttons_every_shifter_shared_stay_each_models_until_it_is_given_its_own() {
+        let dir = temp_dir("buttons-shared");
+        std::fs::create_dir_all(profile_dir(&dir, "anna")).unwrap();
+        std::fs::write(
+            devices_path(&dir, "anna"),
+            "[buttons.channel_1]\npress = \"shift_down\"\n\n\
+             [buttons.channel_3]\nhold = \"next_camera\"\n",
+        )
+        .unwrap();
+        let shared = button_map(&dir, "anna", ControllerModel::Di2);
+        assert_eq!(
+            shared.action(1, Press::Short),
+            Some(ButtonAction::ShiftDown)
+        );
+        assert_eq!(
+            shared.action(3, Press::Long),
+            Some(ButtonAction::Control(Control::NextCamera))
+        );
+
+        set_button_map(&dir, "anna", ControllerModel::Di2, &ButtonMap::default()).unwrap();
+
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::Di2),
+            ButtonMap::default()
+        );
+        for model in [ControllerModel::ZwiftClick, ControllerModel::ZwiftClickV2] {
+            assert_eq!(button_map(&dir, "anna", model), shared, "{model:?}");
+        }
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn every_button_action_has_its_own_name_and_unknown_names_do_nothing() {
         for action in ButtonAction::ALL {
             assert_eq!(
@@ -971,11 +1056,11 @@ mod tests {
         std::fs::create_dir_all(profile_dir(&dir, "anna")).unwrap();
         std::fs::write(
             devices_path(&dir, "anna"),
-            "[buttons.channel_1]\npress = \"launch\"\nhold = \"shift_up\"\n",
+            "[shifter_buttons.di2.channel_1]\npress = \"launch\"\nhold = \"shift_up\"\n",
         )
         .unwrap();
 
-        let map = button_map(&dir, "anna");
+        let map = button_map(&dir, "anna", ControllerModel::Di2);
 
         assert_eq!(map.action(1, Press::Short), None);
         assert_eq!(map.action(1, Press::Long), Some(ButtonAction::ShiftUp));
@@ -1148,11 +1233,13 @@ mod tests {
         assert_eq!(anna.trainer.map(|d| d.name).as_deref(), Some("KICKR CORE"));
         assert_eq!(anna.heart_rate.map(|d| d.name).as_deref(), Some("Polar H9"));
         assert_eq!(cadence_source(&dir, "anna"), CadenceSource::Trainer);
-        assert_eq!(
-            button_map(&dir, "anna"),
-            ButtonMap::shifting(2, 1),
-            "the channels chosen before still shift"
-        );
+        for model in ControllerModel::ALL {
+            assert_eq!(
+                button_map(&dir, "anna", model),
+                ButtonMap::shifting(2, 1),
+                "the channels chosen before still shift"
+            );
+        }
         let ben = remembered_devices(&dir, "ben");
         assert_eq!(ben.heart_rate, Some(own), "a rider's own stay");
         assert_eq!(ben.trainer, None, "and are not mixed with everyone's");
@@ -1361,13 +1448,13 @@ mod tests {
         remember_device(&data, "anna", DeviceRole::Controller, click.clone()).unwrap();
         set_cadence_source(&data, "anna", CadenceSource::PowerMeter).unwrap();
         let map = ButtonMap::shifting(2, 1);
-        set_button_map(&data, "anna", &map).unwrap();
+        set_button_map(&data, "anna", ControllerModel::ZwiftClick, &map).unwrap();
 
         copy_devices(&data, "anna", "ben").unwrap();
 
         assert_eq!(remembered_devices(&data, "ben").controller, Some(click));
         assert_eq!(cadence_source(&data, "ben"), CadenceSource::PowerMeter);
-        assert_eq!(button_map(&data, "ben"), map);
+        assert_eq!(button_map(&data, "ben", ControllerModel::ZwiftClick), map);
         forget_device(&data, "ben", DeviceRole::Controller).unwrap();
         assert!(
             remembered_devices(&data, "anna").controller.is_some(),

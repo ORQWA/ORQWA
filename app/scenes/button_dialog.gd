@@ -74,7 +74,7 @@ func open(model: String, device_name: String) -> void:
 	title = tr("What the buttons of %s do") % device_name
 	_layout()
 	if _torqa != null:
-		var assigned: Array = _torqa.button_map()
+		var assigned: Array = _torqa.button_map(_model)
 		for channel: int in range(assigned.size()):
 			var presses: PackedStringArray = assigned[channel]
 			for press: int in range(presses.size()):
@@ -128,7 +128,7 @@ func _init() -> void:
 			option.item_selected.connect(
 				func(index: int) -> void:
 					var action: String = option.get_item_metadata(index)
-					_torqa.assign_button(channel, press, action)
+					_torqa.assign_button(_model, channel, press, action)
 			)
 			_assignments.append(option)
 			_grid.add_child(option)
