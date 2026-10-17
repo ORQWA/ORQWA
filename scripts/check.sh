@@ -8,6 +8,8 @@ cd "$root/core"
 python3 "$root/scripts/wiki/check.py"
 python3 -m unittest discover -s "$root/scripts/wiki" -p 'test_*.py'
 python3 -m unittest discover -s "$root/scripts/release" -p 'test_*.py'
+# The Cargo workspace and the macOS bundle name the same version; release tags check it too.
+python3 "$root/scripts/release/version.py"
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked

@@ -30,11 +30,13 @@ ride it on your smart trainer, through a generated 3D world or along the video.
     </td>
   </tr>
   <tr>
-    <td width="50%" align="center">
+    <td colspan="2" align="center">
       <img src="docs/images/readme/video-course.jpg" alt="Riding a video course in Torqa"><br>
       <sub>Along a real video, played at your speed</sub>
     </td>
-    <td width="50%" align="center">
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
       <img src="docs/images/readme/overlay.jpg" alt="Torqa's overlay on top of a browser window"><br>
       <sub>Just your HUD, on top of any window</sub>
     </td>

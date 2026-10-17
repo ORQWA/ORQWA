@@ -2484,7 +2484,7 @@ checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 
 [[package]]
 name = "torqa-app"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "thiserror",
  "tokio",
@@ -2505,7 +2505,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-cli"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2526,7 +2526,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-devices"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "btleplug",
  "futures",
@@ -2538,11 +2538,11 @@ dependencies = [
 
 [[package]]
 name = "torqa-domain"
-version = "0.1.0"
+version = "0.2.1"
 
 [[package]]
 name = "torqa-gd"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "godot",
  "torqa-app",
@@ -2558,7 +2558,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-osm"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "futures",
  "geo-types",
@@ -2574,14 +2574,14 @@ dependencies = [
 
 [[package]]
 name = "torqa-physics"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "torqa-domain",
 ]
 
 [[package]]
 name = "torqa-routes"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "quick-xml",
  "thiserror",
@@ -2594,7 +2594,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-session"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "tokio",
  "torqa-devices",
@@ -2605,7 +2605,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-storage"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "embedded-io-adapters",
  "rusqlite",
@@ -2620,7 +2620,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-terrain"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "image-webp",
  "png",
@@ -2633,7 +2633,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-upload"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "reqwest",
  "serde_json",
@@ -2644,7 +2644,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-video"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "ffmpeg-next",
  "quick-xml",
@@ -2654,7 +2654,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-workouts"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "embedded-io-adapters",
  "quick-xml",
@@ -2665,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-world"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "serde_json",

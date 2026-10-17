@@ -65,15 +65,23 @@ Docker on macOS cannot access Bluetooth or the GPU, so macOS builds are produced
 To test 3D rendering or a real trainer, run the built app (or the portable Godot editor) natively.
 
 Every build names the commit it comes from on the settings' About tab and in its first log
-line (`Torqa 0.1.0 (0ad9af1)`), as Git reports it while building, or the `TORQA_COMMIT`
+line (`Torqa 0.2.1 (0ad9af1)`), as Git reports it while building, or the `TORQA_COMMIT`
 variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
 the host: a worktree's Git directory lies outside the checkout the container sees.
 
 ### Publishing a release
 
-Push a new Git tag on the commit to release, for example `git tag v0.1.0` then
-`git push origin v0.1.0` (choose a new name for each release). Every tag name triggers CI,
-including names containing `/`; branch and PR builds only produce workflow artifacts.
+A tag does not set the version. The About tab, the first log line, the CLI and the User-Agent
+read `version` in `core/Cargo.toml`; the macOS bundle reads `application/short_version` and
+`application/version` in `app/export_presets.cfg`. First set the new version in those three
+places, update `core/Cargo.lock` to match (`cargo update --workspace` in `core/`, in the
+container) and merge that change. `scripts/check.sh` fails while they disagree
+(`scripts/release/version.py`).
+
+Then push the tag `v<version>` on the merged commit, for example `git tag v0.2.1` then
+`git push origin v0.2.1`. Every tag triggers CI, but only a tag naming its commit's version is
+released: the `version` job fails any other, such as `v0.2.0` on a commit saying 0.2.1, and
+the release needs it. Branch and PR builds only produce workflow artifacts.
 The tag's commit must contain this workflow. A tag push runs the container checks and the
 native macOS, Windows and both Linux builds. After all succeed, the `release` job verifies
 all eight nonempty app/CLI archives, creates a draft with generated release notes, uploads
@@ -84,15 +92,15 @@ Build jobs upload each archive as a single file (`archive: false`). The release 
 uses `skip-decompress: true` to keep those files intact: without it the download action
 extracts ZIPs, leaving the publisher without the macOS and Windows release archives.
 
-If a build or check fails, fix it and tag the corrected commit with a new tag. If publication
-fails, rerun the failed job from the tag's CI run: an unfinished draft is resumed and its
-assets replaced before publication. A published release is left unchanged on reruns. Tag
-runs are not cancelled by a later push. Check the CI run and the release's assets before
-announcing it; merging the workflow PR alone does not create a release.
+If a build or check fails, fix it, set a new version and tag the corrected commit with it.
+If publication fails, rerun the failed job from the tag's CI run: an unfinished draft is
+resumed and its assets replaced before publication. A published release is left unchanged on
+reruns. Tag runs are not cancelled by a later push. Check the CI run and the release's assets
+before announcing it; merging the workflow PR alone does not create a release.
 
 A workflow fix does not change an existing tag's CI run. For a failure caused by the workflow
-itself, merge the fix and tag the corrected commit with a new tag rather than rerunning the
-old workflow.
+itself, merge the fix with a new version and tag that rather than rerunning the old
+workflow.
 
 ## More
 

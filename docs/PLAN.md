@@ -101,6 +101,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Tagged releases (#273): after checks and all native builds, publish the eight app/CLI
   archives for macOS arm64, Windows x86_64 and Linux x86_64/arm64 on GitHub Releases;
   preserve ZIP uploads as archives when downloading them for publication
+- [x] Release versions: the version stays in `core/Cargo.toml` and the macOS preset, checked to
+  agree on every change and, for a release, to be the tag's (`v<version>`), after v0.2.0
+  shipped saying 0.1.0 (ADR 0018 amendment)
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
