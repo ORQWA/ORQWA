@@ -13,6 +13,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_shifter_buttons()
 	_device_states()
+	_missed_devices()
 	if not _failed:
 		print("DEVICES SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -141,6 +142,33 @@ func _device_states() -> void:
 		shifter.get_item_text(shifter.selected) == "Zwift Click",
 		"the device looked for is shown by name: %s" % shifter.get_item_text(shifter.selected)
 	)
+	tab.free()
+
+
+## A scan that misses a device used last (asleep, out of reach) keeps it chosen, by name:
+## not finding it is not choosing none, which would forget it.
+func _missed_devices() -> void:
+	var tab: DevicesTab = DevicesTab.new()
+	root.add_child(tab)
+	var choices: Array[Node] = tab.find_children("*", "OptionButton", true, false)
+	var heart_rate: OptionButton = choices[3]
+	tab._expected["heart_rate"] = "Polar H9"
+	tab._set_state("heart_rate", "connecting")
+	var others_strap: Dictionary = {
+		"index": 0,
+		"name": "HRM-Pro",
+		"kind": "heart_rate",
+		"model": null,
+		"rssi": -40,
+		"remembered": false,
+	}
+	tab._on_devices_found([others_strap])
+	_check(
+		heart_rate.get_item_text(heart_rate.selected) == "Polar H9",
+		"the strap missed stays chosen: %s" % heart_rate.get_item_text(heart_rate.selected)
+	)
+	tab._on_remembered_missing(PackedStringArray(["Polar H9"]))
+	_check(tab.state_of("heart_rate") == "missing", "and is told not found")
 	tab.free()
 
 

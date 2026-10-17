@@ -102,12 +102,10 @@ func bind(torqa: TorqaApp) -> void:
 ## Makes sure the chosen trainer, power meter, cadence, heart-rate sensor and shifter are
 ## connected, as choosing them already did; false if the trainer cannot be connected.
 func connect_selected() -> bool:
-	var trainer: bool = _choose_trainer()
-	_choose_power_meter()
-	_choose_cadence()
-	_choose_heart_rate()
-	_choose_shifter()
-	return trainer
+	var connected: bool = true
+	for role: String in _options:
+		connected = _choose(role) and connected
+	return connected
 
 
 ## How the role's device is doing: "" (none chosen), "connecting", "connected",
@@ -306,11 +304,33 @@ func _on_devices_found(devices: Array) -> void:
 		var chosen: int = option.get_item_metadata(option.selected)
 		if found and not remembered.has(chosen):
 			option.select(first)
+	# Chosen is connected (R76): the devices used last, or the ones preferred, right away. A
+	# device a row has or waits for that the scan did not list (asleep, out of reach) stays
+	# its choice by name: missing it is not the rider choosing none, which would forget it.
+	for role: String in _options:
+		var kept: String = _expected.get(role, "")
+		if (
+			(role == searched and found)
+			or kept.is_empty()
+			or kept == FAKE_TRAINER_NAME
+			or _lists(role, kept)
+		):
+			_choose(role)
+		else:
+			_show_placeholder(role, kept)
 	_show_buttons()
-	# Chosen is connected (R76): the devices used last, or the ones preferred, right away.
-	connect_selected()
 	if not searched.is_empty() and not found:
 		_set_state(searched, "missing")
+
+
+## Whether the scan listed `device_name` among the role's choices.
+func _lists(role: String, device_name: String) -> bool:
+	var option: OptionButton = _options[role]
+	for i: int in range(option.item_count):
+		var index: int = option.get_item_metadata(i)
+		if _names.get(index, "") == device_name:
+			return true
+	return false
 
 
 ## The first scanned device in a choice (the nearest: the scan lists them by signal), or −1.
@@ -403,6 +423,22 @@ func _show_placeholder(role: String, device_name: String) -> void:
 func _chosen(role: String) -> int:
 	var selected: Variant = _options[role].get_selected_metadata()
 	return -1 if selected == null else selected
+
+
+## Connects the role's choice at once (R76); false only for a trainer that cannot be.
+func _choose(role: String) -> bool:
+	match role:
+		TRAINER:
+			return _choose_trainer()
+		POWER_METER:
+			_choose_power_meter()
+		CADENCE:
+			_choose_cadence()
+		HEART_RATE:
+			_choose_heart_rate()
+		CONTROLLER:
+			_choose_shifter()
+	return true
 
 
 ## Connects the chosen trainer at once (R76): the fake one, or a scanned one.
