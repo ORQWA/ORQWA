@@ -481,6 +481,9 @@ physically based materials and light, restyled group by group.
     rippled water with reflections (screen-space on High and Ultra); rain as faint streaks
   - [ ] Riders and bikes: smooth, subdivided bodies and round wheels done; realistic bodies
     (armature, new pedalling), kit with fabric and bike materials to come
+  - [x] Rider and bike motion (R88, `RiderMotion`): pitch and lean as damped springs, standing
+    on the pedals on steep climbs and in sprints with the bike rocking under the rider, sway
+    with effort, cranks level when coasting
   - [ ] More geometry on buildings where it shows (eaves, window depth); frame rate on an M1
     at Medium checked after the restyle
 - **Exit:** a long hilly course at 60 fps on M1 base at Medium ✅ (#111, 2026-10-08); screenshots

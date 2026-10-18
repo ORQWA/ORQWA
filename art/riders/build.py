@@ -932,6 +932,8 @@ def build(sex):
         "wheel_rear": godot(rear_hub + shift),
         "wheel_front": godot(front_hub + shift),
         "bottom_bracket": godot(BOTTOM_BRACKET + shift),
+        # Where the hands rest on the hoods: the rider stands up on the pedals about them.
+        "hands": godot(hoods + shift),
         "crank": CRANK,
         "pedal_offset": PEDAL_OFFSET,
     }

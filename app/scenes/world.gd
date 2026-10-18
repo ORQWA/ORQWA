@@ -208,7 +208,8 @@ var _distance: float = 1.0
 var _free: bool = false
 var _free_speed: float = 1.0
 ## How far the rider and the ghost lean into the bend (radians, positive to the right).
-var _lean: float = 0.0
+## How rider and bike move besides pedalling: pitch, lean, standing, rock (R46).
+var _motion: RiderMotion = RiderMotion.new()
 var _ghost_lean: float = 0.0
 var _placed: bool = false
 var _avatar: RiderAvatar = RiderAvatar.new()
@@ -446,6 +447,7 @@ func apply_options(options: Dictionary) -> void:
 ## Snaps rider and camera to the start of a new ride instead of gliding there.
 func reset_view() -> void:
 	_placed = false
+	_motion.reset()
 
 
 func _ready() -> void:
@@ -733,16 +735,29 @@ func _follow_ride(state: Dictionary, delta: float) -> void:
 	if _paused:
 		speed_kmh = 0.0
 		cadence_rpm = 0.0
-	_avatar.animate(delta, cadence_rpm, speed_kmh)
+	var effort_value: Variant = state.get("watts_per_kg")
+	var effort: float = effort_value if effort_value != null and not _paused else 0.0
 	var curvature: float = state["curvature"]
-	_lean = _leaning(_lean, TorqaApp.lean_angle(speed_kmh, curvature), delta)
-	# Bike and rider lean about where the tyres touch the road; the camera stays level.
-	_avatar.transform = Transform3D(Basis(Vector3.FORWARD, _lean), Vector3.ZERO)
+	_motion.step(
+		delta,
+		grade,
+		TorqaApp.lean_angle(speed_kmh, curvature),
+		effort,
+		cadence_rpm,
+		_avatar.crank_angle()
+	)
+	_avatar.animate(delta, cadence_rpm, speed_kmh, _motion)
+	# Bike and rider lean, and the bike rocks, about where the tyres touch the road; the camera
+	# stays level.
+	_avatar.transform = Transform3D(
+		Basis(Vector3.FORWARD, _motion.lean + _motion.rock), Vector3.ZERO
+	)
 
 	# Godot looks along −z (north); headings run clockwise from north, rotations anticlockwise.
 	# The heading is the road's own direction, so the rider turns with the bend.
 	var yaw: Basis = Basis(Vector3.UP, -heading)
-	var pitch: Basis = Basis(Vector3.RIGHT, atan(grade / 100.0))
+	# The motion's pitch follows the grade as a bike settles into it, without jolts at steps.
+	var pitch: Basis = Basis(Vector3.RIGHT, _motion.pitch)
 	var position: Vector3 = Vector3(east, elevation, -north)
 	if absf(elevation - _rider_elevation) > 0.5:
 		_rider_elevation = elevation
@@ -750,6 +765,7 @@ func _follow_ride(state: Dictionary, delta: float) -> void:
 	# A jump (simulated rides): no gliding across the whole way.
 	if _rider.position.distance_to(position) > JUMP_M:
 		_placed = false
+		_motion.reset()
 	_rider.transform = Transform3D(yaw * pitch, position)
 	_place_ghost(state["ghost"], delta)
 
@@ -888,7 +904,8 @@ func _place_ghost(ghost: Variant, delta: float) -> void:
 	var curvature: float = info["curvature"]
 	_ghost_lean = _leaning(_ghost_lean, TorqaApp.lean_angle(speed_kmh, curvature), delta)
 	var yaw: Basis = Basis(Vector3.UP, -heading)
-	var pitch: Basis = Basis(Vector3.RIGHT, atan(grade / 100.0))
+	# The motion's pitch follows the grade as a bike settles into it, without jolts at steps.
+	var pitch: Basis = Basis(Vector3.RIGHT, _motion.pitch)
 	var roll: Basis = Basis(Vector3.FORWARD, _ghost_lean)
 	var left: Vector3 = yaw * Vector3.LEFT
 	_ghost.transform = Transform3D(

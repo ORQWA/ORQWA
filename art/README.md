@@ -242,6 +242,8 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 |---|---|---|
 | side | ![female side](../docs/images/models/riders/female-side.jpg) | ![male side](../docs/images/models/riders/male-side.jpg) |
 | side-down | ![female side-down](../docs/images/models/riders/female-side-down.jpg) | ![male side-down](../docs/images/models/riders/male-side-down.jpg) |
+| standing | ![female standing](../docs/images/models/riders/female-standing.jpg) | ![male standing](../docs/images/models/riders/male-standing.jpg) |
+| standing-chase | ![female standing-chase](../docs/images/models/riders/female-standing-chase.jpg) | ![male standing-chase](../docs/images/models/riders/male-standing-chase.jpg) |
 | front | ![female front](../docs/images/models/riders/female-front.jpg) | ![male front](../docs/images/models/riders/male-front.jpg) |
 | chase | ![female chase](../docs/images/models/riders/female-chase.jpg) | ![male chase](../docs/images/models/riders/male-chase.jpg) |
 | face | ![female face](../docs/images/models/riders/female-face.jpg) | ![male face](../docs/images/models/riders/male-face.jpg) |
