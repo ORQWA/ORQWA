@@ -814,6 +814,8 @@ func _overlay() -> void:
 		"the content scales with the window: %s, %s" % [base, window.content_scale_size]
 	)
 	_check(window.mouse_passthrough_polygon.size() == 4, "clicks beside it go through")
+	var opaque: ColorRect = main.get("_opaque")
+	_check(not opaque.visible, "only the overlay is see-through (#220)")
 
 	# Larger and smaller from the keyboard and the bar (#124).
 	var entered: Vector2 = Vector2(window.size)
@@ -834,6 +836,7 @@ func _overlay() -> void:
 		"the window as it was"
 	)
 	_check(window.content_scale_size == scale_before, "the scale as it was")
+	_check(opaque.visible, "and opaque again (#220)")
 	# Leaving resizes the window; that must not bring the overlay's outline back (#123).
 	_check(window.mouse_passthrough_polygon.is_empty(), "every click is the app's again")
 	var torqa: TorqaApp = main.get_node("Torqa")
