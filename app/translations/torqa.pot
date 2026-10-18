@@ -843,7 +843,7 @@ msgstr ""
 msgid "Disconnect"
 msgstr ""
 
-#: app/ui/failure_details.gd:29
+#: app/ui/failure_details.gd:38
 msgid "Dismiss"
 msgstr ""
 
@@ -2223,7 +2223,7 @@ msgstr ""
 msgid "TSS %d"
 msgstr ""
 
-#: app/ui/failure_details.gd:32 app/ui/failure_details.gd:72
+#: app/ui/failure_details.gd:41 app/ui/failure_details.gd:81
 msgid "Technical details"
 msgstr ""
 
