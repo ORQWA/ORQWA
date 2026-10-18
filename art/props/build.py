@@ -1,5 +1,5 @@
 """Builds the props that stand by the road (R89) — guard rails, delineator posts and snow
-poles — and exports them for Godot (ADR 0009, ADR 0019).
+poles — and exports them for Godot (ADR 0009, ADR 0020).
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/props/build.py

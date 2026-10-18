@@ -122,6 +122,20 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
 - Exports are deterministic: rebuilding unchanged scripts must give byte-identical `.glb`s.
   If a rebuild changes files you did not touch, find out why before committing.
 
+## Props (`art/props`)
+
+- What stands by the road (R92). Each model's +x points away from the road, its length along
+  Blender +y (Godot −z, the way the road is ridden on the right), the origin on the ground;
+  parts reach 0.4 m below it so they meet sloping ground. Rails are 4 m spans the world shears
+  to the road's grade (posts stay upright), so a span's ends must line up with its
+  neighbours'. Run ends are their own models (`guard_rail_start` / `guard_rail_end`): turning a
+  model round flips which side faces the road.
+- The rules live in `core/torqa-world/src/props.rs`; each decision depends only on the road
+  and the ground near its own point (stations at whole multiples of a spacing along the
+  route), so a prop is the same whichever chunk places it. New props get a rule there, a
+  test in `core/torqa-world/src/tests.rs`, palette colours under `props` and a row in
+  `PLACED` (the model check).
+
 ## Riders (`art/riders`)
 
 - Realistic bodies (Human Base Meshes) skinned to a skeleton built from the bundle's joints.
