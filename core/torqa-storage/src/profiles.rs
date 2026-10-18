@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
-use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, ControllerModel, Press};
+use torqa_domain::shifting::{ButtonAction, ButtonMap, ControllerModel, Press};
 use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
 
@@ -271,7 +271,7 @@ impl From<&ButtonMap> for ButtonsFile {
         let channel = |button: u8| {
             let name = |press| {
                 map.action(button, press)
-                    .map(|action| button_action_name(action).to_owned())
+                    .map(|action| action.name().to_owned())
             };
             PressesFile {
                 press: name(Press::Short),
@@ -318,42 +318,12 @@ impl ButtonsFile {
                 map.assign(
                     button,
                     press,
-                    name.as_deref().and_then(button_action_from_name),
+                    name.as_deref().and_then(ButtonAction::from_name),
                 );
             }
         }
         map
     }
-}
-
-/// The name of a button's `action` (#139), in the settings file and for the front end.
-#[must_use]
-pub fn button_action_name(action: ButtonAction) -> &'static str {
-    match action {
-        ButtonAction::ShiftUp => "shift_up",
-        ButtonAction::ShiftDown => "shift_down",
-        ButtonAction::ShiftUpTwo => "shift_up_two",
-        ButtonAction::ShiftDownTwo => "shift_down_two",
-        ButtonAction::Control(Control::NextCamera) => "next_camera",
-        ButtonAction::Control(Control::Overlay) => "overlay",
-        ButtonAction::Control(Control::PlayPause) => "play_pause",
-        ButtonAction::Control(Control::NextTrack) => "next_track",
-        ButtonAction::Control(Control::PreviousTrack) => "previous_track",
-        ButtonAction::Control(Control::Pause) => "pause",
-        ButtonAction::Control(Control::DifficultyUp) => "difficulty_up",
-        ButtonAction::Control(Control::DifficultyDown) => "difficulty_down",
-        ButtonAction::Control(Control::IntensityUp) => "intensity_up",
-        ButtonAction::Control(Control::IntensityDown) => "intensity_down",
-        ButtonAction::Control(Control::SkipStep) => "skip_step",
-    }
-}
-
-/// The button action called `name`, if any.
-#[must_use]
-pub fn button_action_from_name(name: &str) -> Option<ButtonAction> {
-    ButtonAction::ALL
-        .into_iter()
-        .find(|&action| button_action_name(action) == name)
 }
 
 /// Where the overlay window is on screen (R55), in screen pixels, and how large it draws.
@@ -929,6 +899,8 @@ pub(crate) fn write_atomically(path: &Path, text: &str) -> Result<(), ProfileErr
 
 #[cfg(test)]
 mod tests {
+    use torqa_domain::shifting::Control;
+
     use super::*;
 
     fn temp_dir(name: &str) -> PathBuf {
@@ -1045,13 +1017,7 @@ mod tests {
     }
 
     #[test]
-    fn every_button_action_has_its_own_name_and_unknown_names_do_nothing() {
-        for action in ButtonAction::ALL {
-            assert_eq!(
-                button_action_from_name(button_action_name(action)),
-                Some(action)
-            );
-        }
+    fn unknown_button_action_names_do_nothing() {
         let dir = temp_dir("buttons-unknown");
         std::fs::create_dir_all(profile_dir(&dir, "anna")).unwrap();
         std::fs::write(

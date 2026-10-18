@@ -236,6 +236,16 @@ func _run() -> void:
 				root.get_texture().get_image().save_png(out_dir.path_join(shot + ".png"))
 				if dialog_shown != null:
 					dialog_shown.hide()
+		if index == StartPage.Tab.DEVICES:
+			# The phone remote's code to scan (#228); off again afterwards, as it was.
+			var devices_tab: DevicesTab = start.find_children("*", "DevicesTab", true, false)[0]
+			var remote: CheckButton = devices_tab.get("_remote")
+			remote.button_pressed = true
+			await create_timer(0.5).timeout
+			root.get_texture().get_image().save_png(out_dir.path_join("start-devices-remote.png"))
+			var remote_dialog: RemoteDialog = devices_tab.get("_remote_dialog")
+			remote_dialog.hide()
+			remote.button_pressed = false
 	# The settings from the cog at the top right (R83): Graphics, then About.
 	var settings: SettingsDialog = start.get("_settings")
 	var settings_button: Button = start.get("_settings_button")

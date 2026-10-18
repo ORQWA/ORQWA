@@ -11,6 +11,7 @@ mod import;
 pub mod library;
 pub mod media;
 pub mod paths;
+pub mod remote;
 pub mod uploads;
 pub mod video;
 pub mod view;
@@ -44,9 +45,7 @@ use torqa_storage::computer;
 use torqa_storage::course::{self, CourseCountry, Manifest};
 use torqa_storage::index::HistoryIndex;
 use torqa_storage::profiles::{self, DeviceRole, StoredProfile};
-pub use torqa_storage::profiles::{
-    GraphicsQuality, OverlayWindow, button_action_from_name, button_action_name,
-};
+pub use torqa_storage::profiles::{GraphicsQuality, OverlayWindow};
 use torqa_storage::rides::{self, ClimbTime, RideRecord};
 use torqa_terrain::{Terrain, TileSource};
 pub use torqa_video::Frame;
@@ -464,6 +463,37 @@ impl Reporter {
     }
 }
 
+/// Feeds `ride` the shifts `input` asks for, passes on its other controls, and reports when it
+/// connects or drops, `was_connected` telling how it was at the last update.
+fn drive_shift_input(
+    input: &mut dyn ShiftInput,
+    ride: &mut Option<ActiveRide>,
+    was_connected: &mut bool,
+    events: &mut Vec<AppEvent>,
+) {
+    for shift in input.poll() {
+        if let Some(active) = ride {
+            active.ride.shift(shift);
+        }
+    }
+    // Taken either way, so that presses between rides do not act in the next one.
+    for control in input.controls() {
+        if ride.is_some() {
+            events.push(AppEvent::Control(control));
+        }
+    }
+    let connected = input.connected();
+    if connected != *was_connected {
+        *was_connected = connected;
+        let name = input.name().to_owned();
+        events.push(if connected {
+            AppEvent::Connected(name)
+        } else {
+            AppEvent::Disconnected(name)
+        });
+    }
+}
+
 struct ActiveRide {
     ride: Ride,
     /// The name it goes into the history by, for a workout without a course; rides on a course
@@ -616,6 +646,10 @@ pub struct App {
     shift_inputs_connected: Vec<bool>,
     /// The keyboard's keys, pressed through [`App::shift`].
     keys: torqa_devices::shift::KeyboardKeys,
+    /// The phone remote while it is on (#228): a shift input beside them.
+    remote: Option<remote::RunningRemote>,
+    /// What its page says, in the rider's language.
+    remote_texts: remote::RemoteTexts,
     /// Identifier of the connected controller, to avoid reconnecting it.
     controller_id: Option<String>,
     /// What each shifter model's buttons do (#139, R84), by button number (a Di2's channels, a
@@ -701,6 +735,8 @@ impl App {
             shift_inputs: vec![Box::new(keyboard)],
             shift_inputs_connected: vec![true],
             keys,
+            remote: None,
+            remote_texts: remote::RemoteTexts::default(),
             controller_id: None,
             buttons: Arc::new(torqa_devices::shift::Assignments::new(|model| {
                 profiles::button_map(&data_dir, &profile.id, model)
@@ -3233,28 +3269,8 @@ impl App {
             .iter_mut()
             .zip(&mut self.shift_inputs_connected)
         {
-            for shift in input.poll() {
-                if let Some(active) = &mut self.ride {
-                    active.ride.shift(shift);
-                }
-            }
-            // Taken either way, so that presses between rides do not act in the next one.
-            for control in input.controls() {
-                if self.ride.is_some() {
-                    events.push(AppEvent::Control(control));
-                }
-            }
-            let connected = input.connected();
-            if connected != *was_connected {
-                *was_connected = connected;
-                let name = input.name().to_owned();
-                events.push(if connected {
-                    AppEvent::Connected(name)
-                } else {
-                    AppEvent::Disconnected(name)
-                });
-            }
-            if connected {
+            drive_shift_input(input.as_mut(), &mut self.ride, was_connected, events);
+            if *was_connected {
                 self.failures.remove(&DeviceKind::Controller);
             } else if let Some(reason) = input.failure()
                 && self
@@ -3280,6 +3296,7 @@ impl App {
         self.poll_trainer(&mut events);
         self.poll_sensors(&mut events);
         self.poll_shift_inputs(&mut events);
+        self.poll_phone_remote(&mut events);
 
         if let Some(active) = &mut self.ride
             && active.started.is_some()
@@ -3378,6 +3395,7 @@ impl App {
 
     /// Disconnects all devices, waiting at most a few seconds.
     pub fn shutdown(&mut self) {
+        self.remote = None;
         let trainer = self.trainer.take();
         let sensor = self.sensor.take();
         let power_meter = self.power_meter.take();
@@ -3948,7 +3966,7 @@ mod tests {
     }
 
     /// A flat 400 m route with elevations, so no terrain download is needed.
-    fn write_route(dir: &std::path::Path) -> PathBuf {
+    pub(crate) fn write_route(dir: &std::path::Path) -> PathBuf {
         let mut xml = String::from("<gpx><trk><name>Test loop</name><trkseg>");
         for i in 0..=40 {
             let lat = 46.0 + f64::from(i) * 10.0 / 111_195.0;

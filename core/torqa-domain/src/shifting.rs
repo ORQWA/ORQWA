@@ -76,6 +76,34 @@ impl ButtonAction {
         Self::Control(Control::SkipStep),
     ];
 
+    /// Its name in the settings files, for the front end and the phone remote (#228).
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::ShiftUp => "shift_up",
+            Self::ShiftDown => "shift_down",
+            Self::ShiftUpTwo => "shift_up_two",
+            Self::ShiftDownTwo => "shift_down_two",
+            Self::Control(Control::NextCamera) => "next_camera",
+            Self::Control(Control::Overlay) => "overlay",
+            Self::Control(Control::PlayPause) => "play_pause",
+            Self::Control(Control::NextTrack) => "next_track",
+            Self::Control(Control::PreviousTrack) => "previous_track",
+            Self::Control(Control::Pause) => "pause",
+            Self::Control(Control::DifficultyUp) => "difficulty_up",
+            Self::Control(Control::DifficultyDown) => "difficulty_down",
+            Self::Control(Control::IntensityUp) => "intensity_up",
+            Self::Control(Control::IntensityDown) => "intensity_down",
+            Self::Control(Control::SkipStep) => "skip_step",
+        }
+    }
+
+    /// The action called `name`, if any.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|action| action.name() == name)
+    }
+
     /// The shifts it asks for; none for a control.
     #[must_use]
     pub fn shifts(self) -> &'static [Shift] {
@@ -253,6 +281,14 @@ pub trait ShiftInput: Send {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_button_action_has_its_own_name() {
+        for action in ButtonAction::ALL {
+            assert_eq!(ButtonAction::from_name(action.name()), Some(action));
+        }
+        assert_eq!(ButtonAction::from_name("launch"), None);
+    }
 
     fn press(channel: u8, press: Press) -> ButtonPress {
         ButtonPress { channel, press }

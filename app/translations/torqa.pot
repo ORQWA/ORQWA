@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 
-#: app/scenes/devices_tab.gd:446
+#: app/scenes/devices_tab.gd:498
 msgid "%d W"
 msgstr ""
 
@@ -11,7 +11,7 @@ msgstr ""
 msgid "%d W  ·  %.1f W/kg"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:452 app/scenes/profile_tab.gd:278
+#: app/scenes/devices_tab.gd:504 app/scenes/profile_tab.gd:278
 msgid "%d bpm"
 msgstr ""
 
@@ -31,7 +31,7 @@ msgstr ""
 msgid "%d of %d figures. The first one is shown large. Values are examples."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:449
+#: app/scenes/devices_tab.gd:501
 msgid "%d rpm"
 msgstr ""
 
@@ -63,19 +63,19 @@ msgstr ""
 msgid "%s behind"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:698
+#: app/scenes/ride_screen.gd:699
 msgid "%s connected"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:702
+#: app/scenes/ride_screen.gd:703
 msgid "%s disconnected — reconnecting…"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:170
+#: core/torqa-app/src/failure.rs:172
 msgid "%s does not follow this route."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:173
+#: core/torqa-app/src/failure.rs:175
 msgid "%s has no GPS track. Import its GPX route, then add the video to the course."
 msgstr ""
 
@@ -83,15 +83,15 @@ msgstr ""
 msgid "%s has no GPS, so it cannot become a course by itself."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:171
+#: core/torqa-app/src/failure.rs:173
 msgid "%s has no timestamps for a ghost rider."
 msgstr ""
 
-#: app/scenes/history_screen.gd:671 core/torqa-app/src/failure.rs:214
+#: app/scenes/history_screen.gd:671 core/torqa-app/src/failure.rs:216
 msgid "%s no longer accepts the account: connect it again."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:708
+#: app/scenes/ride_screen.gd:709
 msgid "%s not found"
 msgstr ""
 
@@ -103,7 +103,7 @@ msgstr ""
 msgid "%s to go  ·  %.1f %%"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:157
+#: core/torqa-app/src/failure.rs:159
 msgid "%s was not found. It holds the course's slopes: put it next to the RLV file."
 msgstr ""
 
@@ -157,6 +157,10 @@ msgstr ""
 
 #: app/ui/ghost_picker.gd:18
 msgid "A ghost rider on the road: your best time, a pacer or a recorded activity"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:256 app/scenes/devices_tab.gd:286
+msgid "A phone in the same network shifts and controls the ride"
 msgstr ""
 
 #: app/ui/ghost_picker.gd:27
@@ -259,11 +263,11 @@ msgstr ""
 msgid "Along the video"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:179
+#: core/torqa-app/src/failure.rs:181
 msgid "An error occurred with the trainer."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:211
+#: core/torqa-app/src/failure.rs:213
 msgid "An unexpected error occurred."
 msgstr ""
 
@@ -295,11 +299,11 @@ msgstr ""
 msgid "Aug"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:655
+#: app/scenes/devices_tab.gd:737
 msgid "Automatic"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:214
+#: app/scenes/devices_tab.gd:228
 msgid "Automatic: a cadence sensor, else the power meter, else the trainer"
 msgstr ""
 
@@ -347,7 +351,7 @@ msgstr ""
 msgid "Building 3D world"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:144 app/scenes/history_screen.gd:259 app/ui/ride_devices.gd:51 app/ui/workout_editor.gd:357 core/torqa-app/src/hud.rs:113
+#: app/scenes/devices_tab.gd:157 app/scenes/history_screen.gd:259 app/ui/ride_devices.gd:51 app/ui/workout_editor.gd:357 core/torqa-app/src/hud.rs:113
 msgid "Cadence"
 msgstr ""
 
@@ -393,6 +397,10 @@ msgstr ""
 
 #: app/scenes/profile_dialog.gd:114
 msgid "Chainring"
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:107
+msgid "Change it if another program uses this port"
 msgstr ""
 
 #: app/translations/extra-msgids.txt:3
@@ -475,6 +483,10 @@ msgstr ""
 msgid "Cloudy"
 msgstr ""
 
+#: app/scenes/devices_tab.gd:262 app/scenes/devices_tab.gd:287
+msgid "Code and address for the phone"
+msgstr ""
+
 #: app/scenes/profile_dialog.gd:115
 msgid "Cog"
 msgstr ""
@@ -487,15 +499,15 @@ msgstr ""
 msgid "Colored"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:183
+#: core/torqa-app/src/failure.rs:185
 msgid "Communication with the cadence sensor failed."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:181
+#: core/torqa-app/src/failure.rs:183
 msgid "Communication with the heart-rate sensor failed."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:182
+#: core/torqa-app/src/failure.rs:184
 msgid "Communication with the power meter failed."
 msgstr ""
 
@@ -511,11 +523,11 @@ msgstr ""
 msgid "Connect %s and upload…"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:169
+#: core/torqa-app/src/failure.rs:171
 msgid "Connect %s first."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:46 app/ui/ride_devices.gd:74
+#: app/scenes/devices_tab.gd:47 app/ui/ride_devices.gd:74
 msgid "Connected"
 msgstr ""
 
@@ -523,7 +535,7 @@ msgstr ""
 msgid "Connected as %s"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:45 app/ui/ride_devices.gd:75
+#: app/scenes/devices_tab.gd:46 app/ui/ride_devices.gd:75
 msgid "Connecting…"
 msgstr ""
 
@@ -551,127 +563,131 @@ msgstr ""
 msgid "Correcting elevations"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:198
+#: core/torqa-app/src/failure.rs:200
 msgid "Could not connect the account with %s: %s"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:177
+#: core/torqa-app/src/failure.rs:179
 msgid "Could not control the music player."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:153
+#: core/torqa-app/src/failure.rs:155
 msgid "Could not delete %s."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:145
+#: core/torqa-app/src/failure.rs:147
 msgid "Could not delete the rider profile."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:203
+#: core/torqa-app/src/failure.rs:205
 msgid "Could not delete the workout."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:154
+#: core/torqa-app/src/failure.rs:156
 msgid "Could not export to %s."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:148
+#: core/torqa-app/src/failure.rs:150
 msgid "Could not import %s."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:201
+#: core/torqa-app/src/failure.rs:203
 msgid "Could not import the workout."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:200
+#: core/torqa-app/src/failure.rs:202
 msgid "Could not load the activity."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:205
+#: core/torqa-app/src/failure.rs:207
 msgid "Could not load the ghost rider."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:210
+#: core/torqa-app/src/failure.rs:212
 msgid "Could not load the workout."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:146
+#: core/torqa-app/src/failure.rs:148
 msgid "Could not open %s."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:160
+#: core/torqa-app/src/failure.rs:162
 msgid "Could not play the video."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:206
+#: core/torqa-app/src/failure.rs:208
 msgid "Could not prepare the course."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:196
+#: core/torqa-app/src/failure.rs:198
 msgid "Could not reach %s. Check your internet connection."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:147
+#: core/torqa-app/src/failure.rs:149
 msgid "Could not read %s."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:180
+#: core/torqa-app/src/failure.rs:182
 msgid "Could not read the connected accounts."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:207
+#: core/torqa-app/src/failure.rs:209
 msgid "Could not read the video."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:218
+#: core/torqa-app/src/failure.rs:220
 msgid "Could not read the workouts planned on %s: %s"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:152
+#: core/torqa-app/src/failure.rs:154
 msgid "Could not rename the activity."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:150
+#: core/torqa-app/src/failure.rs:152
 msgid "Could not save %s."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:151
+#: core/torqa-app/src/failure.rs:153
 msgid "Could not save the HUD layout."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:199
+#: core/torqa-app/src/failure.rs:201
 msgid "Could not save the account connection."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:149
+#: core/torqa-app/src/failure.rs:151
 msgid "Could not save the course."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:144
+#: core/torqa-app/src/failure.rs:146
 msgid "Could not save the rider profile."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:209
+#: core/torqa-app/src/failure.rs:211
 msgid "Could not save the setting."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:159
+#: core/torqa-app/src/failure.rs:161
 msgid "Could not save the video association."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:202
+#: core/torqa-app/src/failure.rs:204
 msgid "Could not save the workout."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:195
+#: core/torqa-app/src/failure.rs:197
 msgid "Could not search for devices."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:204
+#: core/torqa-app/src/failure.rs:222
+msgid "Could not start the phone remote on port %s. Another program may use it: choose another port."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs:206
 msgid "Could not update the course."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:197
+#: core/torqa-app/src/failure.rs:199
 msgid "Could not upload the activity to %s: %s"
 msgstr ""
 
@@ -687,7 +703,7 @@ msgstr ""
 msgid "Course name in use"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:161
+#: core/torqa-app/src/failure.rs:163
 msgid "Course preparation stopped unexpectedly."
 msgstr ""
 
@@ -771,7 +787,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:127 app/scenes/ride_settings_dialog.gd:33 app/scenes/start_page.gd:101
+#: app/scenes/devices_tab.gd:140 app/scenes/ride_settings_dialog.gd:33 app/scenes/start_page.gd:101
 msgid "Devices"
 msgstr ""
 
@@ -791,7 +807,7 @@ msgstr ""
 msgid "Distance"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:90 app/scenes/button_dialog.gd:144 app/scenes/history_screen.gd:306 app/scenes/ride_settings_dialog.gd:25 app/scenes/settings_dialog.gd:15
+#: app/scenes/button_dialog.gd:90 app/scenes/button_dialog.gd:144 app/scenes/history_screen.gd:306 app/scenes/remote_dialog.gd:74 app/scenes/remote_dialog.gd:124 app/scenes/ride_settings_dialog.gd:25 app/scenes/settings_dialog.gd:15
 msgid "Done"
 msgstr ""
 
@@ -875,7 +891,7 @@ msgstr ""
 msgid "Endurance"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:194
+#: core/torqa-app/src/failure.rs:196
 msgid "Enter a name for the course."
 msgstr ""
 
@@ -919,11 +935,11 @@ msgstr ""
 msgid "FTP test: your FTP is about %d W (now %d W)."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:49 app/ui/ride_devices.gd:84
+#: app/scenes/devices_tab.gd:50 app/ui/ride_devices.gd:84
 msgid "Failed"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:235 app/scenes/devices_tab.gd:686
+#: app/scenes/devices_tab.gd:277 app/scenes/devices_tab.gd:768
 msgid "Fake trainer (200 W, for testing)"
 msgstr ""
 
@@ -1027,7 +1043,7 @@ msgstr ""
 msgid "Form is fitness minus fatigue: fresh above zero, tired below it."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:324
+#: app/scenes/devices_tab.gd:370
 msgid "Found %d device(s)"
 msgstr ""
 
@@ -1063,7 +1079,7 @@ msgstr ""
 msgid "GPX routes, videos with GPS, route videos and course files"
 msgstr ""
 
-#: core/torqa-app/src/hud.rs:114
+#: app/scenes/remote_dialog.gd:21 core/torqa-app/src/hud.rs:114
 msgid "Gear"
 msgstr ""
 
@@ -1107,7 +1123,7 @@ msgstr ""
 msgid "Hazy"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:145 app/scenes/history_screen.gd:258 app/scenes/ride_screen.gd:433 app/ui/ride_devices.gd:49 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
+#: app/scenes/devices_tab.gd:158 app/scenes/history_screen.gd:258 app/scenes/ride_screen.gd:433 app/ui/ride_devices.gd:49 app/ui/workout_options.gd:45 app/ui/workout_options.gd:74 app/ui/workout_panel.gd:43 core/torqa-app/src/hud.rs:91
 msgid "Heart rate"
 msgstr ""
 
@@ -1217,6 +1233,14 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd:290
 msgid "Keep both"
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:81
+msgid "Keep the phone's screen on while you ride."
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:26
+msgid "Keep this screen on while you ride: turn off its auto-lock."
 msgstr ""
 
 #: app/scenes/profile_dialog.gd:110 app/scenes/profile_tab.gd:282
@@ -1391,6 +1415,10 @@ msgstr ""
 msgid "Neuromuscular"
 msgstr ""
 
+#: app/scenes/remote_dialog.gd:113
+msgid "New address"
+msgstr ""
+
 #: app/scenes/profile_dialog.gd:173
 msgid "New rider"
 msgstr ""
@@ -1439,7 +1467,7 @@ msgstr ""
 msgid "No devices connected yet: connect them under Devices on the start page."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:178
+#: core/torqa-app/src/failure.rs:180
 msgid "No music player responded."
 msgstr ""
 
@@ -1451,7 +1479,7 @@ msgstr ""
 msgid "No rides yet. Finished rides appear here."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:162
+#: core/torqa-app/src/failure.rs:164
 msgid "No route is loaded."
 msgstr ""
 
@@ -1459,11 +1487,11 @@ msgstr ""
 msgid "No trainer connected — choose one under Devices."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:163
+#: core/torqa-app/src/failure.rs:165
 msgid "No trainer is connected."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:190
+#: core/torqa-app/src/failure.rs:192
 msgid "No video course is loaded."
 msgstr ""
 
@@ -1471,15 +1499,15 @@ msgstr ""
 msgid "Nobody"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:32 app/scenes/devices_tab.gd:236 app/scenes/devices_tab.gd:689
+#: app/scenes/courses_tab.gd:32 app/scenes/devices_tab.gd:278 app/scenes/devices_tab.gd:771
 msgid "None"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:239 app/scenes/devices_tab.gd:701
+#: app/scenes/devices_tab.gd:281 app/scenes/devices_tab.gd:783
 msgid "None (keyboard: ↑ / ↓)"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:237 app/scenes/devices_tab.gd:692
+#: app/scenes/devices_tab.gd:279 app/scenes/devices_tab.gd:774
 msgid "None (the trainer measures)"
 msgstr ""
 
@@ -1499,11 +1527,11 @@ msgstr ""
 msgid "Not connected"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:48 app/ui/ride_devices.gd:76
+#: app/scenes/devices_tab.gd:49 app/ui/ride_devices.gd:76
 msgid "Not found"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:471
+#: app/scenes/devices_tab.gd:523
 msgid "Not found: %s. Wake the devices, then scan again."
 msgstr ""
 
@@ -1519,7 +1547,7 @@ msgstr ""
 msgid "Nothing planned for today."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:732
+#: app/scenes/ride_screen.gd:733
 msgid "Nothing recorded."
 msgstr ""
 
@@ -1559,7 +1587,7 @@ msgstr ""
 msgid "Open a GPX route, video or Torqa course"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:184
+#: core/torqa-app/src/failure.rs:186
 msgid "Open a course first."
 msgstr ""
 
@@ -1591,7 +1619,7 @@ msgstr ""
 msgid "Pair moments of the video with places on the route."
 msgstr ""
 
-#: app/scenes/overlay_hud.gd:51 app/scenes/overlay_hud.gd:80
+#: app/scenes/overlay_hud.gd:51 app/scenes/overlay_hud.gd:80 app/scenes/remote_dialog.gd:18
 msgid "Pause"
 msgstr ""
 
@@ -1607,12 +1635,20 @@ msgstr ""
 msgid "Pause the ride: the clock and the trainer wait (P)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:682
+#: app/scenes/remote_dialog.gd:22 app/scenes/ride_screen.gd:682
 msgid "Paused"
 msgstr ""
 
 #: app/scenes/analysis_tab.gd:152
 msgid "Per kilogram"
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:73 app/scenes/remote_dialog.gd:123 core/torqa-remote/src/lib.rs:33
+msgid "Phone remote"
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:114
+msgid "Phones with the old address can no longer press"
 msgstr ""
 
 #: app/ui/workout_options.gd:77
@@ -1635,8 +1671,12 @@ msgstr ""
 msgid "Point"
 msgstr ""
 
-#: app/ui/video_align_dialog.gd:123 core/torqa-app/src/failure.rs:213
+#: app/ui/video_align_dialog.gd:123 core/torqa-app/src/failure.rs:215
 msgid "Points must follow each other on the route and in the video."
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:101
+msgid "Port"
 msgstr ""
 
 #: app/ui/video_align_dialog.gd:200
@@ -1663,11 +1703,11 @@ msgstr ""
 msgid "Power curve"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:143 app/scenes/devices_tab.gd:655 app/ui/ride_devices.gd:50
+#: app/scenes/devices_tab.gd:156 app/scenes/devices_tab.gd:737 app/ui/ride_devices.gd:50
 msgid "Power meter"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:210
+#: app/scenes/devices_tab.gd:224
 msgid "Power pedals or crank: its power and cadence count instead of the trainer's"
 msgstr ""
 
@@ -1739,11 +1779,15 @@ msgstr ""
 msgid "Reconnect devices"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:249 app/scenes/devices_tab.gd:618
+#: app/scenes/remote_dialog.gd:24
+msgid "Reconnecting to Torqa…"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:295 app/scenes/devices_tab.gd:670
 msgid "Reconnecting your devices…"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:47
+#: app/scenes/devices_tab.gd:48
 msgid "Reconnecting…"
 msgstr ""
 
@@ -1771,7 +1815,7 @@ msgstr ""
 msgid "Replace"
 msgstr ""
 
-#: app/scenes/overlay_hud.gd:80 app/ui/ride_bar.gd:116
+#: app/scenes/overlay_hud.gd:80 app/scenes/remote_dialog.gd:19 app/ui/ride_bar.gd:116
 msgid "Resume"
 msgstr ""
 
@@ -1855,7 +1899,7 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:745
+#: app/scenes/ride_screen.gd:746
 msgid "Saved %s"
 msgstr ""
 
@@ -1867,11 +1911,15 @@ msgstr ""
 msgid "Saved to your workouts."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:200
+#: app/scenes/devices_tab.gd:214
 msgid "Scan for all devices"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:273
+#: app/scenes/remote_dialog.gd:79
+msgid "Scan the code with a phone in the same network, or open the address in its browser."
+msgstr ""
+
+#: app/scenes/devices_tab.gd:319
 msgid "Scanning…"
 msgstr ""
 
@@ -1879,7 +1927,7 @@ msgstr ""
 msgid "Screen"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:179
+#: app/scenes/devices_tab.gd:192
 msgid "Search"
 msgstr ""
 
@@ -1887,7 +1935,7 @@ msgstr ""
 msgid "Search courses"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:44
+#: app/scenes/devices_tab.gd:45
 msgid "Searching…"
 msgstr ""
 
@@ -1895,7 +1943,7 @@ msgstr ""
 msgid "Sep"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:175
+#: core/torqa-app/src/failure.rs:177
 msgid "Set a start and an end point for the video on the route."
 msgstr ""
 
@@ -1915,6 +1963,10 @@ msgstr ""
 msgid "Shift down two gears"
 msgstr ""
 
+#: app/scenes/devices_tab.gd:255 app/scenes/devices_tab.gd:285
+msgid "Shift from a phone's browser"
+msgstr ""
+
 #: app/scenes/button_dialog.gd:29
 msgid "Shift up"
 msgstr ""
@@ -1923,7 +1975,7 @@ msgstr ""
 msgid "Shift up two gears"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:146 app/ui/ride_devices.gd:52
+#: app/scenes/devices_tab.gd:159 app/ui/ride_devices.gd:52
 msgid "Shifter"
 msgstr ""
 
@@ -1979,6 +2031,10 @@ msgstr ""
 msgid "Start"
 msgstr ""
 
+#: app/scenes/remote_dialog.gd:23
+msgid "Start a ride in Torqa"
+msgstr ""
+
 #: app/scenes/workouts_tab.gd:192
 msgid "Start as overlay"
 msgstr ""
@@ -2003,7 +2059,7 @@ msgstr ""
 msgid "Step %d of %d  ·  %s left"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:216 core/torqa-upload/src/strava.rs:50
+#: core/torqa-app/src/failure.rs:218 core/torqa-upload/src/strava.rs:50
 msgid "Strava has switched off your API application: the account that owns it needs a Strava subscription. Subscribe, reactivate the application in Strava's API settings, then upload again."
 msgstr ""
 
@@ -2055,15 +2111,15 @@ msgstr ""
 msgid "The cadence to keep; 0 for none"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:165
+#: core/torqa-app/src/failure.rs:167
 msgid "The course is not ready yet."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:132
+#: app/scenes/devices_tab.gd:145
 msgid "The devices used last connect by themselves. Search beside a row to find one of that kind."
 msgstr ""
 
-#: app/scenes/profile_tab.gd:148 core/torqa-app/src/failure.rs:212
+#: app/scenes/profile_tab.gd:148 core/torqa-app/src/failure.rs:214
 msgid "The only rider cannot be deleted"
 msgstr ""
 
@@ -2079,11 +2135,11 @@ msgstr ""
 msgid "The ride ends and nothing is saved."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:166
+#: core/torqa-app/src/failure.rs:168
 msgid "The rider profile was not found."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:176
+#: core/torqa-app/src/failure.rs:178
 msgid "The route must end within the video."
 msgstr ""
 
@@ -2091,19 +2147,27 @@ msgstr ""
 msgid "The second 8 minutes all out"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:164
+#: core/torqa-app/src/failure.rs:166
 msgid "The selected device is not available."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:168
+#: core/torqa-app/src/failure.rs:170
 msgid "The selected platform is not supported."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:208
+#: core/torqa-app/src/failure.rs:210
 msgid "The video and the route do not match."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:185
+#: app/scenes/remote_dialog.gd:25
+msgid "This address no longer works: scan the new code in Torqa."
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:94
+msgid "This computer is on no network: connect it to the phone's Wi-Fi."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs:187
 msgid "This course already has a video."
 msgstr ""
 
@@ -2111,15 +2175,15 @@ msgstr ""
 msgid "This course has a video. Ride along it, or in the 3D world?"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:186
+#: core/torqa-app/src/failure.rs:188
 msgid "This course has no video."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:188
+#: core/torqa-app/src/failure.rs:190
 msgid "This course needs its video because it has no geographic route."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:192
+#: core/torqa-app/src/failure.rs:194
 msgid "This video follows its GPS data and does not need manual synchronization."
 msgstr ""
 
@@ -2171,7 +2235,7 @@ msgstr ""
 msgid "Torqa could not connect. Go back to Torqa to try again."
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:167
+#: core/torqa-app/src/failure.rs:169
 msgid "Torqa could not start."
 msgstr ""
 
@@ -2187,7 +2251,11 @@ msgstr ""
 msgid "Torqa is free software under the GNU General Public License, version 3:"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:142 app/scenes/devices_tab.gd:655 app/ui/ride_devices.gd:48
+#: app/scenes/remote_dialog.gd:20
+msgid "Torqa remote"
+msgstr ""
+
+#: app/scenes/devices_tab.gd:155 app/scenes/devices_tab.gd:737 app/ui/ride_devices.gd:48
 msgid "Trainer"
 msgstr ""
 
@@ -2287,7 +2355,7 @@ msgstr ""
 msgid "Video"
 msgstr ""
 
-#: core/torqa-app/src/failure.rs:155
+#: core/torqa-app/src/failure.rs:157
 msgid "Video %s was not found. Put it next to the course file."
 msgstr ""
 
@@ -2327,11 +2395,15 @@ msgstr ""
 msgid "W/kg"
 msgstr ""
 
+#: app/scenes/devices_tab.gd:51
+msgid "Waiting for a phone…"
+msgstr ""
+
 #: app/scenes/ride_screen.gd:145
 msgid "Waiting for the trainer…"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:204 app/scenes/devices_tab.gd:266
+#: app/scenes/devices_tab.gd:218 app/scenes/devices_tab.gd:312
 msgid "Wake the devices first."
 msgstr ""
 
@@ -2367,7 +2439,7 @@ msgstr ""
 msgid "Weight"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:167 app/scenes/devices_tab.gd:240
+#: app/scenes/devices_tab.gd:180 app/scenes/devices_tab.gd:282
 msgid "What the buttons do"
 msgstr ""
 
@@ -2479,7 +2551,7 @@ msgstr ""
 msgid "Zones"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:219
+#: app/scenes/devices_tab.gd:233
 msgid "Zwift Click, or Di2 with buttons on D-Fly channels (E-TUBE); choose what each press does"
 msgstr ""
 

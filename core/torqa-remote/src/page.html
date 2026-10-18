@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="{{LANGUAGE}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f1217">
+<title>Torqa</title>
+<style>
+:root {
+  --accent: #0a9cf5; --text: #f0f2f7; --muted: #a3adbd; --surface: rgba(255, 255, 255, 0.07);
+  --warning: #fabf4d; --danger: #ed545c;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  display: flex; flex-direction: column; gap: 10px; background: #0f1217; color: var(--text);
+  font: 16px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; overscroll-behavior: none;
+}
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+#status { color: var(--muted); font-size: 15px; text-align: right; }
+#status.offline { color: var(--warning); }
+#status.gone { color: var(--danger); }
+#gear { text-align: center; color: var(--muted); }
+#gear b { color: var(--text); font-size: 56px; font-variant-numeric: tabular-nums; }
+button {
+  font: inherit; color: inherit; background: var(--surface); border: 0; border-radius: 14px;
+  padding: 10px; touch-action: none;
+}
+button.pressed { background: var(--accent); }
+body.idle button { opacity: 0.45; }
+svg {
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round;
+  stroke-linejoin: round; width: 28px; height: 28px;
+}
+#shift { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 180px; }
+#shift button {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; font-size: 22px;
+}
+#shift svg { width: 64px; height: 64px; }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.controls button { min-height: 56px; font-size: 15px; }
+.controls .wide { grid-column: span 2; }
+.music { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.music button { min-height: 56px; display: flex; align-items: center; justify-content: center; }
+#hint { color: var(--muted); font-size: 13px; text-align: center; }
+[hidden] { display: none !important; }
+@media (orientation: landscape) { #shift { flex-direction: row; } }
+</style>
+</head>
+<body class="idle">
+<header><strong id="title"></strong><span id="status"></span></header>
+<div id="gear" hidden><span data-word="gear"></span> <b id="gear-number"></b> <span id="gear-count"></span></div>
+<div id="shift">
+  <button data-action="shift_up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg><span data-word="shift_up"></span></button>
+  <button data-action="shift_down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span data-word="shift_down"></span></button>
+</div>
+<div class="controls">
+  <button data-action="pause" id="pause"></button>
+  <button data-action="next_camera" data-word="next_camera"></button>
+  <button data-action="difficulty_down" data-word="difficulty_down" class="course"></button>
+  <button data-action="difficulty_up" data-word="difficulty_up" class="course"></button>
+  <button data-action="intensity_down" data-word="intensity_down" class="workout" hidden></button>
+  <button data-action="intensity_up" data-word="intensity_up" class="workout" hidden></button>
+  <button data-action="skip_step" data-word="skip_step" class="workout wide" hidden></button>
+</div>
+<div class="music">
+  <button data-action="previous_track" data-label="previous_track"><svg viewBox="0 0 24 24"><path d="M18 19 9 12l9-7v14z"/><path d="M5 5v14"/></svg></button>
+  <button data-action="play_pause" data-label="play_pause"><svg viewBox="0 0 24 24"><path d="M4 5v14l8-7z"/><path d="M16 5v14M20 5v14"/></svg></button>
+  <button data-action="next_track" data-label="next_track"><svg viewBox="0 0 24 24"><path d="M6 5l9 7-9 7V5z"/><path d="M19 5v14"/></svg></button>
+</div>
+<p id="hint" data-word="keep_awake" hidden></p>
+<script id="words" type="application/json">{{WORDS}}</script>
+<script>
+"use strict";
+const words = JSON.parse(document.getElementById("words").textContent);
+const word = (key) => words[key] ?? key;
+const element = (id) => document.getElementById(id);
+// The token is the first part of the path; everything else lies below it.
+const base = location.pathname.endsWith("/") ? location.pathname : location.pathname + "/";
+const send = (path) => fetch(base + path, { method: "POST", cache: "no-store" }).catch(() => {});
+
+document.title = word("title");
+element("title").textContent = word("title");
+for (const node of document.querySelectorAll("[data-word]")) node.textContent = word(node.dataset.word);
+for (const node of document.querySelectorAll("[data-label]")) node.setAttribute("aria-label", word(node.dataset.label));
+
+// On touch: a press acts when the finger lands, not when it lifts.
+for (const button of document.querySelectorAll("[data-action]")) {
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    navigator.vibrate?.(15);
+    button.classList.add("pressed");
+    setTimeout(() => button.classList.remove("pressed"), 150);
+    send("press/" + button.dataset.action);
+  });
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
+}
+
+let state = { riding: false, paused: false, gear: null, gears: null, workout: false };
+// "online", "offline" (Torqa out of reach: the browser tries again) or "gone" (a new link).
+let connection = "offline";
+
+function show() {
+  const status = element("status");
+  status.className = connection === "online" ? "" : connection;
+  status.textContent =
+    connection === "gone" ? word("old_link")
+    : connection === "offline" ? word("reconnecting")
+    : !state.riding ? word("not_riding")
+    : state.paused ? word("paused")
+    : "";
+  const gears = state.gear !== null;
+  element("gear").hidden = !gears;
+  if (gears) {
+    element("gear-number").textContent = state.gear;
+    element("gear-count").textContent = "/ " + state.gears;
+  }
+  // With the bike's own gears there is nothing to shift here.
+  element("shift").hidden = state.riding && !gears;
+  element("pause").textContent = word(state.paused ? "resume" : "pause");
+  for (const node of document.querySelectorAll(".course")) node.hidden = state.workout;
+  for (const node of document.querySelectorAll(".workout")) node.hidden = !state.workout;
+  document.body.classList.toggle("idle", connection !== "online" || !state.riding);
+}
+
+const events = new EventSource(base + "events");
+events.onmessage = (event) => {
+  state = JSON.parse(event.data);
+  connection = "online";
+  show();
+};
+events.onerror = () => {
+  // Closed for good when Torqa answered, but not with the ride: the link was renewed.
+  connection = events.readyState === EventSource.CLOSED ? "gone" : "offline";
+  show();
+};
+
+// The browser keeps the screen on where it may (not over plain http); else the rider is told.
+async function keepAwake() {
+  try {
+    await navigator.wakeLock.request("screen");
+  } catch {
+    element("hint").hidden = false;
+  }
+}
+// Torqa counts the phone gone once it stops hearing this, e.g. when its screen locks.
+setInterval(() => {
+  if (document.visibilityState === "visible") send("alive");
+}, 10000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    send("alive");
+    keepAwake();
+  }
+});
+keepAwake();
+show();
+</script>
+</body>
+</html>

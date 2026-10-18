@@ -1,7 +1,8 @@
 extends SceneTree
 ## Headless checks of the Devices tab: the shifter's buttons (#139, R75), how each row tells
 ## what its device is doing (R76), what stands beside it: the device's reading, or why
-## connecting failed (R80), and that the devices are each rider's own (R82).
+## connecting failed (R80), that the devices are each rider's own (R82), and the phone remote
+## (#228).
 ## Run: godot --headless --path app -s res://tests/devices_smoke.gd
 
 var _failed: bool = false
@@ -16,6 +17,7 @@ func _run() -> void:
 	_device_states()
 	_missed_devices()
 	await _rider_devices()
+	await _phone_remote()
 	if not _failed:
 		print("DEVICES SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -239,6 +241,36 @@ func _rider_devices() -> void:
 	torqa.delete_profile(ben_id)
 	var active: String = torqa.profile()["id"]
 	_check(active == first_id, "back to the first rider")
+	tab.free()
+	torqa.free()
+
+
+## The phone remote (#228): its page has a text for everything it says, and its row turns it
+## on, showing the code to scan at once, and off again.
+func _phone_remote() -> void:
+	for key: String in TorqaApp.phone_remote_words():
+		_check(not RemoteDialog.page_text(key).is_empty(), "a text for the page's %s" % key)
+	var torqa: TorqaApp = TorqaApp.new()
+	root.add_child(torqa)
+	await process_frame
+	var tab: DevicesTab = DevicesTab.new()
+	root.add_child(tab)
+	tab.bind(torqa)
+	var toggle: CheckButton = tab.find_children("*", "CheckButton", true, false)[0]
+	var dialog: RemoteDialog = tab.find_children("*", "RemoteDialog", true, false)[0]
+	_check(not toggle.button_pressed, "off until the rider turns it on")
+	toggle.button_pressed = true
+	var remote: Dictionary = torqa.phone_remote()
+	var on: bool = remote["on"]
+	_check(on, "on")
+	_check(dialog.visible, "its code shows at once")
+	var address: String = remote["address"]
+	var code: TextureRect = dialog.find_children("*", "TextureRect", true, false)[0]
+	_check(address.is_empty() or code.texture != null, "a code to scan for %s" % address)
+	dialog.hide()
+	toggle.button_pressed = false
+	var off: bool = not torqa.phone_remote()["on"]
+	_check(off, "off again, for the next time too")
 	tab.free()
 	torqa.free()
 

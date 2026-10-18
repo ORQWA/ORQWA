@@ -1923,3 +1923,57 @@ msgstr "Für heute ist nichts geplant."
 msgid "Could not read the workouts planned on %s: %s"
 msgstr "Die auf %s geplanten Workouts konnten nicht gelesen werden: %s"
 
+msgid "A phone in the same network shifts and controls the ride"
+msgstr "Ein Handy im selben Netzwerk schaltet und steuert die Fahrt"
+
+msgid "Change it if another program uses this port"
+msgstr "Ändere ihn, wenn ein anderes Programm diesen Port nutzt"
+
+msgid "Code and address for the phone"
+msgstr "Code und Adresse für das Handy"
+
+msgid "Could not start the phone remote on port %s. Another program may use it: choose another port."
+msgstr "Die Handy-Fernbedienung konnte auf Port %s nicht starten. Vielleicht nutzt ihn ein anderes Programm: Wähle einen anderen Port."
+
+msgid "Keep this screen on while you ride: turn off its auto-lock."
+msgstr "Lass diesen Bildschirm während der Fahrt an: Schalte die automatische Sperre aus."
+
+msgid "New address"
+msgstr "Neue Adresse"
+
+msgid "Phone remote"
+msgstr "Handy-Fernbedienung"
+
+msgid "Phones with the old address can no longer press"
+msgstr "Handys mit der alten Adresse steuern nichts mehr"
+
+msgid "Port"
+msgstr "Port"
+
+msgid "Reconnecting to Torqa…"
+msgstr "Verbinde wieder mit Torqa …"
+
+msgid "Scan the code with a phone in the same network, or open the address in its browser."
+msgstr "Scanne den Code mit einem Handy im selben Netzwerk oder öffne die Adresse in seinem Browser."
+
+msgid "Keep the phone's screen on while you ride."
+msgstr "Lass den Bildschirm des Handys während der Fahrt an."
+
+msgid "Shift from a phone's browser"
+msgstr "Im Browser eines Handys schalten"
+
+msgid "Start a ride in Torqa"
+msgstr "Starte eine Fahrt in Torqa"
+
+msgid "This address no longer works: scan the new code in Torqa."
+msgstr "Diese Adresse gilt nicht mehr: Scanne den neuen Code in Torqa."
+
+msgid "This computer is on no network: connect it to the phone's Wi-Fi."
+msgstr "Dieser Computer ist in keinem Netzwerk: Verbinde ihn mit dem WLAN des Handys."
+
+msgid "Torqa remote"
+msgstr "Torqa-Fernbedienung"
+
+msgid "Waiting for a phone…"
+msgstr "Warte auf ein Handy …"
+

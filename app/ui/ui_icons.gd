@@ -36,6 +36,13 @@ const PATHS: Dictionary[String, String] = {
 	"plus": '<path d="M12 5v14"/><path d="M5 12h14"/>',
 	"cross": '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>',
 	"search": '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+	"qr":
+	(
+		'<rect x="4" y="4" width="6" height="6" rx="1"/>'
+		+ '<rect x="14" y="4" width="6" height="6" rx="1"/>'
+		+ '<rect x="4" y="14" width="6" height="6" rx="1"/>'
+		+ '<path d="M14 14h2v2M20 14v6h-6M17 17v3"/>'
+	),
 	"ascending": '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>',
 	"descending": '<path d="M12 5v14"/><path d="M6 13l6 6 6-6"/>',
 }
