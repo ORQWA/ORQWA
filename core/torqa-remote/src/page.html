@@ -7,6 +7,7 @@
 <title>Torqa</title>
 <style>
 :root {
+  color-scheme: dark;
   --accent: #0a9cf5; --text: #f0f2f7; --muted: #a3adbd; --surface: rgba(255, 255, 255, 0.07);
   --warning: #fabf4d; --danger: #ed545c;
 }
@@ -44,8 +45,13 @@ main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;
 #big { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 180px; }
 #big button { flex: 1; flex-direction: column; gap: 4px; font-size: 22px; text-align: center; }
 #big svg { width: 64px; height: 64px; }
-#small { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* On a short screen the grid scrolls rather than run over the hint below it. */
+#small {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start;
+  min-height: 0; overflow-y: auto;
+}
 #small button { min-height: 56px; font-size: 15px; justify-content: flex-start; }
+#small button.alone { grid-column: 1 / -1; justify-content: center; }
 #hint { color: var(--muted); font-size: 13px; text-align: center; }
 /* Held for a second to end the ride: the bar fills while the finger stays. */
 #finish {
@@ -74,11 +80,18 @@ main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;
 #pad [data-step="back"] { grid-area: back; min-height: 64px; font-size: 18px; }
 #pad [data-step="back"] svg { width: 28px; height: 28px; }
 [hidden] { display: none !important; }
+/* A short screen, e.g. a small phone or one turned sideways: the big buttons put their icon
+   beside the label, so they fit in less height. */
+@media (max-height: 600px) {
+  #big { min-height: 140px; }
+  #big button { flex-direction: row; gap: 12px; font-size: 20px; }
+  #big svg { width: 40px; height: 40px; }
+}
 /* Side by side: the big buttons on the left, the grid on the right. */
 @media (orientation: landscape) {
   main { flex-direction: row; }
   #big { min-height: 0; }
-  #small { flex: 1; align-content: start; overflow-y: auto; }
+  #small { flex: 1; }
   #small button { min-height: 48px; }
 }
 </style>
@@ -234,7 +247,13 @@ function build() {
       send("press/" + (index + 1));
     });
     button.addEventListener("contextmenu", (event) => event.preventDefault());
-    (index < BIG ? big : small).append(button);
+    if (index < BIG) {
+      big.append(button);
+    } else {
+      // Two to a row, left and right, as the rider's dialog names them.
+      button.dataset.row = Math.floor((index - BIG) / 2);
+      small.append(button);
+    }
   });
 }
 
@@ -269,6 +288,13 @@ function show() {
     const shownAs = action === "pause" && state.paused ? "resume" : action;
     button.querySelector("svg").innerHTML = ICONS[shownAs] ?? "";
     button.querySelector("span").textContent = word(shownAs);
+  }
+  // A button left alone in its row spans it rather than standing beside a gap; a row with
+  // none left closes up.
+  const small = element("small");
+  for (const button of small.children) {
+    const row = small.querySelectorAll(`[data-row="${button.dataset.row}"]:not([hidden])`);
+    button.classList.toggle("alone", row.length === 1);
   }
   element("big").hidden = !element("big").querySelector("button:not([hidden])");
   document.body.classList.toggle("idle", connection !== "online");
