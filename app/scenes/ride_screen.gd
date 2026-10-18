@@ -621,6 +621,10 @@ func _on_control_requested(control: String) -> void:
 		_step_intensity(1 if control == "intensity_up" else -1)
 	elif control == "skip_step":
 		_skip_step()
+	elif control == "finish_ride":
+		# As the ride settings' Finish & save: saved, then the summary.
+		if not _finished:
+			_on_finish_requested()
 	else:
 		for music: Array in MUSIC_KEYS.values():
 			if music[0] == control:
@@ -694,12 +698,13 @@ func _show_toast(message: String) -> void:
 	_toast_left = TOAST_SECONDS
 
 
+## Devices are called by their own names; the phone remote by the core's, translated.
 func _on_device_connected(device_name: String) -> void:
-	_show_toast(tr("%s connected") % device_name)
+	_show_toast(tr("%s connected") % tr(device_name))
 
 
 func _on_device_disconnected(device_name: String) -> void:
-	_show_toast(tr("%s disconnected — reconnecting…") % device_name)
+	_show_toast(tr("%s disconnected — reconnecting…") % tr(device_name))
 
 
 ## A reconnect from the ride settings (R69) did not find some devices.

@@ -204,6 +204,7 @@ func _init() -> void:
 	_status.add_theme_color_override("font_color", UiTheme.MUTED)
 	right.add_child(_status)
 	_start_button.text = tr("Start")
+	_start_button.add_to_group(RemoteNavigation.FIRST)
 	_start_button.custom_minimum_size = Vector2(0, 56)
 	_start_button.add_theme_font_size_override("font_size", 22)
 	_start_button.add_theme_stylebox_override("normal", UiTheme.accent_button())

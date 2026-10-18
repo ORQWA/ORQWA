@@ -56,6 +56,10 @@ func _ready() -> void:
 	_ride.overlay_zoom_requested.connect(_overlay.zoom)
 	get_window().size_changed.connect(_on_window_resized)
 	_summary.closed.connect(_back_home)
+	# The remote's pad (#228) goes through the screens as the keyboard does.
+	_torqa.navigation_requested.connect(
+		func(step: String) -> void: RemoteNavigation.step(get_window(), step)
+	)
 	# As the rider left it (#218).
 	if _torqa.fullscreen():
 		get_window().mode = Window.MODE_FULLSCREEN
@@ -63,6 +67,8 @@ func _ready() -> void:
 
 func _on_ride_started(options: Dictionary) -> void:
 	_start.hide()
+	# What the keyboard or the remote last reached stays behind: in a ride the arrows shift.
+	get_viewport().gui_release_focus()
 	var on_its_own: bool = options.has("workout") and not options.get("on_course", false)
 	if on_its_own:
 		pass  # A workout on its own (R58) is the ride screen alone, over its own backdrop.
@@ -110,6 +116,18 @@ func _on_window_resized() -> void:
 	if _overlay.active:
 		_overlay.window_resized()
 		_overlay.set_clickable(_ride.overlay_outline())
+
+
+## Escape, or the remote's Back (#228), leaves a course for the gallery and the summary for
+## the start page; dialogs close by themselves.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed(&"ui_cancel"):
+		return
+	if _start.visible and _start.go_back():
+		get_viewport().set_input_as_handled()
+	elif _summary.visible:
+		_summary.go_back()
+		get_viewport().set_input_as_handled()
 
 
 ## F11, or Alt+Enter, fills the screen or puts Torqa back in a window (#218), from any page.

@@ -1,7 +1,8 @@
 # Art
 
-Scripted 3D models for Torqa ([ADR 0009](../docs/adr/0009-asset-pipeline.md)). The scripts are
-the source; the exported `.glb` files are committed so the app builds without Blender.
+Scripted 3D models for Torqa ([ADR 0009](../docs/adr/0009-asset-pipeline.md)), and the phone
+remote's [silent clip](#the-remotes-clip-remote). The scripts are the source; what they make
+(the `.glb` files, the clip) is committed so the app builds without Blender.
 
 ## Running Blender
 
@@ -195,6 +196,19 @@ toothed chainrings on a spider, tapered cranks, a rear derailleur and the chain,
 with lever blades, saddle rails and a bottle in its cage. A rider about 17,600–20,800
 triangles, a bike about 7,300.
 Both riders, from every side, are in the [gallery](#riders).
+
+## The remote's clip (`remote/`)
+
+Not a model: `keep_awake.py` renders the silent clip the phone remote's page plays, unseen, to
+keep the phone's screen on (R88, ADR 0019), into `core/torqa-remote/src/keep-awake.mp4`. Four
+seconds of black, 64 px, with a silent sound track, in H.264 and AAC, about 3.6 kB, from the
+sequencer, so no GPU is needed. Blender's own FFmpeg encodes the H.264 the dev container's
+cannot. Keep the sound track: Safari and Firefox keep the screen on only for a video that has
+one.
+
+```sh
+scripts/art.sh blender --background --factory-startup --python art/remote/keep_awake.py
+```
 
 ## Gallery
 

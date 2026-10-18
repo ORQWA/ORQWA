@@ -21,7 +21,7 @@ use torqa_app::{library, view};
 use torqa_devices::ble::{ControllerModel, DeviceKind};
 use torqa_devices::fake::{FakeHeart, FakeRider};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
-use torqa_domain::shifting::{BUTTONS, Control, Press, Shift};
+use torqa_domain::shifting::{BUTTONS, ButtonAction, Control, Press, Shift};
 use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{
     BeatsPerMinute, Kilograms, Meters, MetersPerSecond, Percent, Rpm, Watts,
@@ -315,9 +315,15 @@ impl TorqaApp {
 
     /// A shifter's button asked for a ride control (#139), to be carried out as its key is:
     /// `next_camera`, `overlay`, the music's `play_pause`, `next` and `previous`, `pause`,
-    /// `difficulty_up` and `_down`, the workout's `intensity_up` and `_down`, or `skip_step`.
+    /// `difficulty_up` and `_down`, the workout's `intensity_up` and `_down`, `skip_step`, or
+    /// `finish_ride`.
     #[signal]
     fn control_requested(control: GString);
+
+    /// The remote asked for a step through the screens (#228), with or without a ride: `up`,
+    /// `down`, `left`, `right`, `ok` (press what has the focus) or `back`.
+    #[signal]
+    fn navigation_requested(step: GString);
 
     /// Reconnects the devices used last, in the background (emits
     /// `devices_found`, `device_connected` and, for those not found, `remembered_missing`).
@@ -1563,6 +1569,97 @@ impl TorqaApp {
         self.command(|app| app.set_fullscreen(fullscreen));
     }
 
+    /// How the phone remote (#228) is set and doing: `{on, port, address ("" while off or
+    /// without a network), connected}`.
+    #[func]
+    fn phone_remote(&self) -> VarDictionary {
+        let Some(app) = self.app.as_ref() else {
+            return VarDictionary::new();
+        };
+        let remote = app.phone_remote();
+        vdict! {
+            "on" => remote.on,
+            "port" => i64::from(remote.port),
+            "address" => remote.address.unwrap_or_default(),
+            "connected" => remote.connected,
+        }
+    }
+
+    /// The QR code of the phone remote's address: `{size, modules}`, `modules` a byte per
+    /// module row by row, 0 dark and 255 light, without the quiet zone; empty without one.
+    #[func]
+    fn phone_remote_code(&self) -> VarDictionary {
+        let Some(code) = self.app.as_ref().and_then(App::phone_remote_code) else {
+            return VarDictionary::new();
+        };
+        let modules: PackedByteArray = code
+            .dark
+            .iter()
+            .map(|&dark| if dark { 0 } else { 255 })
+            .collect();
+        vdict! {
+            "size" => i64::try_from(code.size).unwrap_or_default(),
+            "modules" => &modules,
+        }
+    }
+
+    /// The name the phone remote's connection is reported by.
+    #[func]
+    fn phone_remote_name() -> GString {
+        GString::from(torqa_app::remote::REMOTE_NAME)
+    }
+
+    /// The keys of the texts the phone remote's page says, for [`Self::set_phone_remote_texts`].
+    #[func]
+    fn phone_remote_words() -> PackedStringArray {
+        torqa_app::remote::remote_words()
+            .map(GString::from)
+            .collect()
+    }
+
+    /// The phone remote's page says `words` (text by key, translated) in `language`.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn set_phone_remote_texts(&mut self, language: GString, words: VarDictionary) {
+        let Some(app) = self.app.as_mut() else {
+            return;
+        };
+        app.set_phone_remote_texts(torqa_app::remote::RemoteTexts {
+            language: language.to_string(),
+            words: words
+                .iter_shared()
+                .map(|(key, value)| (key.to_string(), value.to_string()))
+                .collect(),
+        });
+    }
+
+    /// Starts the phone remote if the rider left it on, as at start.
+    #[func]
+    fn resume_phone_remote(&mut self) -> bool {
+        self.command(App::resume_phone_remote)
+    }
+
+    /// Turns the phone remote on or off, for the next time too.
+    #[func]
+    fn set_phone_remote(&mut self, on: bool) -> bool {
+        self.command(|app| app.set_phone_remote(on))
+    }
+
+    /// Moves the phone remote to `port` (1024–65535).
+    #[func]
+    fn set_phone_remote_port(&mut self, port: i64) -> bool {
+        let Ok(port) = u16::try_from(port.clamp(1024, 65535)) else {
+            return false;
+        };
+        self.command(|app| app.set_phone_remote_port(port))
+    }
+
+    /// Gives the phone remote a new secret address: phones paired before can no longer press.
+    #[func]
+    fn renew_phone_remote(&mut self) -> bool {
+        self.command(App::renew_phone_remote)
+    }
+
     /// Whether rides are simulated (fake trainer): they can be sped up and jumped (#53).
     #[func]
     fn simulating(&self) -> bool {
@@ -1979,16 +2076,17 @@ impl TorqaApp {
     /// offer them.
     #[func]
     fn button_actions() -> PackedStringArray {
-        torqa_domain::shifting::ButtonAction::ALL
+        ButtonAction::ALL
             .into_iter()
-            .map(|action| GString::from(torqa_app::button_action_name(action)))
+            .map(|action| GString::from(action.name()))
             .collect()
     }
 
-    /// What the buttons of the shifter `model` (`"di2"`, `"zwift_click"` or
-    /// `"zwift_click_v2"`) do (#139, R84): for each button 1–10 (a Di2's D-Fly channels 1–4; a
-    /// Zwift Click's + is 1 and its − 2, with no double press), the action names of a press, a
-    /// hold and a double press, "" where it does nothing. Empty for an unknown model.
+    /// What the buttons of the shifter `model` (`"di2"`, `"zwift_click"`, `"zwift_click_v2"`
+    /// or the phone remote's `"phone_remote"`) do (#139, R84, #228): for each button 1–10 (a
+    /// Di2's D-Fly channels 1–4; a Zwift Click's + is 1 and its − 2, with no double press; the
+    /// phone's presses only), the action names of a press, a hold and a double press, "" where
+    /// it does nothing. Empty for an unknown model.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn button_map(&self, model: GString) -> VarArray {
@@ -2003,10 +2101,7 @@ impl TorqaApp {
             .map(|channel| {
                 Press::ALL
                     .into_iter()
-                    .map(|press| {
-                        map.action(channel, press)
-                            .map_or("", torqa_app::button_action_name)
-                    })
+                    .map(|press| map.action(channel, press).map_or("", ButtonAction::name))
                     .map(GString::from)
                     .collect::<PackedStringArray>()
                     .to_variant()
@@ -2027,7 +2122,7 @@ impl TorqaApp {
         let assigned = if action.is_empty() {
             None
         } else {
-            let Some(found) = torqa_app::button_action_from_name(&action) else {
+            let Some(found) = ButtonAction::from_name(&action) else {
                 return false;
             };
             Some(found)
@@ -2899,6 +2994,11 @@ impl TorqaApp {
                     .control_requested()
                     .emit(&GString::from(control_name(control)));
             }
+            AppEvent::Navigate(step) => {
+                self.signals()
+                    .navigation_requested()
+                    .emit(&GString::from(step.name()));
+            }
             AppEvent::Error(message) => {
                 self.report_failure(&message);
             }
@@ -2920,6 +3020,7 @@ fn control_name(control: Control) -> &'static str {
         Control::IntensityUp => "intensity_up",
         Control::IntensityDown => "intensity_down",
         Control::SkipStep => "skip_step",
+        Control::FinishRide => "finish_ride",
     }
 }
 

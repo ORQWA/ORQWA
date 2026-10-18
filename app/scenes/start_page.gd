@@ -77,7 +77,6 @@ func _ready() -> void:
 	_tab_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_tab_bar.size_flags_vertical = Control.SIZE_SHRINK_END
 	_tab_bar.clip_tabs = false
-	_tab_bar.focus_mode = Control.FOCUS_NONE
 	(%Header as HBoxContainer).add_child(_tab_bar)
 	_settings_button.icon = UiIcons.texture("cog")
 	_settings_button.tooltip_text = tr("Settings")
@@ -161,6 +160,15 @@ func _open_course(course: Dictionary) -> void:
 	_courses.hide()
 	_detail.show()
 	_detail.open(course)
+
+
+## Back from a course to the gallery, as its back button goes (the remote's Back, Escape);
+## false where there is nothing to go back from.
+func go_back() -> bool:
+	if not _detail.visible:
+		return false
+	_show_gallery()
+	return true
 
 
 func _show_gallery() -> void:

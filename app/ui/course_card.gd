@@ -2,8 +2,9 @@ class_name CourseCard
 extends PanelContainer
 ## A course in the gallery (R39): its path card, name and key figures in rows, with the time
 ## the rider is estimated to take (R67), marked if it is ridden along a video (R17); click to
-## open it. The elevation profile is left to the course page. The gallery sets its width, so
-## its cards share the row; the route grows with it.
+## open it, or reach it with the keyboard or the remote and press OK (#228), when a ring shows
+## it has the focus. The elevation profile is left to the course page. The gallery sets its
+## width, so its cards share the row; the route grows with it.
 
 signal pressed
 
@@ -19,6 +20,9 @@ var _title: Label = Label.new()
 func _init(course: Dictionary, imperial: bool) -> void:
 	custom_minimum_size = Vector2(WIDTH, 0)
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	focus_mode = Control.FOCUS_ALL
+	focus_entered.connect(queue_redraw)
+	focus_exited.connect(queue_redraw)
 	var rows: VBoxContainer = VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 12)
 	rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -174,3 +178,12 @@ func _gui_input(event: InputEvent) -> void:
 	var click: InputEventMouseButton = event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
 		pressed.emit()
+	elif event.is_action_pressed(&"ui_accept"):
+		accept_event()
+		pressed.emit()
+
+
+## On the card's own edge: the gallery's scrolling would cut a ring outside it.
+func _draw() -> void:
+	if has_focus():
+		draw_style_box(UiTheme.focus_ring(UiTheme.RADIUS, 0), Rect2(Vector2.ZERO, size))
