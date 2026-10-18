@@ -7,7 +7,9 @@ extends VBoxContainer
 ## is chosen, and each row says how its device is doing: connecting, connected, reconnecting
 ## after a drop, not found, or failed. Beside a connected device stands what it reports, and
 ## beside a failed one why it failed (R80). All of it is the active rider's (R82): switching
-## riders brings their own devices.
+## riders brings their own devices. The last row is the phone remote (#228), on or off for
+## this computer: turned on, it shows its code to scan, and it says when a phone has it open;
+## what its buttons do is the rider's, behind its pen like a shifter's.
 
 const FAKE_TRAINER: int = -1
 const NO_HEART_RATE: int = -1
@@ -47,6 +49,7 @@ const STATE_LABELS: Dictionary[String, String] = {
 	"reconnecting": "Reconnecting…",
 	"missing": "Not found",
 	"failed": "Failed",
+	"waiting": "Waiting for a phone or tablet…",
 }
 # i18n-end
 ## The core's name for the fake trainer, as its connection is reported.
@@ -89,6 +92,14 @@ var _reasons: Dictionary[String, String] = {}
 var _readings: Dictionary[String, String] = {}
 var _since_reading: float = 0.0
 var _status: Label = Label.new()
+## The phone remote (#228): on or off, what its buttons do behind its pen, its code behind the
+## button beside it, and how it is doing; its last attempt to start may have failed.
+var _remote: CheckButton = CheckButton.new()
+var _remote_pen: Button = Button.new()
+var _remote_code: Button = Button.new()
+var _remote_state: Label = Label.new()
+var _remote_dialog: RemoteDialog = RemoteDialog.new()
+var _remote_failed: bool = false
 
 
 func bind(torqa: TorqaApp) -> void:
@@ -104,6 +115,10 @@ func bind(torqa: TorqaApp) -> void:
 	_button_dialog.bind(torqa)
 	_select_cadence_source()
 	_reconnect_remembered()
+	# Texts first: a phone may load the page the moment the remote is back on.
+	_remote_dialog.bind(torqa)
+	_remote_failed = not _torqa.resume_phone_remote()
+	_show_remote()
 
 
 ## Makes sure the chosen trainer, power meter, cadence, heart-rate sensor and shifter are
@@ -193,6 +208,7 @@ func _init() -> void:
 		grid.add_child(state)
 		_state_labels[role] = state
 		_states[role] = ""
+	_add_remote_row(grid)
 	add_child(grid)
 	# When neither the reconnect at start nor a row's search found a device: everything at once.
 	var scan_row: HBoxContainer = HBoxContainer.new()
@@ -228,6 +244,43 @@ func _init() -> void:
 	add_child(_status)
 	_reset_options()
 	add_child(_button_dialog)
+	add_child(_remote_dialog)
+
+
+## The phone remote's row, its cells in the devices' columns.
+func _add_remote_row(grid: GridContainer) -> void:
+	var caption: Label = Label.new()
+	# The core's name, translated as the label shows it.
+	caption.text = TorqaApp.phone_remote_name()
+	caption.custom_minimum_size = Vector2(RideOptions.CAPTION_WIDTH, 0)
+	grid.add_child(caption)
+	_remote.text = tr("Shift from a phone or tablet")
+	_remote.tooltip_text = tr("A phone or tablet on the same Wi-Fi shifts and controls the ride")
+	_remote.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_remote.toggled.connect(_on_remote_toggled)
+	grid.add_child(_remote)
+	# The rider's buttons, set up whether the remote is on or not.
+	_remote_pen.icon = UiIcons.texture("pencil")
+	_remote_pen.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_remote_pen.tooltip_text = tr("What the buttons do")
+	_remote_pen.custom_minimum_size = Vector2(44, 0)
+	_remote_pen.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_remote_pen.pressed.connect(
+		func() -> void: _button_dialog.open(ButtonDialog.PHONE_REMOTE, TorqaApp.phone_remote_name())
+	)
+	grid.add_child(_remote_pen)
+	_remote_code.text = tr("Code")
+	_remote_code.icon = UiIcons.texture("qr")
+	_remote_code.tooltip_text = tr("Code and address for the phone or tablet")
+	_remote_code.custom_minimum_size = Vector2(110, 0)
+	_remote_code.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_remote_code.disabled = true
+	_remote_code.pressed.connect(_remote_dialog.open)
+	grid.add_child(_remote_code)
+	_remote_state.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_remote_state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_remote_state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	grid.add_child(_remote_state)
 
 
 func _notification(what: int) -> void:
@@ -240,6 +293,14 @@ func _notification(what: int) -> void:
 		_edit_button.tooltip_text = tr("What the buttons do")
 		for role: String in _states:
 			_render_state(role)
+		_remote.text = tr("Shift from a phone or tablet")
+		_remote.tooltip_text = tr(
+			"A phone or tablet on the same Wi-Fi shifts and controls the ride"
+		)
+		_remote_pen.tooltip_text = tr("What the buttons do")
+		_remote_code.text = tr("Code")
+		_remote_code.tooltip_text = tr("Code and address for the phone or tablet")
+		_show_remote()
 
 
 ## The devices used last reconnect in the background (R41), shown by name until found.
@@ -384,6 +445,9 @@ static func _first_scanned(option: OptionButton) -> int:
 ## The core reported a device connected: the row waiting for it shows so. A row that shows
 ## the device without waiting for it (connected from elsewhere, e.g. the ride settings) too.
 func _on_device_connected(device_name: String) -> void:
+	if device_name == TorqaApp.phone_remote_name():
+		_show_remote()
+		return
 	var told: bool = false
 	for role: String in _expected:
 		if _expected[role] == device_name:
@@ -410,6 +474,9 @@ func _selected_name(role: String) -> String:
 
 ## A device dropped; its driver keeps looking for it.
 func _on_device_disconnected(device_name: String) -> void:
+	if device_name == TorqaApp.phone_remote_name():
+		_show_remote()
+		return
 	for role: String in _expected:
 		if _expected[role] == device_name:
 			_set_state(role, "reconnecting")
@@ -639,15 +706,45 @@ func _render_state(role: String) -> void:
 		text += ": " + tr(_reasons[role])
 	elif state == "connected" and _readings.has(role):
 		text += "  " + _readings[role]
+	_paint_state(label, state, text)
+
+
+## Writes `text` into `label` in the colour of `state`.
+static func _paint_state(label: Label, state: String, text: String) -> void:
 	label.text = text
 	var color: Color = UiTheme.MUTED
 	if state == "connected":
 		color = UiTheme.SUCCESS
-	elif state in ["searching", "connecting", "reconnecting"]:
+	elif state in ["searching", "connecting", "reconnecting", "waiting"]:
 		color = UiTheme.WARNING
 	elif state in ["missing", "failed"]:
 		color = UiTheme.DANGER
 	label.add_theme_color_override("font_color", color)
+
+
+## Turns the phone remote on, showing its code to scan at once, or off. Should its port be
+## taken, it stays off and the row says it failed; the notice says why.
+func _on_remote_toggled(on: bool) -> void:
+	_remote_failed = not _torqa.set_phone_remote(on)
+	_show_remote()
+	if on and not _remote_failed:
+		_remote_dialog.open()
+
+
+## Shows how the phone remote is doing: off, waiting for a phone, connected, or failed.
+func _show_remote() -> void:
+	var remote: Dictionary = _torqa.phone_remote() if _torqa != null else {}
+	var on: bool = remote.get("on", false)
+	_remote.set_pressed_no_signal(on)
+	_remote_code.disabled = not on
+	var state: String = ""
+	if _remote_failed and not on:
+		state = "failed"
+	elif on:
+		state = "connected" if remote.get("connected", false) else "waiting"
+	_paint_state(_remote_state, state, tr(STATE_LABELS[state]) if STATE_LABELS.has(state) else "")
+	if _remote_dialog.visible:
+		_remote_dialog.refresh()
 
 
 func _label_cadence_sources() -> void:

@@ -694,12 +694,13 @@ func _show_toast(message: String) -> void:
 	_toast_left = TOAST_SECONDS
 
 
+## Devices are called by their own names; the phone remote by the core's, translated.
 func _on_device_connected(device_name: String) -> void:
-	_show_toast(tr("%s connected") % device_name)
+	_show_toast(tr("%s connected") % tr(device_name))
 
 
 func _on_device_disconnected(device_name: String) -> void:
-	_show_toast(tr("%s disconnected — reconnecting…") % device_name)
+	_show_toast(tr("%s disconnected — reconnecting…") % tr(device_name))
 
 
 ## A reconnect from the ride settings (R69) did not find some devices.

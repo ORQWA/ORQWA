@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["torqa-domain", "torqa-terrain", "torqa-video", "torqa-osm", "torqa-routes", "torqa-physics", "torqa-devices", "torqa-storage", "torqa-workouts", "torqa-session", "torqa-world", "torqa-upload", "torqa-app", "torqa-gd", "torqa-cli"]
+members = ["torqa-domain", "torqa-terrain", "torqa-video", "torqa-osm", "torqa-routes", "torqa-physics", "torqa-devices", "torqa-storage", "torqa-workouts", "torqa-session", "torqa-world", "torqa-upload", "torqa-remote", "torqa-app", "torqa-gd", "torqa-cli"]
 
 [workspace.package]
 version = "0.2.2"
@@ -20,6 +20,7 @@ torqa-session = { path = "torqa-session" }
 torqa-storage = { path = "torqa-storage" }
 torqa-terrain = { path = "torqa-terrain" }
 torqa-upload = { path = "torqa-upload" }
+torqa-remote = { path = "torqa-remote" }
 torqa-video = { path = "torqa-video" }
 torqa-workouts = { path = "torqa-workouts" }
 torqa-world = { path = "torqa-world" }
@@ -29,6 +30,8 @@ clap = { version = "4.6.7", features = ["derive"] }
 # FFmpeg's libraries come prebuilt by scripts/build-ffmpeg.sh (a pinned release, verified),
 # found through FFMPEG_DIR and linked statically (ADR 0010).
 ffmpeg-next = { version = "9.0.0", default-features = false, features = ["codec", "format", "software-scaling", "static"] }
+# QR codes for pairing a phone with the remote (#228); no image output, Godot draws it.
+fast_qr = { version = "0.14.0", default-features = false }
 embedded-io-adapters = { version = "0.7.0", features = ["std"] }
 futures = "0.3.34"
 geo-types = "0.7.20"

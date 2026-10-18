@@ -568,6 +568,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "fast_qr"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aafa8088286fa3903718197ceb03dac70f8b4763748fbdca1e431a5a7217a09e"
+
+[[package]]
 name = "fdeflate"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2486,12 +2492,14 @@ checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 name = "torqa-app"
 version = "0.2.2"
 dependencies = [
+ "serde_json",
  "thiserror",
  "tokio",
  "torqa-devices",
  "torqa-domain",
  "torqa-osm",
  "torqa-physics",
+ "torqa-remote",
  "torqa-routes",
  "torqa-session",
  "torqa-storage",
@@ -2577,6 +2585,17 @@ name = "torqa-physics"
 version = "0.2.2"
 dependencies = [
  "torqa-domain",
+]
+
+[[package]]
+name = "torqa-remote"
+version = "0.2.2"
+dependencies = [
+ "fast_qr",
+ "serde_json",
+ "tokio",
+ "torqa-domain",
+ "tracing",
 ]
 
 [[package]]

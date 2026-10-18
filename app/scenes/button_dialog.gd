@@ -1,9 +1,10 @@
 class_name ButtonDialog
 extends AcceptDialog
 ## What a shifter's buttons do (#139, R75, R77): a row per button (a Di2's four D-Fly
-## channels, a Zwift Click's + and −, a Click v2's ten), a column per kind of press the
-## shifter tells apart, each cell an action. Opened from the pen beside the shifter's row
-## under Devices, so the tab stays one screen whatever the shifter (#271).
+## channels, a Zwift Click's + and −, a Click v2's ten, the phone remote's ten), a column per
+## kind of press the shifter tells apart, each cell an action. Opened from the pen beside the
+## shifter's or the phone remote's row under Devices, so the tab stays one screen whatever
+## the shifter (#271).
 
 ## The kinds of press, in the core's order.
 # i18n-begin
@@ -23,6 +24,20 @@ const CLICK_V2_BUTTONS: Array[String] = [
 	"Down (left pod)",
 	"Left (left pod)",
 	"Right (left pod)",
+]
+## The phone remote's buttons (#228), in the core's numbering: the two big ones, then the
+## grid below them row by row.
+const PHONE_BUTTONS: Array[String] = [
+	"Big button 1",
+	"Big button 2",
+	"Row 1, left",
+	"Row 1, right",
+	"Row 2, left",
+	"Row 2, right",
+	"Row 3, left",
+	"Row 3, right",
+	"Row 4, left",
+	"Row 4, right",
 ]
 ## What a shifter's buttons can be given (#139), by the core's name for each action.
 const ACTION_LABELS: Dictionary[String, String] = {
@@ -53,6 +68,7 @@ const CLICK_PRESSES: int = 2
 const DI2: String = "di2"
 const ZWIFT_CLICK: String = "zwift_click"
 const ZWIFT_CLICK_V2: String = "zwift_click_v2"
+const PHONE_REMOTE: String = "phone_remote"
 
 var _torqa: TorqaApp
 var _grid: GridContainer = GridContainer.new()
@@ -71,7 +87,12 @@ func bind(torqa: TorqaApp) -> void:
 ## assignments as the core has them.
 func open(model: String, device_name: String) -> void:
 	_model = model
-	title = tr("What the buttons of %s do") % device_name
+	# A shifter by its own name; the remote is Torqa's.
+	title = (
+		tr("What the remote's buttons do")
+		if model == PHONE_REMOTE
+		else tr("What the buttons of %s do") % device_name
+	)
 	_layout()
 	if _torqa != null:
 		var assigned: Array = _torqa.button_map(_model)
@@ -150,7 +171,12 @@ func _notification(what: int) -> void:
 func _layout() -> void:
 	var captions: Array[String] = _captions()
 	var buttons: int = captions.size()
-	var presses: int = CLICK_PRESSES if _model in [ZWIFT_CLICK, ZWIFT_CLICK_V2] else PRESSES.size()
+	var presses: int = PRESSES.size()
+	if _model in [ZWIFT_CLICK, ZWIFT_CLICK_V2]:
+		presses = CLICK_PRESSES
+	elif _model == PHONE_REMOTE:
+		# A press on the page acts when the finger lands: there is no hold to wait for.
+		presses = 1
 	_grid.columns = 1 + presses
 	for press: int in range(PRESSES.size()):
 		_press_headings[press].text = tr(PRESSES[press])
@@ -173,6 +199,8 @@ func _captions() -> Array[String]:
 		named = CLICK_V2_BUTTONS
 	elif _model == ZWIFT_CLICK:
 		named = CLICK_BUTTONS
+	elif _model == PHONE_REMOTE:
+		named = PHONE_BUTTONS
 	for caption: String in named:
 		captions.append(tr(caption))
 	if named.is_empty():

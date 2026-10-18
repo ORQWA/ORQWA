@@ -1,7 +1,8 @@
-//! Settings of this computer (R78, #257): how detailed the 3D world is drawn (R43) and whether
-//! the app fills the screen (#218) depend on the machine in front of the rider, so they live
-//! in `computer.toml` next to the cache, never in the data directory, which a rider may share
-//! between computers (R30): there the last one to save would win.
+//! Settings of this computer (R78, #257): how detailed the 3D world is drawn (R43), whether
+//! the app fills the screen (#218) and the phone remote (#228) depend on the machine in front
+//! of the rider, so they live in `computer.toml` next to the cache, never in the data
+//! directory, which a rider may share between computers (R30): there the last one to save
+//! would win.
 
 use std::path::Path;
 
@@ -20,6 +21,23 @@ struct ComputerFile {
     graphics_quality: Option<GraphicsQuality>,
     /// Whether the app fills the screen (#218).
     fullscreen: Option<bool>,
+    /// The phone remote (#228).
+    remote: PhoneRemote,
+}
+
+/// The phone remote on this computer (#228): a phone pairs with the computer it rides beside.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PhoneRemote {
+    /// Whether it is on; off until the rider turns it on.
+    pub on: bool,
+    /// The port it listens on; `None` for the remote's own.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    /// The secret in its address, once it has one; a new one locks out the phones paired
+    /// before.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
 }
 
 /// The graphics quality chosen on this computer; Medium until one is chosen.
@@ -51,6 +69,22 @@ pub fn fullscreen(file: &Path) -> bool {
 pub fn set_fullscreen(file: &Path, fullscreen: bool) -> Result<(), ProfileError> {
     let mut computer = read(file);
     computer.fullscreen = Some(fullscreen);
+    save(file, &computer)
+}
+
+/// The phone remote as set on this computer.
+#[must_use]
+pub fn phone_remote(file: &Path) -> PhoneRemote {
+    read(file).remote
+}
+
+/// Remembers how the phone remote is set on this computer.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_phone_remote(file: &Path, remote: &PhoneRemote) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.remote = remote.clone();
     save(file, &computer)
 }
 
@@ -111,6 +145,30 @@ mod tests {
             GraphicsQuality::Ultra,
             "kept with it"
         );
+    }
+
+    #[test]
+    fn the_computer_keeps_its_phone_remote_off_until_turned_on() {
+        let file = temp_file("remote");
+        assert_eq!(
+            phone_remote(&file),
+            PhoneRemote::default(),
+            "off, nothing chosen"
+        );
+        set_fullscreen(&file, true).unwrap();
+        assert!(!phone_remote(&file).on, "other settings leave it off");
+
+        let remote = PhoneRemote {
+            on: true,
+            port: Some(9000),
+            token: Some("0123456789abcdef".to_owned()),
+        };
+        set_phone_remote(&file, &remote).unwrap();
+
+        assert_eq!(phone_remote(&file), remote);
+        assert!(fullscreen(&file), "kept with it");
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(text.contains("[remote]"), "{text}");
     }
 
     #[test]

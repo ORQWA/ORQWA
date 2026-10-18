@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use torqa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
-use torqa_domain::shifting::{ButtonAction, ButtonMap, Control, ControllerModel, Press};
+use torqa_domain::shifting::{ButtonAction, ButtonMap, ControllerModel, Press};
 use torqa_domain::telemetry::CadenceSource;
 use torqa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
 
@@ -271,7 +271,7 @@ impl From<&ButtonMap> for ButtonsFile {
         let channel = |button: u8| {
             let name = |press| {
                 map.action(button, press)
-                    .map(|action| button_action_name(action).to_owned())
+                    .map(|action| action.name().to_owned())
             };
             PressesFile {
                 press: name(Press::Short),
@@ -318,42 +318,12 @@ impl ButtonsFile {
                 map.assign(
                     button,
                     press,
-                    name.as_deref().and_then(button_action_from_name),
+                    name.as_deref().and_then(ButtonAction::from_name),
                 );
             }
         }
         map
     }
-}
-
-/// The name of a button's `action` (#139), in the settings file and for the front end.
-#[must_use]
-pub fn button_action_name(action: ButtonAction) -> &'static str {
-    match action {
-        ButtonAction::ShiftUp => "shift_up",
-        ButtonAction::ShiftDown => "shift_down",
-        ButtonAction::ShiftUpTwo => "shift_up_two",
-        ButtonAction::ShiftDownTwo => "shift_down_two",
-        ButtonAction::Control(Control::NextCamera) => "next_camera",
-        ButtonAction::Control(Control::Overlay) => "overlay",
-        ButtonAction::Control(Control::PlayPause) => "play_pause",
-        ButtonAction::Control(Control::NextTrack) => "next_track",
-        ButtonAction::Control(Control::PreviousTrack) => "previous_track",
-        ButtonAction::Control(Control::Pause) => "pause",
-        ButtonAction::Control(Control::DifficultyUp) => "difficulty_up",
-        ButtonAction::Control(Control::DifficultyDown) => "difficulty_down",
-        ButtonAction::Control(Control::IntensityUp) => "intensity_up",
-        ButtonAction::Control(Control::IntensityDown) => "intensity_down",
-        ButtonAction::Control(Control::SkipStep) => "skip_step",
-    }
-}
-
-/// The button action called `name`, if any.
-#[must_use]
-pub fn button_action_from_name(name: &str) -> Option<ButtonAction> {
-    ButtonAction::ALL
-        .into_iter()
-        .find(|&action| button_action_name(action) == name)
 }
 
 /// Where the overlay window is on screen (R55), in screen pixels, and how large it draws.
@@ -822,11 +792,16 @@ pub fn set_cadence_source(
 #[must_use]
 pub fn button_map(data_dir: &Path, id: &str, model: ControllerModel) -> ButtonMap {
     let devices = devices(data_dir, id);
+    // The buttons every shifter shared before R84 were never the phone remote's.
+    let shared = devices
+        .buttons
+        .as_ref()
+        .filter(|_| ControllerModel::SHIFTERS.contains(&model));
     devices
         .shifter_buttons
         .get(model.name())
-        .or(devices.buttons.as_ref())
-        .map_or_else(ButtonMap::default, ButtonsFile::map)
+        .or(shared)
+        .map_or_else(|| model.default_buttons(), ButtonsFile::map)
 }
 
 /// Remembers what the buttons of the rider's shifter `model` do; the other models' stay.
@@ -842,7 +817,7 @@ pub fn set_button_map(
     let mut devices = devices(data_dir, id);
     // What every model did before stays each one's own.
     if let Some(shared) = devices.buttons.take() {
-        for other in ControllerModel::ALL {
+        for other in ControllerModel::SHIFTERS {
             devices
                 .shifter_buttons
                 .entry(other.name().to_owned())
@@ -929,6 +904,8 @@ pub(crate) fn write_atomically(path: &Path, text: &str) -> Result<(), ProfileErr
 
 #[cfg(test)]
 mod tests {
+    use torqa_domain::shifting::Control;
+
     use super::*;
 
     fn temp_dir(name: &str) -> PathBuf {
@@ -952,9 +929,13 @@ mod tests {
     fn buttons_shift_until_the_rider_gives_them_something_else() {
         let dir = temp_dir("buttons-default");
 
-        for model in ControllerModel::ALL {
+        for model in ControllerModel::SHIFTERS {
             assert_eq!(button_map(&dir, "anna", model), ButtonMap::shifting(1, 2));
         }
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::PhoneRemote),
+            ControllerModel::PhoneRemote.default_buttons()
+        );
     }
 
     #[test]
@@ -1041,17 +1022,16 @@ mod tests {
         for model in [ControllerModel::ZwiftClick, ControllerModel::ZwiftClickV2] {
             assert_eq!(button_map(&dir, "anna", model), shared, "{model:?}");
         }
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::PhoneRemote),
+            ControllerModel::PhoneRemote.default_buttons(),
+            "never the phone remote's"
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
-    fn every_button_action_has_its_own_name_and_unknown_names_do_nothing() {
-        for action in ButtonAction::ALL {
-            assert_eq!(
-                button_action_from_name(button_action_name(action)),
-                Some(action)
-            );
-        }
+    fn unknown_button_action_names_do_nothing() {
         let dir = temp_dir("buttons-unknown");
         std::fs::create_dir_all(profile_dir(&dir, "anna")).unwrap();
         std::fs::write(
@@ -1233,13 +1213,18 @@ mod tests {
         assert_eq!(anna.trainer.map(|d| d.name).as_deref(), Some("KICKR CORE"));
         assert_eq!(anna.heart_rate.map(|d| d.name).as_deref(), Some("Polar H9"));
         assert_eq!(cadence_source(&dir, "anna"), CadenceSource::Trainer);
-        for model in ControllerModel::ALL {
+        for model in ControllerModel::SHIFTERS {
             assert_eq!(
                 button_map(&dir, "anna", model),
                 ButtonMap::shifting(2, 1),
                 "the channels chosen before still shift"
             );
         }
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::PhoneRemote),
+            ControllerModel::PhoneRemote.default_buttons(),
+            "a shifter's channels were never the phone's"
+        );
         let ben = remembered_devices(&dir, "ben");
         assert_eq!(ben.heart_rate, Some(own), "a rider's own stay");
         assert_eq!(ben.trainer, None, "and are not mixed with everyone's");
