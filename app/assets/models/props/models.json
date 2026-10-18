@@ -1,0 +1,24 @@
+{
+ "models": {
+  "delineator": {
+   "kind": "delineator",
+   "height": 1.0
+  },
+  "guard_rail": {
+   "kind": "guard_rail",
+   "height": 0.76
+  },
+  "guard_rail_end": {
+   "kind": "guard_rail_end",
+   "height": 0.76
+  },
+  "guard_rail_start": {
+   "kind": "guard_rail_end",
+   "height": 0.76
+  },
+  "snow_pole": {
+   "kind": "snow_pole",
+   "height": 2.5
+  }
+ }
+}

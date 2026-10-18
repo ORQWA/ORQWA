@@ -145,6 +145,36 @@ sides, lit through from behind; trees sway in the wind, leaves flutter). `models
 each model's `kind` and `height`; the world (`core/torqa-world/src/vegetation.rs`) picks one
 model of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
 
+## Props (`props/`)
+
+`build.py` makes what stands by the road ridden (R92) into `app/assets/models/props/`:
+`guard_rail` (a 4 m span of W-beam on a post, with the spacer block; 88 triangles),
+`guard_rail_end` and `guard_rail_start` (a span twisting down into the ground ahead or behind,
+flaring away from the road, as a run of rail begins and ends), `delineator` (a 1 m white post,
+its sloping top and black band with a reflector facing the traffic) and `snow_pole` (2.5 m,
+red and white in half-metre bands). Each model's +x points away from the road, its length
+runs along it, its origin on the ground where it stands; parts reach 0.4 m below it to meet
+sloping ground. The world shears the rails to the road's grade, so their posts stay upright.
+
+```sh
+scripts/art.sh blender --background --factory-startup --python art/props/build.py
+```
+
+| Name | Used for |
+|---|---|
+| `galvanised` | the rails' beams, posts and blocks (`props.galvanised`, metallic) |
+| `post`, `band`, `reflector` | the delineator's white post, black band and orange reflector |
+| `pole_red`, `pole_white` | the snow pole's bands |
+
+The app colours each name from the palette's `props` section (`app/scenes/prop_models.gd`).
+The world (`core/torqa-world/src/props.rs`) places them by rules from the road's shape and
+the ground beside it: guard rails, span by span, on the side where the ground 4.5 m beyond
+the edge lies 2 m or more below the road, with a start and an end span at each run and none
+where a street joins; delineator posts every 50 m on both sides of country roads; snow poles
+every 25 m above 1,300 m, behind the rails where there are any. Towns (residential,
+industrial, commercial and public land) get none, nor do bridges and tunnels. Every prop is
+in the [gallery](#props).
+
 ## Riders (`riders/`)
 
 `build.py` makes a female and a male rider, each on their own bike, into
@@ -227,8 +257,8 @@ scripts/art.sh blender --background --factory-startup --python art/remote/keep_a
 
 ## Gallery
 
-Every model as the world draws it, in its palette colours and light: buildings and plants in
-three variants side by side (colours vary per building and plant), the riders from the views
+Every model as the world draws it, in its palette colours and light: buildings, plants and
+props in three variants side by side (colours vary per building and plant), the riders from the views
 `scripts/render-riders.sh` takes. After changing a model, render the pictures again in the dev
 container (a run replaces its group's pictures, so a model taken out leaves none behind) and
 update the tables if models were added or removed:
@@ -267,6 +297,13 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![broadleaf_round](../docs/images/models/vegetation/broadleaf_round.jpg)<br>`broadleaf_round` | ![bush](../docs/images/models/vegetation/bush.jpg)<br>`bush` | ![rock_block](../docs/images/models/vegetation/rock_block.jpg)<br>`rock_block` |
 | ![rock_pair](../docs/images/models/vegetation/rock_pair.jpg)<br>`rock_pair` | ![palm_coconut](../docs/images/models/vegetation/palm_coconut.jpg)<br>`palm_coconut` | ![palm_fan](../docs/images/models/vegetation/palm_fan.jpg)<br>`palm_fan` |
 | ![palm_short](../docs/images/models/vegetation/palm_short.jpg)<br>`palm_short` | ![banana](../docs/images/models/vegetation/banana.jpg)<br>`banana` | ![tropical_bush](../docs/images/models/vegetation/tropical_bush.jpg)<br>`tropical_bush` |
+
+### Props
+
+| | | |
+|---|---|---|
+| ![guard_rail](../docs/images/models/props/guard_rail.jpg)<br>`guard_rail` | ![guard_rail_start](../docs/images/models/props/guard_rail_start.jpg)<br>`guard_rail_start` | ![guard_rail_end](../docs/images/models/props/guard_rail_end.jpg)<br>`guard_rail_end` |
+| ![delineator](../docs/images/models/props/delineator.jpg)<br>`delineator` | ![snow_pole](../docs/images/models/props/snow_pole.jpg)<br>`snow_pole` | |
 
 ### Riders
 

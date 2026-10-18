@@ -16,6 +16,7 @@ mod junctions;
 mod landcover;
 mod minimap;
 mod palette;
+mod props;
 mod railways;
 mod road;
 mod roundabouts;
@@ -36,6 +37,7 @@ pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
 pub use minimap::{FlatMap, MapFeature, minimap};
 use road::RoadIndex;
+pub use props::Props;
 pub use vegetation::Trees;
 
 /// Edge length of a terrain chunk.
@@ -175,6 +177,8 @@ pub struct TerrainChunk {
     pub water: MeshData,
     /// Trees standing in the chunk.
     pub trees: Trees,
+    /// Guard rails, posts and poles by the road ridden (R89).
+    pub props: Props,
 }
 
 /// Buildings drawn as Blender-made models (`app/assets/models/buildings`) up close, in one cell
@@ -264,6 +268,7 @@ pub async fn generate<M: ElevationModel>(
     };
     let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
     let mut world = whole(&projection, (&shapers, &ways, &below), model).await;
+    let mouths = streets::mouths(&ways.streets, &road);
     let corridor = Corridor {
         shapers: &shapers,
         land: &land,
@@ -271,6 +276,7 @@ pub async fn generate<M: ElevationModel>(
         below: &below,
         buildings: &buildings,
         climate,
+        mouths: &mouths,
     };
 
     // Chunks go in batches: their elevations one after the other, as the model is not shared,
@@ -412,6 +418,8 @@ struct Corridor<'a> {
     below: &'a structures::Below<'a>,
     buildings: &'a HashMap<(i32, i32), Vec<buildings::Plot<'a>>>,
     climate: climate::Climate,
+    /// Where streets join the road ridden.
+    mouths: &'a [road::Mouth],
 }
 
 impl Corridor<'_> {
@@ -459,6 +467,13 @@ impl Corridor<'_> {
             climate: self.climate,
         };
         let mut trees = vegetation::place(heights.origin, CHUNK_SIZE, &ground, origin);
+        let roadside = props::Roadside {
+            heights: &heights,
+            land: self.land,
+            road: self.shapers.road,
+            mouths: self.mouths,
+        };
+        let props = props::place(heights.origin, CHUNK_SIZE, &roadside, origin);
         vegetation::place_grass(&mut trees, heights.origin, CHUNK_SIZE, &ground, origin);
         let (paved, mut unpaved) = streets::meshes(
             (streets, &self.ways.corners),
@@ -484,6 +499,7 @@ impl Corridor<'_> {
             tracks: unpaved,
             water: water::mesh(streams, pools, heights.origin, CHUNK_SIZE, &heights, origin),
             trees,
+            props,
         };
         (chunk, fallbacks)
     }

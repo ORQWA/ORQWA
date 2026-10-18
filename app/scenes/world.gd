@@ -625,6 +625,10 @@ func _build_some_chunks() -> void:
 		for model: String in plants:
 			var buffer: PackedFloat32Array = plants[model]
 			node.add_child(_vegetation(model, buffer))
+		var props: Dictionary = chunk.get("props", {})
+		for model: String in props:
+			var buffer: PackedFloat32Array = props[model]
+			node.add_child(_props(model, buffer))
 		var grass_range: float = _quality["grass_range"]
 		if grass_range > 0.0:
 			for kind: String in ["grass", "flowers"]:
@@ -686,6 +690,22 @@ func _vegetation(model: String, buffer: PackedFloat32Array) -> MultiMeshInstance
 	var small: bool = model.begins_with("bush") or model.begins_with("rock")
 	instance.visibility_range_end = (SMALL_PLANT_RANGE if small else DETAIL_RANGE) * _distance
 	instance.visibility_range_end_margin = 100.0 if small else 300.0
+	instance.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	return instance
+
+
+## Guard rails, posts or poles of one model in a chunk (`world_chunk()["props"]`: a transform
+## per prop). They are small: drawn as far as small plants.
+func _props(model: String, buffer: PackedFloat32Array) -> MultiMeshInstance3D:
+	var multimesh: MultiMesh = MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.mesh = PropModels.mesh(model)
+	multimesh.instance_count = buffer.size() / 12
+	multimesh.buffer = buffer
+	var instance: MultiMeshInstance3D = MultiMeshInstance3D.new()
+	instance.multimesh = multimesh
+	instance.visibility_range_end = SMALL_PLANT_RANGE * _distance
+	instance.visibility_range_end_margin = 100.0
 	instance.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	return instance
 

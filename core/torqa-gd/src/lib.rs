@@ -2658,10 +2658,11 @@ impl TorqaApp {
     }
 
     /// World chunk `index`: `{center, terrain, buildings, modelled, streets, tracks, water,
-    /// plants, grass, flowers}`. `terrain`, `buildings`, `streets`, `tracks` and `water` (lakes,
-    /// rivers and streams) are mesh arrays (`{vertices, normals, uvs, colors, indices}`);
+    /// plants, props, grass, flowers}`. `terrain`, `buildings`, `streets`, `tracks` and `water`
+    /// (lakes, rivers and streams) are mesh arrays (`{vertices, normals, uvs, colors, indices}`);
     /// `plants` maps vegetation model names (trees, bushes, rocks) to `MultiMesh` buffers
-    /// (transform and colour), `grass` and `flowers` are transform buffers.
+    /// (transform and colour), `props` maps roadside model names (guard rails, posts, poles) to
+    /// transform buffers, and `grass` and `flowers` are transform buffers.
     /// `modelled` lists cells of buildings drawn as models up close: `{models, shells}`, with
     /// `models` mapping model names to `MultiMesh` buffers (transform, colour, custom data)
     /// and `shells` the mesh arrays to draw in the distance instead. Geometry is relative to
@@ -2681,6 +2682,10 @@ impl TorqaApp {
         let mut plants = VarDictionary::new();
         for (name, buffer) in &chunk.trees.models {
             plants.set(name.as_str(), &PackedFloat32Array::from(buffer.as_slice()));
+        }
+        let mut props = VarDictionary::new();
+        for (name, buffer) in &chunk.props.models {
+            props.set(name.as_str(), &PackedFloat32Array::from(buffer.as_slice()));
         }
         let grass = PackedFloat32Array::from(chunk.trees.grass.as_slice());
         let flowers = PackedFloat32Array::from(chunk.trees.flowers.as_slice());
@@ -2704,6 +2709,7 @@ impl TorqaApp {
             "tracks" => &mesh_arrays(&chunk.tracks),
             "water" => &mesh_arrays(&chunk.water),
             "plants" => &plants,
+            "props" => &props,
             "grass" => &grass,
             "flowers" => &flowers,
         }

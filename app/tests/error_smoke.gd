@@ -61,6 +61,40 @@ func _run() -> void:
 	_check(not history.visible and not panel.visible, "dismissed details hide until the next")
 	history.report(failure)
 	_check(history.visible and rows.get_child_count() == 2, "dismissing forgets earlier failures")
+	# Anchored as the main scene anchors it: it grows upward to fit, the panel opaque, the
+	# message above the buttons rather than behind them.
+	history.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	history.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	history.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	history.offset_left = -584
+	history.offset_right = -24
+	history.offset_top = -24
+	history.offset_bottom = -24
+	history.report({"message": "No trainer connected.", "details": "no trainer connected"})
+	toggle.button_pressed = true
+	for _frame: int in 3:
+		await process_frame
+	var repeated: Label = rows.get_child(1)
+	_check(not repeated.visible, "a diagnostic only repeating the message is left out")
+	var buttons: Control = toggle.get_parent()
+	_check(
+		panel.get_global_rect().end.y <= buttons.get_global_rect().position.y + 0.5,
+		(
+			"the panel ends above the buttons: %s, %s"
+			% [panel.get_global_rect(), buttons.get_global_rect()]
+		)
+	)
+	var box: StyleBoxFlat = panel.get_theme_stylebox("panel")
+	_check(is_equal_approx(box.bg_color.a, 1.0), "the panel is opaque")
+	var scroll: ScrollContainer = history.get("_scroll")
+	_check(
+		(
+			scroll.size.y >= rows.get_combined_minimum_size().y - 0.5
+			or scroll.size.y >= FailureDetails.MAX_HEIGHT - 0.5
+		),
+		"the list shows all it holds, or scrolls past the maximum"
+	)
+	history.clear()
 	TranslationServer.set_locale("en")
 	await process_frame
 	_check(ride_button.text == "Ride", "ride action switches back to English")

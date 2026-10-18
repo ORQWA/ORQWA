@@ -3781,3 +3781,206 @@ async fn a_castle_with_a_free_outline_gets_towers_windows_and_a_roof() {
         .count();
     assert!(outside > 0, "no towers at the corners");
 }
+
+/// Terrain rising 60 % towards the east across the road: the ground falls away steeply on its
+/// west side (left of travel, going north), 500 m at the road.
+struct SteepHillside;
+
+impl ElevationModel for SteepHillside {
+    fn elevation(
+        &mut self,
+        _lat: f64,
+        lon: f64,
+    ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+        let east = (lon - 7.0) * METERS_PER_DEGREE * 46f64.to_radians().cos();
+        std::future::ready(Ok(500.0 + 0.6 * east))
+    }
+}
+
+/// Level ground at `0` metres.
+struct Level(f64);
+
+impl ElevationModel for Level {
+    fn elevation(
+        &mut self,
+        _lat: f64,
+        _lon: f64,
+    ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+        std::future::ready(Ok(self.0))
+    }
+}
+
+/// A 1 km road due north, level at `elevation` metres, as a plain street of the map, with the
+/// given side streets and areas around it.
+async fn route_north_at(elevation: f64, map: &MapData) -> Route {
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for i in 0..=100 {
+        let (lat, lon) = at(0.0, f64::from(i) * 10.0);
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    Route::from_gpx_with::<Level>(&xml, None, map).await.unwrap()
+}
+
+/// The road ridden by [`route_north_at`], as a street of the map.
+fn road_north() -> torqa_osm::Road {
+    torqa_osm::Road {
+        class: torqa_osm::RoadClass::Street,
+        line: vec![at(0.0, -20.0), at(0.0, 1020.0)],
+        structure: None,
+    }
+}
+
+/// Positions (absolute, metres east, height, metres north) of the props of model `name`.
+fn props_of(world: &World, name: &str) -> Vec<[f64; 3]> {
+    world
+        .chunks
+        .iter()
+        .flat_map(|c| {
+            c.props
+                .models
+                .get(name)
+                .into_iter()
+                .flat_map(move |buffer| {
+                    buffer.as_chunks::<12>().0.iter().map(move |t| {
+                        [
+                            f64::from(t[3] + c.center[0]),
+                            f64::from(t[7]),
+                            -f64::from(t[11] + c.center[2]),
+                        ]
+                    })
+                })
+        })
+        .collect()
+}
+
+/// Props of `name` along the open middle of the 1 km road (away from its ends).
+fn along_middle(props: &[[f64; 3]]) -> Vec<[f64; 3]> {
+    props
+        .iter()
+        .copied()
+        .filter(|p| (100.0..900.0).contains(&p[2]))
+        .collect()
+}
+
+#[tokio::test]
+async fn guard_rails_line_the_side_where_the_ground_falls_away() {
+    let map = MapData {
+        roads: vec![road_north()],
+        ..MapData::default()
+    };
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut SteepHillside, &map, &mut |_, _| {}).await;
+
+    let rails = along_middle(&props_of(&world, "guard_rail"));
+    assert!(
+        rails.iter().all(|p| p[0] < 0.0),
+        "rails only on the falling (west) side: {:?}",
+        rails.iter().find(|p| p[0] >= 0.0)
+    );
+    // One span every 4 m, unbroken: 800 m of falling ground.
+    assert!(rails.len() >= 190, "{} spans", rails.len());
+    let mut north: Vec<f64> = rails.iter().map(|p| p[2]).collect();
+    north.sort_by(f64::total_cmp);
+    assert!(
+        north.windows(2).all(|w| w[1] - w[0] < 4.5),
+        "no gaps in the run"
+    );
+    // Beside the road's edge, standing on the ground there.
+    for p in &rails {
+        assert!((3.2..4.2).contains(&-p[0]), "{p:?}");
+    }
+}
+
+#[tokio::test]
+async fn level_ground_gets_no_guard_rails() {
+    let map = MapData {
+        roads: vec![road_north()],
+        ..MapData::default()
+    };
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    for name in ["guard_rail", "guard_rail_start", "guard_rail_end"] {
+        assert!(props_of(&world, name).is_empty(), "{name}");
+    }
+}
+
+#[tokio::test]
+async fn delineators_mark_country_roads_but_not_towns() {
+    // A village on the road's second half.
+    let village = Area {
+        cover: LandCover::Residential,
+        outer: vec![rectangle(0.0, 750.0, 200.0, 250.0)],
+        inner: vec![],
+    };
+    let map = MapData {
+        roads: vec![road_north()],
+        areas: vec![village],
+        ..MapData::default()
+    };
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+
+    let posts = props_of(&world, "delineator");
+    let country: Vec<[f64; 3]> = posts
+        .iter()
+        .copied()
+        .filter(|p| (100.0..450.0).contains(&p[2]))
+        .collect();
+    // Every 50 m, both sides.
+    let (west, east): (Vec<[f64; 3]>, Vec<[f64; 3]>) =
+        country.iter().partition(|p| p[0] < 0.0);
+    assert!((6..=8).contains(&west.len()), "{} west", west.len());
+    assert_eq!(west.len(), east.len());
+    let mut north: Vec<f64> = east.iter().map(|p| p[2]).collect();
+    north.sort_by(f64::total_cmp);
+    assert!(north.windows(2).all(|w| (w[1] - w[0] - 50.0).abs() < 1.0));
+    assert!(
+        posts.iter().all(|p| !(520.0..980.0).contains(&p[2])),
+        "none in the village"
+    );
+    assert!(props_of(&world, "snow_pole").is_empty(), "too low for snow");
+}
+
+#[tokio::test]
+async fn snow_poles_replace_delineators_on_mountain_roads() {
+    let map = MapData {
+        roads: vec![road_north()],
+        ..MapData::default()
+    };
+    let route = route_north_at(1800.0, &map).await;
+    let world = generate(&route, &mut Level(1800.0), &map, &mut |_, _| {}).await;
+
+    assert!(props_of(&world, "delineator").is_empty());
+    let poles = along_middle(&props_of(&world, "snow_pole"));
+    // Every 25 m on both sides of 800 m.
+    assert!((60..=68).contains(&poles.len()), "{} poles", poles.len());
+    assert!(poles.iter().all(|p| (4.0..4.5).contains(&p[0].abs())));
+}
+
+#[tokio::test]
+async fn nothing_stands_where_a_street_joins_the_road() {
+    let side_street = torqa_osm::Road {
+        class: torqa_osm::RoadClass::Street,
+        line: vec![at(0.0, 300.0), at(200.0, 300.0)],
+        structure: None,
+    };
+    let map = MapData {
+        roads: vec![road_north(), side_street],
+        ..MapData::default()
+    };
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let posts = props_of(&world, "delineator");
+    assert!(
+        !posts.iter().any(|p| p[0] > 0.0 && (p[2] - 300.0).abs() < 8.0),
+        "the mouth is clear"
+    );
+    assert!(
+        posts.iter().any(|p| p[0] < 0.0 && (p[2] - 300.0).abs() < 1.0),
+        "the other side keeps its post"
+    );
+}

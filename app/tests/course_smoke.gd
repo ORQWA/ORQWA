@@ -18,6 +18,7 @@ func _run() -> void:
 	_estimates()
 	_card_countries()
 	await _course_loading()
+	await _preparation_log()
 	await _course_gallery()
 	await _card_widths()
 	if not _failed:
@@ -221,6 +222,48 @@ func _course_loading() -> void:
 		)
 	page.free()
 	torqa.free()
+
+
+## While a course's world is built, its page lists each step the core reports as a build log
+## (R40): the step under way with its count and time, the finished ones ticked with their
+## time, and how long the whole took at the end; a rider waiting minutes sees it move.
+func _preparation_log() -> void:
+	var log: PreparationLog = PreparationLog.new()
+	root.add_child(log)
+	_check(not log.visible, "nothing to show before a build")
+	log.start()
+	log.step("Downloading map data", "tiles", 3, 12)
+	await process_frame
+	_check(log.steps() == PackedStringArray(["Downloading map data"]), "the first step listed")
+	var first: PreparationLog.PreparationStep = log.get("_rows")["Downloading map data"]
+	var detail: Label = first.get("_detail")
+	_check(detail.text.begins_with("3 / 12 tiles"), "its count shows: %s" % detail.text)
+	_check(not first.is_finished(), "still running")
+	log.step("Downloading map data", "tiles", 12, 12)
+	log.step("Building 3D world", "chunks", 0, 40)
+	await process_frame
+	_check(
+		log.steps() == PackedStringArray(["Downloading map data", "Building 3D world"]),
+		"steps in order: %s" % log.steps()
+	)
+	_check(first.is_finished(), "a new step finishes the one before it")
+	_check(
+		not detail.text.contains("/") and detail.text.contains(":"),
+		"a finished step keeps its time, not its count: %s" % detail.text
+	)
+	var tick: TextureRect = first.get("_tick")
+	var spinner: Spinner = first.get("_spinner")
+	_check(tick.visible and not spinner.visible, "a finished step is ticked")
+	log.step("Building 3D world", "chunks", 40, 40)
+	log.finish()
+	await process_frame
+	var done: Label = log.get("_done_label")
+	_check(done.visible and done.text.begins_with("Ready in"), "the whole's time: %s" % done.text)
+	var last: PreparationLog.PreparationStep = log.get("_rows")["Building 3D world"]
+	_check(last.is_finished(), "the last step is ticked at the end")
+	log.clear()
+	_check(not log.visible and log.steps().is_empty(), "cleared for the next course")
+	log.free()
 
 
 ## The gallery's toolbar and chips (R67) ask the core for what the rider chose; clearing

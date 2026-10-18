@@ -381,6 +381,11 @@ static func date(unix_s: int) -> String:
 
 
 ## An 18 px check box: a light outline, or an accent square with a white tick.
+## A ticked box, e.g. for a finished step.
+static func check_icon() -> ImageTexture:
+	return _check_icon(true)
+
+
 static func _check_icon(checked: bool, alpha: float = 1.0) -> ImageTexture:
 	const SIZE: int = 18
 	var image: Image = Image.create_empty(SIZE, SIZE, false, Image.FORMAT_RGBA8)

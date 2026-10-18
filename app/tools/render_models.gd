@@ -1,14 +1,14 @@
 extends SceneTree
 ## Renders the Blender models (app/assets/models) as the world draws them, for review (ADR 0009):
-## every building and plant in three variants side by side into
+## every building, plant and roadside prop in three variants side by side into
 ## $OUT_DIR/<group>/<name>.png, buildings also close up (<name>-close.png). Run it with
-## scripts/render-models.sh; $GROUPS (space-separated: buildings, vegetation) and $MODELS
+## scripts/render-models.sh; $GROUPS (space-separated: buildings, vegetation, props) and $MODELS
 ## (names) limit it to some. With $GALLERY set, every overview also goes
 ## there as a small JPEG, <group>/<name>.jpg, for the galleries in art/README.md; a run of a
 ## whole group replaces its old pictures, so models taken out leave none behind. Light and
 ## colours are the world's (ADR 0019).
 
-const GROUPS: PackedStringArray = ["buildings", "vegetation"]
+const GROUPS: PackedStringArray = ["buildings", "vegetation", "props"]
 ## Plaster and roof colour (indices into the palette's walls and tiles, or a plant's colours)
 ## and variant (shutters below 0.25, flowers above 0.65 hidden).
 const VARIANTS: Array = [[0, 0, 0.5], [2, 1, 0.3], [1, 2, 0.9]]
@@ -69,9 +69,7 @@ func _run() -> void:
 		for model: String in kinds:
 			if not wanted.is_empty() and not wanted.has(model):
 				continue
-			var mesh: Mesh = (
-				BuildingModels.mesh(model) if group == "buildings" else VegetationModels.mesh(model)
-			)
+			var mesh: Mesh = _mesh(group, model)
 			var kind: String = kinds[model]
 			if group == "buildings":
 				_show(mesh, _colours(group, model, kind), Vector3(0.45, 0.42, 1.0), 0.62)
@@ -131,11 +129,24 @@ func _stage() -> void:
 	_camera.make_current()
 
 
+## Model `name` of `group` with the world's materials.
+func _mesh(group: String, name: String) -> Mesh:
+	match group:
+		"buildings":
+			return BuildingModels.mesh(name)
+		"props":
+			return PropModels.mesh(name)
+	return VegetationModels.mesh(name)
+
+
 ## The models of `group` by name, with their kind, from the manifest its build wrote.
 func _kinds(group: String) -> Dictionary:
-	var directory: String = (
-		BuildingModels.DIRECTORY if group == "buildings" else VegetationModels.DIRECTORY
-	)
+	var directories: Dictionary[String, String] = {
+		"buildings": BuildingModels.DIRECTORY,
+		"props": PropModels.DIRECTORY,
+		"vegetation": VegetationModels.DIRECTORY,
+	}
+	var directory: String = directories[group]
 	var manifest: Dictionary = JSON.parse_string(
 		FileAccess.get_file_as_string(directory + "models.json")
 	)
@@ -152,6 +163,10 @@ func _kinds(group: String) -> Dictionary:
 func _colours(group: String, model: String, kind: String) -> Array[Array]:
 	var colours: Array[Array] = []
 	for variant: Array in VARIANTS:
+		if group == "props":
+			# Coloured by material, the same everywhere.
+			colours.append([Color.WHITE, Color(0.0, 0.0, 0.0, 0.0)])
+			continue
 		if group == "vegetation":
 			var plants: String = PLANT_COLOURS.get(kind, "plants.bushes")
 			var tint: int = variant[0]

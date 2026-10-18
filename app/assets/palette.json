@@ -121,6 +121,14 @@
     "skin": "#a26b55",
     "frame": "#d9d6cf", "socks": "#efefec"
   },
+  "props": {
+    "galvanised": "#a7abae",
+    "post": "#ecebe6",
+    "band": "#17181a",
+    "reflector": "#e0821e",
+    "pole_red": "#b3261e",
+    "pole_white": "#ecebe6"
+  },
   "bike": {
     "tyre": "#1b1b1c",
     "rim": "#232426",

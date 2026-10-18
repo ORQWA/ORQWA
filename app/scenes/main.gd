@@ -22,10 +22,13 @@ func _ready() -> void:
 	print("Torqa %s" % TorqaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
 	theme = UiTheme.build()
 	add_child(_failures)
+	# Anchored at the bottom right, as wide as set and as tall as it needs, growing upward.
 	_failures.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_failures.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_failures.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_failures.offset_left = -584
 	_failures.offset_right = -24
-	_failures.offset_top = -260
+	_failures.offset_top = -24
 	_failures.offset_bottom = -24
 	_torqa.failure_reported.connect(_failures.report)
 	add_child(_video)

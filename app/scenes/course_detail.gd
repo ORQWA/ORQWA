@@ -29,6 +29,7 @@ var _options: RideOptions = RideOptions.new()
 var _ghost: GhostPicker = GhostPicker.new()
 var _ride_button: Button = Button.new()
 var _loading_bar: ProgressBar = ProgressBar.new()
+var _log: PreparationLog = PreparationLog.new()
 var _status: Label = Label.new()
 ## Turns beside the status while the route is prepared: climbs, records, the estimated time
 ## and Ride wait for it.
@@ -104,6 +105,7 @@ func build() -> void:
 	_ride_button.disabled = true
 	_loading_bar.value = 0.0
 	_loading_bar.show()
+	_log.start()
 	_status.text = tr("Building 3D world") + " …"
 
 
@@ -163,6 +165,7 @@ func _init() -> void:
 	_loading_bar.max_value = 1.0
 	_loading_bar.show_percentage = false
 	_loading_bar.custom_minimum_size = Vector2(0, 8)
+	right.add_child(_log)
 	right.add_child(_loading_bar)
 	var status_row: HBoxContainer = HBoxContainer.new()
 	status_row.add_theme_constant_override("separation", 10)
@@ -300,10 +303,11 @@ func _show_route() -> void:
 	_keep_preview()
 
 
-func _on_loading_progress(step: String, _unit: String, done: int, total: int) -> void:
+func _on_loading_progress(step: String, unit: String, done: int, total: int) -> void:
 	if not _building:
 		return
 	_loading_bar.value = float(done) / float(maxi(total, 1))
+	_log.step(step, unit, done, total)
 	_status.text = tr(step) + " …"
 
 
@@ -312,6 +316,7 @@ func _on_world_ready(_info: Dictionary) -> void:
 		return
 	_building = false
 	_loading_bar.hide()
+	_log.finish()
 	_status.text = ""
 	_ride_button.disabled = false
 	ready_to_ride.emit()
