@@ -180,6 +180,7 @@ func _init() -> void:
 	_ride_button.add_theme_font_size_override("font_size", 22)
 	_ride_button.add_theme_stylebox_override("normal", UiTheme.accent_button())
 	_ride_button.pressed.connect(_on_ride_pressed)
+	_ride_button.add_to_group(RemoteNavigation.FIRST)
 	right.add_child(_ride_button)
 	panel.add_child(right)
 	add_child(panel)

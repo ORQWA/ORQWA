@@ -248,6 +248,8 @@ func _init() -> void:
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# A card the keyboard or the remote reaches comes into view (#228).
+	scroll.follow_focus = true
 	_gallery.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_gallery.add_theme_constant_override("separation", 16)
 	_gallery.resized.connect(_fit_cards)

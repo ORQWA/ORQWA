@@ -315,9 +315,15 @@ impl TorqaApp {
 
     /// A shifter's button asked for a ride control (#139), to be carried out as its key is:
     /// `next_camera`, `overlay`, the music's `play_pause`, `next` and `previous`, `pause`,
-    /// `difficulty_up` and `_down`, the workout's `intensity_up` and `_down`, or `skip_step`.
+    /// `difficulty_up` and `_down`, the workout's `intensity_up` and `_down`, `skip_step`, or
+    /// `finish_ride`.
     #[signal]
     fn control_requested(control: GString);
+
+    /// The remote asked for a step through the screens (#228), with or without a ride: `up`,
+    /// `down`, `left`, `right`, `ok` (press what has the focus) or `back`.
+    #[signal]
+    fn navigation_requested(step: GString);
 
     /// Reconnects the devices used last, in the background (emits
     /// `devices_found`, `device_connected` and, for those not found, `remembered_missing`).
@@ -2943,6 +2949,11 @@ impl TorqaApp {
                     .control_requested()
                     .emit(&GString::from(control_name(control)));
             }
+            AppEvent::Navigate(step) => {
+                self.signals()
+                    .navigation_requested()
+                    .emit(&GString::from(step.name()));
+            }
             AppEvent::Error(message) => {
                 self.report_failure(&message);
             }
@@ -2964,6 +2975,7 @@ fn control_name(control: Control) -> &'static str {
         Control::IntensityUp => "intensity_up",
         Control::IntensityDown => "intensity_down",
         Control::SkipStep => "skip_step",
+        Control::FinishRide => "finish_ride",
     }
 }
 

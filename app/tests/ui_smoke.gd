@@ -12,6 +12,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	await _remote_navigation()
 	_ride_settings()
 	_workout_settings()
 	_workout_editor()
@@ -34,6 +35,36 @@ func _run() -> void:
 	if not _failed:
 		print("UI SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
+
+
+## The remote's pad (#228), as the keyboard: a ring shows what has the focus, the first arrow
+## focuses the screen's main control, an arrow moves the focus on and OK presses.
+func _remote_navigation() -> void:
+	var ring: StyleBoxFlat = UiTheme.build().get_stylebox("focus", "Button") as StyleBoxFlat
+	_check(ring != null and ring.border_width_top > 0, "a focus ring, not an empty style")
+	var screen: VBoxContainer = VBoxContainer.new()
+	var other: Button = Button.new()
+	other.text = "Other"
+	var main: Button = Button.new()
+	main.text = "Ride"
+	main.add_to_group(RemoteNavigation.FIRST)
+	var pressed: Array[String] = []
+	other.pressed.connect(func() -> void: pressed.append("other"))
+	main.pressed.connect(func() -> void: pressed.append("ride"))
+	screen.add_child(other)
+	screen.add_child(main)
+	root.add_child(screen)
+	await process_frame
+	RemoteNavigation.step(root, "down")
+	await process_frame
+	_check(main.has_focus(), "the first arrow focuses the main control, wherever it stands")
+	RemoteNavigation.step(root, "up")
+	await process_frame
+	_check(other.has_focus(), "an arrow moves the focus: %s" % root.gui_get_focus_owner())
+	RemoteNavigation.step(root, "ok")
+	await process_frame
+	_check(pressed == ["other"], "OK presses what has the focus: %s" % [pressed])
+	screen.free()
 
 
 ## The ride options and the in-ride settings dialog (R48, R49).
@@ -413,6 +444,13 @@ func _course_cards() -> void:
 	click.pressed = true
 	card.call("_gui_input", click)
 	_check(opened[0], "a click opens the course")
+	opened[0] = false
+	_check(card.focus_mode == Control.FOCUS_ALL, "the keyboard and the remote reach a card")
+	var accept: InputEventAction = InputEventAction.new()
+	accept.action = &"ui_accept"
+	accept.pressed = true
+	card.call("_gui_input", accept)
+	_check(opened[0], "OK opens the course (#228)")
 	await process_frame
 	await process_frame
 	_check(card.name_tooltip().is_empty(), "a short name needs no tooltip")

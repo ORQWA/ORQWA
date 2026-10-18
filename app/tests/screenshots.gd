@@ -191,6 +191,12 @@ func _run() -> void:
 	detail.back_requested.emit()
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery.png"))
+	# The remote's pad, or the keyboard, on the first course: its ring shows (#228).
+	var first_card: CourseCard = courses.find_children("*", "CourseCard", true, false)[0]
+	first_card.grab_focus()
+	await create_timer(0.3).timeout
+	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery-focus.png"))
+	first_card.release_focus()
 	# The filters' panel open, a chip on (R85).
 	var chips: GridContainer = courses.get("_chips")
 	for chip: Node in chips.find_children("*", "Button", true, false):

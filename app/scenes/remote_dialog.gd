@@ -24,6 +24,9 @@ const PAGE_TEXTS: Dictionary[String, String] = {
 	"reconnecting": "Reconnecting to Torqa…",
 	"old_link": "This address no longer works: scan the new code in Torqa.",
 	"keep_awake": "Keep this screen on while you ride: turn off its auto-lock.",
+	"ok": "OK",
+	"back": "Back",
+	"hold_to_finish": "Hold to finish",
 }
 # i18n-end
 

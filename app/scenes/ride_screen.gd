@@ -621,6 +621,10 @@ func _on_control_requested(control: String) -> void:
 		_step_intensity(1 if control == "intensity_up" else -1)
 	elif control == "skip_step":
 		_skip_step()
+	elif control == "finish_ride":
+		# As the ride settings' Finish & save: saved, then the summary.
+		if not _finished:
+			_on_finish_requested()
 	else:
 		for music: Array in MUSIC_KEYS.values():
 			if music[0] == control:

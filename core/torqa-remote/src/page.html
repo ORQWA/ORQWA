@@ -24,7 +24,7 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .brand { display: flex; align-items: center; gap: 6px; }
 .brand .mark { height: 28px; width: auto; }
 .brand .wordmark { height: 17px; width: auto; }
-#status { color: var(--muted); font-size: 15px; text-align: right; }
+#status { flex: 1; color: var(--muted); font-size: 15px; text-align: right; }
 #status.offline { color: var(--warning); }
 #status.gone { color: var(--danger); }
 #gear { text-align: center; color: var(--muted); }
@@ -47,6 +47,32 @@ main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;
 #small { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 #small button { min-height: 56px; font-size: 15px; justify-content: flex-start; }
 #hint { color: var(--muted); font-size: 13px; text-align: center; }
+/* Held for a second to end the ride: the bar fills while the finger stays. */
+#finish {
+  position: relative; overflow: hidden; padding: 6px 12px; font-size: 14px; flex: none;
+  background: rgba(237, 84, 92, 0.16); color: #ffd9dc;
+}
+#finish .fill {
+  position: absolute; inset: 0; background: var(--danger); transform: scaleX(0);
+  transform-origin: left;
+}
+#finish.holding .fill { transform: scaleX(1); transition: transform 1s linear; }
+#finish span:last-child { position: relative; }
+/* The TV remote's pad, between rides: arrows round OK, back below. */
+#pad {
+  flex: 1; display: grid; gap: 10px; min-height: 0;
+  grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr auto;
+  grid-template-areas: ". up ." "left ok right" ". down ." "back back back";
+}
+#pad button { font-size: 22px; }
+#pad svg { width: 48px; height: 48px; }
+#pad [data-step="up"] { grid-area: up; }
+#pad [data-step="left"] { grid-area: left; }
+#pad [data-step="ok"] { grid-area: ok; background: rgba(10, 156, 245, 0.28); }
+#pad [data-step="right"] { grid-area: right; }
+#pad [data-step="down"] { grid-area: down; }
+#pad [data-step="back"] { grid-area: back; min-height: 64px; font-size: 18px; }
+#pad [data-step="back"] svg { width: 28px; height: 28px; }
 [hidden] { display: none !important; }
 /* Side by side: the big buttons on the left, the grid on the right. */
 @media (orientation: landscape) {
@@ -61,9 +87,18 @@ main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;
 <header>
   <div class="brand" role="img" aria-label="Torqa">{{MARK}}{{WORDMARK}}</div>
   <span id="status"></span>
+  <button id="finish" hidden><span class="fill"></span><span data-word="finish_ride"></span></button>
 </header>
 <div id="gear" hidden><span data-word="gear"></span> <b id="gear-number"></b> <span id="gear-count"></span></div>
-<main><div id="big"></div><div id="small"></div></main>
+<main id="controls"><div id="big"></div><div id="small"></div></main>
+<div id="pad" hidden>
+  <button data-step="up"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+  <button data-step="left"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+  <button data-step="ok" data-word="ok"></button>
+  <button data-step="right"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button data-step="down"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+  <button data-step="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-word="back"></span></button>
+</div>
 <p id="hint" data-word="keep_awake" hidden></p>
 <script id="words" type="application/json">{{WORDS}}</script>
 <script>
@@ -99,6 +134,68 @@ const ICONS = {
 
 document.title = word("title");
 for (const node of document.querySelectorAll("[data-word]")) node.textContent = word(node.dataset.word);
+for (const node of document.querySelectorAll("[data-step]:not([data-word])")) {
+  node.setAttribute("aria-label", node.dataset.step);
+}
+
+// Lights `button` up briefly, as a press feels.
+function flash(button) {
+  navigator.vibrate?.(15);
+  button.classList.add("pressed");
+  setTimeout(() => button.classList.remove("pressed"), 150);
+}
+
+// The pad steps through Torqa's screens; an arrow held keeps stepping, as a key does.
+for (const button of document.querySelectorAll("#pad button")) {
+  let repeat = null;
+  const stop = () => {
+    clearTimeout(repeat);
+    clearInterval(repeat);
+  };
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    flash(button);
+    const step = button.dataset.step;
+    send("nav/" + step);
+    if (["up", "down", "left", "right"].includes(step)) {
+      repeat = setTimeout(() => {
+        repeat = setInterval(() => send("nav/" + step), 150);
+      }, 450);
+    }
+  });
+  for (const end of ["pointerup", "pointercancel", "pointerleave"]) button.addEventListener(end, stop);
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
+}
+
+// Ending the ride is held for a second, so a stray touch cannot end it; a tap says so.
+let hint = "";
+{
+  const finish = element("finish");
+  let timer = null;
+  let hintTimer = null;
+  const release = () => {
+    if (timer === null) return;
+    clearTimeout(timer);
+    timer = null;
+    finish.classList.remove("holding");
+    hint = word("hold_to_finish");
+    clearTimeout(hintTimer);
+    hintTimer = setTimeout(() => { hint = ""; show(); }, 2500);
+    show();
+  };
+  finish.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    finish.classList.add("holding");
+    timer = setTimeout(() => {
+      timer = null;
+      finish.classList.remove("holding");
+      navigator.vibrate?.(60);
+      send("finish");
+    }, 1000);
+  });
+  for (const end of ["pointerup", "pointercancel", "pointerleave"]) finish.addEventListener(end, release);
+  finish.addEventListener("contextmenu", (event) => event.preventDefault());
+}
 
 let state = { riding: false, paused: false, gear: null, gears: null, workout: false, buttons: [] };
 // "online", "offline" (Torqa out of reach: the browser tries again) or "gone" (a new link).
@@ -108,6 +205,8 @@ let shown = "";
 // Whether `action` does anything in the ride as it is: with the bike's own gears there is
 // nothing to shift, the trainer difficulty is a course's, intensity and steps a workout's.
 function applies(action) {
+  // Held from the header instead: a tap must never end the ride.
+  if (action === "finish_ride") return false;
   if (action.startsWith("shift_")) return !state.riding || state.gear !== null;
   if (action.startsWith("difficulty_")) return !state.workout;
   if (action.startsWith("intensity_") || action === "skip_step") return state.workout;
@@ -131,9 +230,7 @@ function build() {
     button.innerHTML = icon(action) + "<span></span>";
     button.addEventListener("pointerdown", (event) => {
       event.preventDefault();
-      navigator.vibrate?.(15);
-      button.classList.add("pressed");
-      setTimeout(() => button.classList.remove("pressed"), 150);
+      flash(button);
       send("press/" + (index + 1));
     });
     button.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -147,11 +244,16 @@ function show() {
   status.textContent =
     connection === "gone" ? word("old_link")
     : connection === "offline" ? word("reconnecting")
+    : hint && state.riding ? hint
     : !state.riding ? word("not_riding")
     : state.paused ? word("paused")
     : "";
+  // Between rides the pad goes through the screens; during one the ride's buttons work it.
+  element("pad").hidden = state.riding;
+  element("controls").hidden = !state.riding;
+  element("finish").hidden = !state.riding;
   const gears = state.gear !== null;
-  element("gear").hidden = !gears;
+  element("gear").hidden = !gears || !state.riding;
   if (gears) {
     element("gear-number").textContent = state.gear;
     element("gear-count").textContent = "/ " + state.gears;
@@ -169,7 +271,7 @@ function show() {
     button.querySelector("span").textContent = word(shownAs);
   }
   element("big").hidden = !element("big").querySelector("button:not([hidden])");
-  document.body.classList.toggle("idle", connection !== "online" || !state.riding);
+  document.body.classList.toggle("idle", connection !== "online");
 }
 
 const events = new EventSource(base + "events");

@@ -23,7 +23,7 @@ use fast_qr::{ECL, QRBuilder};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Semaphore, watch};
 use tokio::task::AbortHandle;
-use torqa_domain::shifting::{BUTTONS, ButtonAction, Control, Shift, ShiftInput};
+use torqa_domain::shifting::{BUTTONS, ButtonAction, Control, Navigation, Shift, ShiftInput};
 use tracing::warn;
 
 /// The port the remote listens on until the rider chooses another.
@@ -35,7 +35,10 @@ pub const NAME: &str = "Remote";
 // i18n-end
 
 /// What the page says besides the actions' names, by key.
-const PAGE_WORDS: [&str; 8] = [
+const PAGE_WORDS: [&str; 11] = [
+    "ok",
+    "back",
+    "hold_to_finish",
     "resume",
     "title",
     "gear",
@@ -115,13 +118,25 @@ pub struct Texts {
     pub words: BTreeMap<String, String>,
 }
 
+/// What the page asked for.
+#[derive(Debug, Clone, Copy)]
+enum Asked {
+    /// A button's action, or the end of the ride.
+    Action(ButtonAction),
+    /// A step through the screens, between rides.
+    Navigate(Navigation),
+}
+
 /// The phone remote as a shift input: the presses from the page, which shift or ask for the
-/// controls (#139). Made with [`start`], beside the server it takes them from.
+/// controls (#139), and its steps through the screens. Made with [`start`], beside the server
+/// it takes them from.
 #[derive(Debug)]
 pub struct Remote {
-    presses: mpsc::Receiver<ButtonAction>,
+    asked: mpsc::Receiver<Asked>,
     /// Controls pressed for, until [`ShiftInput::controls`] takes them.
     controls: Vec<Control>,
+    /// Steps asked for, until [`ShiftInput::navigation`] takes them.
+    steps: Vec<Navigation>,
     shared: Arc<Shared>,
 }
 
@@ -132,10 +147,15 @@ impl ShiftInput for Remote {
 
     fn poll(&mut self) -> Vec<Shift> {
         let mut shifts = Vec::new();
-        for action in self.presses.try_iter() {
-            shifts.extend_from_slice(action.shifts());
-            if let ButtonAction::Control(control) = action {
-                self.controls.push(control);
+        for asked in self.asked.try_iter() {
+            match asked {
+                Asked::Action(action) => {
+                    shifts.extend_from_slice(action.shifts());
+                    if let ButtonAction::Control(control) = action {
+                        self.controls.push(control);
+                    }
+                }
+                Asked::Navigate(step) => self.steps.push(step),
             }
         }
         shifts
@@ -143,6 +163,10 @@ impl ShiftInput for Remote {
 
     fn controls(&mut self) -> Vec<Control> {
         std::mem::take(&mut self.controls)
+    }
+
+    fn navigation(&mut self) -> Vec<Navigation> {
+        std::mem::take(&mut self.steps)
     }
 
     /// Whether a phone has the page open and was heard from lately.
@@ -197,7 +221,7 @@ impl Drop for RemoteServer {
 #[derive(Debug)]
 struct Shared {
     token: String,
-    presses: mpsc::Sender<ButtonAction>,
+    asked: mpsc::Sender<Asked>,
     page: RwLock<Vec<u8>>,
     state: watch::Receiver<RemoteState>,
     /// The event streams open.
@@ -259,11 +283,11 @@ pub fn start(
         let _entered = runtime.enter();
         TcpListener::from_std(listener)?
     };
-    let (presses_tx, presses) = mpsc::channel();
+    let (asked_tx, asked) = mpsc::channel();
     let (state, state_rx) = watch::channel(RemoteState::default());
     let shared = Arc::new(Shared {
         token: token.to_owned(),
-        presses: presses_tx,
+        asked: asked_tx,
         page: RwLock::new(render(texts)),
         state: state_rx,
         phones: AtomicUsize::new(0),
@@ -281,8 +305,9 @@ pub fn start(
             port,
         },
         Remote {
-            presses,
+            asked,
             controls: Vec::new(),
+            steps: Vec::new(),
             shared,
         },
     ))
@@ -442,23 +467,42 @@ async fn answer(mut socket: TcpStream, shared: Arc<Shared>) {
             shared.hear();
             http::reply_empty(&mut socket, "204 No Content").await
         }
-        // A press names its button, 1 for the first; it does what the page shows it doing.
-        ("POST", rest) => match rest
-            .strip_prefix("press/")
-            .and_then(|button| button.parse::<usize>().ok())
-            .and_then(|button| button.checked_sub(1))
-            .and_then(|index| shared.state.borrow().buttons.get(index).copied().flatten())
-        {
-            Some(action) => {
+        ("POST", rest) => match asked(rest, &shared) {
+            Some(asked) => {
                 shared.hear();
                 // Only fails once the remote's input is gone, when it is being stopped.
-                let _ = shared.presses.send(action);
+                let _ = shared.asked.send(asked);
                 http::reply_empty(&mut socket, "204 No Content").await
             }
             None => http::reply_empty(&mut socket, "404 Not Found").await,
         },
         _ => http::reply_empty(&mut socket, "404 Not Found").await,
     };
+}
+
+/// What a `POST` to `path` below the token asks for, if anything: `press/<button>` (1 for the
+/// first) does what the page shows the button doing, `nav/<step>` steps through the screens,
+/// `finish` ends the ride (the page asks for it held).
+fn asked(path: &str, shared: &Shared) -> Option<Asked> {
+    if path == "finish" {
+        return Some(Asked::Action(ButtonAction::Control(Control::FinishRide)));
+    }
+    if let Some(step) = path.strip_prefix("nav/") {
+        return Navigation::from_name(step).map(Asked::Navigate);
+    }
+    let index = path
+        .strip_prefix("press/")?
+        .parse::<usize>()
+        .ok()?
+        .checked_sub(1)?;
+    let action = shared
+        .state
+        .borrow()
+        .buttons
+        .get(index)
+        .copied()
+        .flatten()?;
+    Some(Asked::Action(action))
 }
 
 /// Counts an event stream open for as long as it lives.

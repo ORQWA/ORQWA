@@ -232,6 +232,9 @@ Built in rideable steps:
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the
     Torqa logo; off until turned on under Devices, a secret token in its address, a new
     address to lock out those paired before; **not yet tried on a real phone or tablet**
+  - [x] A TV remote between rides (R87): a pad of arrows, OK and Back goes through Torqa's
+    screens to start a course or workout, a held Finish & save ends a ride, and a focus ring
+    shows where keyboard and remote are (Escape goes back too)
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their

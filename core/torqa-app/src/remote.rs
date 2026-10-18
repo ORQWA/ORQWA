@@ -226,7 +226,7 @@ mod tests {
 
     use torqa_devices::fake::FakeRider;
     use torqa_domain::profile::Drivetrain;
-    use torqa_domain::shifting::{ButtonAction, Control};
+    use torqa_domain::shifting::{ButtonAction, Control, Navigation};
     use torqa_domain::units::{Percent, Rpm, Watts};
     use torqa_physics::DescentMode;
 
@@ -249,10 +249,15 @@ mod tests {
     /// Presses `button` (1 for the first) as the phone does, with `token`; the answer's status
     /// line.
     fn press(port: u16, token: &str, button: &str) -> String {
+        post(port, token, &format!("press/{button}"))
+    }
+
+    /// Posts to `path` below `token` as the page does; the answer's status line.
+    fn post(port: u16, token: &str, path: &str) -> String {
         let mut socket = TcpStream::connect((Ipv4Addr::LOCALHOST, port)).unwrap();
         write!(
             socket,
-            "POST /{token}/press/{button} HTTP/1.1\r\nHost: torqa\r\n\r\n"
+            "POST /{token}/{path} HTTP/1.1\r\nHost: torqa\r\n\r\n"
         )
         .unwrap();
         let mut answer = String::new();
@@ -393,6 +398,44 @@ mod tests {
         app.set_paused(true);
         app.update(Duration::from_millis(16));
         wait_for(&mut phone, |state| state["paused"] == true);
+
+        assert_eq!(post(port, &token, "finish"), "HTTP/1.1 204 No Content");
+        let events = app.update(Duration::from_millis(16));
+        assert!(
+            events.contains(&AppEvent::Control(Control::FinishRide)),
+            "the held finish asks for the end of the ride: {events:?}"
+        );
+        app.shutdown();
+    }
+
+    #[test]
+    fn the_pad_steps_through_the_screens_without_a_ride() {
+        let (_dir, mut app) = app("remote-pad");
+        app.set_phone_remote(true).unwrap();
+        let (port, token) = (app.phone_remote().port, token(&app));
+
+        for step in ["down", "ok", "finish"] {
+            let path = if step == "finish" {
+                step.to_owned()
+            } else {
+                format!("nav/{step}")
+            };
+            assert_eq!(post(port, &token, &path), "HTTP/1.1 204 No Content");
+        }
+        let events = app.update(Duration::from_millis(16));
+
+        let steps: Vec<Navigation> = events
+            .iter()
+            .filter_map(|event| match event {
+                AppEvent::Navigate(step) => Some(*step),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(steps, [Navigation::Down, Navigation::Accept]);
+        assert!(
+            !events.contains(&AppEvent::Control(Control::FinishRide)),
+            "no ride to finish"
+        );
         app.shutdown();
     }
 
