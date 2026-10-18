@@ -102,6 +102,28 @@ async fn a_press_on_the_phone_does_what_its_button_was_given() {
 }
 
 #[tokio::test]
+async fn the_pad_steps_through_the_screens_and_finish_ends_the_ride() {
+    let (server, mut remote) = remote();
+
+    for path in ["nav/down", "nav/ok", "nav/back", "finish"] {
+        let answer = request(server.port(), "POST", &format!("/{TOKEN}/{path}")).await;
+        assert!(answer.starts_with("HTTP/1.1 204"), "{path}: {answer}");
+    }
+    for path in ["nav/home", "nav/", "nav"] {
+        let answer = request(server.port(), "POST", &format!("/{TOKEN}/{path}")).await;
+        assert!(answer.starts_with("HTTP/1.1 404"), "{path}: {answer}");
+    }
+
+    assert_eq!(remote.poll(), [], "steps shift nothing");
+    assert_eq!(
+        remote.navigation(),
+        [Navigation::Down, Navigation::Accept, Navigation::Back]
+    );
+    assert_eq!(remote.controls(), [Control::FinishRide]);
+    assert_eq!(remote.navigation(), [], "each step once");
+}
+
+#[tokio::test]
 async fn a_button_given_something_else_does_that_from_then_on() {
     let (server, mut remote) = remote();
     let mut buttons = buttons();

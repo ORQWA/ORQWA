@@ -19,11 +19,11 @@ msgstr ""
 msgid "%d h"
 msgstr ""
 
-#: app/ui/course_card.gd:150
+#: app/ui/course_card.gd:154
 msgid "%d h %02d"
 msgstr ""
 
-#: app/ui/course_card.gd:149 app/ui/power_curve_chart.gd:39
+#: app/ui/course_card.gd:153 app/ui/power_curve_chart.gd:39
 msgid "%d min"
 msgstr ""
 
@@ -47,7 +47,7 @@ msgstr ""
 msgid "%s  ·  climb %d of %d"
 msgstr ""
 
-#: app/scenes/course_detail.gd:291
+#: app/scenes/course_detail.gd:292
 msgid "%s %.1f km at %.1f %%"
 msgstr ""
 
@@ -63,11 +63,11 @@ msgstr ""
 msgid "%s behind"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:699
+#: app/scenes/ride_screen.gd:703
 msgid "%s connected"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:703
+#: app/scenes/ride_screen.gd:707
 msgid "%s disconnected — reconnecting…"
 msgstr ""
 
@@ -79,7 +79,7 @@ msgstr ""
 msgid "%s has no GPS track. Import its GPX route, then add the video to the course."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:735
+#: app/scenes/courses_tab.gd:737
 msgid "%s has no GPS, so it cannot become a course by itself."
 msgstr ""
 
@@ -91,7 +91,7 @@ msgstr ""
 msgid "%s no longer accepts the account: connect it again."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:709
+#: app/scenes/ride_screen.gd:713
 msgid "%s not found"
 msgstr ""
 
@@ -107,7 +107,7 @@ msgstr ""
 msgid "%s was not found. It holds the course's slopes: put it next to the RLV file."
 msgstr ""
 
-#: app/scenes/course_detail.gd:294 app/scenes/ride_screen.gd:577
+#: app/scenes/course_detail.gd:295 app/scenes/ride_screen.gd:577
 msgid "(best %s)"
 msgstr ""
 
@@ -115,7 +115,7 @@ msgstr ""
 msgid "+ Step"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:736
+#: app/scenes/courses_tab.gd:738
 msgid "1. Import the GPX route of the ride shown in the video."
 msgstr ""
 
@@ -123,7 +123,7 @@ msgstr ""
 msgid "2 × 8-minute test"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:737
+#: app/scenes/courses_tab.gd:739
 msgid "2. Open that course."
 msgstr ""
 
@@ -135,7 +135,7 @@ msgstr ""
 msgid "20-minute test"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:739
+#: app/scenes/courses_tab.gd:741
 msgid "3. Press the pencil beside its name, then Add video…, and place the route in the video."
 msgstr ""
 
@@ -151,7 +151,7 @@ msgstr ""
 msgid "A balance of visual quality and performance."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:703
+#: app/scenes/courses_tab.gd:705
 msgid "A course named “%s” exists already. Replace it, or keep both?"
 msgstr ""
 
@@ -223,7 +223,7 @@ msgstr ""
 msgid "Add video…"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:344
+#: app/scenes/workouts_tab.gd:345
 msgid "Added to your workouts."
 msgstr ""
 
@@ -259,7 +259,7 @@ msgstr ""
 msgid "All time"
 msgstr ""
 
-#: app/scenes/course_detail.gd:195
+#: app/scenes/course_detail.gd:196
 msgid "Along the video"
 msgstr ""
 
@@ -275,7 +275,7 @@ msgstr ""
 msgid "Anaerobic"
 msgstr ""
 
-#: app/scenes/start_page.gd:99
+#: app/scenes/start_page.gd:98
 msgid "Analysis"
 msgstr ""
 
@@ -283,11 +283,11 @@ msgstr ""
 msgid "Applies from the next ride."
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Apr"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:652
+#: app/scenes/courses_tab.gd:654
 msgid "Ascending"
 msgstr ""
 
@@ -295,7 +295,7 @@ msgstr ""
 msgid "Ascent to go"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Aug"
 msgstr ""
 
@@ -331,7 +331,7 @@ msgstr ""
 msgid "B (right pod)"
 msgstr ""
 
-#: app/scenes/course_detail.gd:122 app/scenes/history_screen.gd:143 app/ui/ride_bar.gd:131
+#: app/scenes/course_detail.gd:122 app/scenes/history_screen.gd:143 app/scenes/remote_dialog.gd:28 app/ui/ride_bar.gd:131
 msgid "Back"
 msgstr ""
 
@@ -355,7 +355,7 @@ msgstr ""
 msgid "Bike weight"
 msgstr ""
 
-#: app/scenes/course_detail.gd:107 app/scenes/workouts_tab.gd:367 core/torqa-app/src/import.rs:43
+#: app/scenes/course_detail.gd:107 app/scenes/workouts_tab.gd:368 core/torqa-app/src/import.rs:43
 msgid "Building 3D world"
 msgstr ""
 
@@ -371,7 +371,7 @@ msgstr ""
 msgid "Camera, difficulty, weather, HUD; finish or abort (keyboard: S)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:668
+#: app/scenes/ride_screen.gd:672
 msgid "Camera: %s"
 msgstr ""
 
@@ -407,7 +407,7 @@ msgstr ""
 msgid "Chainring"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:111
+#: app/scenes/remote_dialog.gd:114
 msgid "Change it if another program uses this port"
 msgstr ""
 
@@ -419,7 +419,7 @@ msgstr ""
 msgid "Checking…"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:306
+#: app/scenes/workouts_tab.gd:307
 msgid "Choose"
 msgstr ""
 
@@ -435,7 +435,7 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:67 app/scenes/courses_tab.gd:71 app/scenes/courses_tab.gd:426
+#: app/scenes/courses_tab.gd:67 app/scenes/courses_tab.gd:71 app/scenes/courses_tab.gd:428
 msgid "Clear filters"
 msgstr ""
 
@@ -479,7 +479,7 @@ msgstr ""
 msgid "Climbed"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd:23 app/scenes/courses_tab.gd:26 app/scenes/history_screen.gd:410 app/ui/course_card.gd:167
+#: app/scenes/analysis_tab.gd:23 app/scenes/courses_tab.gd:26 app/scenes/history_screen.gd:410 app/ui/course_card.gd:171
 msgid "Climbing"
 msgstr ""
 
@@ -703,15 +703,15 @@ msgstr ""
 msgid "Could not upload the activity to %s: %s"
 msgstr ""
 
-#: app/ui/course_card.gd:134
+#: app/ui/course_card.gd:138
 msgid "Countries"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:471 app/scenes/courses_tab.gd:36 app/ui/course_card.gd:132
+#: app/scenes/courses_tab.gd:473 app/scenes/courses_tab.gd:36 app/ui/course_card.gd:136
 msgid "Country"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:288
+#: app/scenes/courses_tab.gd:290
 msgid "Course name in use"
 msgstr ""
 
@@ -719,7 +719,7 @@ msgstr ""
 msgid "Course preparation stopped unexpectedly."
 msgstr ""
 
-#: app/scenes/start_page.gd:96
+#: app/scenes/start_page.gd:95
 msgid "Courses"
 msgstr ""
 
@@ -727,7 +727,7 @@ msgstr ""
 msgid "Custom"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:208
+#: app/scenes/button_dialog.gd:213
 msgid "D-Fly channel %d"
 msgstr ""
 
@@ -747,7 +747,7 @@ msgstr ""
 msgid "Date added"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Dec"
 msgstr ""
 
@@ -755,7 +755,7 @@ msgstr ""
 msgid "Default"
 msgstr ""
 
-#: app/scenes/course_detail.gd:189 app/scenes/history_screen.gd:231 app/scenes/profile_tab.gd:69 app/ui/workout_editor.gd:190 app/ui/workout_editor.gd:197
+#: app/scenes/course_detail.gd:190 app/scenes/history_screen.gd:231 app/scenes/profile_tab.gd:69 app/ui/workout_editor.gd:190 app/ui/workout_editor.gd:197
 msgid "Delete"
 msgstr ""
 
@@ -763,7 +763,7 @@ msgstr ""
 msgid "Delete course"
 msgstr ""
 
-#: app/scenes/course_detail.gd:187
+#: app/scenes/course_detail.gd:188
 msgid "Delete course?"
 msgstr ""
 
@@ -787,7 +787,7 @@ msgstr ""
 msgid "Delete workout?"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:652
+#: app/scenes/courses_tab.gd:654
 msgid "Descending"
 msgstr ""
 
@@ -799,7 +799,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:142 app/scenes/ride_settings_dialog.gd:33 app/scenes/start_page.gd:101
+#: app/scenes/devices_tab.gd:142 app/scenes/ride_settings_dialog.gd:33 app/scenes/start_page.gd:100
 msgid "Devices"
 msgstr ""
 
@@ -819,7 +819,7 @@ msgstr ""
 msgid "Distance"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:111 app/scenes/button_dialog.gd:165 app/scenes/history_screen.gd:306 app/scenes/remote_dialog.gd:74 app/scenes/remote_dialog.gd:130 app/scenes/ride_settings_dialog.gd:25 app/scenes/settings_dialog.gd:15
+#: app/scenes/button_dialog.gd:112 app/scenes/button_dialog.gd:166 app/scenes/history_screen.gd:306 app/scenes/remote_dialog.gd:77 app/scenes/remote_dialog.gd:133 app/scenes/ride_settings_dialog.gd:25 app/scenes/settings_dialog.gd:15
 msgid "Done"
 msgstr ""
 
@@ -863,7 +863,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:116
+#: app/scenes/button_dialog.gd:117
 msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
 msgstr ""
 
@@ -875,7 +875,7 @@ msgstr ""
 msgid "Easy for 5 minutes before the test"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:251
+#: app/scenes/workouts_tab.gd:252
 msgid "Edit a copy…"
 msgstr ""
 
@@ -887,7 +887,7 @@ msgstr ""
 msgid "Edit the course's name and video"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:138 app/scenes/workouts_tab.gd:251
+#: app/scenes/profile_tab.gd:138 app/scenes/workouts_tab.gd:252
 msgid "Edit…"
 msgstr ""
 
@@ -963,7 +963,7 @@ msgstr ""
 msgid "Fatigue %d"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Feb"
 msgstr ""
 
@@ -979,7 +979,7 @@ msgstr ""
 msgid "Fill in every field."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:312
+#: app/scenes/courses_tab.gd:314
 msgid "Filters"
 msgstr ""
 
@@ -995,7 +995,7 @@ msgstr ""
 msgid "Finding the countries"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:41
+#: app/scenes/button_dialog.gd:59 app/scenes/ride_settings_dialog.gd:41
 msgid "Finish & save"
 msgstr ""
 
@@ -1071,7 +1071,7 @@ msgstr ""
 msgid "Fresh"
 msgstr ""
 
-#: app/ui/ui_theme.gd:346
+#: app/ui/ui_theme.gd:363
 msgid "Fri"
 msgstr ""
 
@@ -1083,7 +1083,7 @@ msgstr ""
 msgid "Full view"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:266
+#: app/scenes/courses_tab.gd:268
 msgid "GPX routes"
 msgstr ""
 
@@ -1111,7 +1111,7 @@ msgstr ""
 msgid "Grey zone"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:326
+#: app/scenes/courses_tab.gd:328
 msgid "Group"
 msgstr ""
 
@@ -1179,7 +1179,7 @@ msgstr ""
 msgid "Hilly"
 msgstr ""
 
-#: app/scenes/start_page.gd:98
+#: app/scenes/start_page.gd:97
 msgid "History"
 msgstr ""
 
@@ -1191,7 +1191,11 @@ msgstr ""
 msgid "Hold a power or a heart rate, or ride a structured workout step by step."
 msgstr ""
 
-#: app/scenes/course_detail.gd:193
+#: app/scenes/remote_dialog.gd:29
+msgid "Hold to finish"
+msgstr ""
+
+#: app/scenes/course_detail.gd:194
 msgid "How do you want to ride?"
 msgstr ""
 
@@ -1199,7 +1203,7 @@ msgstr ""
 msgid "Imperial (mi, lb)"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:211 app/scenes/courses_tab.gd:281
+#: app/scenes/courses_tab.gd:211 app/scenes/courses_tab.gd:283
 msgid "Import"
 msgstr ""
 
@@ -1207,7 +1211,7 @@ msgstr ""
 msgid "Import…"
 msgstr ""
 
-#: app/scenes/course_detail.gd:196
+#: app/scenes/course_detail.gd:197
 msgid "In 3D"
 msgstr ""
 
@@ -1227,27 +1231,27 @@ msgstr ""
 msgid "Its file is deleted from your workouts."
 msgstr ""
 
-#: app/scenes/course_detail.gd:188
+#: app/scenes/course_detail.gd:189
 msgid "Its file is deleted; your rides on it are kept."
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Jan"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Jul"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Jun"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:290
+#: app/scenes/courses_tab.gd:292
 msgid "Keep both"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:83
+#: app/scenes/remote_dialog.gd:86
 msgid "Keep its screen on while you ride."
 msgstr ""
 
@@ -1283,7 +1287,7 @@ msgstr ""
 msgid "Left (left pod)"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:469 app/scenes/courses_tab.gd:25 app/scenes/courses_tab.gd:35 app/ui/course_card.gd:166
+#: app/scenes/courses_tab.gd:471 app/scenes/courses_tab.gd:25 app/scenes/courses_tab.gd:35 app/ui/course_card.gd:170
 msgid "Length"
 msgstr ""
 
@@ -1295,7 +1299,7 @@ msgstr ""
 msgid "Light"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:749
+#: app/scenes/courses_tab.gd:751
 msgid "Loading %s …"
 msgstr ""
 
@@ -1311,7 +1315,7 @@ msgstr ""
 msgid "Looking for your devices… wake them by pedalling or putting on the strap."
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:275
+#: app/scenes/workouts_tab.gd:276
 msgid "Looking up today's plan…"
 msgstr ""
 
@@ -1327,7 +1331,7 @@ msgstr ""
 msgid "Male rider"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Mar"
 msgstr ""
 
@@ -1343,7 +1347,7 @@ msgstr ""
 msgid "Maximum"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "May"
 msgstr ""
 
@@ -1379,7 +1383,7 @@ msgstr ""
 msgid "Moderate"
 msgstr ""
 
-#: app/ui/ui_theme.gd:346
+#: app/ui/ui_theme.gd:363
 msgid "Mon"
 msgstr ""
 
@@ -1415,7 +1419,7 @@ msgstr ""
 msgid "Name"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:280
+#: app/scenes/courses_tab.gd:282
 msgid "Name the course"
 msgstr ""
 
@@ -1427,7 +1431,7 @@ msgstr ""
 msgid "Neuromuscular"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:117
+#: app/scenes/remote_dialog.gd:120
 msgid "New address"
 msgstr ""
 
@@ -1463,11 +1467,11 @@ msgstr ""
 msgid "Next: free ride for %s"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:526
+#: app/scenes/courses_tab.gd:528
 msgid "No country"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:416
+#: app/scenes/courses_tab.gd:418
 msgid "No courses match"
 msgstr ""
 
@@ -1495,7 +1499,7 @@ msgstr ""
 msgid "No route is loaded."
 msgstr ""
 
-#: app/scenes/start_page.gd:188 app/scenes/start_page.gd:197
+#: app/scenes/start_page.gd:196 app/scenes/start_page.gd:205
 msgid "No trainer connected — choose one under Devices."
 msgstr ""
 
@@ -1547,27 +1551,31 @@ msgstr ""
 msgid "Not found: %s. Wake the devices, then scan again."
 msgstr ""
 
-#: app/scenes/button_dialog.gd:218
+#: app/scenes/button_dialog.gd:223
 msgid "Nothing"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:421
+#: app/scenes/courses_tab.gd:423
 msgid "Nothing in your library matches this search and these filters."
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:319
+#: app/scenes/workouts_tab.gd:320
 msgid "Nothing planned for today."
 msgstr ""
 
-#: app/scenes/ride_screen.gd:733
+#: app/scenes/ride_screen.gd:737
 msgid "Nothing recorded."
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Nov"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/scenes/remote_dialog.gd:27
+msgid "OK"
+msgstr ""
+
+#: app/ui/ui_theme.gd:365
 msgid "Oct"
 msgstr ""
 
@@ -1595,7 +1603,7 @@ msgstr ""
 msgid "Only the HUD, on top of other windows, e.g. over a video (O)"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:257
+#: app/scenes/courses_tab.gd:259
 msgid "Open a GPX route, video or Torqa course"
 msgstr ""
 
@@ -1647,7 +1655,7 @@ msgstr ""
 msgid "Pause the ride: the clock and the trainer wait (P)"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:22 app/scenes/ride_screen.gd:682
+#: app/scenes/remote_dialog.gd:22 app/scenes/ride_screen.gd:686
 msgid "Paused"
 msgstr ""
 
@@ -1655,7 +1663,7 @@ msgstr ""
 msgid "Per kilogram"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:119
+#: app/scenes/remote_dialog.gd:122
 msgid "Phones and tablets with the old address can no longer control the ride"
 msgstr ""
 
@@ -1683,7 +1691,7 @@ msgstr ""
 msgid "Points must follow each other on the route and in the video."
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:105
+#: app/scenes/remote_dialog.gd:108
 msgid "Port"
 msgstr ""
 
@@ -1723,7 +1731,7 @@ msgstr ""
 msgid "Power profile"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:226
+#: app/scenes/workouts_tab.gd:227
 msgid "Power rises each minute until you give way. FTP: 75 % of your best minute."
 msgstr ""
 
@@ -1743,7 +1751,7 @@ msgstr ""
 msgid "Press"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd:47 app/scenes/start_page.gd:100
+#: app/scenes/profile_dialog.gd:47 app/scenes/start_page.gd:99
 msgid "Profile"
 msgstr ""
 
@@ -1803,7 +1811,7 @@ msgstr ""
 msgid "Recovery"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:73 app/scenes/remote_dialog.gd:129 core/torqa-remote/src/lib.rs:34
+#: app/scenes/remote_dialog.gd:76 app/scenes/remote_dialog.gd:132 core/torqa-remote/src/lib.rs:34
 msgid "Remote"
 msgstr ""
 
@@ -1823,7 +1831,7 @@ msgstr ""
 msgid "Rename the ride"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:289
+#: app/scenes/courses_tab.gd:291
 msgid "Replace"
 msgstr ""
 
@@ -1895,7 +1903,7 @@ msgstr ""
 msgid "Route"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:265
+#: app/scenes/courses_tab.gd:267
 msgid "Routes, videos and courses"
 msgstr ""
 
@@ -1935,7 +1943,7 @@ msgstr ""
 msgid "Rust libraries"
 msgstr ""
 
-#: app/ui/ui_theme.gd:346
+#: app/ui/ui_theme.gd:363
 msgid "Sat"
 msgstr ""
 
@@ -1943,7 +1951,7 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:746
+#: app/scenes/ride_screen.gd:750
 msgid "Saved %s"
 msgstr ""
 
@@ -1951,7 +1959,7 @@ msgstr ""
 msgid "Saved as %s"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:335
+#: app/scenes/workouts_tab.gd:336
 msgid "Saved to your workouts."
 msgstr ""
 
@@ -1959,7 +1967,7 @@ msgstr ""
 msgid "Scan for all devices"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:80
+#: app/scenes/remote_dialog.gd:83
 msgid "Scan the code with a phone or tablet on the same Wi-Fi, or open the address in its browser."
 msgstr ""
 
@@ -1975,7 +1983,7 @@ msgstr ""
 msgid "Search"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:305
+#: app/scenes/courses_tab.gd:307
 msgid "Search courses"
 msgstr ""
 
@@ -1983,7 +1991,7 @@ msgstr ""
 msgid "Searching…"
 msgstr ""
 
-#: app/ui/ui_theme.gd:348
+#: app/ui/ui_theme.gd:365
 msgid "Sep"
 msgstr ""
 
@@ -1991,7 +1999,7 @@ msgstr ""
 msgid "Set a start and an end point for the video on the route."
 msgstr ""
 
-#: app/scenes/settings_dialog.gd:14 app/scenes/start_page.gd:83
+#: app/scenes/settings_dialog.gd:14 app/scenes/start_page.gd:82
 msgid "Settings"
 msgstr ""
 
@@ -2055,7 +2063,7 @@ msgstr ""
 msgid "Smaller (−)"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:318
+#: app/scenes/courses_tab.gd:320
 msgid "Sort"
 msgstr ""
 
@@ -2087,7 +2095,7 @@ msgstr ""
 msgid "Steady"
 msgstr ""
 
-#: app/ui/course_card.gd:168
+#: app/ui/course_card.gd:172
 msgid "Steepest"
 msgstr ""
 
@@ -2111,7 +2119,7 @@ msgstr ""
 msgid "Structured workout"
 msgstr ""
 
-#: app/ui/ui_theme.gd:346
+#: app/ui/ui_theme.gd:363
 msgid "Sun"
 msgstr ""
 
@@ -2139,7 +2147,7 @@ msgstr ""
 msgid "Tempo"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:468 app/scenes/courses_tab.gd:34
+#: app/scenes/courses_tab.gd:470 app/scenes/courses_tab.gd:34
 msgid "Terrain"
 msgstr ""
 
@@ -2207,7 +2215,7 @@ msgstr ""
 msgid "This address no longer works: scan the new code in Torqa."
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:97
+#: app/scenes/remote_dialog.gd:100
 msgid "This computer has no network: connect it to the same Wi-Fi as the phone or tablet."
 msgstr ""
 
@@ -2215,7 +2223,7 @@ msgstr ""
 msgid "This course already has a video."
 msgstr ""
 
-#: app/scenes/course_detail.gd:194
+#: app/scenes/course_detail.gd:195
 msgid "This course has a video. Ride along it, or in the 3D world?"
 msgstr ""
 
@@ -2235,7 +2243,7 @@ msgstr ""
 msgid "Threshold"
 msgstr ""
 
-#: app/ui/ui_theme.gd:346
+#: app/ui/ui_theme.gd:363
 msgid "Thu"
 msgstr ""
 
@@ -2243,11 +2251,11 @@ msgstr ""
 msgid "Time"
 msgstr ""
 
-#: app/scenes/course_detail.gd:228
+#: app/scenes/course_detail.gd:229
 msgid "Time at %d %% FTP"
 msgstr ""
 
-#: app/ui/course_card.gd:49
+#: app/ui/course_card.gd:53
 msgid "Time estimate"
 msgstr ""
 
@@ -2283,7 +2291,7 @@ msgstr ""
 msgid "Torqa could not start."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:274
+#: app/scenes/courses_tab.gd:276
 msgid "Torqa courses"
 msgstr ""
 
@@ -2315,7 +2323,7 @@ msgstr ""
 msgid "Trainer difficulty −10 %"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:639
+#: app/scenes/ride_screen.gd:643
 msgid "Trainer difficulty: %d %%"
 msgstr ""
 
@@ -2327,15 +2335,15 @@ msgstr ""
 msgid "Transition"
 msgstr ""
 
-#: app/ui/ui_theme.gd:346
+#: app/ui/ui_theme.gd:363
 msgid "Tue"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:233
+#: app/scenes/workouts_tab.gd:234
 msgid "Twice 8 minutes all out, 10 easy between. FTP: 90 % of their average."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:467 app/scenes/courses_tab.gd:33
+#: app/scenes/courses_tab.gd:469 app/scenes/courses_tab.gd:33
 msgid "Type"
 msgstr ""
 
@@ -2395,7 +2403,7 @@ msgstr ""
 msgid "Very light"
 msgstr ""
 
-#: app/scenes/course_edit_dialog.gd:71 app/scenes/courses_tab.gd:38 app/ui/course_card.gd:87
+#: app/scenes/course_edit_dialog.gd:71 app/scenes/courses_tab.gd:38 app/ui/course_card.gd:91
 msgid "Video"
 msgstr ""
 
@@ -2403,19 +2411,19 @@ msgstr ""
 msgid "Video %s was not found. Put it next to the course file."
 msgstr ""
 
-#: app/scenes/course_detail.gd:373
+#: app/scenes/course_detail.gd:374
 msgid "Video added: this course is ridden along it now."
 msgstr ""
 
-#: app/scenes/course_detail.gd:380
+#: app/scenes/course_detail.gd:381
 msgid "Video aligned with the route."
 msgstr ""
 
-#: app/scenes/course_detail.gd:386
+#: app/scenes/course_detail.gd:387
 msgid "Video removed: this course is ridden in 3D."
 msgstr ""
 
-#: app/scenes/courses_tab.gd:295
+#: app/scenes/courses_tab.gd:297
 msgid "Video without GPS"
 msgstr ""
 
@@ -2423,7 +2431,7 @@ msgstr ""
 msgid "Videos"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:271
+#: app/scenes/courses_tab.gd:273
 msgid "Videos with GPS, route videos (Incyclist .xml, Tacx .rlv)"
 msgstr ""
 
@@ -2455,7 +2463,7 @@ msgstr ""
 msgid "Warm-up  ·  %s left"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:230
+#: app/scenes/workouts_tab.gd:231
 msgid "Warm-up and activation, then 20 minutes all out. FTP: 95 % of their average."
 msgstr ""
 
@@ -2467,7 +2475,7 @@ msgstr ""
 msgid "Weather"
 msgstr ""
 
-#: app/ui/ui_theme.gd:346
+#: app/ui/ui_theme.gd:363
 msgid "Wed"
 msgstr ""
 
@@ -2487,11 +2495,11 @@ msgstr ""
 msgid "What the buttons do"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:94
+#: app/scenes/button_dialog.gd:95
 msgid "What the buttons of %s do"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:92
+#: app/scenes/button_dialog.gd:93
 msgid "What the remote's buttons do"
 msgstr ""
 
@@ -2523,11 +2531,11 @@ msgstr ""
 msgid "Workout intensity −5 %"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:648
+#: app/scenes/ride_screen.gd:652
 msgid "Workout intensity: %d %%"
 msgstr ""
 
-#: app/scenes/ride_screen.gd:654
+#: app/scenes/ride_screen.gd:658
 msgid "Workout: next step"
 msgstr ""
 
@@ -2535,7 +2543,7 @@ msgstr ""
 msgid "Workout: skip step"
 msgstr ""
 
-#: app/scenes/start_page.gd:97 app/scenes/workouts_tab.gd:176
+#: app/scenes/start_page.gd:96 app/scenes/workouts_tab.gd:176
 msgid "Workouts"
 msgstr ""
 
@@ -2563,7 +2571,7 @@ msgstr ""
 msgid "Your best on this route"
 msgstr ""
 
-#: app/scenes/course_detail.gd:286
+#: app/scenes/course_detail.gd:287
 msgid "Your best time on this route: %s"
 msgstr ""
 
@@ -2671,7 +2679,7 @@ msgstr ""
 msgid "★ Personal record"
 msgstr ""
 
-#: app/scenes/course_detail.gd:178 app/scenes/course_detail.gd:262
+#: app/scenes/course_detail.gd:178 app/scenes/course_detail.gd:263
 msgctxt "ride_action"
 msgid "Ride"
 msgstr ""

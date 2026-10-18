@@ -39,6 +39,57 @@ pub enum Control {
     IntensityDown,
     /// On to the next step of a structured workout.
     SkipStep,
+    /// Ends the ride and saves it, as the ride settings' "Finish & save" does.
+    FinishRide,
+}
+
+/// A step through Torqa's screens, as a TV remote's arrows, OK and back take it (#228): the
+/// front end moves its focus, presses what has it, or goes back.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Navigation {
+    /// Focus up.
+    Up,
+    /// Focus down.
+    Down,
+    /// Focus left.
+    Left,
+    /// Focus right.
+    Right,
+    /// Presses what has the focus.
+    Accept,
+    /// Closes a dialog, or leaves the screen for the one before.
+    Back,
+}
+
+impl Navigation {
+    /// Every step, in the order a remote shows them.
+    pub const ALL: [Self; 6] = [
+        Self::Up,
+        Self::Down,
+        Self::Left,
+        Self::Right,
+        Self::Accept,
+        Self::Back,
+    ];
+
+    /// Its name for the front end and the remote's page.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Up => "up",
+            Self::Down => "down",
+            Self::Left => "left",
+            Self::Right => "right",
+            Self::Accept => "ok",
+            Self::Back => "back",
+        }
+    }
+
+    /// The step called `name`, if any.
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|step| step.name() == name)
+    }
 }
 
 /// What a button press does (#139).
@@ -58,7 +109,7 @@ pub enum ButtonAction {
 
 impl ButtonAction {
     /// Every action a button can be given, in the order to offer them.
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 16] = [
         Self::ShiftUp,
         Self::ShiftDown,
         Self::ShiftUpTwo,
@@ -74,6 +125,7 @@ impl ButtonAction {
         Self::Control(Control::IntensityUp),
         Self::Control(Control::IntensityDown),
         Self::Control(Control::SkipStep),
+        Self::Control(Control::FinishRide),
     ];
 
     /// Its name in the settings files, for the front end and the phone remote (#228).
@@ -95,6 +147,7 @@ impl ButtonAction {
             Self::Control(Control::IntensityUp) => "intensity_up",
             Self::Control(Control::IntensityDown) => "intensity_down",
             Self::Control(Control::SkipStep) => "skip_step",
+            Self::Control(Control::FinishRide) => "finish_ride",
         }
     }
 
@@ -305,6 +358,12 @@ pub trait ShiftInput: Send {
         Vec::new()
     }
 
+    /// The steps through Torqa's screens asked for up to the last [`Self::poll`], oldest
+    /// first, with or without a ride; only a remote has them (#228).
+    fn navigation(&mut self) -> Vec<Navigation> {
+        Vec::new()
+    }
+
     /// Whether it can shift now: a wireless controller may drop out; a keyboard always can.
     fn connected(&self) -> bool {
         true
@@ -320,6 +379,14 @@ pub trait ShiftInput: Send {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_navigation_step_has_its_own_name() {
+        for step in Navigation::ALL {
+            assert_eq!(Navigation::from_name(step.name()), Some(step));
+        }
+        assert_eq!(Navigation::from_name("home"), None);
+    }
 
     #[test]
     fn every_button_action_has_its_own_name() {

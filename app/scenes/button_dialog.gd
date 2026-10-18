@@ -56,6 +56,7 @@ const ACTION_LABELS: Dictionary[String, String] = {
 	"intensity_up": "Workout intensity +5 %",
 	"intensity_down": "Workout intensity −5 %",
 	"skip_step": "Workout: skip step",
+	"finish_ride": "Finish & save",
 }
 # i18n-end
 ## A Di2's buttons are its four D-Fly channels.
@@ -189,6 +190,10 @@ func _layout() -> void:
 		for press: int in range(PRESSES.size()):
 			var option: OptionButton = _assignments[channel * PRESSES.size() + press]
 			option.visible = channel < buttons and press < presses
+			# The remote's page ends the ride from its header, held: never on one tap.
+			for i: int in range(option.item_count):
+				var action: String = option.get_item_metadata(i)
+				option.set_item_disabled(i, _model == PHONE_REMOTE and action == "finish_ride")
 
 
 ## What the shifter's buttons are called, in the core's numbering.

@@ -70,3 +70,25 @@ too, so the two never disagree, and any phone, tablet or computer works.
 - A touch screen has no feel of a button, and a web page cannot use the phone's volume keys.
   A Bluetooth shifter stays the better choice where there is one.
 - `connected()` can lag a phone that vanished without a word by up to 25 s.
+
+## Amendment 2026-10-18: a TV remote between rides, and finishing (R87)
+
+- **Navigation is a step, not a control.** `Navigation` (up, down, left, right, OK, back) sits
+  in the domain beside `Control`, and `ShiftInput::navigation()` has an empty default. Unlike
+  controls, which are dropped between rides, the app passes steps on at any time
+  (`AppEvent::Navigate`): starting a ride is what they are for. The page posts `nav/<step>`;
+  between rides it shows the pad instead of the ride's buttons.
+- **Godot moves its own focus.** `RemoteNavigation` turns a step into the input action the
+  keyboard's key stands for (`ui_up` … `ui_accept`, `ui_cancel`), so focus follows Godot's
+  own neighbour search, and the topmost open dialog takes it first. When nothing has the focus,
+  the first arrow gives it to the screen's main control (the group `remote_first`), else to its
+  first focusable control. Back closes a dialog by itself; otherwise the main scene goes back a
+  screen, for Escape as well.
+- **Focus shows.** The theme drew no focus, so keyboard navigation went unseen. Focus styles
+  are now an accent ring. Godot's `gui/common/show_focus_state_on_pointer_event`, at its
+  default, keeps the ring from showing after a click. The start page's tabs and the course
+  cards take the focus; a card draws its own ring and opens on OK.
+- **Finishing is held.** `Control::FinishRide` ends and saves the ride, as the ride settings'
+  "Finish & save" does, and is offered for shifters' buttons. The page offers it only from its
+  header, held for a second, and its slots cannot be given it (greyed in the dialog), so a
+  tap never ends a ride.

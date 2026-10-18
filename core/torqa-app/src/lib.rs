@@ -29,7 +29,7 @@ use torqa_devices::{DeviceEvent, DeviceHandle};
 use torqa_domain::files::UsedFiles;
 use torqa_domain::profile::{Drivetrain, Profile};
 use torqa_domain::recording::{RideSummary, Sample};
-use torqa_domain::shifting::{ButtonMap, Control, Shift, ShiftInput};
+use torqa_domain::shifting::{ButtonMap, Control, Navigation, Shift, ShiftInput};
 use torqa_domain::telemetry::{CadenceSource, Telemetry, TrainerControl};
 use torqa_domain::units::{Meters, MetersPerSecond, Percent, Watts};
 use torqa_physics::{DescentMode, RiderSetup, VirtualGears};
@@ -357,6 +357,8 @@ pub enum AppEvent {
     },
     /// A shifter's button asked for a ride control (#139), during a ride.
     Control(Control),
+    /// The remote asked for a step through the screens (#228), with or without a ride.
+    Navigate(Navigation),
     /// A rider's account on a training platform is connected (R29).
     AccountConnected {
         /// The rider's profile id.
@@ -482,6 +484,8 @@ fn drive_shift_input(
             events.push(AppEvent::Control(control));
         }
     }
+    // Screens are gone through between rides as well: that is how one is started (#228).
+    events.extend(input.navigation().into_iter().map(AppEvent::Navigate));
     let connected = input.connected();
     if connected != *was_connected {
         *was_connected = connected;

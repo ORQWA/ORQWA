@@ -2013,3 +2013,9 @@ msgstr "Code"
 msgid "What the remote's buttons do"
 msgstr "Was die Tasten der Fernbedienung tun"
 
+msgid "OK"
+msgstr "OK"
+
+msgid "Hold to finish"
+msgstr "Zum Beenden gedrückt halten"
+
