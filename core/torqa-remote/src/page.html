@@ -37,6 +37,8 @@ button {
 }
 button.pressed { background: var(--accent); }
 body.idle button { opacity: 0.45; }
+/* Stays in its place, so the layout never moves, but does nothing in the ride under way. */
+button.inert { opacity: 0.35; }
 button svg {
   fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round;
   stroke-linejoin: round; width: 24px; height: 24px; flex: none;
@@ -218,8 +220,6 @@ let shown = "";
 // Whether `action` does anything in the ride as it is: with the bike's own gears there is
 // nothing to shift, the trainer difficulty is a course's, intensity and steps a workout's.
 function applies(action) {
-  // Held from the header instead: a tap must never end the ride.
-  if (action === "finish_ride") return false;
   if (action.startsWith("shift_")) return !state.riding || state.gear !== null;
   if (action.startsWith("difficulty_")) return !state.workout;
   if (action.startsWith("intensity_") || action === "skip_step") return state.workout;
@@ -284,7 +284,9 @@ function show() {
   }
   for (const button of document.querySelectorAll("button[data-action]")) {
     const action = button.dataset.action;
-    button.hidden = !applies(action);
+    // Held from the header instead: a tap must never end the ride.
+    button.hidden = action === "finish_ride";
+    button.classList.toggle("inert", !applies(action));
     const shownAs = action === "pause" && state.paused ? "resume" : action;
     button.querySelector("svg").innerHTML = ICONS[shownAs] ?? "";
     button.querySelector("span").textContent = word(shownAs);
