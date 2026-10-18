@@ -32,6 +32,7 @@ gdscript/warnings/return_value_discarded=1
 
 [rendering]
 
+textures/vram_compression/import_s3tc_bptc=true
 textures/vram_compression/import_etc2_astc=true
 
 [internationalization]
