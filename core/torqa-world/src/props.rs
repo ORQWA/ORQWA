@@ -198,7 +198,8 @@ fn built_up(station: &Station, roadside: &Roadside) -> bool {
 /// Whether the road's edge on `side` is free here: no street joins it nearby.
 fn open(station: &Station, side: f64, roadside: &Roadside) -> bool {
     !roadside.mouths.iter().any(|&(along, mouth_side, half)| {
-        mouth_side == side && (along - station.distance).abs() < half + MOUTH_CLEAR
+        // Sides are ±1.
+        (mouth_side - side).abs() < 1.0 && (along - station.distance).abs() < half + MOUTH_CLEAR
     })
 }
 
@@ -250,8 +251,6 @@ fn push(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     /// Every model the rules place, as `art/props` builds them.
     const PLACED: [&str; 5] = [
         "guard_rail",

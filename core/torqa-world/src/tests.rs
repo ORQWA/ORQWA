@@ -3955,7 +3955,8 @@ async fn snow_poles_replace_delineators_on_mountain_roads() {
     let route = route_north_at(1800.0, &map).await;
     let world = generate(&route, &mut Level(1800.0), &map, &mut |_, _| {}).await;
 
-    assert!(props_of(&world, "delineator").is_empty());
+    let posts = props_of(&world, "delineator");
+    assert!(posts.is_empty(), "no delineators up high: {posts:?}");
     let poles = along_middle(&props_of(&world, "snow_pole"));
     // Every 25 m on both sides of 800 m.
     assert!((60..=68).contains(&poles.len()), "{} poles", poles.len());

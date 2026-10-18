@@ -4158,7 +4158,7 @@ mod tests {
         app.load_route(fixture, true);
         run_until(&mut app, |e| matches!(e, AppEvent::WorldReady { .. }));
         let world = app.world().expect("the world");
-        let mut counts: std::collections::BTreeMap<&str, usize> = Default::default();
+        let mut counts = std::collections::BTreeMap::<&str, usize>::new();
         for chunk in &world.chunks {
             for (name, buffer) in &chunk.props.models {
                 *counts.entry(name.as_str()).or_default() += buffer.len() / 12;
