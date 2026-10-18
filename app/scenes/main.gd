@@ -31,7 +31,7 @@ func _ready() -> void:
 	add_child(_video)
 	move_child(_video, _world.get_index() + 1)
 	_world.bind(_torqa)
-	_world.apply_quality(_torqa.graphics_quality())
+	_world.apply_quality(_torqa.graphics_quality(), _torqa.graphics_options())
 	_start.bind(_torqa)
 	_ride.bind(_torqa, _world)
 	_summary.bind(_torqa)
@@ -67,7 +67,7 @@ func _on_ride_started(options: Dictionary) -> void:
 	if on_its_own:
 		pass  # A workout on its own (R58) is the ride screen alone, over its own backdrop.
 	elif not _torqa.riding_along_video():
-		_world.apply_quality(_torqa.graphics_quality())
+		_world.apply_quality(_torqa.graphics_quality(), _torqa.graphics_options())
 		_world.apply_options(options)
 		_world.reset_view()
 		_world.show()

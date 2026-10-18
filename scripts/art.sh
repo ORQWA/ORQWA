@@ -5,6 +5,13 @@ set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
+# From Git Bash on Windows, as in dev.sh: Docker wants a Windows path, and the container paths
+# must not be rewritten into Windows ones.
+if command -v cygpath >/dev/null 2>&1; then
+    root="$(cygpath -m "$root")"
+    export MSYS_NO_PATHCONV=1
+fi
+
 docker build -q --platform linux/amd64 -t torqa-art "$root/art" >/dev/null
 
 exec docker run --rm --platform linux/amd64 \

@@ -47,6 +47,10 @@ msgstr ""
 msgid "%s  ·  climb %d of %d"
 msgstr ""
 
+#: app/ui/graphics_settings.gd:183
+msgid "%s %%"
+msgstr ""
+
 #: app/scenes/course_detail.gd:291
 msgid "%s %.1f km at %.1f %%"
 msgstr ""
@@ -73,6 +77,10 @@ msgstr ""
 
 #: core/torqa-app/src/failure.rs:170
 msgid "%s does not follow this route."
+msgstr ""
+
+#: app/ui/graphics_settings.gd:185
+msgid "%s fps"
 msgstr ""
 
 #: core/torqa-app/src/failure.rs:173
@@ -147,7 +155,7 @@ msgstr ""
 msgid "A (right pod)"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:92
+#: app/ui/graphics_settings.gd:110
 msgid "A balance of visual quality and performance."
 msgstr ""
 
@@ -243,6 +251,10 @@ msgstr ""
 msgid "Align video…"
 msgstr ""
 
+#: app/ui/graphics_settings.gd:76
+msgid "All details as the preset"
+msgstr ""
+
 #: app/ui/workout_panel.gd:61
 msgid "All out"
 msgstr ""
@@ -257,6 +269,10 @@ msgstr ""
 
 #: app/scenes/course_detail.gd:195
 msgid "Along the video"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:129
+msgid "Ambient occlusion"
 msgstr ""
 
 #: core/torqa-app/src/failure.rs:179
@@ -275,7 +291,11 @@ msgstr ""
 msgid "Analysis"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:99
+#: app/ui/graphics_settings.gd:134
+msgid "Anti-aliasing"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:117
 msgid "Applies from the next ride."
 msgstr ""
 
@@ -293,6 +313,10 @@ msgstr ""
 
 #: app/ui/ui_theme.gd:348
 msgid "Aug"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:140
+msgid "Auto (preset)"
 msgstr ""
 
 #: app/scenes/devices_tab.gd:655
@@ -341,6 +365,10 @@ msgstr ""
 
 #: app/scenes/profile_dialog.gd:105 app/scenes/profile_tab.gd:276
 msgid "Bike weight"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:131
+msgid "Bloom"
 msgstr ""
 
 #: app/scenes/course_detail.gd:107 app/scenes/workouts_tab.gd:367 core/torqa-app/src/import.rs:43
@@ -415,7 +443,7 @@ msgstr ""
 msgid "Choose a workout file"
 msgstr ""
 
-#: app/scenes/world.gd:43
+#: app/scenes/world.gd:40
 msgid "Clear"
 msgstr ""
 
@@ -471,7 +499,7 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: app/scenes/world.gd:43
+#: app/scenes/world.gd:40
 msgid "Cloudy"
 msgstr ""
 
@@ -771,6 +799,10 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
+#: app/ui/graphics_settings.gd:68
+msgid "Details"
+msgstr ""
+
 #: app/scenes/devices_tab.gd:127 app/scenes/ride_settings_dialog.gd:33 app/scenes/start_page.gd:101
 msgid "Devices"
 msgstr ""
@@ -883,7 +915,7 @@ msgstr ""
 msgid "Estimated time"
 msgstr ""
 
-#: app/scenes/world.gd:32
+#: app/scenes/world.gd:30
 msgid "Evening"
 msgstr ""
 
@@ -919,12 +951,20 @@ msgstr ""
 msgid "FTP test: your FTP is about %d W (now %d W)."
 msgstr ""
 
+#: app/ui/graphics_settings.gd:149
+msgid "FXAA"
+msgstr ""
+
 #: app/scenes/devices_tab.gd:49 app/ui/ride_devices.gd:84
 msgid "Failed"
 msgstr ""
 
 #: app/scenes/devices_tab.gd:235 app/scenes/devices_tab.gd:686
 msgid "Fake trainer (200 W, for testing)"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:148
+msgid "Far"
 msgstr ""
 
 #: app/scenes/analysis_tab.gd:224 app/scenes/analysis_tab.gd:380
@@ -1003,16 +1043,16 @@ msgstr ""
 msgid "Fold the controls away"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:94
-msgid "For powerful GPUs: all effects, including global illumination."
+#: app/ui/graphics_settings.gd:112
+msgid "For powerful GPUs: the sharpest shadows, the most grass and the farthest view."
 msgstr ""
 
-#: app/ui/graphics_settings.gd:93
-msgid "For stronger GPUs: softer shadows, bounced light, light fog, more distance."
+#: app/ui/graphics_settings.gd:111
+msgid "For stronger GPUs: softer shadows, reflections on water, more grass and distance."
 msgstr ""
 
-#: app/ui/graphics_settings.gd:91
-msgid "For weaker computers: shorter view, simpler shadows and sky."
+#: app/ui/graphics_settings.gd:109
+msgid "For weaker computers: shorter view, simpler shadows, no grass."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd:225 app/scenes/analysis_tab.gd:381
@@ -1031,7 +1071,11 @@ msgstr ""
 msgid "Found %d device(s)"
 msgstr ""
 
-#: app/scenes/world.gd:173
+#: app/ui/graphics_settings.gd:136
+msgid "Frame rate limit"
+msgstr ""
+
+#: app/scenes/world.gd:189
 msgid "Free"
 msgstr ""
 
@@ -1047,7 +1091,7 @@ msgstr ""
 msgid "Fri"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:56
+#: app/ui/graphics_settings.gd:61
 msgid "Full screen (F11)"
 msgstr ""
 
@@ -1079,6 +1123,10 @@ msgstr ""
 msgid "Graphics"
 msgstr ""
 
+#: app/ui/graphics_settings.gd:133
+msgid "Grass"
+msgstr ""
+
 #: app/ui/fitness_chart.gd:26
 msgid "Grey zone"
 msgstr ""
@@ -1103,7 +1151,7 @@ msgstr ""
 msgid "Hard"
 msgstr ""
 
-#: app/scenes/world.gd:43
+#: app/scenes/world.gd:40
 msgid "Hazy"
 msgstr ""
 
@@ -1135,7 +1183,7 @@ msgstr ""
 msgid "Heart-rate zones, the top of each as a share of the maximum heart rate"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:33
+#: app/ui/graphics_settings.gd:38 app/ui/graphics_settings.gd:143
 msgid "High"
 msgstr ""
 
@@ -1279,12 +1327,20 @@ msgstr ""
 msgid "Looking up today's plan…"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:33
+#: app/ui/graphics_settings.gd:38 app/ui/graphics_settings.gd:141
 msgid "Low"
 msgstr ""
 
 #: app/ui/workout_options.gd:75
 msgid "Lowest power"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:150
+msgid "MSAA 2×"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:151
+msgid "MSAA 4×"
 msgstr ""
 
 #: app/scenes/profile_dialog.gd:85 app/scenes/profile_tab.gd:280
@@ -1311,7 +1367,7 @@ msgstr ""
 msgid "May"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:33
+#: app/ui/graphics_settings.gd:38 app/ui/graphics_settings.gd:142
 msgid "Medium"
 msgstr ""
 
@@ -1327,7 +1383,7 @@ msgstr ""
 msgid "Metric (km, kg)"
 msgstr ""
 
-#: app/scenes/world.gd:22
+#: app/scenes/world.gd:21
 msgid "Midday"
 msgstr ""
 
@@ -1381,6 +1437,10 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd:280
 msgid "Name the course"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:147
+msgid "Near"
 msgstr ""
 
 #: core/torqa-upload/src/strava.rs:48
@@ -1529,6 +1589,14 @@ msgstr ""
 
 #: app/ui/ui_theme.gd:348
 msgid "Oct"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:145
+msgid "Off"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:146
+msgid "On"
 msgstr ""
 
 #: app/scenes/workouts_tab.gd:189
@@ -1703,7 +1771,7 @@ msgstr ""
 msgid "Progress"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:28
+#: app/ui/graphics_settings.gd:33
 msgid "Quality"
 msgstr ""
 
@@ -1715,7 +1783,7 @@ msgstr ""
 msgid "Race against a recorded activity"
 msgstr ""
 
-#: app/scenes/world.gd:43
+#: app/scenes/world.gd:40
 msgid "Rain"
 msgstr ""
 
@@ -1751,6 +1819,10 @@ msgstr ""
 msgid "Recovery"
 msgstr ""
 
+#: app/ui/graphics_settings.gd:130
+msgid "Reflections on water"
+msgstr ""
+
 #: app/ui/video_align_dialog.gd:172
 msgid "Remove point"
 msgstr ""
@@ -1765,6 +1837,10 @@ msgstr ""
 
 #: app/scenes/history_screen.gd:29
 msgid "Rename the ride"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:135
+msgid "Render scale"
 msgstr ""
 
 #: app/scenes/courses_tab.gd:289
@@ -1875,7 +1951,7 @@ msgstr ""
 msgid "Scanning…"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:53
+#: app/ui/graphics_settings.gd:58
 msgid "Screen"
 msgstr ""
 
@@ -1901,6 +1977,10 @@ msgstr ""
 
 #: app/scenes/settings_dialog.gd:14 app/scenes/start_page.gd:83
 msgid "Settings"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:128
+msgid "Shadows"
 msgstr ""
 
 #: app/ui/ride_options.gd:40
@@ -2227,12 +2307,16 @@ msgstr ""
 msgid "Type"
 msgstr ""
 
-#: app/ui/graphics_settings.gd:33
+#: app/ui/graphics_settings.gd:38 app/ui/graphics_settings.gd:144
 msgid "Ultra"
 msgstr ""
 
 #: app/scenes/profile_dialog.gd:109 app/scenes/profile_tab.gd:279
 msgid "Units"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:152
+msgid "Unlimited"
 msgstr ""
 
 #: app/scenes/button_dialog.gd:22
@@ -2265,6 +2349,10 @@ msgstr ""
 
 #: app/scenes/analysis_tab.gd:524 app/scenes/history_screen.gd:453
 msgid "Use %d W"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:137
+msgid "V-Sync"
 msgstr ""
 
 #: app/ui/ui_theme.gd:24
@@ -2313,6 +2401,10 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd:271
 msgid "Videos with GPS, route videos (Incyclist .xml, Tacx .rlv)"
+msgstr ""
+
+#: app/ui/graphics_settings.gd:132
+msgid "View distance"
 msgstr ""
 
 #: app/scenes/history_screen.gd:601

@@ -318,9 +318,11 @@ Built in rideable steps:
     open tries again when reopened
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
-### Phase 9 — Graphics (R43–R47, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md))
-Since 2026-10-05 the target is a **stylized, faceted, pastel** look (ADR 0011) instead of realism;
-the realistic look's textures and patterns were replaced step by step.
+### Phase 9 — Graphics (R43–R47, R86, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md), [ADR 0019](adr/0019-realistic-look.md))
+From 2026-10-05 the target was a **stylized, faceted, pastel** look (ADR 0011) instead of realism;
+the realistic look's textures and patterns were replaced step by step. Since 2026-10-18 the
+target is **as realistic as possible** (ADR 0019, R86): smooth shading, real proportions,
+physically based materials and light, restyled group by group.
 
 - [x] Route on the real road: GPX snapped to the OpenStreetMap roads and paths it rides
   (bends between sparse points restored, GPS wander removed); record keys unchanged — roads
@@ -347,6 +349,9 @@ the realistic look's textures and patterns were replaced step by step.
   equator below 1,200 m
 - [x] Quality presets Low–Ultra in settings, frame-time budget per preset (60 fps; a lower
   preset is suggested when a ride stays below)
+- [x] Graphics details below the preset (R87): shadows, ambient occlusion, reflections, bloom,
+  view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
+  its own value, kept per computer
 - [x] Asset pipeline: Blender 5.2 LTS in an x86-64 art container (`scripts/art.sh`), scripted
   models, an in-game preview renderer (`scripts/render-models.sh`), agent skills for the look,
   the pipeline and render review (`.claude/skills`)
@@ -456,6 +461,28 @@ the realistic look's textures and patterns were replaced step by step.
   elevations and spikes cut; the Oberalp route as a fixture with its standard views and checks
 - [x] Streets and railways as one line across tile borders, paved streets level across
   (#116, #117); nothing of a railway tunnel or a house in the road ridden (#138)
+- [ ] Realistic look, step by step (ADR 0019, R86):
+  - [x] Decision and tools: ADR 0019, the `torqa-look` and `torqa-art-pipeline` skills
+    rewritten, a baker of tileable PBR textures from procedural Blender materials
+    (`art/textures`, WebP), Cycles previews from the build scripts (`--preview DIR`,
+    `art/preview.py`); taken over from the author's earlier game project
+  - [x] Ground and roads: smooth terrain textured by land cover (grass varying in large
+    patches and drier on slopes and high up, golden fields, mossy forest floor, gravel, rock
+    from three sides on steep ground, snow), covers blended over a grid cell; asphalt with
+    grain, cracks, wheel tracks and worn markings, a ragged gravel strip and a grass verge;
+    streets and tracks textured; puddles as irregular patches; finer grass tufts
+  - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
+    of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
+    trunks; rounded rocks with a new rock texture (no paving cells)
+  - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs
+    tinted per building, walls darker at their foot, reflective glass; textured shells
+  - [x] Light and sky: physically based atmosphere with sunlit clouds (the faceted cloud
+    meshes removed), AgX tone mapping, sun and sky light rebalanced, natural palette; dark
+    rippled water with reflections (screen-space on High and Ultra); rain as faint streaks
+  - [ ] Riders and bikes: smooth, subdivided bodies and round wheels done; realistic bodies
+    (armature, new pedalling), kit with fabric and bike materials to come
+  - [ ] More geometry on buildings where it shows (eaves, window depth); frame rate on an M1
+    at Medium checked after the restyle
 - **Exit:** a long hilly course at 60 fps on M1 base at Medium ✅ (#111, 2026-10-08); screenshots
   reviewed against the references (R44)
 
@@ -503,8 +530,11 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   Strava requires a client secret → each rider brings their own Strava API application.
 - Insta360 GPS extraction is less documented than GoPro GPMF.
 - Detail on an M1 integrated GPU (towns place thousands of buildings, forests thousands of
-  trees) → a lean stylized look (ADR 0011: flat colours, chunky faceted models within triangle
-  budgets), quality presets (R43); art direction reviewed on rendered previews.
+  trees) → triangle and texture budgets, compressed textures with mipmaps, mesh LODs from
+  Godot's import, quality presets (R43); art direction reviewed on rendered previews.
+- Realism with few assets shows every gap (why ADR 0011 left it) → each group restyled as a
+  whole to one level of quality before the next (ADR 0019), textures baked from scripted
+  procedural materials or CC0 scans, reviewed in the standard views.
 - Wayland has no portable always-on-top → the overlay may not stay on top there. (Over
   full-screen apps it would need native macOS window settings Godot doesn't expose; dropped, R57.)
 - Free terrain imagery is limited → the ground is coloured by OSM land cover and slope, no

@@ -1,36 +1,38 @@
 class_name BuildingModels
 extends RefCounted
 ## The building models made in Blender (art/buildings, R45): loads them and gives their
-## materials the flat palette colours their names ask for (app/shaders/building_model.gdshader,
-## ADR 0011). Every building of a chunk is an instance of a MultiMesh: the instance colour is
-## its plaster, the custom data its roof colour — or for flat-roofed offices, hotels and public
-## buildings their accent colour — (rgb) and variant (a, 0–1).
+## materials the textures and palette colours their names ask for
+## (app/shaders/building_model.gdshader, ADR 0019). Every building of a chunk is an instance of
+## a MultiMesh: the instance colour is its plaster, the custom data its roof colour — or for
+## flat-roofed offices, hotels and public buildings their accent colour — (rgb) and variant
+## (a, 0–1).
 
 const DIRECTORY: String = "res://assets/models/buildings/"
 
-## Shader pattern and palette colour of each material name.
+## Shader pattern, palette colour, texture (art/textures, ADR 0019) and its size in metres of
+## each material name; materials without a texture are drawn by the shader alone.
 const LOOKS: Dictionary[String, Array] = {
-	"plaster": [0, "buildings.light_walls"],
-	"stone": [1, "buildings.stone"],
-	"wood": [2, "buildings.timber"],
-	"wood_dark": [3, "buildings.wood_dark"],
-	"wood_light": [2, "buildings.wood_light"],
-	"frame": [4, "buildings.frame"],
-	"glass": [5, "buildings.glass"],
-	"leaded": [17, "buildings.stained_glass"],
-	"shutter": [6, "buildings.shutters"],
-	"door": [7, "buildings.door"],
-	"tiles": [8, "buildings.tiles"],
-	"slate": [9, "buildings.slate"],
-	"metal": [10, "buildings.metal"],
-	"copper": [11, "buildings.copper"],
-	"flowers": [12, "buildings.flowers"],
-	"leaves": [13, "buildings.leaves"],
-	"clock": [14, "buildings.clock"],
-	"sheet": [15, "buildings.sheet"],
-	"garage": [16, "buildings.garage"],
-	"accent": [18, "buildings.accents"],
-	"roof_flat": [19, "buildings.flat_roofs"],
+	"plaster": [0, "buildings.light_walls", "plaster", 2.0],
+	"stone": [1, "buildings.stone", "masonry", 2.4],
+	"wood": [2, "buildings.timber", "planks", 2.0],
+	"wood_dark": [3, "buildings.wood_dark", "planks", 2.0],
+	"wood_light": [2, "buildings.wood_light", "planks", 2.0],
+	"frame": [4, "buildings.frame", "", 1.0],
+	"glass": [5, "buildings.glass", "", 1.0],
+	"leaded": [17, "buildings.stained_glass", "", 1.0],
+	"shutter": [6, "buildings.shutters", "planks", 1.0],
+	"door": [7, "buildings.door", "planks", 1.0],
+	"tiles": [8, "buildings.tiles", "roof_tiles", 2.0],
+	"slate": [9, "buildings.slate", "slate", 2.0],
+	"metal": [10, "buildings.metal", "", 1.0],
+	"copper": [11, "buildings.copper", "", 1.0],
+	"flowers": [12, "buildings.flowers", "", 1.0],
+	"leaves": [13, "buildings.leaves", "", 1.0],
+	"clock": [14, "buildings.clock", "", 1.0],
+	"sheet": [15, "buildings.sheet", "", 1.0],
+	"garage": [16, "buildings.garage", "plaster", 2.0],
+	"accent": [18, "buildings.accents", "plaster", 2.0],
+	"roof_flat": [19, "buildings.flat_roofs", "gravel", 1.5],
 }
 
 static var _materials: Dictionary = {}
@@ -62,6 +64,16 @@ static func material(name: String) -> Material:
 	shader_material.shader = preload("res://shaders/building_model.gdshader")
 	shader_material.set_shader_parameter("pattern", look[0])
 	shader_material.set_shader_parameter("color", _first(colour_name))
+	var texture_name: String = look[2]
+	if not texture_name.is_empty():
+		shader_material.set_shader_parameter(
+			"albedo_texture", load("res://assets/textures/%s_albedo.webp" % texture_name)
+		)
+		shader_material.set_shader_parameter(
+			"normal_texture", load("res://assets/textures/%s_normal.webp" % texture_name)
+		)
+		shader_material.set_shader_parameter("textured", true)
+		shader_material.set_shader_parameter("tile", look[3])
 	shader_material.set_shader_parameter("shutter_colors", Palette.colors("buildings.shutters"))
 	shader_material.set_shader_parameter("flower_colors", Palette.colors("buildings.flowers"))
 	shader_material.set_shader_parameter("gold", Palette.color("buildings.gold"))

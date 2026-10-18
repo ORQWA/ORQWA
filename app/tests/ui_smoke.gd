@@ -30,7 +30,7 @@ func _run() -> void:
 	await _free_camera()
 	await _overlay()
 	_overlay_size()
-	_clouds()
+	await _clouds()
 	if not _failed:
 		print("UI SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -873,38 +873,28 @@ func _overlay_size() -> void:
 	overlay.leave()
 
 
-## The low-poly clouds (ADR 0011) follow the weather: more and bigger ones as it clouds over,
-## always high over the land and round the camera.
+## The sky's clouds follow the weather (ADR 0019): some on a clear day, more as it clouds over,
+## a closed grey cover in rain.
 func _clouds() -> void:
-	var eye: Vector3 = Vector3(5000.0, 600.0, -3000.0)
-	var layer: CloudLayer = CloudLayer.new()
-	root.add_child(layer)
-	layer.settle(500.0)
-	var counts: Array[int] = []
-	var sizes: Array[float] = []
-	for cover: float in [0.0, 0.3, 1.0]:
-		layer.cover = cover
-		var count: int = 0
-		var size: float = 0.0
-		for transforms: Array in layer.placements(eye):
-			for placed: Transform3D in transforms:
-				_check(
-					placed.origin.y > 500.0 + 400.0,
-					"clouds high over the land: %.0f m at cover %.1f" % [placed.origin.y, cover]
-				)
-				var from_eye: Vector2 = Vector2(placed.origin.x - eye.x, placed.origin.z - eye.z)
-				_check(
-					absf(from_eye.x) <= CloudLayer.SPREAD and absf(from_eye.y) <= CloudLayer.SPREAD,
-					"clouds round the camera: %s" % from_eye
-				)
-				size += placed.basis.get_scale().x
-				count += 1
-		counts.append(count)
-		sizes.append(size / maxf(count, 1.0))
-	_check(counts[0] == 0, "no clouds on a clear day: %d" % counts[0])
-	_check(counts[1] < counts[2], "more clouds as it clouds over: %s" % [counts])
-	_check(sizes[1] < sizes[2], "bigger clouds as it clouds over: %s" % [sizes])
-	layer.free()
+	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
+	root.add_child(main)
+	await process_frame
+	var world: RideWorld = main.get_node("World")
+	var sky: ShaderMaterial = world.get("_sky")
+	var covers: Array[float] = []
+	var greys: Array[float] = []
+	for weather: String in ["Clear", "Cloudy", "Rain"]:
+		world.apply_conditions("Midday", weather)
+		covers.append(sky.get_shader_parameter("cloud_cover"))
+		greys.append(sky.get_shader_parameter("cloud_darkness"))
+	_check(covers[0] > 0.0, "a few clouds on a clear day: %s" % [covers])
+	_check(
+		covers[0] < covers[1] and covers[1] < covers[2],
+		"more clouds as it clouds over: %s" % [covers]
+	)
+	_check(is_equal_approx(covers[2], 1.0), "a closed cover in rain: %s" % [covers])
+	_check(greys[0] == 0.0 and greys[2] > greys[1], "greyer as it clouds over: %s" % [greys])
+	main.queue_free()
 
 
 ## Presses and releases `key` as the rider would.

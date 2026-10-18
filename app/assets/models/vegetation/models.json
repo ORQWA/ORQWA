@@ -2,19 +2,19 @@
  "models": {
   "banana": {
    "kind": "banana",
-   "height": 3.24
+   "height": 3.3
   },
   "broadleaf_cluster": {
    "kind": "broadleaf",
-   "height": 8.97
+   "height": 9.3
   },
   "broadleaf_round": {
    "kind": "broadleaf",
-   "height": 8.91
+   "height": 9.08
   },
   "bush": {
    "kind": "bush",
-   "height": 1.46
+   "height": 1.64
   },
   "conifer_broad": {
    "kind": "conifer",
@@ -38,15 +38,15 @@
   },
   "rock_block": {
    "kind": "rock",
-   "height": 1.23
+   "height": 1.15
   },
   "rock_pair": {
    "kind": "rock",
-   "height": 1.02
+   "height": 0.96
   },
   "tropical_bush": {
    "kind": "tropical_bush",
-   "height": 1.52
+   "height": 1.7
   }
  }
 }

@@ -1,8 +1,10 @@
-//! Settings of this computer (R78, #257): how detailed the 3D world is drawn (R43) and whether
-//! the app fills the screen (#218) depend on the machine in front of the rider, so they live
-//! in `computer.toml` next to the cache, never in the data directory, which a rider may share
-//! between computers (R30): there the last one to save would win.
+//! Settings of this computer (R78, #257): how detailed the 3D world is drawn (R43), the
+//! graphics options set apart from that preset (R87) and whether the app fills the screen
+//! (#218) depend on the machine in front of the rider, so they live in `computer.toml` next to
+//! the cache, never in the data directory, which a rider may share between computers (R30):
+//! there the last one to save would win.
 
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -20,6 +22,67 @@ struct ComputerFile {
     graphics_quality: Option<GraphicsQuality>,
     /// Whether the app fills the screen (#218).
     fullscreen: Option<bool>,
+    /// Graphics options set apart from the preset (R87), by name; the others follow it.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    graphics: BTreeMap<String, String>,
+}
+
+/// The graphics options a rider may set apart from the quality preset (R87), each with the
+/// values it takes. An option left unset follows the preset ("auto"); the app turns the values
+/// into engine settings.
+pub const GRAPHICS_OPTIONS: &[(&str, &[&str])] = &[
+    ("shadows", &["low", "medium", "high", "ultra"]),
+    ("ambient_occlusion", &["off", "on"]),
+    ("reflections", &["off", "on"]),
+    ("bloom", &["off", "on"]),
+    ("view_distance", &["low", "medium", "high", "ultra"]),
+    ("grass", &["off", "near", "medium", "far"]),
+    ("antialiasing", &["off", "fxaa", "msaa_2x", "msaa_4x"]),
+    ("render_scale", &["50", "67", "77", "85", "100"]),
+    ("fps_limit", &["unlimited", "30", "60", "90", "120", "144"]),
+    ("vsync", &["off", "on"]),
+];
+
+/// The value of a graphics option that follows the preset.
+pub const AUTO: &str = "auto";
+
+/// The graphics options set on this computer (R87), by name; options following the preset
+/// are missing. Values no longer known (from another version) are left out.
+#[must_use]
+pub fn graphics_options(file: &Path) -> BTreeMap<String, String> {
+    read(file)
+        .graphics
+        .into_iter()
+        .filter(|(name, value)| is_known(name, value))
+        .collect()
+}
+
+/// Sets graphics option `name` to `value` on this computer (R87); [`AUTO`] lets it follow the
+/// preset again. Returns false, changing nothing, for an unknown option or value.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_graphics_option(file: &Path, name: &str, value: &str) -> Result<bool, ProfileError> {
+    if value != AUTO && !is_known(name, value) {
+        return Ok(false);
+    }
+    if !GRAPHICS_OPTIONS.iter().any(|(known, _)| *known == name) {
+        return Ok(false);
+    }
+    let mut computer = read(file);
+    if value == AUTO {
+        computer.graphics.remove(name);
+    } else {
+        computer.graphics.insert(name.to_owned(), value.to_owned());
+    }
+    save(file, &computer)?;
+    Ok(true)
+}
+
+fn is_known(name: &str, value: &str) -> bool {
+    GRAPHICS_OPTIONS
+        .iter()
+        .any(|(known, values)| *known == name && values.contains(&value))
 }
 
 /// The graphics quality chosen on this computer; Medium until one is chosen.
@@ -111,6 +174,59 @@ mod tests {
             GraphicsQuality::Ultra,
             "kept with it"
         );
+    }
+
+    #[test]
+    fn graphics_options_follow_the_preset_until_set_and_again_on_auto() {
+        let file = temp_file("graphics-options");
+        assert!(
+            graphics_options(&file).is_empty(),
+            "all follow the preset at first"
+        );
+
+        assert!(set_graphics_option(&file, "shadows", "ultra").unwrap());
+        assert!(set_graphics_option(&file, "fps_limit", "60").unwrap());
+        set_graphics_quality(&file, GraphicsQuality::Low).unwrap();
+
+        let options = graphics_options(&file);
+        assert_eq!(options.get("shadows").map(String::as_str), Some("ultra"));
+        assert_eq!(options.get("fps_limit").map(String::as_str), Some("60"));
+        assert_eq!(
+            graphics_quality(&file),
+            GraphicsQuality::Low,
+            "the preset is kept apart"
+        );
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(
+            text.contains("[graphics]") && text.contains(r#"shadows = "ultra""#),
+            "{text}"
+        );
+
+        assert!(set_graphics_option(&file, "shadows", AUTO).unwrap());
+        assert!(
+            !graphics_options(&file).contains_key("shadows"),
+            "auto follows the preset"
+        );
+    }
+
+    #[test]
+    fn unknown_graphics_options_and_values_are_refused_and_not_read() {
+        let file = temp_file("graphics-unknown");
+        assert!(!set_graphics_option(&file, "shadows", "extreme").unwrap());
+        assert!(!set_graphics_option(&file, "ray_tracing", "on").unwrap());
+        assert!(!set_graphics_option(&file, "ray_tracing", AUTO).unwrap());
+        assert!(graphics_options(&file).is_empty());
+
+        // A file from another version may hold values this one does not know.
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(
+            &file,
+            "[graphics]\nshadows = \"extreme\"\nbloom = \"off\"\n",
+        )
+        .unwrap();
+        let options = graphics_options(&file);
+        assert_eq!(options.len(), 1, "{options:?}");
+        assert_eq!(options.get("bloom").map(String::as_str), Some("off"));
     }
 
     #[test]

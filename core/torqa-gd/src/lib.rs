@@ -1358,6 +1358,51 @@ impl TorqaApp {
         self.command(|app| app.set_graphics_quality(quality))
     }
 
+    /// The graphics options a rider may set apart from the preset (R87): option name → the
+    /// values it takes, in order (without "auto", which every option also takes).
+    #[func]
+    fn graphics_option_values() -> VarDictionary {
+        let mut options = VarDictionary::new();
+        for (name, values) in torqa_app::GRAPHICS_OPTIONS {
+            let list: PackedStringArray = values.iter().map(|v| GString::from(*v)).collect();
+            options.set(*name, &list);
+        }
+        options
+    }
+
+    /// Every graphics option's value on this computer (R87): "auto" for those following the
+    /// preset.
+    #[func]
+    fn graphics_options(&self) -> VarDictionary {
+        let set = self
+            .app
+            .as_ref()
+            .map(App::graphics_options)
+            .unwrap_or_default();
+        let mut options = VarDictionary::new();
+        for (name, _) in torqa_app::GRAPHICS_OPTIONS {
+            let value = set
+                .get(*name)
+                .map_or(torqa_app::GRAPHICS_AUTO, String::as_str);
+            options.set(*name, &GString::from(value));
+        }
+        options
+    }
+
+    /// Sets a graphics option on this computer (R87), "auto" to follow the preset; false for
+    /// unknown options or values, or when it cannot be saved.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn set_graphics_option(&mut self, name: GString, value: GString) -> bool {
+        let (name, value) = (name.to_string(), value.to_string());
+        let mut known = false;
+        let saved = self.command(|app| {
+            known = app.set_graphics_option(&name, &value)?;
+            Ok(())
+        });
+        saved && known
+    }
+
     /// Where the overlay was last on screen (R55), in screen pixels; empty before its first use.
     #[func]
     fn overlay_window(&self) -> Rect2i {

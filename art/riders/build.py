@@ -180,7 +180,7 @@ class Faces:
         self.faces.append((outward(points, inside) if inside is not None else points,
                            material_name))
 
-    def tube(self, start, end, radius, material_name, sides=6, caps=True):
+    def tube(self, start, end, radius, material_name, sides=10, caps=True):
         start, end = Vector(start), Vector(end)
         axis = (end - start).normalized()
         helper = Vector((0, 0, 1)) if abs(axis.z) < 0.9 else Vector((1, 0, 0))
@@ -237,11 +237,17 @@ class Faces:
         bmesh.ops.remove_doubles(shared, verts=shared.verts, dist=1e-5)
         shared.to_mesh(mesh)
         shared.free()
-        mesh.shade_flat()
+        smooth(mesh)
         obj = bpy.data.objects.new(name, mesh)
         obj.matrix_world = Matrix.Translation(at)
         bpy.context.scene.collection.objects.link(obj)
         return obj
+
+
+def smooth(mesh):
+    """Smooth shading, hard only where faces meet at a sharp angle (ADR 0019)."""
+    mesh.shade_smooth()
+    mesh.set_sharp_from_angle(angle=math.radians(40))
 
 
 # --- the body --------------------------------------------------------------------------------
@@ -271,11 +277,19 @@ def load_body(sex):
             thinned = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
             obj.modifiers.clear()
             obj.data = thinned
+        # The bases are low-poly: one level of subdivision rounds them into realistic forms
+        # (ADR 0019) before they are reshaped and posed.
+        rounder = obj.modifiers.new("rounder", "SUBSURF")
+        rounder.levels = 1
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        rounded = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
+        obj.modifiers.clear()
+        obj.data = rounded
         obj.data.materials.clear()
         obj.data.materials.append(material(DRESS.get(kind, "skin")))
         for polygon in obj.data.polygons:
             polygon.material_index = 0
-        obj.data.shade_flat()
+        smooth(obj.data)
     return parts
 
 
@@ -439,7 +453,7 @@ def shell(gear, patch, inner, outer, material_name, shape=None):
                 gear.add([low[a], low[b], high[b], high[a]], material_name, middle_point)
 
 
-def tube_along(gear, spine, radii, material_name, sides=6):
+def tube_along(gear, spine, radii, material_name, sides=10):
     """A faceted tube along a spine of points with a radius at each, closed at both ends (a
     radius of 0 ends in a point)."""
     rings = []
@@ -718,7 +732,7 @@ def join(objects, name):
     joined.free()
     for n in names:
         data.materials.append(material(n))
-    data.shade_flat()
+    smooth(data)
     for obj in objects:
         bpy.data.objects.remove(obj)
     result = bpy.data.objects.new(name, data)
@@ -730,10 +744,9 @@ def join(objects, name):
 
 
 def wheel(name, hub):
-    """A wheel in the y–z plane: a faceted tyre and rim, a hub and a few spokes, so it shows
-    turning."""
+    """A wheel in the y–z plane: a round tyre and rim, a hub and spokes, so it shows turning."""
     faces = Faces()
-    segments = 18
+    segments = 48
 
     def at(radius, angle, x):
         return hub + Vector((x, radius * math.cos(angle), radius * math.sin(angle)))
@@ -749,9 +762,9 @@ def wheel(name, hub):
             for x in (-half, half):
                 faces.add([at(inner, a0, x), at(inner, a1, x), at(outer, a1, x),
                            at(outer, a0, x)], mat, inside)
-    for k in range(8):
-        angle = 2 * math.pi * k / 8
-        faces.tube(at(0.03, angle, 0.0), at(WHEEL_RADIUS - 0.058, angle, 0.0), 0.006, "metal",
+    for k in range(20):
+        angle = 2 * math.pi * k / 20
+        faces.tube(at(0.03, angle, 0.0), at(WHEEL_RADIUS - 0.058, angle, 0.0), 0.0025, "metal",
                    sides=3, caps=False)
     faces.tube(hub - Vector((0.05, 0, 0)), hub + Vector((0.05, 0, 0)), 0.03, "metal")
     return faces.to_object(name, hub)

@@ -4,8 +4,11 @@ Agent skills for working on Torqa (Claude Code loads them from here when a task 
 
 Torqa's own:
 
-- `torqa-look` — the art direction: stylized, faceted low-poly in a soft pastel palette.
-- `torqa-art-pipeline` — making models with headless Blender in the art container.
+- `torqa-look` — the art direction: as realistic as possible (ADR 0019), replacing the
+  faceted pastel look.
+- `torqa-art-pipeline` — making models and textures with headless Blender in the art
+  container, with quick Cycles previews. Its texture baker, previews and bpy pitfalls come from
+  the author's earlier game project (choppa).
 - `torqa-render-review` — rendering the world and models in the dev container for review.
 
 Imported unchanged from [ra100/blender-claude-plugin](https://github.com/ra100/blender-claude-plugin)

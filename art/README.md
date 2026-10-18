@@ -19,10 +19,39 @@ The second form rebuilds only the named models. Then review them as the world dr
 ```sh
 scripts/dev.sh scripts/render-models.sh
 scripts/dev.sh sh -c 'MODELS="chalet_2_m" scripts/render-models.sh'
-scripts/dev.sh sh -c 'GROUPS="vegetation clouds" scripts/render-models.sh'
+scripts/dev.sh sh -c 'GROUPS="vegetation" scripts/render-models.sh'
 ```
 
 After a change to the models, refresh the [gallery](#gallery) below as well.
+
+For quick looks while working, the build scripts of buildings and vegetation render
+Cycles previews of their own materials instead of exporting (`art/preview.py`; four views per
+model, no Godot needed):
+
+```sh
+scripts/art.sh blender --background --factory-startup --python art/buildings/build.py -- --preview screenshots/preview chalet_2_m
+```
+
+## Look
+
+Since 2026-10-18 the target is as realistic as possible ([ADR 0019](../docs/adr/0019-realistic-look.md)):
+smooth shading, real proportions, physically based materials and light. Every group below has
+left the faceted look of ADR 0011; riders are smooth but still stylized figures (`docs/PLAN.md`,
+Phase 9).
+
+## Textures (`textures/`)
+
+`build.py` bakes tileable PBR textures (albedo, normal, roughness; WebP, normal maps lossless)
+from procedural Blender materials into `app/assets/textures/`: for the ground and roads `grass`,
+`dirt`, `gravel`, `rock` and `asphalt` (`sand` too, unused so far), for trees `bark`, for
+buildings `plaster`, `roof_tiles`, `slate`, `planks` and `masonry`. Only the maps the app reads
+are committed (most materials need no roughness map). Pass names after `--` for some, `--size`
+for another resolution (1024 by default) and `--out` to bake elsewhere, such as
+`screenshots/textures` while trying things out.
+
+```sh
+scripts/art.sh blender --background --factory-startup --python art/textures/build.py -- --out screenshots/textures --size 512
+```
 
 ## Buildings (`buildings/`)
 
@@ -53,7 +82,8 @@ the footprint at ground level, and walls reach 3 m below it for slopes. Texture 
 are metres on each surface (walls: along and up; roofs: along the eaves and up the slope).
 
 The files carry no textures: each face has a material **name**, and the app gives every name
-a flat palette colour (`buildings.*` in `app/assets/palette.json`) in
+a texture (from `textures/`) tinted by a palette colour (`buildings.*` in
+`app/assets/palette.json`) in
 `app/scenes/building_models.gd` and `app/shaders/building_model.gdshader`. New names need an
 entry there. Keep the models lean — a house 300–1,200 faces, a chalet or farmhouse up to about
 2,000, the rarer offices, hotels and public buildings up to about 3,000 — since towns place
@@ -81,29 +111,38 @@ Every building is in the [gallery](#buildings).
 
 ## Vegetation (`vegetation/`)
 
-`build.py` holds the catalogue and the kinds in one file: `conifer` (a trunk under stacked
-cones, each turned a little), `broadleaf` (a trunk under one or more chunky 20-facet blobs),
-`bush` and `rock`; for the subtropics (#136) `palm` (coconut palms with a curving trunk under
+`build.py` holds the catalogue and the kinds in one file: `conifer` (a spruce: a trunk under
+whorls of needle sprays drooping out, long at the bottom and short at the top, and a spire),
+`broadleaf` (a trunk forking into limbs that reach into crowns of leaf clusters), `bush` (clumps
+of leaf clusters) and `rock` (subdivided balls pushed in and out and broken along a few planes,
+shaded smooth); for the subtropics (#136) `palm` (coconut palms with a curving trunk under
 drooping fronds and a few coconuts, and a fan palm), `banana` (a stem under big paddle leaves)
-and `tropical_bush` (a clump with long leaves fanning out). Shapes are faceted (one normal per
-face) and lean — 20 to 70 triangles, palms and other plants with leaves seen from both sides up
-to about 300 — since forests place thousands; random shapes use fixed seeds, so rebuilds give
-the same files.
+and `tropical_bush` (leaf clusters with long leaves fanning out). Crowns are foliage cards:
+quads textured with a cluster of leaves or a spray of needles cut out by its alpha, their
+normals pointing out of the crown so it is lit as one soft volume. Trees are 300–550
+triangles, rocks 320–640, palms up to about 1,000; random shapes use fixed seeds, so rebuilds
+give the same files.
+
+`foliage.py` draws the two foliage cards, `leaves_albedo.webp` and `needles_albedo.webp`, in
+grey on transparent ground into `app/assets/textures/` (the app tints them per plant).
 
 ```sh
+scripts/art.sh blender --background --factory-startup --python art/vegetation/foliage.py
 scripts/art.sh blender --background --factory-startup --python art/vegetation/build.py
 ```
 
 | Name | Used for |
 |---|---|
-| `leaves` | crowns, fronds, leaves and bushes; the colour varies per plant (palette `plants.conifers`, `plants.broadleaves`, `plants.bushes`, `plants.palms`, `plants.tropical`) |
-| `trunk` | trunks (palette `plants.trunk`) |
-| `rock` | rocks; the colour varies per rock (palette `plants.rocks`) |
+| `leaves`, `needles` | foliage cards of broadleaf trees and bushes, and of conifers; tinted per plant (palette `plants.conifers`, `plants.broadleaves`, `plants.bushes`, `plants.tropical`) |
+| `frond` | solid leaves of palms and banana plants, tinted per plant (`plants.palms`, `plants.tropical`) |
+| `trunk` | trunks and limbs, the bark texture by coordinates in metres around and up |
+| `rock` | rocks, the rock texture laid on from three sides, tinted per rock (`plants.rocks`) |
 
-The app gives each name its look in `app/scenes/vegetation_models.gd` and
-`app/shaders/vegetation.gdshader` (trees sway a little in the wind). `models.json` lists each
-model's `kind` and `height`; the world (`core/torqa-world/src/vegetation.rs`) picks one model
-of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
+The app gives each name its look in `app/scenes/vegetation_models.gd`,
+`app/shaders/vegetation.gdshader` and `app/shaders/foliage.gdshader` (cards seen from both
+sides, lit through from behind; trees sway in the wind, leaves flutter). `models.json` lists
+each model's `kind` and `height`; the world (`core/torqa-world/src/vegetation.rs`) picks one
+model of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
 
 ## Riders (`riders/`)
 
@@ -117,9 +156,10 @@ scripts/dev.sh scripts/render-riders.sh   # side, front, chase and face views in
 
 - **Bodies** come from Blender Studio's CC0 *Human Base Meshes*: the stylized "primitive"
   bodies, extracted into `sources/human-base-meshes/` (see its `SOURCE.md` and `extract.py`).
-  They are parts with their origins at the joints. The script keeps them at their base level
-  (faceted, no subdivision), drops fingers and toes, thins nose and ears, lengthens arms,
-  hands and feet, makes the heads and shoulder caps smaller (natural proportions, ADR 0011) and
+  They are parts with their origins at the joints. The script rounds them by one level of
+  subdivision and shades them smooth (ADR 0019), drops fingers and toes, thins nose and ears,
+  lengthens arms, hands and feet, makes the heads and shoulder caps smaller (natural
+  proportions) and
   dresses the parts: shorts to above the knee, short sleeves, gloves, shoes.
 - **Head:** fitted to the head's own shape. Hair is a shell over the scalp (to the nape and
   over the ears for her, short for him), the helmet a shell over the hair, drawn out to the
@@ -149,21 +189,9 @@ and aims the legs at the pedals (inverse kinematics).
 | `tyre`, `rim`, `metal`, `saddle`, `bar` | the bike's other parts |
 
 Colours: the rider's own palette section (`rider_female`, `rider_male`; `frame` there too) and
-`bike` for the bike's other parts. A rider about 4,400–5,300 triangles, a bike about 1,400.
+`bike` for the bike's other parts. A rider about 17,600–20,800 triangles, a bike about 3,000
+(round wheels with 20 spokes).
 Both riders, from every side, are in the [gallery](#riders).
-
-## Clouds (`clouds/`)
-
-`build.py` makes four low-poly clouds into `app/assets/models/clouds/`: small, puffy, long and
-a towering one, each a few rough balls of 20 facets flattened underneath, 60–120 faces, about
-10 m long (the app scales them up). One material, `cloud`; `app/shaders/cloud.gdshader` lights
-them by the sun and the weather and fades them into the horizon, and `app/scenes/cloud_layer.gd`
-spreads them round the camera, more, bigger and lower as the weather clouds over. They are
-in the [gallery](#clouds) too.
-
-```sh
-scripts/art.sh blender --background --factory-startup --python art/clouds/build.py
-```
 
 ## Gallery
 
@@ -207,10 +235,6 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![broadleaf_round](../docs/images/models/vegetation/broadleaf_round.jpg)<br>`broadleaf_round` | ![bush](../docs/images/models/vegetation/bush.jpg)<br>`bush` | ![rock_block](../docs/images/models/vegetation/rock_block.jpg)<br>`rock_block` |
 | ![rock_pair](../docs/images/models/vegetation/rock_pair.jpg)<br>`rock_pair` | ![palm_coconut](../docs/images/models/vegetation/palm_coconut.jpg)<br>`palm_coconut` | ![palm_fan](../docs/images/models/vegetation/palm_fan.jpg)<br>`palm_fan` |
 | ![palm_short](../docs/images/models/vegetation/palm_short.jpg)<br>`palm_short` | ![banana](../docs/images/models/vegetation/banana.jpg)<br>`banana` | ![tropical_bush](../docs/images/models/vegetation/tropical_bush.jpg)<br>`tropical_bush` |
-
-### Clouds
-
-![The four clouds: small, puffy, long and towering](../docs/images/models/clouds/clouds.jpg)
 
 ### Riders
 

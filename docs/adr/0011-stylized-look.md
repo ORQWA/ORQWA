@@ -1,6 +1,6 @@
 # ADR 0011 — Stylized, faceted look instead of realism
 
-- Status: accepted
+- Status: superseded in part by [ADR 0019](0019-realistic-look.md) (the look; the palette file, pipeline and review practice stay)
 - Date: 2026-10-05
 - Supersedes: the realism target of R44–R47 and the MPFB2 part of [ADR 0009](0009-asset-pipeline.md)
 

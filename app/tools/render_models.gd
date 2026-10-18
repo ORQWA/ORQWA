@@ -1,14 +1,14 @@
 extends SceneTree
 ## Renders the Blender models (app/assets/models) as the world draws them, for review (ADR 0009):
-## every building and plant in three variants side by side into $OUT_DIR/<group>/<name>.png,
-## buildings also close up (<name>-close.png), and the clouds together (clouds/clouds.png).
-## Run it with scripts/render-models.sh; $GROUPS (space-separated: buildings, vegetation,
-## clouds) and $MODELS (names) limit it to some. With $GALLERY set, every overview also goes
+## every building and plant in three variants side by side into
+## $OUT_DIR/<group>/<name>.png, buildings also close up (<name>-close.png). Run it with
+## scripts/render-models.sh; $GROUPS (space-separated: buildings, vegetation) and $MODELS
+## (names) limit it to some. With $GALLERY set, every overview also goes
 ## there as a small JPEG, <group>/<name>.jpg, for the galleries in art/README.md; a run of a
 ## whole group replaces its old pictures, so models taken out leave none behind. Light and
-## colours are the world's (ADR 0011).
+## colours are the world's (ADR 0019).
 
-const GROUPS: PackedStringArray = ["buildings", "vegetation", "clouds"]
+const GROUPS: PackedStringArray = ["buildings", "vegetation"]
 ## Plaster and roof colour (indices into the palette's walls and tiles, or a plant's colours)
 ## and variant (shutters below 0.25, flowers above 0.65 hidden).
 const VARIANTS: Array = [[0, 0, 0.5], [2, 1, 0.3], [1, 2, 0.9]]
@@ -65,9 +65,6 @@ func _run() -> void:
 			if wanted.is_empty():
 				for old: String in DirAccess.get_files_at(folder):
 					DirAccess.remove_absolute(folder.path_join(old))
-		if group == "clouds":
-			await _clouds()
-			continue
 		var kinds: Dictionary = _kinds(group)
 		for model: String in kinds:
 			if not wanted.is_empty() and not wanted.has(model):
@@ -218,47 +215,6 @@ func _close_up(mesh: Mesh) -> void:
 	var corner: Vector3 = Vector3(size.x * 0.5, 0.0, size.z * 0.5)
 	var eye: Vector3 = corner + Vector3(size.x * 0.35, 1.7, size.z * 0.9)
 	_camera.look_at_from_position(eye, Vector3(0.0, size.y * 0.45, size.z * 0.1), Vector3.UP)
-
-
-## The clouds side by side in the sky, lit as the cloud layer lights them, seen from below.
-func _clouds() -> void:
-	_row.hide()
-	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = preload("res://shaders/cloud.gdshader")
-	material.set_shader_parameter("cloud_color", Palette.color("sky.cloud"))
-	material.set_shader_parameter("shade_color", Palette.color("sky.cloud_shade"))
-	material.set_shader_parameter("horizon_color", Palette.color("sky.horizon"))
-	material.set_shader_parameter("sun_color", Palette.color("light.sun"))
-	material.set_shader_parameter("sun_direction", _sun.global_transform.basis.z)
-	var clouds: Array[MeshInstance3D] = []
-	var x: float = 0.0
-	for model: String in CloudLayer.MODELS:
-		var scene: PackedScene = load(CloudLayer.DIRECTORY + model + ".glb")
-		var loaded: Node = scene.instantiate()
-		var source: MeshInstance3D = loaded.find_children("*", "MeshInstance3D", true, false)[0]
-		var cloud: MeshInstance3D = MeshInstance3D.new()
-		cloud.mesh = source.mesh
-		loaded.free()
-		cloud.material_override = material
-		cloud.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var size: Vector3 = cloud.mesh.get_aabb().size
-		cloud.position = Vector3(x + size.x * 0.5, 14.0, 0.0)
-		x += size.x + 3.0
-		root.add_child(cloud)
-		clouds.append(cloud)
-	var width: float = x - 3.0
-	for cloud: MeshInstance3D in clouds:
-		cloud.position.x -= width * 0.5
-	# Far enough back for the row to fill about four fifths of the picture's width.
-	var aspect: float = float(GALLERY_SIZE.x) / GALLERY_SIZE.y
-	var distance: float = width * 0.6 / (tan(deg_to_rad(_camera.fov * 0.5)) * aspect)
-	var target: Vector3 = Vector3(0.0, 16.0, 0.0)
-	var eye: Vector3 = target + Vector3(0.12, -0.1, 1.0).normalized() * distance
-	_camera.look_at_from_position(eye, target, Vector3.UP)
-	await _save("clouds", "clouds", true)
-	for cloud: MeshInstance3D in clouds:
-		cloud.queue_free()
-	print("rendered clouds")
 
 
 ## Lets the picture settle, then saves it as `group`/`name`.png and, with `gallery`, as a small
