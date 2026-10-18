@@ -10,7 +10,8 @@ joints, posed on the bike, dressed and fitted with a helmet by script (ADR 0019)
   `GEO-body_male_realistic`) with their sculpted detail applied at the first of the bundle's
   three subdivision levels (42,342 vertices each), and the realistic skeleton's joints: an
   empty at the origin of each bone that marks one (hip, knee, ankle, heel, ball of the foot,
-  shoulder, elbow, wrist, the spine's ends, the skull), named after the bone. The rest of the
+  shoulder, elbow, wrist, every finger's joints, the spine's ends, the skull), named after the
+  bone. The rest of the
   skeleton and the finer sculpt levels are left out to keep the repository small (the full
   levels alone are 24 MB).
 - **From:** *Human Base Meshes* asset bundle v1.4.1 by Blender Studio and contributors,

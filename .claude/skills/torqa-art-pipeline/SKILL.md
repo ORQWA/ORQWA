@@ -133,9 +133,19 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
   skin again); the app only turns the leg bones (two-bone IK, shortest arc from rest) and moves
   the pelvis bone. Every leg bone needs a child (the foot a `toe`) so the app can read where it
   ends. Keep bone and node names stable — the app finds them by name.
+- Hands: finger bones from the bundle's finger joints, curled joint by joint (`grip`); orient
+  the hand by its joints (wrist, knuckles, thumb), not its skin's outline, which the spread
+  thumb skews; place it by its knuckles. Spare the hands when thinning, or the fingers
+  flatten into strips; bending finger vertices without bones tears the mesh.
 - Kit edges: thin first, then cut planes across the limbs (`bmesh.ops.bisect_plane` on the
   faces near each limb) and choose materials by position; decimating after dressing makes
   the edges ragged. Unlinked appended objects have no computed world matrix: read `location`.
+- Fit to a real rider on the hoods (a race photo, 1.76 m): sit bones 9 cm below the hip joints
+  (the standing body's lowest point between the hips is the inner thighs, far lower), hoods
+  8 cm below the saddle and 0.57 m ahead of the bottom bracket, the back bending mostly at the
+  pelvis. Solve the arm's reach to the wrist, not the hood. Check side views against a photo.
+- The bike's shaped parts are `Faces.sweep` sections along `path` curves; chainrings and
+  rotors are rings (`annulus`) — solid discs read as pale plates.
 - Male and female riders share node and material names; each has their own bike, sized to them.
 
 ## Third-party bases (CC0 characters and the like)

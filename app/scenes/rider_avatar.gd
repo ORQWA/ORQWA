@@ -60,6 +60,8 @@ var _bottom_bracket: Vector3
 var _crank: float
 var _pedal_offset: float
 var _ankle_over_pedal: Vector3
+## Where the ball of the foot's joint sits over the pedal: the sole and cleat stand on it.
+var _ball_over_pedal: Vector3
 var _thigh: float
 var _shin: float
 ## Left, right, as are all the following.
@@ -108,6 +110,7 @@ func _build() -> void:
 	_crank = fit["crank"]
 	_pedal_offset = fit["pedal_offset"]
 	_ankle_over_pedal = _vector(fit["ankle_over_pedal"])
+	_ball_over_pedal = _vector(fit["ball_over_pedal"])
 	_thigh = fit["thigh"]
 	_shin = fit["shin"]
 	_hands = _vector(fit["hands"])
@@ -196,8 +199,10 @@ func animate(
 		var suffix: String = ".L" if side == 0 else ".R"
 		_aim_bone("thigh" + suffix, hip, knee)
 		_aim_bone("shin" + suffix, knee, ankle)
-		# The foot from the ankle to the ball of the foot on the pedal.
-		_aim_bone("foot" + suffix, ankle, ankle - feet[side] * _ankle_over_pedal)
+		# The foot from the ankle to the ball of the foot over the pedal.
+		_aim_bone(
+			"foot" + suffix, ankle, ankle - feet[side] * (_ankle_over_pedal - _ball_over_pedal)
+		)
 		_joints.append([hip, knee, ankle])
 
 

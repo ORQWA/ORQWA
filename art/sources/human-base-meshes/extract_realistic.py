@@ -18,10 +18,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "realistic_bodies.blend")
 BODIES = ("GEO-body_female_realistic", "GEO-body_male_realistic")
 # Skeleton bones whose origins are joints: hip, knee (patella), ankle (talus), heel and ball of
-# the foot, shoulder (humerus), elbow (radius), wrist (hand centre), the spine's ends, the skull.
+# the foot, shoulder (humerus), elbow (radius), wrist (hand centre), the spine's ends, the skull,
+# and every finger's (and toe's) joints: metacarpal, proximal, middle and distal phalanx.
 JOINTS = ("hip", "leg_femur", "leg_patella", "foot_talus", "foot_calcaneus", "foot_center",
           "arm_humerus", "arm_radius", "hand_center", "shoulder_scapula", "spine_lumbar_l5",
-          "spine_thoracic_t1", "spine_cervical_c1", "skull", "sacral", "ripcage")
+          "spine_thoracic_t1", "spine_cervical_c1", "skull", "sacral", "ripcage",
+          "metacarpal", "proximal", "middle", "distal")
 
 bundle = sys.argv[sys.argv.index("--") + 1]
 bpy.ops.wm.read_factory_settings(use_empty=True)

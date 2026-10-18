@@ -158,28 +158,37 @@ scripts/dev.sh scripts/render-riders.sh   # side, front, chase and face views in
   Meshes*, extracted into `sources/human-base-meshes/realistic_bodies.blend` with the bundle's
   skeleton joints (see its `SOURCE.md` and `extract_realistic.py`). A skeleton is built from
   those joints, scaled to each body, and the body skinned to it (heat weights on a thinned
-  copy, handed on by nearest surface).
+  copy, handed on by nearest surface). He is scaled to 1.76 m; she keeps the body's 1.64 m.
 - **Head:** fitted to the head's own shape. Hair is a shell over the scalp (to the nape and
-  over the ears for her, short for him), the helmet a shell over the hair, drawn out to the
-  back, with vent slots laid on top; sunglasses are two lenses following the face over the
-  eyes, a bridge and arms back to the ears; she has a ponytail with a hair tie. The headgear
-  moves with the head bone.
+  over the ears for her, short for him). The helmet is a smooth shell fitted round the whole
+  skull, its rim just above the sunglasses, over the ears' tops and low over the back of the
+  head, drawn out to a short tail, with vent slots on top and chin straps; sunglasses are two
+  lenses on a shield wrapped round the face in front of the eyes (found from the nose's tip),
+  a bridge and arms back to the ears; she has a ponytail with a hair tie. The headgear moves with the head bone.
 - **Seat:** the hips go on the seat tube's line where the knee bends 30° with the pedal at the
-  bottom (a usual bike fit); the back bends forward (24–50° above horizontal) until the hands,
-  arms almost straight, reach hoods at least 0.5 m ahead of the bottom bracket; feet on the
-  pedals with the knees forward. The riding pose becomes the skeleton's rest.
-- **Kit:** after thinning the posed body to about 25,000 triangles, the kit's edges are cut into
-  it as planes across the limbs, so they run straight: shorts to above the knee, a jersey with
-  sleeves to half way down the upper arm, gloves, socks, shoes with dark soles. Shoes and gloves
-  are the convex hulls of the feet and hands, closed over toes and fingers.
+  bottom (a usual bike fit), the sit bones on the saddle 9 cm below the hip joints; the hoods
+  8 cm below the saddle and 0.57 m ahead of the bottom bracket for a 1.76 m rider (scaled to
+  each), as on a road bike set up for riding fast. The back bends forward, mostly at the
+  pelvis so it stays straight, until the arms, slightly bent, reach the hoods (about 40° above
+  horizontal); neck and head are aimed so the rider looks up the road; the hands rest on the
+  hoods, knuckles just behind the horns, each finger curled joint by joint down round the
+  hood's front; feet on the pedals with the knees forward, the soles on them. The riding pose
+  becomes the skeleton's rest.
+- **Kit:** after thinning the posed body to about 35,000 triangles (the hands spared, so the
+  fingers stay round), the kit's edges are cut into
+  it as planes across the limbs and the neck, so they run straight: shorts to above the knee,
+  a jersey with a collar and sleeves to half way down the upper arm, socks and white shoes;
+  the hands are bare, their fingers curled round the hoods. Each face takes the region of the
+  bone that moves it most. The shoes are the convex hulls of the feet.
 - **Bike:** built around those contact points (saddle under the pelvis, hoods under the hands),
   see below.
 
 Each file holds `skeleton` with `body` skinned to it (bones `pelvis`, `spine`, `chest`, `neck`,
-`head`, `shoulder`/`upper_arm`/`forearm`/`hand` and `thigh`/`shin`/`foot`/`toe`, each `.L` and
-`.R`), `frame`, `wheel_front`, `wheel_rear`, `crankset` (right crank forward) and `pedal_l`,
+`head`, `shoulder`/`upper_arm`/`forearm`/`hand`, three a finger (`thumb_1`…`little_3`) and
+`thigh`/`shin`/`foot`/`toe`, each `.L` and `.R`), `frame`, `wheel_front`, `wheel_rear`, `crankset` (right crank forward) and `pedal_l`,
 `pedal_r`. `riders.json` holds each rider's fit: hips, thigh and shin lengths, where the ankle
-sits over the pedal, the hands on the hoods, hubs, bottom bracket and cranks.
+and the ball of the foot sit over the pedal, the hands on the hoods, hubs, bottom bracket and
+cranks.
 `app/scenes/rider_avatar.gd` turns wheels and cranks, turns the leg bones to the pedals
 (inverse kinematics) and moves the pelvis bone, and all above it, as the rider sways and stands.
 Exports are deterministic. `PREVIEW=<dir>` also renders Cycles previews of the riders there.
@@ -187,16 +196,19 @@ Exports are deterministic. `PREVIEW=<dir>` also renders Cycles previews of the r
 | Name | Used for |
 |---|---|
 | `skin`, `hair` | skin; hair and ponytail |
-| `jersey`, `sleeve`, `shorts`, `gloves`, `shoes` | the kit |
+| `jersey`, `sleeve`, `shorts`, `socks`, `shoes` | the kit |
 | `helmet`, `vents`, `glasses` | helmet and its vent slots, sunglasses |
 | `frame` | the frame and fork |
 | `tyre`, `rim`, `metal`, `saddle`, `bar` | the bike's other parts |
 
 Colours: the rider's own palette section (`rider_female`, `rider_male`; `frame` there too) and
-`bike` for the bike's other parts. The bike has round tyres on deep rims with disc rotors, an 11-speed cassette,
-toothed chainrings on a spider, tapered cranks, a rear derailleur and the chain, brake hoods
-with lever blades, saddle rails and a bottle in its cage. A rider about 23,000–25,000
-triangles, a bike about 7,300.
+`bike` for the bike's other parts. The bike is a modern race bike: a compact frame of shaped,
+squared-off tubes (a deep down tube, tall head tube, aero seat tube, dropped seat stays), a
+straight tapered fork, a black aero seat post on the seat tube's line and a one-piece bar and
+stem, the stem straight and the flat tops level, round drops, rounded brake hoods and lever blades; a sculpted saddle on rails; 55 mm carbon
+rims with 24 black spokes and disc rotors; an 11-speed cassette, dark toothed chainrings on a
+spider, tapered cranks, a rear derailleur and the chain. A rider about 37,000–39,000 triangles, a
+bike about 9,800.
 Both riders, from every side, are in the [gallery](#riders).
 
 ## Gallery
