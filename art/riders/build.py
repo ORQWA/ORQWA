@@ -31,6 +31,7 @@ app colours the materials by name from the palette (`rider_female`, `rider_male`
 import json
 import math
 import os
+import sys
 
 import bmesh
 import bpy
@@ -1062,7 +1063,248 @@ def build(sex):
     }
 
 
+# --- realistic, rigged bodies (RIDERS=rigged; work in progress) ------------------------------
+
+REALISTIC_SOURCE = os.path.normpath(
+    os.path.join(HERE, "..", "sources", "human-base-meshes", "realistic_bodies.blend"))
+# The skeleton the joints come from is this tall; each body's joints are scaled to its height.
+SKELETON_HEIGHT = 1.762
+SKELETON_X = -7.411
+# Heat weighting fails on the detailed bodies: a copy thinned to this share is weighted and its
+# weights handed on.
+WEIGHT_COPY = 0.25
+
+
+def load_realistic(sex):
+    """The realistic body standing at the origin facing +y, and its joints in the same frame."""
+    with bpy.data.libraries.load(REALISTIC_SOURCE, link=False) as (source, target):
+        target.objects = list(source.objects)
+    objects = {o.name: o for o in target.objects}
+    body = objects[f"GEO-body_{sex}_realistic"]
+    bpy.context.scene.collection.objects.link(body)
+    update()
+    corners = [body.matrix_world @ Vector(c) for c in body.bound_box]
+    low = Vector([min(c[i] for c in corners) for i in range(3)])
+    high = Vector([max(c[i] for c in corners) for i in range(3)])
+    height = high.z - low.z
+    scale = height / SKELETON_HEIGHT
+    # The source faces −y: turn it round so it faces the bike's forward, +y.
+    turn = Matrix.Rotation(math.pi, 4, "Z")
+    place = turn @ Matrix.Translation(Vector((-(low.x + high.x) / 2, 0.0, -low.z)))
+    body.data.transform(place @ body.matrix_world)
+    body.matrix_world = Matrix.Identity(4)
+    joints = {}
+    for name, obj in objects.items():
+        if name.startswith("GEO-skeletion."):
+            # Appended but not linked, an object's world matrix is not computed; the joints
+            # have no parents, so their location is where they are.
+            p = obj.location
+            joints[name.split(".", 1)[1]] = turn @ Vector(
+                ((p.x - SKELETON_X) * scale, p.y * scale, p.z * scale))
+    return body, joints, scale
+
+
+def realistic_skeleton(body, joints, scale):
+    """An armature from the joints, the body skinned to it. Bone names are the ones the app
+    poses: pelvis, spine, chest, neck, head, shoulder/upper_arm/forearm/hand and
+    thigh/shin/foot, each with .L and .R."""
+    armature = bpy.data.armatures.new("rig")
+    rig = bpy.data.objects.new("rig", armature)
+    bpy.context.scene.collection.objects.link(rig)
+    bpy.context.view_layer.objects.active = rig
+    bpy.ops.object.mode_set(mode="EDIT")
+    bones = armature.edit_bones
+
+    def bone(name, head, tail, parent=None, connect=False):
+        made = bones.new(name)
+        made.head, made.tail = head, tail
+        if parent:
+            made.parent = bones[parent]
+            made.use_connect = connect
+
+    hip = joints["hip"]
+    middle_back = joints["spine_lumbar_l5"].lerp(joints["spine_thoracic_t1"], 0.5)
+    bone("pelvis", hip, hip + Vector((0.0, 0.0, 0.1)))
+    bone("spine", joints["spine_lumbar_l5"], middle_back, "pelvis")
+    bone("chest", middle_back, joints["spine_thoracic_t1"], "spine", True)
+    bone("neck", joints["spine_thoracic_t1"], joints["spine_cervical_c1"], "chest", True)
+    bone("head", joints["spine_cervical_c1"],
+         joints["spine_cervical_c1"] + Vector((0.0, 0.0, 0.2 * scale)), "neck", True)
+    for side in ("L", "R"):
+        # Behind the kneecap, where the knee turns.
+        knee = joints[f"leg_patella.{side}"] + Vector((0.0, -0.03 * scale, 0.0))
+        bone(f"thigh.{side}", joints[f"leg_femur.{side}"], knee, "pelvis")
+        bone(f"shin.{side}", knee, joints[f"foot_talus.{side}"], f"thigh.{side}", True)
+        bone(f"foot.{side}", joints[f"foot_talus.{side}"], joints[f"foot_center.{side}"],
+             f"shin.{side}", True)
+        towards = (joints[f"arm_humerus.{side}"] - joints["spine_thoracic_t1"]).normalized()
+        bone(f"shoulder.{side}", joints["spine_thoracic_t1"] + towards * 0.03,
+             joints[f"arm_humerus.{side}"], "chest")
+        bone(f"upper_arm.{side}", joints[f"arm_humerus.{side}"], joints[f"arm_radius.{side}"],
+             f"shoulder.{side}", True)
+        bone(f"forearm.{side}", joints[f"arm_radius.{side}"], joints[f"hand_center.{side}"],
+             f"upper_arm.{side}", True)
+        along = (joints[f"hand_center.{side}"] - joints[f"arm_radius.{side}"]).normalized()
+        bone(f"hand.{side}", joints[f"hand_center.{side}"],
+             joints[f"hand_center.{side}"] + along * 0.09 * scale, f"forearm.{side}", True)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    coarse = body.copy()
+    coarse.data = body.data.copy()
+    bpy.context.scene.collection.objects.link(coarse)
+    thin = coarse.modifiers.new("thin", "DECIMATE")
+    thin.ratio = WEIGHT_COPY
+    bpy.context.view_layer.objects.active = coarse
+    bpy.ops.object.modifier_apply(modifier="thin")
+    for obj in bpy.context.selected_objects:
+        obj.select_set(False)
+    coarse.select_set(True)
+    rig.select_set(True)
+    bpy.context.view_layer.objects.active = rig
+    bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    for group in coarse.vertex_groups:
+        body.vertex_groups.new(name=group.name)
+    transfer = body.modifiers.new("weights", "DATA_TRANSFER")
+    transfer.object = coarse
+    transfer.use_vert_data = True
+    transfer.data_types_verts = {"VGROUP_WEIGHTS"}
+    transfer.vert_mapping = "POLYINTERP_NEAREST"
+    transfer.layers_vgroup_select_src = "ALL"
+    transfer.layers_vgroup_select_dst = "NAME"
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.modifier_apply(modifier="weights")
+    bpy.data.objects.remove(coarse)
+    skin = body.modifiers.new("rig", "ARMATURE")
+    skin.object = rig
+    body.parent = rig
+    return rig
+
+
+def aim(rig, name, target):
+    """Turns pose bone `name` (armature space) so its tail points at `target`, keeping its roll."""
+    bone = rig.pose.bones[name]
+    head = bone.head.copy()
+    y = (target - head).normalized()
+    x = bone.matrix.col[0].to_3d()
+    x = (x - y * x.dot(y)).normalized()
+    z = x.cross(y)
+    bone.matrix = Matrix((
+        (x.x, y.x, z.x, head.x),
+        (x.y, y.y, z.y, head.y),
+        (x.z, y.z, z.z, head.z),
+        (0.0, 0.0, 0.0, 1.0),
+    ))
+    update()
+
+
+def turn_bone(rig, name, angle, axis="X"):
+    """Turns pose bone `name` about its head by `angle` round the armature's `axis`."""
+    bone = rig.pose.bones[name]
+    head = bone.head.copy()
+    bone.matrix = (Matrix.Translation(head) @ Matrix.Rotation(angle, 4, axis)
+                   @ Matrix.Translation(-head) @ bone.matrix)
+    update()
+
+
+def build_realistic(sex):
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    body, joints, scale = load_realistic(sex)
+    bpy.context.view_layer.objects.active = body
+    thigh = (joints["leg_patella.R"] - joints["leg_femur.R"]).length
+    shin = (joints["foot_talus.R"] - joints["leg_patella.R"]).length
+    ball = joints["foot_center.R"] - joints["foot_talus.R"]
+    # As for the primitive bodies: the hips on the seat tube's line, the knee bending
+    # `KNEE_AT_BOTTOM` with the pedal at the bottom and the ball of the foot on it.
+    ankle_over_pedal = Vector((0.0, -ball.y, 0.012 - ball.z))
+    ankle = (BOTTOM_BRACKET + Vector((0.0, 0.0, -CRANK))
+             + Matrix.Rotation(FOOT_AT_BOTTOM, 3, "X") @ ankle_over_pedal)
+    seat_axis = Vector((0.0, -math.cos(SEAT_ANGLE), math.sin(SEAT_ANGLE)))
+    offset = BOTTOM_BRACKET - ankle
+    leg = math.sqrt(thigh ** 2 + shin ** 2 + 2.0 * thigh * shin * math.cos(KNEE_AT_BOTTOM))
+    along = -seat_axis.dot(offset) + math.sqrt(
+        seat_axis.dot(offset) ** 2 - offset.length_squared + leg * leg)
+    hips_middle = (joints["leg_femur.L"] + joints["leg_femur.R"]) / 2
+    move_by = BOTTOM_BRACKET + seat_axis * along - hips_middle
+    body.data.transform(Matrix.Translation(move_by))
+    for name in joints:
+        joints[name] = joints[name] + move_by
+    centre = hips_middle + move_by
+    seat = [body.matrix_world @ v.co for v in body.data.vertices
+            if abs(v.co.x) < 0.07 and (v.co.yz - centre.yz).length < 0.2]
+    saddle_top = min(seat, key=lambda p: p.z).z
+    rig = realistic_skeleton(body, joints, scale)
+    bpy.context.view_layer.objects.active = rig
+    bpy.ops.object.mode_set(mode="POSE")
+
+    upper = (joints["arm_radius.R"] - joints["arm_humerus.R"]).length
+    lower = (joints["hand_center.R"] - joints["arm_radius.R"]).length
+    arm = upper + lower
+
+    def shoulders():
+        return (rig.pose.bones["upper_arm.L"].head + rig.pose.bones["upper_arm.R"].head) / 2
+
+    # Bend the back until the hands reach hoods far enough ahead, as `lean` does.
+    total = 0.0
+    step = math.radians(1.0)
+    while True:
+        torso = shoulders() - centre
+        angle = math.atan2(torso.z, torso.y)
+        shoulder = rig.pose.bones["upper_arm.R"].head
+        hoods_z = saddle_top - DROP_TO_HOODS
+        across = HOODS_HALF_WIDTH - abs(shoulder.x)
+        reach = (arm * REACH) ** 2 - (shoulder.z - hoods_z) ** 2 - across ** 2
+        hoods = Vector((0.0, shoulder.y + math.sqrt(reach), hoods_z)) if reach > 0 else None
+        ready = hoods is not None and hoods.y >= HOODS_AHEAD
+        if (angle <= TORSO_ANGLES[0] and ready) or angle <= TORSO_ANGLES[1]:
+            break
+        turn_bone(rig, "pelvis", -0.4 * step)
+        turn_bone(rig, "spine", -0.3 * step)
+        turn_bone(rig, "chest", -0.3 * step)
+        total += step
+    if hoods is None:
+        raise RuntimeError("the arms cannot reach the hoods")
+    turn_bone(rig, "neck", 0.45 * total)
+    turn_bone(rig, "head", 0.5 * total)
+
+    for side, sign in (("L", -1.0), ("R", 1.0)):
+        wrist = Vector((sign * HOODS_HALF_WIDTH, hoods.y, hoods.z)) + WRIST_ON_HOOD
+        shoulder = rig.pose.bones[f"upper_arm.{side}"].head
+        elbow = two_bone(shoulder, wrist, upper, lower, Vector((sign * 0.5, -0.3, -1.0)))
+        aim(rig, f"upper_arm.{side}", elbow)
+        aim(rig, f"forearm.{side}", wrist)
+        aim(rig, f"hand.{side}", wrist + Vector((0.0, 0.08, -0.04)))
+        # The legs at crank angle 0: the right pedal forward, the left one back.
+        pedal = BOTTOM_BRACKET + Vector((sign * PEDAL_OFFSET, sign * CRANK, 0.0))
+        foot_turn = Matrix.Rotation(FOOT_AT_BOTTOM * 0.5, 3, "X")
+        ankle_at = pedal + foot_turn @ ankle_over_pedal
+        hip = rig.pose.bones[f"thigh.{side}"].head
+        knee = two_bone(hip, ankle_at, thigh, shin, Vector((0.0, 1.0, 0.0)))
+        aim(rig, f"thigh.{side}", knee)
+        aim(rig, f"shin.{side}", ankle_at)
+        aim(rig, f"foot.{side}", ankle_at + foot_turn @ Vector((0.0, ball.length, -0.02)))
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    saddle = Vector((0.0, centre.y - 0.02, saddle_top))
+    bike_objects, rear_hub, front_hub = bike(saddle, hoods)
+    shift = Vector((0.0, -(rear_hub.y + front_hub.y) / 2.0, 0.0))
+    for obj in list(bpy.context.scene.objects):
+        if obj.parent is None:
+            move(obj, shift)
+    print(f"built realistic rider_{sex}: torso {math.degrees(angle):.0f}° above horizontal, "
+          f"{len(body.data.polygons)} faces")
+    preview_dir = os.environ.get("PREVIEW")
+    if preview_dir:
+        import preview  # noqa: E402  (art/preview.py; on the path below)
+        preview.render([body, *bike_objects], preview_dir, f"realistic_{sex}",
+                       views=("side", "quarter"))
+
+
 def main():
+    if os.environ.get("RIDERS") == "rigged":
+        sys.path.insert(0, os.path.dirname(HERE))
+        for sex in ("female", "male"):
+            build_realistic(sex)
+        return
     manifest = {sex: build(sex) for sex in ("female", "male")}
     with open(os.path.join(OUT, "riders.json"), "w", encoding="utf-8") as file:
         json.dump(manifest, file, indent=1)

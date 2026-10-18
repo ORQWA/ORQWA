@@ -13,3 +13,17 @@
 
 The riders (`art/riders/build.py`) are derived from this file: posed on the bike, faceted at
 their base level, dressed and fitted with a helmet by script (ADR 0011).
+
+## Realistic bodies (for the rigged riders)
+
+- **What:** the realistic female and male bodies (`GEO-body_female_realistic`,
+  `GEO-body_male_realistic`) with their sculpted detail applied at the first of the bundle's
+  three subdivision levels (42,342 vertices each), and the realistic skeleton's joints: an
+  empty at the origin of each bone that marks one (hip, knee, ankle, heel, ball of the foot,
+  shoulder, elbow, wrist, the spine's ends, the skull), named after the bone. The rest of the
+  skeleton and the finer sculpt levels are left out to keep the repository small (the full
+  levels alone are 24 MB).
+- **From:** the same bundle and download as above.
+- **Licence:** CC0 1.0, as above.
+- **How:** `extract_realistic.py` writes `realistic_bodies.blend` from the bundle's
+  `human_base_meshes_bundle.blend`.
