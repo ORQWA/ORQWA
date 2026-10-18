@@ -3,8 +3,9 @@ extends Node3D
 ## A rider on a road bike (R46, ADR 0019): the Blender-made models of art/riders — a realistic
 ## body skinned to a skeleton — coloured from the palette. The cranks turn with the cadence and
 ## come level when coasting, the leg bones follow the pedals (two-bone inverse kinematics), the
-## wheels turn with the speed, and the upper body (the pelvis bone and all above it) sways,
-## stands up on the pedals and holds itself upright over the rocking bike as `RiderMotion` says.
+## wheels turn with the speed, the arms keep the hands on the hoods, and the upper body (the
+## pelvis bone and all above it) sways, stands up on the pedals and holds itself upright over
+## the rocking bike as `RiderMotion` says.
 ## Local axes: −z forward, +y up, +x right; the origin is on the ground between the wheels.
 
 const DIRECTORY: String = "res://assets/models/riders/"
@@ -22,7 +23,7 @@ const ANKLE_SWING: float = 0.14
 ## `RiderMotion` says how much.
 const SWAY: float = 0.021
 ## Standing up, the upper body turns about the hands on the hoods (radians, at most) and moves
-## forward over the cranks (metres; the hands slide to the hoods' tips), as far as the legs
+## forward over the cranks (metres; the arms bend, the hands stay on the hoods), as far as the legs
 ## reach the pedals all round the stroke, and a little further: near the bottom of each stroke
 ## the leg then holds the body back, and it bobs, as a standing rider's does.
 const STAND_TILT: float = 0.22
@@ -69,6 +70,8 @@ var _hips: Array[Vector3] = []
 ## The rider's skeleton, and its bones by name; the skeleton's place in the avatar.
 var _skeleton: Skeleton3D
 var _bones: Dictionary[String, int] = {}
+## Where each bone starts at rest, in the avatar's space.
+var _rest: Dictionary[String, Vector3] = {}
 var _to_skeleton: Transform3D
 ## Where the hands rest on the hoods.
 var _hands: Vector3
@@ -129,9 +132,26 @@ func _build() -> void:
 	for side: String in ["l", "r"]:
 		_pedals.append(_part("pedal_" + side))
 	_skeleton = _model.find_children("*", "Skeleton3D", true, false)[0]
-	for bone: String in ["pelvis", "thigh.L", "shin.L", "foot.L", "thigh.R", "shin.R", "foot.R"]:
-		_bones[bone] = _skeleton.find_bone(bone)
 	_to_skeleton = _skeleton_transform().affine_inverse()
+	for bone: String in [
+		"pelvis",
+		"thigh.L",
+		"shin.L",
+		"foot.L",
+		"thigh.R",
+		"shin.R",
+		"foot.R",
+		"upper_arm.L",
+		"forearm.L",
+		"hand.L",
+		"upper_arm.R",
+		"forearm.R",
+		"hand.R",
+	]:
+		_bones[bone] = _skeleton.find_bone(bone)
+		_rest[bone] = (
+			(_to_skeleton.affine_inverse() * _skeleton.get_bone_global_rest(_bones[bone])).origin
+		)
 	_stand_tilt = _standing_reach()
 	show_rider(_shown)
 	animate(0.0, 0.0, 0.0)
@@ -191,6 +211,22 @@ func animate(
 				high = middle
 		body = _body_transform(sway_size, low, rock, standing)
 	_place_bone("pelvis", body)
+	# The hands stay on the hoods: the arms reach from wherever the body put the shoulders.
+	for side: int in range(2):
+		var suffix: String = ".L" if side == 0 else ".R"
+		var sign: float = -1.0 if side == 0 else 1.0
+		var shoulder: Vector3 = body * _rest["upper_arm" + suffix]
+		var wrist: Vector3 = _rest["hand" + suffix]
+		var upper: float = _rest["upper_arm" + suffix].distance_to(_rest["forearm" + suffix])
+		var lower: float = _rest["forearm" + suffix].distance_to(wrist)
+		var elbow: Vector3 = _two_bone(
+			shoulder, wrist, upper, lower, Vector3(sign * 0.5, -1.0, 0.3)
+		)
+		_aim_bone("upper_arm" + suffix, shoulder, elbow)
+		_aim_bone("forearm" + suffix, elbow, wrist)
+		# The hand, and the fingers' grip with it, as at rest.
+		var hand: int = _bones["hand" + suffix]
+		_skeleton.set_bone_global_pose(hand, _skeleton.get_bone_global_rest(hand))
 	_joints.clear()
 	for side: int in range(2):
 		var ankle: Vector3 = ankles[side]
@@ -248,7 +284,7 @@ func _aim_bone(name: String, start: Vector3, end: Vector3) -> void:
 
 ## The upper body's place on the bike: swaying `sway` about the seat with the stroke, turned up
 ## by `tilt` about the hands and moved forward by `standing` of `STAND_FORWARD`, and rolled
-## against the bike's `rock` about the hands.
+## against the bike's `rock` about the hands. The arms then reach back to the hoods.
 func _body_transform(sway: float, tilt: float, rock: float, standing: float) -> Transform3D:
 	var seat: Vector3 = (_hips[0] + _hips[1]) / 2.0
 	var swaying: Basis = Basis(Vector3.FORWARD, sway * sin(_crank_angle))
@@ -299,6 +335,18 @@ func _legs_reach(body: Transform3D, ankles: Array[Vector3]) -> bool:
 		if (body * _hips[side]).distance_to(ankles[side]) > _thigh + _shin - 0.002:
 			return false
 	return true
+
+
+## The middle joint of two bones of lengths `first` and `second` from `start` to `end`, bending
+## towards `pole`.
+func _two_bone(start: Vector3, end: Vector3, first: float, second: float, pole: Vector3) -> Vector3:
+	var to_end: Vector3 = end - start
+	var reach: float = clampf(to_end.length(), 0.05, first + second - 0.001)
+	var direction: Vector3 = to_end.normalized()
+	var along: float = (first * first - second * second + reach * reach) / (2.0 * reach)
+	var out: float = sqrt(maxf(first * first - along * along, 0.0))
+	var bend: Vector3 = (pole - direction * pole.dot(direction)).normalized()
+	return start + direction * along + bend * out
 
 
 ## Knee position for a leg from `hip` to `ankle`, bending forwards.

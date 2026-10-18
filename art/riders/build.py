@@ -74,9 +74,9 @@ FOOT_AT_BOTTOM = math.radians(-18.0)
 # How far the hood's body sits ahead of where the palm rests on it: behind, so the hand holds
 # the horn, the fingers wrapped over its front onto the lever, as racers ride the hoods.
 HOOD_AHEAD_OF_PALM = -0.05
-# Where the knuckles' joints go, from the hood's top: just behind the horn, high enough for the
-# palm to rest on the hood; the fingers then curl down round its front.
-KNUCKLES_ON_HOOD = Vector((0.0, 0.04, 0.022))
+# Where the knuckles' joints go, from the hood's top: at the horn, the palm pressed onto the
+# hood; the fingers then curl down over the horn's front.
+KNUCKLES_ON_HOOD = Vector((0.0, 0.0, 0.01))
 # The wrist sits behind and above the hood's top, the palm on it.
 WRIST_ON_HOOD = Vector((0.0, -0.06, 0.045))
 
@@ -854,9 +854,8 @@ def bike(saddle, hoods):
                            (0.028, 0.034), (0.026, 0.03), (0.022, 0.024), (0.018, 0.018),
                            (0.014, 0.012)], "bar", sides=8, power=2.2)
         # The lever blade comes out of the hood's front, under the horn.
-        lever = path([hood + Vector((0, 0.05, -0.012)), hood + Vector((0, 0.066, -0.05)),
-                      hood + Vector((0, 0.068, -0.1)), hood + Vector((0, 0.058, -0.145)),
-                      hood + Vector((0, 0.044, -0.17))], 3)
+        lever = path([hood + Vector((0, 0.05, -0.012)), hood + Vector((0, 0.062, -0.045)),
+                      hood + Vector((0, 0.063, -0.08)), hood + Vector((0, 0.054, -0.11))], 3)
         frame.sweep(lever, taper(len(lever), (0.012, 0.022), (0.009, 0.014)), "bar",
                     sides=8, power=2.4)
 
@@ -964,8 +963,18 @@ FINGERS = ("thumb", "index", "middle", "ring", "little")
 # The hand's vertex groups: the hand and its fingers.
 HAND_GROUPS = ("hand.",) + tuple(f"{finger}_" for finger in FINGERS)
 # How far each finger joint bends round the hood (from the knuckle out), and the thumb's.
-FINGER_CURL = tuple(math.radians(a) for a in (65.0, 75.0, 40.0))
-THUMB_CURL = tuple(math.radians(a) for a in (20.0, 35.0, 30.0))
+FINGER_CURL = tuple(math.radians(a) for a in (45.0, 50.0, 30.0))
+# Where each thumb bone points (inward across the bike, ahead, down): from the palm down to
+# the hood's inner flank, then forward along it.
+THUMB_AIM = ((0.45, 0.75, 0.5), (0.2, 0.85, 0.5), (0.15, 0.5, 0.85))
+# How far from the hand joints' middle the hand's skin reaches (metres), for centring them.
+HAND_REACH = 0.09
+# Bones within this much of a hand vertex's nearest bone share its weight (metres), falling
+# off over `HAND_SOFT`.
+HAND_BLEND = 0.02
+HAND_SOFT = 0.008
+# How much of the base mesh's spread between the fingers is closed for the grip.
+FINGER_CLOSE = 0.9
 # How far each hand rolls in from palm-down, thumb up on the inside of its hood.
 HAND_ROLL = math.radians(40.0)
 # Each hand on its hood (armature space): its length forward and a little down, its palm
@@ -1030,6 +1039,24 @@ def centre_leg_joints(body, joints):
                        if abs(p.z - joint.z) < 0.012 and 0.02 < p.x * sign < 0.3]
             if section:
                 joint.x = sum(section) / len(section)
+
+
+def centre_hand_joints(body, joints):
+    """Moves each hand's joints (wrist, knuckles, finger joints) together so they sit in the
+    body's own hand: the bundle's one skeleton, scaled by height alone, has its hands beside
+    these bodies' hands, and the skin would keep that offset posed, gripping beside the hood."""
+    points = world_vertices(body)
+    parts = ("hand_center", "metacarpal", "proximal", "middle", "distal")
+    for side in ("L", "R"):
+        names = [n for n in joints if n.endswith(f".{side}") and n.split(".")[0] in parts]
+        cluster = sum((joints[n] for n in names), Vector()) / len(names)
+        near = [p for p in points if (p - cluster).length < HAND_REACH]
+        if not near:
+            continue
+        skin = sum(near, Vector()) / len(near)
+        shift = Vector((skin.x - cluster.x, skin.y - cluster.y, 0.0))
+        for n in names:
+            joints[n] = joints[n] + shift
 
 
 def realistic_skeleton(body, joints, scale):
@@ -1119,10 +1146,52 @@ def realistic_skeleton(body, joints, scale):
     bpy.context.view_layer.objects.active = body
     bpy.ops.object.modifier_apply(modifier="weights")
     bpy.data.objects.remove(coarse)
+    hand_weights(body, rig)
     skin = body.modifiers.new("rig", "ARMATURE")
     skin.object = rig
     body.parent = rig
     return rig
+
+
+def hand_weights(body, rig):
+    """Weights each hand's vertices to the nearest of its bones (the hand and the finger
+    bones): heat weighting leaves the fingers to the wrong bones, and they stretch instead of
+    curling. The hand's share of a vertex (what the heat weights gave the hand and fingers
+    together) is kept, so the wrist still blends into the forearm."""
+    groups = {g.name: g for g in body.vertex_groups}
+
+    def distance(point, a, b):
+        axis = b - a
+        t = max(0.0, min(1.0, (point - a).dot(axis) / axis.length_squared))
+        return (point - (a + axis * t)).length
+
+    for side in ("L", "R"):
+        names = [f"hand.{side}"] + [f"{finger}_{k + 1}.{side}" for finger in FINGERS
+                                   for k in range(3)]
+        indices = {groups[n].index for n in names}
+        at = lambda n: rig.matrix_world @ rig.data.bones[n].head_local  # noqa: E731
+        segments = {n: [(at(n), rig.matrix_world @ rig.data.bones[n].tail_local)]
+                    for n in names}
+        # The palm: from the wrist out to each finger's knuckle (the thumb's own first bone
+        # lies in the palm already).
+        wrist = at(f"hand.{side}")
+        segments[f"hand.{side}"] = [(wrist, at(f"{finger}_1.{side}")) for finger in FINGERS[1:]]
+        for vertex in body.data.vertices:
+            share = sum(e.weight for e in vertex.groups if e.group in indices)
+            if share <= 0.0:
+                continue
+            point = body.matrix_world @ vertex.co
+            near = sorted((min(distance(point, a, b) for a, b in segments[n]), n)
+                          for n in names)
+            nearest = near[0][0]
+            # A soft falloff over every bone within reach: a hard split tears the skin.
+            chosen = [(d, n) for d, n in near if d <= nearest + HAND_BLEND]
+            weights = [(1.0 / (d - nearest + HAND_SOFT)) ** 3 for d, _ in chosen]
+            total = sum(weights)
+            for n in names:
+                groups[n].remove([vertex.index])
+            for (_, n), w in zip(chosen, weights):
+                groups[n].add([vertex.index], share * w / total, "REPLACE")
 
 
 def aim(rig, name, target):
@@ -1426,16 +1495,33 @@ def grip(rig, side):
     """Curls each finger round the hood, joint by joint towards the palm, the thumb round the
     hood's inner side."""
     palm = HAND_ON_HOODS[side][1]
+    bones = rig.pose.bones
+    middle = (bones[f"middle_1.{side}"].tail - bones[f"middle_1.{side}"].head).normalized()
     for finger in FINGERS:
-        angles = THUMB_CURL if finger == "thumb" else FINGER_CURL
-        for k, angle in enumerate(angles):
-            name = f"{finger}_{k + 1}.{side}"
-            bone = rig.pose.bones[name]
-            direction = (bone.tail - bone.head).normalized()
-            axis = direction.cross(palm)
-            if axis.length < 1e-6:
-                continue
-            turn_bone(rig, name, angle, axis=axis.normalized())
+        first = bones[f"finger_1.{side}".replace("finger", finger)]
+        direction = (first.tail - first.head).normalized()
+        if finger not in ("thumb", "middle"):
+            # The base mesh's fingers are spread: close most of the gap to the middle finger.
+            spread = math.atan2(direction.cross(middle).dot(palm), direction.dot(middle))
+            turn_bone(rig, f"{finger}_1.{side}", spread * FINGER_CLOSE, axis=palm)
+            direction = (first.tail - first.head).normalized()
+        # One axis for the whole finger, from the knuckle: taken joint by joint, it flips
+        # once the finger has curled past the palm's direction and the tip bends back out.
+        if finger == "thumb":
+            # The thumb lies along the hood's inner flank, pointing forward and a little down,
+            # its tip pressed against the hood below the horn.
+            inward = 1.0 if side == "L" else -1.0
+            for k, (across, ahead, down) in enumerate(THUMB_AIM):
+                name = f"thumb_{k + 1}.{side}"
+                head = bones[name].head.copy()
+                aim(rig, name, head + Vector((inward * across, ahead, -down)))
+            continue
+        axis = direction.cross(palm)
+        if axis.length < 1e-6:
+            continue
+        axis.normalize()
+        for k, angle in enumerate(FINGER_CURL):
+            turn_bone(rig, f"{finger}_{k + 1}.{side}", angle, axis=axis)
 
 
 def material_slot(obj, name):
@@ -1451,6 +1537,7 @@ def build(sex):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     body, joints, scale = load_realistic(sex)
     centre_leg_joints(body, joints)
+    centre_hand_joints(body, joints)
     bpy.context.view_layer.objects.active = body
     thigh = (joints["leg_patella.R"] - joints["leg_femur.R"]).length
     shin = (joints["foot_talus.R"] - joints["leg_patella.R"]).length
@@ -1537,13 +1624,30 @@ def build(sex):
         return sum((rig.pose.bones[f"{finger}_1.{side}"].head for finger in FINGERS[1:]),
                    Vector()) / (len(FINGERS) - 1)
 
+    def hand_across(side):
+        """Where the posed hand's skin lies across the bike (its middle x), where the bones
+        alone do not say."""
+        evaluated = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+        mesh = evaluated.to_mesh()
+        groups = {g.index for g in body.vertex_groups
+                  if g.name.startswith(HAND_GROUPS) and g.name.endswith(side)}
+        xs = sorted((evaluated.matrix_world @ mesh.vertices[v.index].co).x
+                    for v in body.data.vertices
+                    if sum(g.weight for g in v.groups if g.group in groups) > 0.5)
+        evaluated.to_mesh_clear()
+        return xs[len(xs) // 2]
+
     for side, sign in (("L", -1.0), ("R", 1.0)):
         # Place the hand, see where its knuckles landed, and move the wrist by the difference,
         # so the knuckles are just behind the horn and the palm rests on the hood.
         hood = Vector((sign * HOODS_HALF_WIDTH, hoods.y, hoods.z))
         wrist = hood + WRIST_ON_HOOD
         place_arm(side, sign, wrist)
-        place_arm(side, sign, wrist + (hood + KNUCKLES_ON_HOOD) - knuckles(side))
+        wrist += (hood + KNUCKLES_ON_HOOD) - knuckles(side)
+        place_arm(side, sign, wrist)
+        # Across the bike, the skin, not the bones, has to sit on the hood.
+        wrist.x += hood.x - hand_across(side)
+        place_arm(side, sign, wrist)
         grip(rig, side)
         # The legs at crank angle 0: the right pedal forward, the left one back.
         pedal = BOTTOM_BRACKET + Vector((sign * PEDAL_OFFSET, sign * CRANK, 0.0))

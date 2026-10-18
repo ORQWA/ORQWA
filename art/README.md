@@ -171,9 +171,9 @@ scripts/dev.sh scripts/render-riders.sh   # side, front, chase and face views in
   each), as on a road bike set up for riding fast. The back bends forward, mostly at the
   pelvis so it stays straight, until the arms, slightly bent, reach the hoods (about 40° above
   horizontal); neck and head are aimed so the rider looks up the road; the hands rest on the
-  hoods, knuckles just behind the horns, each finger curled joint by joint down round the
-  hood's front; feet on the pedals with the knees forward, the soles on them. The riding pose
-  becomes the skeleton's rest.
+  hoods, knuckles over the horns, each finger curled joint by joint round the horn's front and
+  the thumb forward along the hood's inner side; feet on the pedals with the knees forward,
+  the soles on them. The riding pose becomes the skeleton's rest.
 - **Kit:** after thinning the posed body to about 35,000 triangles (the hands spared, so the
   fingers stay round), the kit's edges are cut into
   it as planes across the limbs and the neck, so they run straight: shorts to above the knee,

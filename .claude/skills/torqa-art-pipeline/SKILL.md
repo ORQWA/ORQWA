@@ -133,10 +133,16 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
   skin again); the app only turns the leg bones (two-bone IK, shortest arc from rest) and moves
   the pelvis bone. Every leg bone needs a child (the foot a `toe`) so the app can read where it
   ends. Keep bone and node names stable — the app finds them by name.
-- Hands: finger bones from the bundle's finger joints, curled joint by joint (`grip`); orient
-  the hand by its joints (wrist, knuckles, thumb), not its skin's outline, which the spread
-  thumb skews; place it by its knuckles. Spare the hands when thinning, or the fingers
-  flatten into strips; bending finger vertices without bones tears the mesh.
+- Hands: finger bones from the bundle's finger joints, curled joint by joint about one axis
+  per finger (`grip`; an axis per joint flips past 90° and the tip bends back out); the thumb
+  aimed explicitly (`THUMB_AIM`). Weight the hands geometrically (`hand_weights`): heat
+  weights on the thinned copy leave the fingers to the wrong bones, and a hard nearest-bone
+  split tears the knuckles. The bundle's one skeleton has its hands and legs beside a broader
+  body's (`centre_hand_joints`, `centre_leg_joints`), and the skin still sits off its bones
+  posed: place the hand by where its skin lands (`hand_across`), not by the bones. Spare the
+  hands when thinning, or the fingers flatten into strips; bending finger vertices without
+  bones tears the mesh. Check hands with close-up Workbench renders from the inside, front
+  and top before the Godot views.
 - Kit edges: thin first, then cut planes across the limbs (`bmesh.ops.bisect_plane` on the
   faces near each limb) and choose materials by position; decimating after dressing makes
   the edges ragged. Unlinked appended objects have no computed world matrix: read `location`.
