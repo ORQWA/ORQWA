@@ -236,8 +236,8 @@ Built in rideable steps:
     screens to start a course or workout, a held Finish & save ends a ride, and a focus ring
     shows where keyboard and remote are (Escape goes back too)
   - [x] The remote keeps the screen on (R88): an unseen silent clip, muted for Chrome and
-    mixed into the rider's music on an iPhone, as plain http gives no wake lock; checked in
-    headless Chromium, **not yet tried on a real phone or tablet**
+    mixed into the rider's music on an iPhone, as plain http gives no wake lock; works in
+    Firefox on Android, **not yet tried in Chrome or on an iPhone or iPad**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their
