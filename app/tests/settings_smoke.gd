@@ -95,7 +95,7 @@ func _graphics(torqa: TorqaApp, dialog: SettingsDialog) -> void:
 	_details(torqa, graphics)
 
 
-## The details set apart from the preset (R87): one choice per option the core knows, Auto
+## The details set apart from the preset (R90): one choice per option the core knows, Auto
 ## first; a choice is kept for this computer, Auto and the reset follow the preset again.
 func _details(torqa: TorqaApp, graphics: GraphicsSettings) -> void:
 	var details: Dictionary = graphics.get("_details")

@@ -2,14 +2,14 @@ class_name BuildingModels
 extends RefCounted
 ## The building models made in Blender (art/buildings, R45): loads them and gives their
 ## materials the textures and palette colours their names ask for
-## (app/shaders/building_model.gdshader, ADR 0019). Every building of a chunk is an instance of
+## (app/shaders/building_model.gdshader, ADR 0020). Every building of a chunk is an instance of
 ## a MultiMesh: the instance colour is its plaster, the custom data its roof colour — or for
 ## flat-roofed offices, hotels and public buildings their accent colour — (rgb) and variant
 ## (a, 0–1).
 
 const DIRECTORY: String = "res://assets/models/buildings/"
 
-## Shader pattern, palette colour, texture (art/textures, ADR 0019) and its size in metres of
+## Shader pattern, palette colour, texture (art/textures, ADR 0020) and its size in metres of
 ## each material name; materials without a texture are drawn by the shader alone.
 const LOOKS: Dictionary[String, Array] = {
 	"plaster": [0, "buildings.light_walls", "plaster", 2.0],

@@ -1,7 +1,7 @@
 class_name GraphicsSettings
 extends VBoxContainer
 ## How the app looks on this computer (R78), on the settings' Graphics tab (R83): how
-## detailed the 3D world is drawn (R43), the details set apart from that preset (R87) and full
+## detailed the 3D world is drawn (R43), the details set apart from that preset (R90) and full
 ## screen or a window (#218).
 
 ## How detailed the 3D world is drawn on this computer (R43).
@@ -9,7 +9,7 @@ var _quality: OptionButton = OptionButton.new()
 var _quality_note: Label = Label.new()
 ## Full screen or a window (#218), as F11 switches it too.
 var _fullscreen: CheckBox = CheckBox.new()
-## The details (R87): option name → its choice, "auto" first.
+## The details (R90): option name → its choice, "auto" first.
 var _details: Dictionary[String, OptionButton] = {}
 var _details_grid: GridContainer = GridContainer.new()
 var _torqa: TorqaApp
@@ -117,7 +117,7 @@ func _show_quality_note() -> void:
 	_quality_note.text = tr(note) + " " + tr("Applies from the next ride.")
 
 
-## One choice per detail (R87), "Auto" following the preset; the options and their values come
+## One choice per detail (R90), "Auto" following the preset; the options and their values come
 ## from the core, their names from here.
 func _build_details() -> void:
 	for child: Node in _details_grid.get_children():

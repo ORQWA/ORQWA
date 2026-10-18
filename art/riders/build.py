@@ -249,7 +249,7 @@ class Faces:
 
 
 def smooth(mesh):
-    """Smooth shading, hard only where faces meet at a sharp angle (ADR 0019)."""
+    """Smooth shading, hard only where faces meet at a sharp angle (ADR 0020)."""
     mesh.shade_smooth()
     mesh.set_sharp_from_angle(angle=math.radians(40))
 
@@ -282,7 +282,7 @@ def load_body(sex):
             obj.modifiers.clear()
             obj.data = thinned
         # The bases are low-poly: one level of subdivision rounds them into realistic forms
-        # (ADR 0019) before they are reshaped and posed.
+        # (ADR 0020) before they are reshaped and posed.
         rounder = obj.modifiers.new("rounder", "SUBSURF")
         rounder.levels = 1
         depsgraph = bpy.context.evaluated_depsgraph_get()

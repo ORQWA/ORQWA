@@ -1,5 +1,5 @@
 shader_type spatial;
-// Rain (#103, R86, ADR 0019): faint streaks, as falling drops look with the eye's own motion
+// Rain (#103, R89, ADR 0020): faint streaks, as falling drops look with the eye's own motion
 // blur — thin, see-through, fading out at both ends, lit by the sky; the particles align them
 // with their fall.
 render_mode cull_disabled, depth_draw_never, shadows_disabled;

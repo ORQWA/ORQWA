@@ -1,4 +1,4 @@
-// Puddles in rain (#103, ADR 0019), for the road and the streets: irregular patches where water
+// Puddles in rain (#103, ADR 0020), for the road and the streets: irregular patches where water
 // stands — two layers of smooth noise laid in world space, cut at a level that lets more of
 // them through as it rains harder — only where the surface is flat, mirroring the sky. Needs `world_xz` (the fragment's position east and
 // south in metres) and the world-space normal.

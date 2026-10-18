@@ -1,5 +1,5 @@
 shader_type spatial;
-// Railways (#75, R86, ADR 0019): a bed of ballast (the gravel texture) with wooden sleepers
+// Railways (#75, R89, ADR 0020): a bed of ballast (the gravel texture) with wooden sleepers
 // across it and two steel rails along it, their heads polished by wheels. UV.x runs 0–1 across the bed, UV.y is the
 // distance along the line in metres. Where sleepers would be finer than a pixel along the line,
 // or the rails across it, each gives way to its average colour, so they never shimmer in the

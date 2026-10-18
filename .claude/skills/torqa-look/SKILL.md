@@ -1,6 +1,6 @@
 ---
 name: torqa-look
-description: Torqa's art direction — as realistic as possible (since 2026-10-18, ADR 0019; replaces the faceted pastel low-poly look) — real proportions, smooth shading, physically based materials and light, textures baked from procedural Blender materials or CC0 scans. Use for any visual work on the 3D world or riders — shaders in app/shaders, colours and geometry from core/torqa-world, Blender models and textures in art/, lighting, sky, weather, quality presets — and whenever judging a screenshot or render.
+description: Torqa's art direction — as realistic as possible (since 2026-10-18, ADR 0020; replaces the faceted pastel low-poly look) — real proportions, smooth shading, physically based materials and light, textures baked from procedural Blender materials or CC0 scans. Use for any visual work on the 3D world or riders — shaders in app/shaders, colours and geometry from core/torqa-world, Blender models and textures in art/, lighting, sky, weather, quality presets — and whenever judging a screenshot or render.
 ---
 
 # Torqa's look
@@ -10,7 +10,7 @@ terrain, roads and buildings — with real proportions, smooth shading and physi
 materials and light, like a modern cycling simulator, as far as open, scripted assets reach.
 The decision (user, 2026-10-18) replaces the faceted pastel diorama of ADR 0011 completely; no
 second look is kept. The ADR is
-`docs/adr/0019-realistic-look.md`; it wins over this file if they disagree.
+`docs/adr/0020-realistic-look.md`; it wins over this file if they disagree.
 
 **State (2026-10-18).** Ground and roads, vegetation, buildings, light, sky, water and rain are
 restyled; riders are smooth but still stylized figures (realistic bodies need an armature).
@@ -31,7 +31,7 @@ surface in view on a ride must reach the same level before the next group starts
   skill `torqa-art-pipeline`), tileable, at a scale that reads right (a roof tile ~0.3 m, a
   brick ~0.25 m). Where a procedural material does not look real (rock, bark and plaster are
   likely), use a **CC0 scan** (Poly Haven, ambientCG; original under `art/sources/`, credited,
-  ADR 0019). Judge both side by side in the same light before choosing.
+  ADR 0020). Judge both side by side in the same light before choosing.
 - **Weathering as in nature.** Where water runs and feet and tyres go (darker wall feet,
   streaks under sills, worn wheel tracks, moss on north faces, dust on verges). Variation from
   per-instance colours and texture offsets so repeated models differ, and from blending
@@ -41,7 +41,7 @@ surface in view on a ride must reach the same level before the next group starts
 - **Light.** Physically based sky and sun, soft shadows, ambient occlusion in creases, aerial
   perspective (distant terrain fading into blue-grey haze); a filmic tone mapping (AgX or
   Filmic) instead of the linear one the pastels needed, set when light and sky are restyled.
-- **Unchanged from before:** no racing UI or accessories (banners, arches, crowds) (R44/R86).
+- **Unchanged from before:** no racing UI or accessories (banners, arches, crowds) (R44/R89).
 
 ## Palette
 

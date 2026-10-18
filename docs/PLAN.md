@@ -333,10 +333,10 @@ Built in rideable steps:
     open tries again when reopened
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
-### Phase 9 — Graphics (R43–R47, R86, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md), [ADR 0019](adr/0019-realistic-look.md))
+### Phase 9 — Graphics (R43–R47, R89, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md), [ADR 0020](adr/0020-realistic-look.md))
 From 2026-10-05 the target was a **stylized, faceted, pastel** look (ADR 0011) instead of realism;
 the realistic look's textures and patterns were replaced step by step. Since 2026-10-18 the
-target is **as realistic as possible** (ADR 0019, R86): smooth shading, real proportions,
+target is **as realistic as possible** (ADR 0020, R89): smooth shading, real proportions,
 physically based materials and light, restyled group by group.
 
 - [x] Route on the real road: GPX snapped to the OpenStreetMap roads and paths it rides
@@ -364,7 +364,7 @@ physically based materials and light, restyled group by group.
   equator below 1,200 m
 - [x] Quality presets Low–Ultra in settings, frame-time budget per preset (60 fps; a lower
   preset is suggested when a ride stays below)
-- [x] Graphics details below the preset (R87): shadows, ambient occlusion, reflections, bloom,
+- [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
   its own value, kept per computer
 - [x] Asset pipeline: Blender 5.2 LTS in an x86-64 art container (`scripts/art.sh`), scripted
@@ -476,8 +476,8 @@ physically based materials and light, restyled group by group.
   elevations and spikes cut; the Oberalp route as a fixture with its standard views and checks
 - [x] Streets and railways as one line across tile borders, paved streets level across
   (#116, #117); nothing of a railway tunnel or a house in the road ridden (#138)
-- [ ] Realistic look, step by step (ADR 0019, R86):
-  - [x] Decision and tools: ADR 0019, the `torqa-look` and `torqa-art-pipeline` skills
+- [ ] Realistic look, step by step (ADR 0020, R89):
+  - [x] Decision and tools: ADR 0020, the `torqa-look` and `torqa-art-pipeline` skills
     rewritten, a baker of tileable PBR textures from procedural Blender materials
     (`art/textures`, WebP), Cycles previews from the build scripts (`--preview DIR`,
     `art/preview.py`); taken over from the author's earlier game project
@@ -496,7 +496,7 @@ physically based materials and light, restyled group by group.
     rippled water with reflections (screen-space on High and Ultra); rain as faint streaks
   - [ ] Riders and bikes: smooth, subdivided bodies and round wheels done; realistic bodies
     (armature, new pedalling), kit with fabric and bike materials to come
-  - [x] Rider and bike motion (R88, `RiderMotion`): pitch and lean as damped springs, standing
+  - [x] Rider and bike motion (R91, `RiderMotion`): pitch and lean as damped springs, standing
     on the pedals on steep climbs and in sprints with the bike rocking under the rider, sway
     with effort, cranks level when coasting
   - [ ] More geometry on buildings where it shows (eaves, window depth); frame rate on an M1
@@ -554,7 +554,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   trees) → triangle and texture budgets, compressed textures with mipmaps, mesh LODs from
   Godot's import, quality presets (R43); art direction reviewed on rendered previews.
 - Realism with few assets shows every gap (why ADR 0011 left it) → each group restyled as a
-  whole to one level of quality before the next (ADR 0019), textures baked from scripted
+  whole to one level of quality before the next (ADR 0020), textures baked from scripted
   procedural materials or CC0 scans, reviewed in the standard views.
 - Wayland has no portable always-on-top → the overlay may not stay on top there. (Over
   full-screen apps it would need native macOS window settings Godot doesn't expose; dropped, R57.)

@@ -1,7 +1,7 @@
 shader_type spatial;
 // The wind clock: the world advances it, and holds it while the ride is paused.
 global uniform float wind_time;
-// Trees, bushes and rocks from Blender (art/vegetation, R86, ADR 0019), by material:
+// Trees, bushes and rocks from Blender (art/vegetation, R89, ADR 0020), by material:
 // 0 bark — the bark texture by the trunk's coordinates (metres around and up);
 // 2 fronds — solid palm and banana leaves, tinted per plant (COLOR, sRGB, chosen by the world
 //   from the palette), lit through from behind;

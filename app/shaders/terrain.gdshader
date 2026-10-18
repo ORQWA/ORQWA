@@ -1,5 +1,5 @@
 shader_type spatial;
-// The ground (R86, ADR 0019): smooth terrain textured by land cover. The vertex colour names the
+// The ground (R89, ADR 0020): smooth terrain textured by land cover. The vertex colour names the
 // cover from OpenStreetMap (one palette colour per kind, alpha marking the bed under water);
 // meadows, orchards and gardens are grass, fields grass gone golden, forests a floor of earth
 // with some grass, industrial land gravel, rock rock. Covers blend over a grid cell; steep

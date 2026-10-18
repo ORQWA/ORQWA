@@ -12,7 +12,7 @@ Two layers, kept apart (CLAUDE.md: logic in Rust, Godot presents):
   + ½·ρ·CdA·v_air² + m·a`, tested in Rust. `lean_angle` (`tan λ = v² · κ / g`) lives there too
   and reaches Godot as `TorqaApp.lean_angle`. Anything that changes speed, distance, the FIT
   file or the trainer belongs here, never in GDScript.
-- **Rider and bike motion** (R46, R88) is presentation only: it reads the ride state and never
+- **Rider and bike motion** (R46, R91) is presentation only: it reads the ride state and never
   feeds back. `app/scenes/rider_motion.gd` (`RiderMotion`) turns grade, the bend's lean,
   effort (W/kg) and cadence into the bike's pitch, lean and rock and the rider's standing and
   sway; `app/scenes/rider_avatar.gd` (`RiderAvatar`) poses the model: cranks, wheels, the upper

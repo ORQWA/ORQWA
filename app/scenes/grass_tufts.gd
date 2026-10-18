@@ -1,7 +1,7 @@
 class_name GrassTufts
 extends RefCounted
 ## The meshes of the grass tufts and flower clumps the world scatters near the road (R45,
-## R86): built in code, coloured from the palette, drawn by app/shaders/plants.gdshader.
+## R89): built in code, coloured from the palette, drawn by app/shaders/plants.gdshader.
 
 
 ## A grass tuft (blades leaning out from the root) or a flower clump (stems with heads),
@@ -11,7 +11,7 @@ static func mesh(flower: bool) -> ArrayMesh:
 	var tool: SurfaceTool = SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	tool.set_normal(Vector3.UP)
-	# Many thin blades bending over in two segments read as grass (ADR 0019); a few broad ones
+	# Many thin blades bending over in two segments read as grass (ADR 0020); a few broad ones
 	# read as an agave.
 	var blades: int = 3 if flower else 40
 	var base_color: Color = Palette.color("plants.grass_base")

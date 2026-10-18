@@ -35,7 +35,7 @@ scripts/art.sh blender --background --factory-startup --python art/buildings/bui
 
 ## Look
 
-Since 2026-10-18 the target is as realistic as possible ([ADR 0019](../docs/adr/0019-realistic-look.md)):
+Since 2026-10-18 the target is as realistic as possible ([ADR 0020](../docs/adr/0020-realistic-look.md)):
 smooth shading, real proportions, physically based materials and light. Every group below has
 left the faceted look of ADR 0011; riders are smooth but still stylized figures (`docs/PLAN.md`,
 Phase 9).
@@ -158,7 +158,7 @@ scripts/dev.sh scripts/render-riders.sh   # side, front, chase and face views in
 - **Bodies** come from Blender Studio's CC0 *Human Base Meshes*: the stylized "primitive"
   bodies, extracted into `sources/human-base-meshes/` (see its `SOURCE.md` and `extract.py`).
   They are parts with their origins at the joints. The script rounds them by one level of
-  subdivision and shades them smooth (ADR 0019), drops fingers and toes, thins nose and ears,
+  subdivision and shades them smooth (ADR 0020), drops fingers and toes, thins nose and ears,
   lengthens arms, hands and feet, makes the heads and shoulder caps smaller (natural
   proportions) and
   dresses the parts: shorts to above the knee, short sleeves, gloves, shoes.

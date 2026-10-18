@@ -1,6 +1,6 @@
 ---
 name: torqa-art-pipeline
-description: How Torqa makes 3D models and textures — scripted Blender (5.2 LTS, headless, in the x86-64 art container), models exported as .glb into app/assets/models with a manifest the Rust world reads and material names the Godot side styles, tileable PBR textures baked from procedural materials, quick Cycles previews (ADR 0009, ADR 0019). Use when creating or changing anything under art/, app/assets/models/, app/assets/textures/, the model loaders (app/scenes/*_models.gd) or the model shaders, and when bringing in third-party (CC0) bases such as rider bodies.
+description: How Torqa makes 3D models and textures — scripted Blender (5.2 LTS, headless, in the x86-64 art container), models exported as .glb into app/assets/models with a manifest the Rust world reads and material names the Godot side styles, tileable PBR textures baked from procedural materials, quick Cycles previews (ADR 0009, ADR 0020). Use when creating or changing anything under art/, app/assets/models/, app/assets/textures/, the model loaders (app/scenes/*_models.gd) or the model shaders, and when bringing in third-party (CC0) bases such as rider bodies.
 ---
 
 # Torqa's art pipeline
@@ -66,7 +66,7 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
   `compress/normal_map=1` for normal maps (Godot writes other defaults on first import: fix
   them, then re-import).
 - Keep recipes neutral in hue where the app tints per instance (walls, roofs, leaves).
-- Where a recipe does not look real, a CC0 scan may replace it (ADR 0019): keep the original
+- Where a recipe does not look real, a CC0 scan may replace it (ADR 0020): keep the original
   under `art/sources/<name>/` with `SOURCE.md`, convert it to the same names and formats in a
   script, and credit it in `docs/CREDITS.md`.
 - The `rock` recipe looks like paving; it is redone with the vegetation.
@@ -111,7 +111,7 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
 
 ## Shading and budgets
 
-- Realistic (ADR 0019, `torqa-look`): smooth shading with sharp edges where the object
+- Realistic (ADR 0020, `torqa-look`): smooth shading with sharp edges where the object
   has them (`use_smooth` on, shade auto smooth by angle or marked sharp edges); the exporter
   then splits normals only there. Vegetation writes its own normals per corner (smooth within a
   trunk or rock, pointing out of the crown on foliage cards); buildings are boxes and keep one

@@ -1,4 +1,4 @@
-// Streets, tracks and paths of the map around the route (R86, ADR 0019): textured asphalt for
+// Streets, tracks and paths of the map around the route (R89, ADR 0020): textured asphalt for
 // paved streets, gravel for tracks and paths, with a strip of grass down the middle of tracks
 // where wheels do not run; wet with puddles in rain. UV.x runs 0–1 across, UV.y is the
 // distance along in metres.
