@@ -106,7 +106,8 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   preserve ZIP uploads as archives when downloading them for publication
 - [x] Release versions: the version stays in `core/Cargo.toml` and the macOS preset, checked to
   agree on every change and, for a release, to be the tag's (`v<version>`), after v0.2.0
-  shipped saying 0.1.0 (ADR 0018 amendment)
+  shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>` sets it
+  in both and in `core/Cargo.lock`
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
