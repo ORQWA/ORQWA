@@ -41,3 +41,6 @@ Options considered:
   glibc rises with it.
 - No desktop integration yet (`.desktop` file, icon, menu entry): riders start `Torqa.x86_64`
   from the unpacked folder. Flatpak or AppImage can add this later.
+- The arm64 export packs both compressed-texture layers (S3TC/BPTC and ETC2/ASTC, about
+  0.7 MB more per 1024 px texture): arm64 desktops have GPUs of either kind, and the headless
+  smoke test reads only S3TC. See ADR 0019 on the import settings behind it.
