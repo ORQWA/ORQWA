@@ -1,31 +1,32 @@
-"""Builds the riders on their bikes (R46, ADR 0011) and exports them for Godot.
+"""Builds the riders on their bikes (R46, ADR 0019) and exports them for Godot.
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/riders/build.py
+    (with PREVIEW=<dir> also renders Cycles previews of the riders there)
 
-Each rider starts from Blender Studio's CC0 stylized "primitive" body (art/sources/
-human-base-meshes): a mannequin of parts with their origins at the joints. The script keeps the
-parts at their base level (no subdivision), so they are faceted and lean; drops fingers and
-toes; brings the proportions closer to natural ones (longer arms, smaller heads); dresses the
-parts by material name; and fits hair, a helmet and sunglasses to the head's own shape (and a
-ponytail for the female rider). It then seats the rider: the hips where the legs reach the
-pedals almost straight, the torso bent forward until the hands reach the hoods of a bike sized
-to fit. The bike is built around those contact points, so each rider gets their own.
+Each rider starts from a realistic body of Blender Studio's CC0 Human Base Meshes
+(art/sources/human-base-meshes/realistic_bodies.blend): a skeleton is built from the bundle's
+own joints, scaled to the body, and the body skinned to it. Hair, a helmet and sunglasses are
+fitted to the head's shape (and a ponytail for the female rider). The rider is seated as a bike
+fitter would: the hips where the legs reach the pedals almost straight, the back bent forward
+until the hands reach the hoods, the feet on the pedals; the bike is built around those contact
+points, so each rider gets their own. The riding pose becomes the skeleton's rest; the body is
+thinned for the app, the kit cut into it along planes across the limbs (shorts, jersey with
+sleeves, gloves, socks, shoes), shoes and gloves closed over toes and fingers.
 
-`rider_<sex>.glb` holds these nodes, in Godot's axes (x right, y up, −z forward; metres, the
-origin on the ground between the wheels):
-
-- `body`: everything of the rider that does not move while riding, posed;
-- `thigh_l`, `shin_l`, `foot_l` and the same with `_r`: the legs, each with its origin at its
-  joint (hip, knee, ankle), thigh and shin running down their −y axis with their front to −z,
-  so the app can aim them at the pedals; the foot level;
+`rider_<sex>.glb` holds, in Godot's axes (x right, y up, −z forward; metres, the origin on the
+ground between the wheels):
+- `skeleton` with `body` skinned to it: bones pelvis, spine, chest, neck, head and
+  shoulder/upper_arm/forearm/hand, thigh/shin/foot/toe with `.L` and `.R`; the app turns the
+  leg bones to the pedals and moves the pelvis (and all above it) as the rider sways and stands;
 - `frame`, `wheel_front`, `wheel_rear`: the bike, the wheels with their origins at the hubs;
 - `crankset` (origin at the bottom bracket, the right crank pointing forward) and `pedal_l`,
   `pedal_r` (origins at the axles).
 
 `riders.json` beside them holds what the app needs to pedal: hips, thigh and shin lengths,
-where the ankle sits over the pedal axle, and the bike's hubs, bottom bracket and cranks. The
-app colours the materials by name from the palette (`rider_female`, `rider_male`, `bike`).
+where the ankle sits over the pedal axle, the hands on the hoods, and the bike's hubs, bottom
+bracket and cranks. The app colours the materials by name from the palette (`rider_female`,
+`rider_male`, `bike`).
 """
 
 import json
@@ -35,37 +36,13 @@ import sys
 
 import bmesh
 import bpy
-from mathutils import Matrix, Quaternion, Vector
+from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SOURCE = os.path.normpath(
-    os.path.join(HERE, "..", "sources", "human-base-meshes", "primitive_stylized_bodies.blend"))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "app", "assets", "models", "riders"))
 
-# Parts too small to show at riding distance; the eyes, hidden behind sunglasses, go once the
-# sunglasses are fitted to them.
-DROP = ("finger", "thumb", "toe")
 EYES = ("eye",)
-# Parts with many small facets for their size: thinned to this share of their faces.
-THIN = {"nose": 0.3, "nose_bridge": 0.45, "ear": 0.35}
-# The cycling kit, by part; the rest is skin.
-DRESS = {
-    "pelvis": "shorts", "leg_upper": "shorts", "belly": "jersey", "chest": "jersey",
-    "breast": "jersey", "shoulder": "sleeve", "arm_upper": "sleeve", "hand": "gloves",
-    "foot": "shoes",
-}
-LEGS = ("leg_upper", "leg_lower", "foot")
-LEG_NODES = {"leg_upper": "thigh", "leg_lower": "shin", "foot": "foot"}
-# The stylized bodies have short arms, a short torso (female) and big heads; Torqa's riders
-# have natural proportions (ADR 0011). Arms, hands (standing in for the dropped fingers) and
-# feet are lengthened by these factors, the torso by metres, head and shoulder caps scaled.
-PROPORTIONS = {
-    "female": {"arms": 1.3, "hands": 1.35, "feet": 1.2, "torso": 0.07, "head": 0.86,
-               "shoulders": 0.88},
-    "male": {"arms": 1.22, "hands": 1.35, "feet": 1.2, "torso": 0.0, "head": 0.86,
-             "shoulders": 0.88},
-}
 
 # The bike, in Blender's axes: x right, y forward, z up. Built with the bottom bracket at
 # y = 0, then moved so the origin lies between the wheels.
@@ -89,10 +66,6 @@ HOODS_AHEAD = 0.5
 # down; app/scenes/rider_avatar.gd turns the feet so, ANKLE_PITCH and ANKLE_SWING).
 KNEE_AT_BOTTOM = math.radians(30.0)
 FOOT_AT_BOTTOM = math.radians(-18.0)
-# Arm extension on the hoods: shoulder to wrist as a share of the arm, elbows a little bent.
-REACH = 0.92
-# The torso's angle above horizontal: upright enough to look relaxed, flat enough to reach.
-TORSO_ANGLES = (math.radians(50.0), math.radians(28.0))
 # The wrist sits behind and above the hood's top, the palm on it.
 WRIST_ON_HOOD = Vector((0.0, -0.06, 0.045))
 
@@ -105,9 +78,6 @@ PREVIEW = {
     "metal": (0.56, 0.58, 0.61), "saddle": (0.38, 0.26, 0.4), "bar": (0.38, 0.26, 0.4),
     "socks": (0.92, 0.92, 0.9), "soles": (0.1, 0.1, 0.11),
 }
-# Kit painted on the lower end of a part (share of its height, in the source's standing pose):
-# socks on the shins above the shoes, soles under the shoes.
-LOWER_KIT = {"leg_lower": ("socks", 0.22), "foot": ("soles", 0.2)}
 
 
 def material(name):
@@ -256,155 +226,6 @@ def smooth(mesh):
 
 
 # --- the body --------------------------------------------------------------------------------
-
-
-def load_body(sex):
-    """The parts of one body from the source, keyed by part name (`chest`, `arm_upper.L`, …)."""
-    marker = f"_{sex}_primitive_stylized"
-    with bpy.data.libraries.load(SOURCE, link=False) as (source, target):
-        target.objects = [name for name in source.objects if marker in name]
-    parts = {}
-    for obj in target.objects:
-        bpy.context.scene.collection.objects.link(obj)
-        parts[obj.name.replace("GEO-", "").replace(marker, "")] = obj
-    update()
-    for part in [p for p in parts if p.startswith(DROP)]:
-        bpy.data.objects.remove(parts.pop(part))
-    for part, obj in parts.items():
-        kind = part.split(".")[0]
-        # Left and right share their meshes; each part gets its own, to be reshaped alone.
-        obj.data = obj.data.copy()
-        obj.modifiers.clear()
-        if kind in THIN:
-            thin = obj.modifiers.new("thin", "DECIMATE")
-            thin.ratio = THIN[kind]
-            depsgraph = bpy.context.evaluated_depsgraph_get()
-            thinned = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
-            obj.modifiers.clear()
-            obj.data = thinned
-        # The bases are low-poly: one level of subdivision rounds them into realistic forms
-        # (ADR 0019) before they are reshaped and posed.
-        rounder = obj.modifiers.new("rounder", "SUBSURF")
-        rounder.levels = 1
-        depsgraph = bpy.context.evaluated_depsgraph_get()
-        rounded = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
-        obj.modifiers.clear()
-        obj.data = rounded
-        obj.data.materials.clear()
-        obj.data.materials.append(material(DRESS.get(kind, "skin")))
-        for polygon in obj.data.polygons:
-            polygon.material_index = 0
-        if kind in LOWER_KIT:
-            paint_lower(obj, *LOWER_KIT[kind])
-        smooth(obj.data)
-    return parts
-
-
-def paint_lower(obj, material_name, share):
-    """Gives the faces in the lowest `share` of the part's height `material_name`."""
-    heights = [(obj.matrix_world @ v.co).z for v in obj.data.vertices]
-    low, high = min(heights), max(heights)
-    cut = low + (high - low) * share
-    obj.data.materials.append(material(material_name))
-    index = len(obj.data.materials) - 1
-    for polygon in obj.data.polygons:
-        centre = sum((heights[i] for i in polygon.vertices), 0.0) / len(polygon.vertices)
-        if centre < cut:
-            polygon.material_index = index
-
-
-def stretch(obj, start, direction, factor):
-    """Lengthens a part beyond `start` along `direction` by `factor`; parts that hang from it
-    move along."""
-    direction = direction.normalized()
-    to_world = obj.matrix_world.copy()
-    to_local = to_world.inverted()
-    for vertex in obj.data.vertices:
-        point = to_world @ vertex.co
-        beyond = (point - start).dot(direction)
-        if beyond > 0.0:
-            vertex.co = to_local @ (point + direction * beyond * (factor - 1.0))
-    for child in obj.children:
-        beyond = (origin(child) - start).dot(direction)
-        if beyond > 0.0:
-            move(child, direction * beyond * (factor - 1.0))
-
-
-def proportion(parts, sex):
-    """Brings the standing body (facing −y) to natural proportions."""
-    change = PROPORTIONS[sex]
-    belly, chest = parts["belly"], parts["chest"]
-    waist = origin(belly) + Vector((0, 0, 0.03))
-    stretch(belly, waist, Vector((0, 0, 1)),
-            1.0 + change["torso"] / (origin(chest).z - waist.z))
-    for side in ("L", "R"):
-        upper, lower, hand = (parts[f"{p}.{side}"] for p in ("arm_upper", "arm_lower", "hand"))
-        stretch(upper, origin(upper), origin(lower) - origin(upper), change["arms"])
-        forearm = origin(hand) - origin(lower)
-        stretch(lower, origin(lower), forearm, change["arms"])
-        stretch(hand, origin(hand), forearm, change["hands"])
-        foot = parts[f"foot.{side}"]
-        stretch(foot, origin(foot), Vector((0, -1, 0)), change["feet"])
-        # Smaller shoulder caps (the mesh alone: the arm hanging from it stays).
-        parts[f"shoulder.{side}"].data.transform(Matrix.Scale(change["shoulders"], 4))
-    head = parts["head"]
-    transform(head, Matrix.Scale(change["head"], 3), origin(head))
-
-
-def along_part(obj, start, end):
-    """Each vertex's and each face's distance along the segment from `start` towards `end`,
-    as a share of its length."""
-    axis = end - start
-    length = axis.length
-    axis /= length
-    points = world_vertices(obj)
-    shares = [(p - start).dot(axis) / length for p in points]
-    faces = [sum(shares[v] for v in polygon.vertices) / len(polygon.vertices)
-             for polygon in obj.data.polygons]
-    return shares, faces
-
-
-def tailor(parts):
-    """Ends the shorts above the knees and the sleeves halfway down the upper arms, and trims
-    the thighs at hip and knee so they do not show through when the legs bend."""
-    skin = material("skin")
-    for side in ("L", "R"):
-        thigh, shin = parts[f"leg_upper.{side}"], parts[f"leg_lower.{side}"]
-        hip, knee = origin(thigh), origin(shin)
-        shares, faces = along_part(thigh, hip, knee)
-        axis = knee - hip
-        to_local = thigh.matrix_world.inverted()
-        for vertex, share in zip(thigh.data.vertices, shares):
-            trim = max(share - 1.0, 0.0) + min(share + 0.05, 0.0)
-            if trim:
-                vertex.co = to_local @ (thigh.matrix_world @ vertex.co - axis * trim)
-        for obj, cut, faces in ((thigh, 0.8, faces),
-                                (parts[f"arm_upper.{side}"], 0.55,
-                                 along_part(parts[f"arm_upper.{side}"],
-                                            origin(parts[f"arm_upper.{side}"]),
-                                            origin(parts[f"arm_lower.{side}"]))[1])):
-            obj.data.materials.append(skin)
-            for polygon, share in zip(obj.data.polygons, faces):
-                if share > cut:
-                    polygon.material_index = 1
-
-
-def measure_legs(parts):
-    """Thigh and shin lengths, and the ball of the foot from the ankle in a frame facing +y."""
-    hip, knee, ankle = (origin(parts[f"{p}.L"]) for p in LEGS)
-    foot = [p - ankle for p in world_vertices(parts["foot.L"])]
-    ahead = [-p.y for p in foot]
-    heel, toe = min(ahead), max(ahead)
-    ball = Vector((0.0, heel + 0.68 * (toe - heel), min(p.z for p in foot)))
-    return (knee - hip).length, (ankle - knee).length, ball
-
-
-def hips(parts):
-    return middle(origin(parts["leg_upper.L"]), origin(parts["leg_upper.R"]))
-
-
-def shoulders(parts):
-    return middle(origin(parts["arm_upper.L"]), origin(parts["arm_upper.R"]))
 
 
 # Hair and helmet: how far they stand off the scalp, and where the hair ends (metres from the
@@ -623,151 +444,7 @@ def headgear(parts, sex):
     update()
 
 
-def pelvis_bottom(parts):
-    """The lowest point of the pelvis between the sit bones: where the saddle meets it."""
-    centre = hips(parts)
-    points = [p for p in world_vertices(parts["pelvis"]) if abs(p.x - centre.x) < 0.07]
-    return min(points, key=lambda p: p.z)
-
-
-def hoods_for(parts, saddle_top, arm):
-    """Where the hoods go for the body as posed: the arms at `REACH`, the hoods
-    `DROP_TO_HOODS` below the saddle. None if the arms cannot reach down that far."""
-    shoulder = origin(parts["arm_upper.R"])
-    wrist_z = saddle_top - DROP_TO_HOODS + WRIST_ON_HOOD.z
-    across = HOODS_HALF_WIDTH - shoulder.x
-    down = shoulder.z - wrist_z
-    ahead = (REACH * arm) ** 2 - across ** 2 - down ** 2
-    if ahead < 0.0:
-        return None
-    return Vector((0.0, shoulder.y + math.sqrt(ahead) - WRIST_ON_HOOD.y,
-                   saddle_top - DROP_TO_HOODS))
-
-
-def lean(parts, arm):
-    """Bends pelvis, belly and chest forward until the hoods end up far enough ahead (or the
-    torso is as flat as it goes), then lifts the head to look down the road. Returns the
-    saddle's top, the hoods and the torso's angle above horizontal."""
-    pivot = hips(parts)
-    total = 0.0
-    step = math.radians(1.0)
-    while True:
-        torso = shoulders(parts) - hips(parts)
-        angle = math.atan2(torso.z, torso.y)
-        saddle_top = pelvis_bottom(parts).z
-        hoods = hoods_for(parts, saddle_top, arm)
-        ready = hoods is not None and hoods.y >= HOODS_AHEAD
-        if (angle <= TORSO_ANGLES[0] and ready) or angle <= TORSO_ANGLES[1]:
-            break
-        # Turning about −x tips the top towards +y, forward.
-        transform(parts["pelvis"], Matrix.Rotation(-0.4 * step, 3, "X"), pivot)
-        transform(parts["belly"], Matrix.Rotation(-0.3 * step, 3, "X"), origin(parts["belly"]))
-        transform(parts["chest"], Matrix.Rotation(-0.3 * step, 3, "X"), origin(parts["chest"]))
-        total += step
-    if hoods is None:
-        raise RuntimeError("the arms cannot reach the hoods")
-    transform(parts["neck"], Matrix.Rotation(0.4 * total, 3, "X"), origin(parts["neck"]))
-    transform(parts["head"], Matrix.Rotation(0.45 * total, 3, "X"), origin(parts["head"]))
-    return saddle_top, hoods, math.degrees(angle)
-
-
-def reach_hoods(parts, hoods):
-    """Puts the hands on the hoods, elbows bent out and down."""
-    for side, sign in (("L", -1.0), ("R", 1.0)):
-        upper, lower, hand = (parts[f"{p}.{side}"] for p in ("arm_upper", "arm_lower", "hand"))
-        wrist = Vector((sign * HOODS_HALF_WIDTH, hoods.y, hoods.z)) + WRIST_ON_HOOD
-        first = (origin(lower) - origin(upper)).length
-        second = (origin(hand) - origin(lower)).length
-        pole = Vector((sign * 0.5, -0.3, -1.0))
-        # The shoulder turns half the way with the arm, as a deltoid does; left in place it
-        # sticks up like a pad.
-        shoulder = origin(upper)
-        elbow = two_bone(shoulder, wrist, first, second, pole)
-        turn = (origin(lower) - shoulder).rotation_difference(elbow - shoulder)
-        deltoid = parts[f"shoulder.{side}"]
-        transform(deltoid, Quaternion().slerp(turn, 0.5).to_matrix(), origin(deltoid))
-        shoulder = origin(upper)
-        elbow = two_bone(shoulder, wrist, first, second, pole)
-        turn = (origin(lower) - shoulder).rotation_difference(elbow - shoulder)
-        transform(upper, turn.to_matrix(), shoulder)
-        start = origin(lower)
-        turn = (origin(hand) - start).rotation_difference(wrist - start)
-        transform(lower, turn.to_matrix(), start)
-        # The hand bends down over the hood.
-        transform(hand, Matrix.Rotation(math.radians(-25.0), 3, "X"), origin(hand))
-
-
-def baked(obj):
-    """A copy of the object's mesh in world coordinates."""
-    mesh = obj.data.copy()
-    mesh.transform(obj.matrix_world)
-    if obj.matrix_world.determinant() < 0.0:
-        mesh.flip_normals()
-    return mesh
-
-
-def leg_nodes(parts):
-    """Each leg part as its own node: origin at its joint, thigh and shin running down −z with
-    their front to +y (Godot: down −y, front −z), the foot level."""
-    nodes = []
-    for side in ("L", "R"):
-        chain = [parts[f"{p}.{side}"] for p in LEGS]
-        joints = [origin(obj) for obj in chain]
-        for k, (part, obj) in enumerate(zip(LEGS, chain)):
-            mesh = baked(obj)
-            mesh.transform(Matrix.Translation(-joints[k]))
-            if k + 1 < len(chain):
-                along = (joints[k + 1] - joints[k]).normalized()
-                mesh.transform(along.rotation_difference(Vector((0, 0, -1))).to_matrix().to_4x4())
-            mesh.name = f"{LEG_NODES[part]}_{side.lower()}"
-            node = bpy.data.objects.new(mesh.name, mesh)
-            node.matrix_world = Matrix.Translation(joints[k])
-            bpy.context.scene.collection.objects.link(node)
-            nodes.append(node)
-    for obj in [parts[f"{p}.{s}"] for p in LEGS for s in ("L", "R")]:
-        bpy.data.objects.remove(obj)
-    update()
-    return nodes
-
-
-def join(objects, name):
-    """One object from several, in world coordinates, with one slot per material name."""
-    joined = bmesh.new()
-    names = []
-    for obj in objects:
-        mesh = baked(obj)
-        slots = []
-        for slot in mesh.materials:
-            if slot.name not in names:
-                names.append(slot.name)
-            slots.append(names.index(slot.name))
-        before = len(joined.faces)
-        joined.from_mesh(mesh)
-        joined.faces.ensure_lookup_table()
-        for k in range(before, len(joined.faces)):
-            joined.faces[k].material_index = slots[joined.faces[k].material_index]
-        bpy.data.meshes.remove(mesh)
-    data = bpy.data.meshes.new(name)
-    joined.to_mesh(data)
-    joined.free()
-    for n in names:
-        data.materials.append(material(n))
-    smooth(data)
-    for obj in objects:
-        bpy.data.objects.remove(obj)
-    result = bpy.data.objects.new(name, data)
-    bpy.context.scene.collection.objects.link(result)
-    return result
-
-
 # --- the bike --------------------------------------------------------------------------------
-
-
-def ring_of(hub, radius, x, count, phase=0.0):
-    """`count` points round the wheel's axis at `radius`, `x` across the bike."""
-    return [hub + Vector((x, radius * math.cos(phase + 2 * math.pi * k / count),
-                          radius * math.sin(phase + 2 * math.pi * k / count)))
-            for k in range(count)]
 
 
 def disc(faces, hub, radius, x, thickness, material_name, count=32, teeth=0.0):
@@ -995,75 +672,7 @@ def triangles(objects):
     return sum(len(p.vertices) - 2 for o in objects for p in o.data.polygons)
 
 
-def build(sex):
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    parts = load_body(sex)
-    proportion(parts, sex)
-    tailor(parts)
-    thigh, shin, ball = measure_legs(parts)
-    arm = ((origin(parts["arm_lower.R"]) - origin(parts["arm_upper.R"])).length
-           + (origin(parts["hand.R"]) - origin(parts["arm_lower.R"])).length)
-
-    # The hips on the seat tube's line, where the knee bends `KNEE_AT_BOTTOM` with the pedal at
-    # the bottom and the ball of the foot on it.
-    ankle_over_pedal = Vector((0.0, -ball.y, 0.012 - ball.z))
-    ankle = (BOTTOM_BRACKET + Vector((0.0, 0.0, -CRANK))
-             + Matrix.Rotation(FOOT_AT_BOTTOM, 3, "X") @ ankle_over_pedal)
-    seat_axis = Vector((0.0, -math.cos(SEAT_ANGLE), math.sin(SEAT_ANGLE)))
-    offset = BOTTOM_BRACKET - ankle
-    leg = math.sqrt(thigh ** 2 + shin ** 2 + 2.0 * thigh * shin * math.cos(KNEE_AT_BOTTOM))
-    along = -seat_axis.dot(offset) + math.sqrt(
-        seat_axis.dot(offset) ** 2 - offset.length_squared + leg * leg)
-
-    pelvis = parts["pelvis"]
-    transform(pelvis, Matrix.Rotation(math.pi, 3, "Z"), origin(pelvis))
-    move(pelvis, BOTTOM_BRACKET + seat_axis * along - hips(parts))
-    for obj in [parts[f"{p}.{s}"] for p in LEGS for s in ("L", "R")]:
-        world = obj.matrix_world.copy()
-        obj.parent = None
-        obj.matrix_world = world
-    update()
-    headgear(parts, sex)
-    saddle_top, hoods, torso_angle = lean(parts, arm)
-    reach_hoods(parts, hoods)
-    saddle = Vector((0.0, pelvis_bottom(parts).y, saddle_top))
-    bike_objects, rear_hub, front_hub = bike(saddle, hoods)
-
-    # The origin between the wheels.
-    shift = Vector((0.0, -(rear_hub.y + front_hub.y) / 2.0, 0.0))
-    for obj in list(bpy.context.scene.objects):
-        if obj.parent is None:
-            move(obj, shift)
-    legs = leg_nodes(parts)
-    body = join([o for o in bpy.context.scene.objects
-                 if o.type == "MESH" and o not in legs and o not in bike_objects], "body")
-
-    os.makedirs(OUT, exist_ok=True)
-    bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, f"rider_{sex}.glb"),
-                              export_format="GLB", export_yup=True, export_apply=True)
-    print(f"built rider_{sex}: {triangles([body, *legs])} rider and {triangles(bike_objects)} "
-          f"bike triangles; torso {torso_angle:.0f}° above horizontal; saddle "
-          f"{saddle_top:.3f} m high, hoods {hoods.y - saddle.y:.3f} m ahead of it and "
-          f"{hoods.y:.3f} m ahead of the bottom bracket; wheelbase "
-          f"{front_hub.y - rear_hub.y:.3f} m")
-    by_name = {o.name: o for o in legs}
-    return {
-        "hips": [godot(origin(by_name["thigh_l"])), godot(origin(by_name["thigh_r"]))],
-        "thigh": round(thigh, 4),
-        "shin": round(shin, 4),
-        "ankle_over_pedal": godot(ankle_over_pedal),
-        "wheel_radius": WHEEL_RADIUS,
-        "wheel_rear": godot(rear_hub + shift),
-        "wheel_front": godot(front_hub + shift),
-        "bottom_bracket": godot(BOTTOM_BRACKET + shift),
-        # Where the hands rest on the hoods: the rider stands up on the pedals about them.
-        "hands": godot(hoods + shift),
-        "crank": CRANK,
-        "pedal_offset": PEDAL_OFFSET,
-    }
-
-
-# --- realistic, rigged bodies (RIDERS=rigged; work in progress) ------------------------------
+# --- the rider: a realistic body, rigged and posed on the bike ---------------------------------
 
 REALISTIC_SOURCE = os.path.normpath(
     os.path.join(HERE, "..", "sources", "human-base-meshes", "realistic_bodies.blend"))
@@ -1073,6 +682,14 @@ SKELETON_X = -7.411
 # Heat weighting fails on the detailed bodies: a copy thinned to this share is weighted and its
 # weights handed on.
 WEIGHT_COPY = 0.25
+# The posed body is thinned to this share of its faces for the app (about 28,000 triangles).
+REALISTIC_DETAIL = 0.3
+# Arm extension on the hoods, shoulder to wrist as a share of the arm: almost straight, as
+# riders on the hoods hold them.
+REALISTIC_REACH = 0.97
+# The back's angle above horizontal: upright enough to look relaxed at most, flat enough to
+# reach hoods far enough ahead at least.
+REALISTIC_TORSO = (math.radians(50.0), math.radians(24.0))
 
 
 def load_realistic(sex):
@@ -1107,7 +724,7 @@ def load_realistic(sex):
 def realistic_skeleton(body, joints, scale):
     """An armature from the joints, the body skinned to it. Bone names are the ones the app
     poses: pelvis, spine, chest, neck, head, shoulder/upper_arm/forearm/hand and
-    thigh/shin/foot, each with .L and .R."""
+    thigh/shin/foot/toe, each with .L and .R."""
     armature = bpy.data.armatures.new("rig")
     rig = bpy.data.objects.new("rig", armature)
     bpy.context.scene.collection.objects.link(rig)
@@ -1137,6 +754,10 @@ def realistic_skeleton(body, joints, scale):
         bone(f"shin.{side}", knee, joints[f"foot_talus.{side}"], f"thigh.{side}", True)
         bone(f"foot.{side}", joints[f"foot_talus.{side}"], joints[f"foot_center.{side}"],
              f"shin.{side}", True)
+        # A short toe beyond the ball: the app reads where the foot ends from it.
+        toes = joints[f"foot_center.{side}"] - joints[f"foot_talus.{side}"]
+        bone(f"toe.{side}", joints[f"foot_center.{side}"],
+             joints[f"foot_center.{side}"] + toes.normalized() * 0.04 * scale, f"foot.{side}", True)
         towards = (joints[f"arm_humerus.{side}"] - joints["spine_thoracic_t1"]).normalized()
         bone(f"shoulder.{side}", joints["spine_thoracic_t1"] + towards * 0.03,
              joints[f"arm_humerus.{side}"], "chest")
@@ -1197,16 +818,258 @@ def aim(rig, name, target):
     update()
 
 
-def turn_bone(rig, name, angle, axis="X"):
-    """Turns pose bone `name` about its head by `angle` round the armature's `axis`."""
+def turn_bone(rig, name, angle, axis="X", about=None):
+    """Turns pose bone `name` by `angle` round the armature's `axis`, about its head or the
+    point `about`."""
     bone = rig.pose.bones[name]
-    head = bone.head.copy()
-    bone.matrix = (Matrix.Translation(head) @ Matrix.Rotation(angle, 4, axis)
-                   @ Matrix.Translation(-head) @ bone.matrix)
+    pivot = bone.head.copy() if about is None else about
+    bone.matrix = (Matrix.Translation(pivot) @ Matrix.Rotation(angle, 4, axis)
+                   @ Matrix.Translation(-pivot) @ bone.matrix)
     update()
 
 
-def build_realistic(sex):
+def realistic_headgear(body, rig, sex, scale):
+    """Hair, helmet and sunglasses for the realistic head, as `headgear` fits them to the
+    primitive heads: on a copy of the upright head (the faces the head bone moves) with eyes and
+    ears placed by its proportions. Returned parented to the head bone."""
+    head = body.copy()
+    head.data = body.data.copy()
+    head.modifiers.clear()
+    head.parent = None
+    bpy.context.scene.collection.objects.link(head)
+    group = head.vertex_groups["head"].index
+    mesh = bmesh.new()
+    mesh.from_mesh(head.data)
+    deform = mesh.verts.layers.deform.verify()
+    drop = [v for v in mesh.verts if v[deform].get(group, 0.0) < 0.5]
+    bmesh.ops.delete(mesh, geom=drop, context="VERTS")
+    mesh.to_mesh(head.data)
+    mesh.free()
+    low, high = bounds(head)
+    centre = middle(low, high)
+    # The eyes about half way down the head, a little in from the face's front.
+    eye_z = high.z - 0.47 * (high.z - low.z) * 0.92
+    front = max(p.y for p in world_vertices(head) if abs(p.z - eye_z) < 0.01 and abs(p.x) < 0.02)
+    markers = {}
+    for side, sign in (("L", -1.0), ("R", 1.0)):
+        eye = bpy.data.objects.new(f"eye.{side}", None)
+        eye.location = Vector((sign * 0.032 * scale, front - 0.02, eye_z))
+        ear = bpy.data.objects.new(f"ear.{side}", None)
+        ear.location = Vector((sign * (high.x - low.x) * 0.47, centre.y - 0.005, eye_z - 0.01))
+        for marker in (eye, ear):
+            bpy.context.scene.collection.objects.link(marker)
+            markers[marker.name] = marker
+    update()
+    parts = {"head": head, "nose": head, "nose_bridge": head, **markers}
+    headgear(parts, sex)
+    gear = bpy.data.objects["headgear"]
+    world = gear.matrix_world.copy()
+    gear.parent = rig
+    gear.parent_type = "BONE"
+    gear.parent_bone = "head"
+    gear.matrix_world = world
+    # `headgear` removes the eyes itself.
+    for name in markers:
+        if name in bpy.data.objects:
+            bpy.data.objects.remove(bpy.data.objects[name])
+    bpy.data.objects.remove(head)
+    update()
+    return gear
+
+
+def bake_rest_pose(body, gear, rig):
+    """The body's mesh takes the riding pose (smoothed where joints bend) and the headgear
+    joins it, held by the head bone; `finish_rest_pose` then makes the pose the rest."""
+    smooth_joints = body.modifiers.new("smooth", "CORRECTIVE_SMOOTH")
+    smooth_joints.factor = 0.6
+    smooth_joints.iterations = 8
+    smooth_joints.smooth_type = "LENGTH_WEIGHTED"
+    smooth_joints.rest_source = "ORCO"
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.modifier_apply(modifier="rig")
+    bpy.ops.object.modifier_apply(modifier="smooth")
+    world = gear.matrix_world.copy()
+    gear.parent = None
+    gear.matrix_world = world
+    gear.data.transform(gear.matrix_world)
+    gear.matrix_world = Matrix.Identity(4)
+    held = gear.vertex_groups.new(name="head")
+    held.add(range(len(gear.data.vertices)), 1.0, "REPLACE")
+    for obj in bpy.context.selected_objects:
+        obj.select_set(False)
+    gear.select_set(True)
+    body.select_set(True)
+    bpy.context.view_layer.objects.active = body
+    body_world = body.matrix_world.copy()
+    body.parent = None
+    body.matrix_world = body_world
+    bpy.ops.object.join()
+    update()
+
+
+def thin_body(body):
+    """Thins the posed body for the app; collapsing edges keeps the weights."""
+    bpy.context.view_layer.objects.active = body
+    lighter = body.modifiers.new("lighter", "DECIMATE")
+    lighter.ratio = REALISTIC_DETAIL
+    bpy.ops.object.modifier_apply(modifier="lighter")
+
+
+def finish_rest_pose(body, rig):
+    """Makes the pose the skeleton's rest, the body skinned to it again."""
+    bpy.context.view_layer.objects.active = rig
+    bpy.ops.object.mode_set(mode="POSE")
+    bpy.ops.pose.armature_apply(selected=False)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    skin = body.modifiers.new("rig", "ARMATURE")
+    skin.object = rig
+    body.parent = rig
+    body.matrix_parent_inverse = rig.matrix_world.inverted()
+    update()
+
+
+# The headgear's own materials, kept when the body is dressed (the hair tie is in the kit's
+# sleeve colour).
+HEADGEAR_MATERIALS = ("hair", "helmet", "vents", "glasses", "sleeve")
+
+
+# Body regions by the bones that move them, for dressing.
+REGIONS = {
+    "shoes": ("foot.", "toe."), "gloves": ("hand.",), "head": ("head", "neck"),
+    "forearm": ("forearm.",), "upper_arm": ("upper_arm.",), "shin": ("shin.",),
+    "thigh": ("thigh.",), "trunk": ("pelvis", "spine", "chest", "shoulder."),
+}
+
+
+def dress_realistic(body, rig):
+    """The cycling kit, cut by planes across the skeleton so its edges run clean: shorts over
+    the pelvis and thighs to above the knee, the jersey over the trunk with sleeves to half way
+    down the upper arm, gloves, socks above the shoes, shoes with dark soles; skin elsewhere.
+    Toes and fingers are first smoothed into a shoe's tip and a glove. The headgear keeps its
+    own materials."""
+    mesh = body.data
+    names = [g.name for g in body.vertex_groups]
+
+    def along(name, point):
+        # The posed bones: the body is dressed in the riding pose, before it becomes the rest.
+        bone = rig.pose.bones[name]
+        head, tail = rig.matrix_world @ bone.head, rig.matrix_world @ bone.tail
+        axis = tail - head
+        return (point - head).dot(axis) / axis.length_squared
+
+    def near_limb(name, point, radius):
+        """Past the joint the limb starts at, and within `radius` of its axis (or beyond)."""
+        bone = rig.pose.bones[name]
+        head, tail = rig.matrix_world @ bone.head, rig.matrix_world @ bone.tail
+        axis = (tail - head).normalized()
+        t = (point - head).dot(axis)
+        length = (tail - head).length
+        return 0.0 < t < length * 1.15 and ((point - head) - axis * t).length < radius
+
+    def outside_shoulder(side, point):
+        """Farther out from the body's middle than the shoulder joint: the arm, not the chest
+        beside it."""
+        shoulder = rig.pose.bones[f"upper_arm.{side}"].head
+        return abs((rig.matrix_world.inverted() @ point).x) > abs(shoulder.x) - 0.05
+
+    def weight(vertex, prefixes):
+        return sum(g.weight for g in vertex.groups if names[g.group].startswith(prefixes))
+
+    # Shoes and gloves: each foot below the ankle and each hand beyond the palm made the convex
+    # hull of its own vertices — a closed, rounded shoe and glove instead of toes and spread
+    # fingers. The hull keeps the vertices, and so their weights.
+    shape = bmesh.new()
+    shape.from_mesh(mesh)
+    deform = shape.verts.layers.deform.verify()
+    groups = {n: k for k, n in enumerate(names)}
+    for prefixes, beyond, bone_of in ((("toe.", "foot."), 0.0, "foot"),
+                                      (("hand.",), 0.3, "hand")):
+        for side in ("L", "R"):
+            chosen = set()
+            for v in shape.verts:
+                total = sum(v[deform].get(groups[n], 0.0) for n in names
+                            if n.startswith(prefixes) and n.endswith(side))
+                if total >= 0.5 and along(f"{bone_of}.{side}", body.matrix_world @ v.co) > beyond:
+                    chosen.add(v)
+            if len(chosen) < 4:
+                continue
+            old_faces = [f for f in shape.faces if all(v in chosen for v in f.verts)]
+            hull = bmesh.ops.convex_hull(shape, input=list(chosen))
+            bmesh.ops.delete(shape, geom=old_faces, context="FACES_ONLY")
+            loose = [v for v in hull["geom_interior"] if isinstance(v, bmesh.types.BMVert)]
+            bmesh.ops.delete(shape, geom=loose, context="VERTS")
+    # The kit's edges cut into the mesh as planes across each limb, so they run straight:
+    # sleeve ends and shoulder seams, shorts' hems, the waist, the socks' tops.
+    cuts = []
+    for side in ("L", "R"):
+        cuts += [(f"upper_arm.{side}", 0.0, 0.14), (f"upper_arm.{side}", 0.5, 0.15),
+                 (f"thigh.{side}", 0.82, 0.2), (f"shin.{side}", 0.78, 0.16)]
+    cuts.append(("spine", 0.0, 0.25))
+    for name, at, radius in cuts:
+        bone = rig.pose.bones[name]
+        head, tail = rig.matrix_world @ bone.head, rig.matrix_world @ bone.tail
+        axis = tail - head
+        point = head + axis * at
+        normal = axis.normalized()
+        near = [f for f in shape.faces
+                if abs((f.calc_center_median() - point).dot(normal)) < 0.15
+                and ((f.calc_center_median() - point)
+                     - normal * (f.calc_center_median() - point).dot(normal)).length < radius]
+        geom = list({e for f in near for e in f.edges}) + near \
+            + list({v for f in near for v in f.verts})
+        if near:
+            bmesh.ops.bisect_plane(shape, geom=geom, plane_co=point, plane_no=normal)
+    shape.to_mesh(mesh)
+    shape.free()
+    mesh.update()
+
+    for polygon in mesh.polygons:
+        slot = (mesh.materials[polygon.material_index]
+                if polygon.material_index < len(mesh.materials) else None)
+        if slot is not None and slot.name in HEADGEAR_MATERIALS:
+            continue
+        verts = [mesh.vertices[v] for v in polygon.vertices]
+        centre = body.matrix_world @ polygon.center
+        side = "L" if (rig.matrix_world.inverted() @ centre).x < 0 else "R"
+        # The bone that moves the face most decides the region; the planes cut above decide
+        # the hems within it. (Distances along a bone alone fail: on the downstroke the shin
+        # points back, and the seat would measure as past the knee.)
+        region = max(REGIONS, key=lambda r: sum(weight(v, REGIONS[r]) for v in verts))
+        if region in ("shoes", "gloves"):
+            choice = region
+        elif region in ("head", "forearm"):
+            choice = "skin"
+        elif region == "shin":
+            choice = "socks" if along(f"shin.{side}", centre) > 0.78 else "skin"
+        elif region == "thigh":
+            choice = "shorts" if along(f"thigh.{side}", centre) < 0.82 else "skin"
+        elif near_limb(f"upper_arm.{side}", centre, 0.12) and outside_shoulder(side, centre):
+            # Past the shoulder's plane: sleeve to half way down the arm, then skin.
+            choice = "sleeve" if along(f"upper_arm.{side}", centre) < 0.5 else "skin"
+        elif region == "trunk" and along("spine", centre) < 0.0:
+            choice = "shorts"
+        else:
+            choice = "jersey"
+        polygon.material_index = material_slot(body, choice)
+    # Soles: the shoes' faces that face down.
+    shoes = material_slot(body, "shoes")
+    for polygon in mesh.polygons:
+        facing = body.matrix_world.to_3x3() @ polygon.normal
+        if polygon.material_index == shoes and facing.z < -0.6:
+            polygon.material_index = material_slot(body, "soles")
+    smooth(mesh)
+
+
+def material_slot(obj, name):
+    """The index of material `name` on `obj`, added if missing."""
+    for k, slot in enumerate(obj.data.materials):
+        if slot is not None and slot.name == name:
+            return k
+    obj.data.materials.append(material(name))
+    return len(obj.data.materials) - 1
+
+
+def build(sex):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     body, joints, scale = load_realistic(sex)
     bpy.context.view_layer.objects.active = body
@@ -1233,6 +1096,7 @@ def build_realistic(sex):
             if abs(v.co.x) < 0.07 and (v.co.yz - centre.yz).length < 0.2]
     saddle_top = min(seat, key=lambda p: p.z).z
     rig = realistic_skeleton(body, joints, scale)
+    gear = realistic_headgear(body, rig, sex, scale)
     bpy.context.view_layer.objects.active = rig
     bpy.ops.object.mode_set(mode="POSE")
 
@@ -1252,12 +1116,13 @@ def build_realistic(sex):
         shoulder = rig.pose.bones["upper_arm.R"].head
         hoods_z = saddle_top - DROP_TO_HOODS
         across = HOODS_HALF_WIDTH - abs(shoulder.x)
-        reach = (arm * REACH) ** 2 - (shoulder.z - hoods_z) ** 2 - across ** 2
+        reach = (arm * REALISTIC_REACH) ** 2 - (shoulder.z - hoods_z) ** 2 - across ** 2
         hoods = Vector((0.0, shoulder.y + math.sqrt(reach), hoods_z)) if reach > 0 else None
         ready = hoods is not None and hoods.y >= HOODS_AHEAD
-        if (angle <= TORSO_ANGLES[0] and ready) or angle <= TORSO_ANGLES[1]:
+        if (angle <= REALISTIC_TORSO[0] and ready) or angle <= REALISTIC_TORSO[1]:
             break
-        turn_bone(rig, "pelvis", -0.4 * step)
+        # About the hip joints, which stay where the fit put them.
+        turn_bone(rig, "pelvis", -0.4 * step, about=centre)
         turn_bone(rig, "spine", -0.3 * step)
         turn_bone(rig, "chest", -0.3 * step)
         total += step
@@ -1283,6 +1148,10 @@ def build_realistic(sex):
         aim(rig, f"shin.{side}", ankle_at)
         aim(rig, f"foot.{side}", ankle_at + foot_turn @ Vector((0.0, ball.length, -0.02)))
     bpy.ops.object.mode_set(mode="OBJECT")
+    bake_rest_pose(body, gear, rig)
+    thin_body(body)
+    dress_realistic(body, rig)
+    finish_rest_pose(body, rig)
 
     saddle = Vector((0.0, centre.y - 0.02, saddle_top))
     bike_objects, rear_hub, front_hub = bike(saddle, hoods)
@@ -1290,21 +1159,40 @@ def build_realistic(sex):
     for obj in list(bpy.context.scene.objects):
         if obj.parent is None:
             move(obj, shift)
+    body.name = "body"
+    rig.name = "skeleton"
+    os.makedirs(OUT, exist_ok=True)
+    bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, f"rider_{sex}.glb"),
+                              export_format="GLB", export_yup=True, export_skins=True,
+                              export_apply=False, export_animations=False)
     print(f"built realistic rider_{sex}: torso {math.degrees(angle):.0f}° above horizontal, "
-          f"{len(body.data.polygons)} faces")
+          f"hoods {hoods.y:.3f} m ahead of the bottom bracket, wheelbase "
+          f"{front_hub.y - rear_hub.y:.3f} m; {triangles([body])} rider and "
+          f"{triangles(bike_objects)} bike triangles")
     preview_dir = os.environ.get("PREVIEW")
     if preview_dir:
         import preview  # noqa: E402  (art/preview.py; on the path below)
         preview.render([body, *bike_objects], preview_dir, f"realistic_{sex}",
-                       views=("side", "quarter"))
+                       views=("right", "quarter", "front"))
+    pose = rig.pose.bones
+    return {
+        "hips": [godot(rig.matrix_world @ pose[f"thigh.{side}"].head) for side in ("L", "R")],
+        "thigh": round(thigh, 4),
+        "shin": round(shin, 4),
+        "ankle_over_pedal": godot(ankle_over_pedal),
+        "wheel_radius": WHEEL_RADIUS,
+        "wheel_rear": godot(rear_hub + shift),
+        "wheel_front": godot(front_hub + shift),
+        "bottom_bracket": godot(BOTTOM_BRACKET + shift),
+        "hands": godot(hoods + shift),
+        "crank": CRANK,
+        "pedal_offset": PEDAL_OFFSET,
+    }
 
 
 def main():
-    if os.environ.get("RIDERS") == "rigged":
-        sys.path.insert(0, os.path.dirname(HERE))
-        for sex in ("female", "male"):
-            build_realistic(sex)
-        return
+    # art/preview.py, for PREVIEW=<dir>.
+    sys.path.insert(0, os.path.dirname(HERE))
     manifest = {sex: build(sex) for sex in ("female", "male")}
     with open(os.path.join(OUT, "riders.json"), "w", encoding="utf-8") as file:
         json.dump(manifest, file, indent=1)

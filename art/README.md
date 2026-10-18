@@ -154,31 +154,35 @@ scripts/art.sh blender --background --factory-startup --python art/riders/build.
 scripts/dev.sh scripts/render-riders.sh   # side, front, chase and face views in screenshots/riders/
 ```
 
-- **Bodies** come from Blender Studio's CC0 *Human Base Meshes*: the stylized "primitive"
-  bodies, extracted into `sources/human-base-meshes/` (see its `SOURCE.md` and `extract.py`).
-  They are parts with their origins at the joints. The script rounds them by one level of
-  subdivision and shades them smooth (ADR 0019), drops fingers and toes, thins nose and ears,
-  lengthens arms, hands and feet, makes the heads and shoulder caps smaller (natural
-  proportions) and
-  dresses the parts: shorts to above the knee, short sleeves, gloves, shoes.
+- **Bodies** are the realistic female and male bodies of Blender Studio's CC0 *Human Base
+  Meshes*, extracted into `sources/human-base-meshes/realistic_bodies.blend` with the bundle's
+  skeleton joints (see its `SOURCE.md` and `extract_realistic.py`). A skeleton is built from
+  those joints, scaled to each body, and the body skinned to it (heat weights on a thinned
+  copy, handed on by nearest surface).
 - **Head:** fitted to the head's own shape. Hair is a shell over the scalp (to the nape and
   over the ears for her, short for him), the helmet a shell over the hair, drawn out to the
   back, with vent slots laid on top; sunglasses are two lenses following the face over the
-  eyes, a bridge and arms back to the ears; she has a ponytail with a hair tie.
+  eyes, a bridge and arms back to the ears; she has a ponytail with a hair tie. The headgear
+  moves with the head bone.
 - **Seat:** the hips go on the seat tube's line where the knee bends 30° with the pedal at the
-  bottom (a usual bike fit); the torso bends forward until the hands, elbows a little bent,
-  reach hoods at least 0.5 m ahead of the bottom bracket; the shoulders turn half the way with
-  the arms.
-- **Bike:** built around those contact points (saddle under the pelvis, hoods under the hands):
-  frame of six-sided tubes, fork, stem, drop bar with hoods, saddle, 18-sided wheels with eight
-  spokes, chainring and cranks.
+  bottom (a usual bike fit); the back bends forward (24–50° above horizontal) until the hands,
+  arms almost straight, reach hoods at least 0.5 m ahead of the bottom bracket; feet on the
+  pedals with the knees forward. The riding pose becomes the skeleton's rest.
+- **Kit:** after thinning the posed body to about 25,000 triangles, the kit's edges are cut into
+  it as planes across the limbs, so they run straight: shorts to above the knee, a jersey with
+  sleeves to half way down the upper arm, gloves, socks, shoes with dark soles. Shoes and gloves
+  are the convex hulls of the feet and hands, closed over toes and fingers.
+- **Bike:** built around those contact points (saddle under the pelvis, hoods under the hands),
+  see below.
 
-Each file holds `body` (the rider's posed upper body), the legs as `thigh_l`, `shin_l`,
-`foot_l`, `thigh_r`, `shin_r`, `foot_r` (origins at hip, knee and ankle), `frame`,
-`wheel_front`, `wheel_rear`, `crankset` (right crank forward) and `pedal_l`, `pedal_r`.
-`riders.json` holds each rider's fit: hips, thigh and shin lengths, where the ankle sits over
-the pedal, hubs, bottom bracket and cranks. `app/scenes/rider_avatar.gd` turns wheels and cranks
-and aims the legs at the pedals (inverse kinematics).
+Each file holds `skeleton` with `body` skinned to it (bones `pelvis`, `spine`, `chest`, `neck`,
+`head`, `shoulder`/`upper_arm`/`forearm`/`hand` and `thigh`/`shin`/`foot`/`toe`, each `.L` and
+`.R`), `frame`, `wheel_front`, `wheel_rear`, `crankset` (right crank forward) and `pedal_l`,
+`pedal_r`. `riders.json` holds each rider's fit: hips, thigh and shin lengths, where the ankle
+sits over the pedal, the hands on the hoods, hubs, bottom bracket and cranks.
+`app/scenes/rider_avatar.gd` turns wheels and cranks, turns the leg bones to the pedals
+(inverse kinematics) and moves the pelvis bone, and all above it, as the rider sways and stands.
+Exports are deterministic. `PREVIEW=<dir>` also renders Cycles previews of the riders there.
 
 | Name | Used for |
 |---|---|
@@ -189,10 +193,9 @@ and aims the legs at the pedals (inverse kinematics).
 | `tyre`, `rim`, `metal`, `saddle`, `bar` | the bike's other parts |
 
 Colours: the rider's own palette section (`rider_female`, `rider_male`; `frame` there too) and
-`bike` for the bike's other parts. The kit has socks and dark soles painted on the shins' and
-shoes' lower ends. The bike has round tyres on deep rims with disc rotors, an 11-speed cassette,
+`bike` for the bike's other parts. The bike has round tyres on deep rims with disc rotors, an 11-speed cassette,
 toothed chainrings on a spider, tapered cranks, a rear derailleur and the chain, brake hoods
-with lever blades, saddle rails and a bottle in its cage. A rider about 17,600–20,800
+with lever blades, saddle rails and a bottle in its cage. A rider about 23,000–25,000
 triangles, a bike about 7,300.
 Both riders, from every side, are in the [gallery](#riders).
 

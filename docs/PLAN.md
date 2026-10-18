@@ -479,8 +479,9 @@ physically based materials and light, restyled group by group.
   - [x] Light and sky: physically based atmosphere with sunlit clouds (the faceted cloud
     meshes removed), AgX tone mapping, sun and sky light rebalanced, natural palette; dark
     rippled water with reflections (screen-space on High and Ultra); rain as faint streaks
-  - [ ] Riders and bikes: smooth, subdivided bodies and round wheels done; realistic bodies
-    (armature, new pedalling), kit with fabric and bike materials to come
+  - [x] Riders and bikes: detailed road bikes and cycling kit; realistic bodies (Human Base
+    Meshes) skinned to a skeleton, posed on the bike in Blender, the app turning the leg bones
+    to the pedals
   - [x] Rider and bike motion (R88, `RiderMotion`): pitch and lean as damped springs, standing
     on the pedals on steep climbs and in sprints with the bike rocking under the rider, sway
     with effort, cranks level when coasting

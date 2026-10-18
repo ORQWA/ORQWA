@@ -124,14 +124,18 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
 
 ## Riders (`art/riders`)
 
-- No armature: the bodies are rigid parts (Human Base Meshes' primitive bodies), so the build
-  poses them by turning parts about their joints and exports the posed upper body as one node
-  (`body`) and each leg part as its own node with its origin at its joint. Godot aims the leg
-  nodes at the pedals by two-bone IK (`app/scenes/rider_avatar.gd`); `riders.json` carries the
-  fit. Keep node names stable — the app finds them by name.
-- Bodies rounded by one level of subdivision at load, shaded smooth with sharp edges above 40°
-  (`smooth()`), kit by material name coloured from the rider's palette section. Realistic
-  bodies (the bundle's realistic meshes) would need an armature and new pedalling.
+- Realistic bodies (Human Base Meshes) skinned to a skeleton built from the bundle's joints.
+  Heat weighting fails on the detailed mesh: weight a thinned copy and hand the weights on
+  (Data Transfer, nearest face interpolated). Pose by aiming pose bones at target points
+  (`aim`, `turn_bone` about a pivot), never by raw Euler angles: bone roll makes their signs
+  unpredictable. Turn the pelvis about the hip joints, or the fit's hips move.
+- The riding pose is baked as the rest (apply the armature modifier, `pose.armature_apply`,
+  skin again); the app only turns the leg bones (two-bone IK, shortest arc from rest) and moves
+  the pelvis bone. Every leg bone needs a child (the foot a `toe`) so the app can read where it
+  ends. Keep bone and node names stable — the app finds them by name.
+- Kit edges: thin first, then cut planes across the limbs (`bmesh.ops.bisect_plane` on the
+  faces near each limb) and choose materials by position; decimating after dressing makes
+  the edges ragged. Unlinked appended objects have no computed world matrix: read `location`.
 - Male and female riders share node and material names; each has their own bike, sized to them.
 
 ## Third-party bases (CC0 characters and the like)

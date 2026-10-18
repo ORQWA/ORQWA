@@ -1,10 +1,10 @@
 class_name RiderAvatar
 extends Node3D
-## A rider on a road bike (R46, ADR 0019): the Blender-made models of art/riders, coloured from
-## the palette. The cranks turn with the cadence and come level when coasting, the legs follow
-## the pedals (two-bone inverse kinematics), the wheels turn with the speed, and the upper body
-## sways, stands up on the pedals and holds itself upright over the rocking bike as
-## `RiderMotion` says.
+## A rider on a road bike (R46, ADR 0019): the Blender-made models of art/riders — a realistic
+## body skinned to a skeleton — coloured from the palette. The cranks turn with the cadence and
+## come level when coasting, the leg bones follow the pedals (two-bone inverse kinematics), the
+## wheels turn with the speed, and the upper body (the pelvis bone and all above it) sways,
+## stands up on the pedals and holds itself upright over the rocking bike as `RiderMotion` says.
 ## Local axes: −z forward, +y up, +x right; the origin is on the ground between the wheels.
 
 const DIRECTORY: String = "res://assets/models/riders/"
@@ -64,14 +64,17 @@ var _thigh: float
 var _shin: float
 ## Left, right, as are all the following.
 var _hips: Array[Vector3] = []
+## The rider's skeleton, and its bones by name; the skeleton's place in the avatar.
+var _skeleton: Skeleton3D
+var _bones: Dictionary[String, int] = {}
+var _to_skeleton: Transform3D
 ## Where the hands rest on the hoods.
 var _hands: Vector3
 ## How far the body may turn up standing with both legs reaching all round the stroke.
 var _stand_tilt: float = 0.0
+## The legs' joints as last animated, for checks: [hip, knee, ankle] per side.
+var _joints: Array = []
 var _pedals: Array[Node3D] = []
-var _thighs: Array[Node3D] = []
-var _shins: Array[Node3D] = []
-var _feet: Array[Node3D] = []
 var _wheels: Array[Node3D] = []
 var _crankset: Node3D
 ## The rider's parts (everything that is not the bike).
@@ -95,8 +98,9 @@ func show_rider(shown: bool) -> void:
 func _build() -> void:
 	if _model != null:
 		_model.free()
-	for parts: Array in [_hips, _pedals, _thighs, _shins, _feet, _wheels, _body]:
+	for parts: Array in [_hips, _pedals, _wheels, _body]:
 		parts.clear()
+	_bones.clear()
 	var fits: JSON = load(DIRECTORY + "riders.json")
 	var fit: Dictionary = fits.data[rider]
 	_wheel_radius = fit["wheel_radius"]
@@ -121,10 +125,10 @@ func _build() -> void:
 	_body = [_part("body")]
 	for side: String in ["l", "r"]:
 		_pedals.append(_part("pedal_" + side))
-		_thighs.append(_part("thigh_" + side))
-		_shins.append(_part("shin_" + side))
-		_feet.append(_part("foot_" + side))
-	_body.append_array(_thighs + _shins + _feet)
+	_skeleton = _model.find_children("*", "Skeleton3D", true, false)[0]
+	for bone: String in ["pelvis", "thigh.L", "shin.L", "foot.L", "thigh.R", "shin.R", "foot.R"]:
+		_bones[bone] = _skeleton.find_bone(bone)
+	_to_skeleton = _skeleton_transform().affine_inverse()
 	_stand_tilt = _standing_reach()
 	show_rider(_shown)
 	animate(0.0, 0.0, 0.0)
@@ -183,14 +187,58 @@ func animate(
 			else:
 				high = middle
 		body = _body_transform(sway_size, low, rock, standing)
-	_body[0].transform = body
+	_place_bone("pelvis", body)
+	_joints.clear()
 	for side: int in range(2):
 		var ankle: Vector3 = ankles[side]
 		var hip: Vector3 = body * _hips[side]
 		var knee: Vector3 = _knee(hip, ankle)
-		_thighs[side].transform = Transform3D(_along(hip - knee), hip)
-		_shins[side].transform = Transform3D(_along(knee - ankle), knee)
-		_feet[side].transform = Transform3D(feet[side], ankle)
+		var suffix: String = ".L" if side == 0 else ".R"
+		_aim_bone("thigh" + suffix, hip, knee)
+		_aim_bone("shin" + suffix, knee, ankle)
+		# The foot from the ankle to the ball of the foot on the pedal.
+		_aim_bone("foot" + suffix, ankle, ankle - feet[side] * _ankle_over_pedal)
+		_joints.append([hip, knee, ankle])
+
+
+## Hip, knee and ankle of leg `side` (0 left, 1 right) in the avatar's space as last animated.
+func leg_joints(side: int) -> Array:
+	return _joints[side]
+
+
+## The skeleton's place in the avatar (its node may sit inside the model).
+func _skeleton_transform() -> Transform3D:
+	var placed: Transform3D = Transform3D.IDENTITY
+	var node: Node = _skeleton
+	while node != self and node is Node3D:
+		placed = (node as Node3D).transform * placed
+		node = node.get_parent()
+	return placed
+
+
+## Moves bone `name` and all hanging from it as `move` (avatar space) moves its rest.
+func _place_bone(name: String, move: Transform3D) -> void:
+	var bone: int = _bones[name]
+	var rest: Transform3D = _skeleton.get_bone_global_rest(bone)
+	var in_avatar: Transform3D = _to_skeleton.affine_inverse() * rest
+	_skeleton.set_bone_global_pose(bone, _to_skeleton * (move * in_avatar))
+
+
+## Turns bone `name` from its rest direction to point from `start` to `end` (avatar space) by
+## the shortest arc, at `start`: legs bend about the hips' axis, so their knees stay hinges.
+func _aim_bone(name: String, start: Vector3, end: Vector3) -> void:
+	var bone: int = _bones[name]
+	var rest: Transform3D = _to_skeleton.affine_inverse() * _skeleton.get_bone_global_rest(bone)
+	# Every leg bone has a child (the foot a toe), where it ends at rest.
+	var child: int = _skeleton.get_bone_children(bone)[0]
+	var rest_end: Vector3 = (
+		(_to_skeleton.affine_inverse() * _skeleton.get_bone_global_rest(child)).origin
+	)
+	var from: Vector3 = (rest_end - rest.origin).normalized()
+	var to: Vector3 = (end - start).normalized()
+	var turn: Basis = Basis(Quaternion(from, to))
+	var posed: Transform3D = Transform3D(turn * rest.basis, start)
+	_skeleton.set_bone_global_pose(bone, _to_skeleton * posed)
 
 
 ## The upper body's place on the bike: swaying `sway` about the seat with the stroke, turned up
@@ -258,14 +306,6 @@ func _knee(hip: Vector3, ankle: Vector3) -> Vector3:
 	var forward: Vector3 = Vector3.FORWARD
 	var bend: Vector3 = (forward - direction * forward.dot(direction)).normalized()
 	return hip + direction * along + bend * out
-
-
-## The basis of a leg part whose +y points along `up` (it hangs down its −y) and whose front
-## stays forward.
-static func _along(up: Vector3) -> Basis:
-	var y: Vector3 = up.normalized()
-	var z: Vector3 = (Vector3.BACK - y * y.dot(Vector3.BACK)).normalized()
-	return Basis(y.cross(z), y, z)
 
 
 ## Gives each surface its palette colour by material name.

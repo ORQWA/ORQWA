@@ -13,7 +13,7 @@ second look is kept. The ADR is
 `docs/adr/0019-realistic-look.md`; it wins over this file if they disagree.
 
 **State (2026-10-18).** Ground and roads, vegetation, buildings, light, sky, water and rain are
-restyled; riders are smooth but still stylized figures (realistic bodies need an armature).
+restyled; riders are realistic bodies, rigged and posed on the bike, in cycling kit.
 `docs/PLAN.md`, Phase 9, lists what is left. Restyle a group as a whole, never half of it. **Even quality beats local peaks**: the
 first realistic attempt failed because a few good assets stood beside many poor ones, so every
 surface in view on a ride must reach the same level before the next group starts.
@@ -58,7 +58,7 @@ Blender Python; its header shows how to run it).
 ## Budgets
 
 - **Triangles:** tree 1–4k with LODs (leaf cards for crowns), bush 300–1.5k, rock 200–1k,
-  house 1.5–5k, church 4–10k, rider about 10–20k, bike about 4–8k. Godot generates LODs on
+  house 1.5–5k, church 4–10k, rider about 20–25k, bike about 4–8k. Godot generates LODs on
   import; towns place thousands of buildings and forests thousands of trees, so measure.
 - **Textures:** 1024 px per tileable material, 2048 for the road and the ground near it (lower
   on Low); colour and roughness as lossy WebP (quality 90), normal maps lossless WebP, about

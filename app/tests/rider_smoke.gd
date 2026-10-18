@@ -49,32 +49,30 @@ func _run() -> void:
 				crank_end.distance_to(Vector3(0.0, to_pedal.y, to_pedal.z)) < JOINT_TOLERANCE,
 				"%s: the right crank points at the right pedal at step %d" % [rider, step]
 			)
-			for side: String in ["l", "r"]:
-				var hip: Node3D = _node(avatar, "thigh_" + side)
-				var knee: Node3D = _node(avatar, "shin_" + side)
-				var ankle: Node3D = _node(avatar, "foot_" + side)
-				var where: String = "%s, %s leg, step %d" % [rider, side, step]
+			for side: int in range(2):
+				var joints: Array = avatar.leg_joints(side)
+				var hip: Vector3 = joints[0]
+				var knee: Vector3 = joints[1]
+				var ankle: Vector3 = joints[2]
+				var where: String = "%s, leg %d, step %d" % [rider, side, step]
 				_check(
-					(
-						(hip.position - hip.basis.y * thigh).distance_to(knee.position)
-						< JOINT_TOLERANCE
-					),
-					"%s: the thigh ends at the knee" % where
+					absf(hip.distance_to(knee) - thigh) < JOINT_TOLERANCE,
+					"%s: the thigh keeps its length" % where
 				)
 				_check(
-					(
-						(knee.position - knee.basis.y * shin).distance_to(ankle.position)
-						< JOINT_TOLERANCE
-					),
+					absf(knee.distance_to(ankle) - shin) < JOINT_TOLERANCE,
 					"%s: the shin reaches the ankle over the pedal" % where
 				)
-				var line: Vector3 = (ankle.position - hip.position).normalized()
-				var out: Vector3 = knee.position - hip.position
+				var shin_bone: String = "shin.L" if side == 0 else "shin.R"
+				_check(
+					_bone_at(avatar, shin_bone).distance_to(knee) < 0.01,
+					"%s: the skeleton's knee is where the legs bend" % where
+				)
+				var line: Vector3 = (ankle - hip).normalized()
+				var out: Vector3 = knee - hip
 				out -= line * out.dot(line)
 				_check(out.z < 0.0, "%s: the knee bends forward" % where)
-				var bend: float = rad_to_deg(
-					(knee.position - hip.position).angle_to(ankle.position - knee.position)
-				)
+				var bend: float = rad_to_deg((knee - hip).angle_to(ankle - knee))
 				least = minf(least, bend)
 				most = maxf(most, bend)
 		_check(
@@ -99,21 +97,20 @@ func _run() -> void:
 func _standing(avatar: RiderAvatar, rider: String, leg: float) -> void:
 	var seated: RiderMotion = RiderMotion.new()
 	avatar.animate(0.0, 60.0, 30.0, seated)
-	var seated_hip: Vector3 = _node(avatar, "thigh_r").position
+	var seated_hip: Vector3 = avatar.leg_joints(1)[0]
 	var standing: RiderMotion = RiderMotion.new()
 	standing.standing = 1.0
 	var lowest: float = INF
 	for step: int in range(STEPS):
 		avatar.animate(1.0 / STEPS, 60.0, 30.0, standing)
-		var hip: Vector3 = _node(avatar, "thigh_r").position
+		var hip: Vector3 = avatar.leg_joints(1)[0]
 		lowest = minf(lowest, hip.y)
-		for side: String in ["l", "r"]:
-			var reach: float = _node(avatar, "thigh_" + side).position.distance_to(
-				_node(avatar, "foot_" + side).position
-			)
-			_check(
-				reach <= leg + 0.001, "%s standing: the %s leg reaches its pedal" % [rider, side]
-			)
+		for side: int in range(2):
+			var joints: Array = avatar.leg_joints(side)
+			var hip_at: Vector3 = joints[0]
+			var ankle_at: Vector3 = joints[2]
+			var reach: float = hip_at.distance_to(ankle_at)
+			_check(reach <= leg + 0.001, "%s standing: leg %d reaches its pedal" % [rider, side])
 		_check(hip.z < seated_hip.z - 0.05, "%s standing: the hips move forward" % rider)
 	_check(lowest > seated_hip.y + 0.02, "%s standing: the hips rise: %.3f" % [rider, lowest])
 
@@ -149,6 +146,17 @@ func _motion() -> void:
 	for _step: int in range(30):
 		brief.step(1.0 / 60.0, 10.0, 0.0, 4.0, 70.0, 0.0)
 	_check(brief.standing == 0.0, "a moment's effort does not stand the rider up")
+
+
+## Where bone `name` starts, in the avatar's space.
+static func _bone_at(avatar: RiderAvatar, name: String) -> Vector3:
+	var skeleton: Skeleton3D = avatar.find_children("*", "Skeleton3D", true, false)[0]
+	var placed: Transform3D = Transform3D.IDENTITY
+	var node: Node = skeleton
+	while node != avatar:
+		placed = (node as Node3D).transform * placed
+		node = node.get_parent()
+	return (placed * skeleton.get_bone_global_pose(skeleton.find_bone(name))).origin
 
 
 static func _node(avatar: RiderAvatar, part: String) -> Node3D:

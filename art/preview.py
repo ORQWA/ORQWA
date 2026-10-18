@@ -31,6 +31,9 @@ VIEWS = {
     "side": (0.0, -1.0, 0.15),
     "back": (-1.0, 1.3, 0.75),
     "top": (0.25, -0.45, 1.6),
+    # For models facing +y, such as the riders on their bikes.
+    "right": (1.0, 0.0, 0.15),
+    "front": (0.6, 1.0, 0.4),
 }
 
 
@@ -118,7 +121,8 @@ def render(objects, directory, name, views=None, ground=True):
     scene = bpy.context.scene
     for obj in objects:
         for material in obj.data.materials:
-            _show_viewport_colour(material)
+            if material is not None:
+                _show_viewport_colour(material)
     bpy.context.view_layer.update()
     corners = [obj.matrix_world @ Vector(corner) for obj in objects for corner in obj.bound_box]
     low = Vector([min(c[i] for c in corners) for i in range(3)])

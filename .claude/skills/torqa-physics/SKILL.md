@@ -16,7 +16,8 @@ Two layers, kept apart (CLAUDE.md: logic in Rust, Godot presents):
   feeds back. `app/scenes/rider_motion.gd` (`RiderMotion`) turns grade, the bend's lean,
   effort (W/kg) and cadence into the bike's pitch, lean and rock and the rider's standing and
   sway; `app/scenes/rider_avatar.gd` (`RiderAvatar`) poses the model: cranks, wheels, the upper
-  body about the seat and the hands, the legs by two-bone IK; `RideWorld._follow_ride` steps
+  body about the seat and the hands (the skeleton's pelvis bone), the leg bones by two-bone IK;
+  `RideWorld._follow_ride` steps
   both every frame. The fit (hips, hands, bottom bracket, legs) comes from `art/riders`
   through `riders.json`.
 
