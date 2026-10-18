@@ -1,7 +1,8 @@
 //! The phone remote (#228): Torqa serves a page on the local network, and a phone, tablet or
 //! second computer that opens it in a browser shifts the virtual gears and works the ride's
-//! other controls a shifter's buttons can be given (#139), seeing the gear and whether the
-//! ride is paused. Nothing to install, nothing from the internet (R3).
+//! other controls, seeing the gear and whether the ride is paused. Its ten buttons do what the
+//! rider gave them, as a shifter's do (#139, R84). Nothing to install, nothing from the
+//! internet (R3).
 //!
 //! The rider turns it on. It listens on all of this computer's addresses at a fixed port, so
 //! a bookmarked address keeps working, and every address starts with a secret token that only
@@ -22,7 +23,7 @@ use fast_qr::{ECL, QRBuilder};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Semaphore, watch};
 use tokio::task::AbortHandle;
-use torqa_domain::shifting::{ButtonAction, Control, Shift, ShiftInput};
+use torqa_domain::shifting::{BUTTONS, ButtonAction, Control, Shift, ShiftInput};
 use tracing::warn;
 
 /// The port the remote listens on until the rider chooses another.
@@ -33,22 +34,9 @@ pub const DEFAULT_PORT: u16 = 8571;
 pub const NAME: &str = "Phone remote";
 // i18n-end
 
-/// The keys of the page's texts ([`Texts::words`]): the actions it offers, by their names,
-/// then what else it says.
-pub const WORDS: [&str; 20] = [
-    "shift_up",
-    "shift_down",
-    "pause",
+/// What the page says besides the actions' names, by key.
+const PAGE_WORDS: [&str; 8] = [
     "resume",
-    "difficulty_up",
-    "difficulty_down",
-    "intensity_up",
-    "intensity_down",
-    "skip_step",
-    "next_camera",
-    "previous_track",
-    "play_pause",
-    "next_track",
     "title",
     "gear",
     "paused",
@@ -57,6 +45,15 @@ pub const WORDS: [&str; 20] = [
     "old_link",
     "keep_awake",
 ];
+
+/// The keys of the page's texts ([`Texts::words`]): every action a button can be given, by
+/// its name, then what else the page says.
+pub fn words() -> impl Iterator<Item = &'static str> {
+    ButtonAction::ALL
+        .into_iter()
+        .map(ButtonAction::name)
+        .chain(PAGE_WORDS)
+}
 
 /// More connections than a few phones open are turned away.
 const MAX_CONNECTIONS: usize = 16;
@@ -71,6 +68,9 @@ const HEARTBEAT: Duration = Duration::from_secs(15);
 const QUIET: Duration = Duration::from_secs(25);
 
 const PAGE: &str = include_str!("page.html");
+/// The app's own logo for the page's header: the mark and the wordmark.
+const MARK: &str = include_str!("../../../app/assets/brand/torqa-logo-dark.svg");
+const WORDMARK: &str = include_str!("../../../app/assets/brand/torqa-wordmark-dark.svg");
 
 /// What the phone shows of the ride.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -85,6 +85,9 @@ pub struct RemoteState {
     /// The ride is a workout: its intensity changes and its steps can be skipped, the trainer
     /// difficulty does not apply (R66).
     pub workout: bool,
+    /// What each of the page's buttons does, the two big ones first; `None` for a button not
+    /// shown. A press of a button does what the page shows it doing.
+    pub buttons: [Option<ButtonAction>; BUTTONS as usize],
 }
 
 impl RemoteState {
@@ -97,6 +100,7 @@ impl RemoteState {
             "gear": gear,
             "gears": gears,
             "workout": self.workout,
+            "buttons": self.buttons.map(|action| action.map(ButtonAction::name)),
         });
         format!("data: {data}\n\n")
     }
@@ -107,7 +111,7 @@ impl RemoteState {
 pub struct Texts {
     /// The language's code, e.g. `de`.
     pub language: String,
-    /// The texts by key, one for each of [`WORDS`]; a missing one shows its key.
+    /// The texts by key, one for each of [`words`]; a missing one shows its key.
     pub words: BTreeMap<String, String>,
 }
 
@@ -366,8 +370,23 @@ fn render(texts: &Texts) -> Vec<u8> {
         .unwrap_or_else(|_| "{}".to_owned())
         .replace('<', "\\u003c");
     PAGE.replace("{{LANGUAGE}}", &language)
+        .replace("{{MARK}}", &decoration(MARK, "mark"))
+        .replace("{{WORDMARK}}", &decoration(WORDMARK, "wordmark"))
         .replace("{{WORDS}}", &words)
         .into_bytes()
+}
+
+/// A logo `svg` as a decoration in the header with the class `class`: the header already says
+/// "Torqa", so the logo's own title would say it again.
+fn decoration(svg: &str, class: &str) -> String {
+    let svg = svg.replace(
+        r#"role="img" aria-labelledby="title""#,
+        &format!(r#"class="{class}" aria-hidden="true""#),
+    );
+    match (svg.find("<title"), svg.find("</title>")) {
+        (Some(start), Some(end)) => format!("{}{}", &svg[..start], &svg[end + "</title>".len()..]),
+        _ => svg,
+    }
 }
 
 async fn serve(listener: TcpListener, shared: Arc<Shared>) {
@@ -423,9 +442,12 @@ async fn answer(mut socket: TcpStream, shared: Arc<Shared>) {
             shared.hear();
             http::reply_empty(&mut socket, "204 No Content").await
         }
+        // A press names its button, 1 for the first; it does what the page shows it doing.
         ("POST", rest) => match rest
             .strip_prefix("press/")
-            .and_then(ButtonAction::from_name)
+            .and_then(|button| button.parse::<usize>().ok())
+            .and_then(|button| button.checked_sub(1))
+            .and_then(|index| shared.state.borrow().buttons.get(index).copied().flatten())
         {
             Some(action) => {
                 shared.hear();

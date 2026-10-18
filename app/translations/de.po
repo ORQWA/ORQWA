@@ -1977,3 +1977,36 @@ msgstr "Torqa-Fernbedienung"
 msgid "Waiting for a phone…"
 msgstr "Warte auf ein Handy …"
 
+msgid "Big button 1"
+msgstr "Grosse Taste 1"
+
+msgid "Big button 2"
+msgstr "Grosse Taste 2"
+
+msgid "Row 1, left"
+msgstr "Reihe 1, links"
+
+msgid "Row 1, right"
+msgstr "Reihe 1, rechts"
+
+msgid "Row 2, left"
+msgstr "Reihe 2, links"
+
+msgid "Row 2, right"
+msgstr "Reihe 2, rechts"
+
+msgid "Row 3, left"
+msgstr "Reihe 3, links"
+
+msgid "Row 3, right"
+msgstr "Reihe 3, rechts"
+
+msgid "Row 4, left"
+msgstr "Reihe 4, links"
+
+msgid "Row 4, right"
+msgstr "Reihe 4, rechts"
+
+msgid "Code"
+msgstr "Code"
+

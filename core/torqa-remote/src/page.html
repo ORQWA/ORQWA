@@ -20,7 +20,10 @@ body {
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation; overscroll-behavior: none;
 }
-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
+.brand { display: flex; align-items: center; gap: 6px; }
+.brand .mark { height: 28px; width: auto; }
+.brand .wordmark { height: 17px; width: auto; }
 #status { color: var(--muted); font-size: 15px; text-align: right; }
 #status.offline { color: var(--warning); }
 #status.gone { color: var(--danger); }
@@ -28,82 +31,115 @@ header { display: flex; align-items: baseline; justify-content: space-between; g
 #gear b { color: var(--text); font-size: 56px; font-variant-numeric: tabular-nums; }
 button {
   font: inherit; color: inherit; background: var(--surface); border: 0; border-radius: 14px;
-  padding: 10px; touch-action: none;
+  padding: 10px; touch-action: none; display: flex; align-items: center; justify-content: center;
+  gap: 8px; text-align: left;
 }
 button.pressed { background: var(--accent); }
 body.idle button { opacity: 0.45; }
-svg {
+button svg {
   fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round;
-  stroke-linejoin: round; width: 28px; height: 28px;
+  stroke-linejoin: round; width: 24px; height: 24px; flex: none;
 }
-#shift { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 180px; }
-#shift button {
-  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px; font-size: 22px;
-}
-#shift svg { width: 64px; height: 64px; }
-.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.controls button { min-height: 56px; font-size: 15px; }
-.controls .wide { grid-column: span 2; }
-.music { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.music button { min-height: 56px; display: flex; align-items: center; justify-content: center; }
+main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+#big { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 180px; }
+#big button { flex: 1; flex-direction: column; gap: 4px; font-size: 22px; text-align: center; }
+#big svg { width: 64px; height: 64px; }
+#small { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#small button { min-height: 56px; font-size: 15px; justify-content: flex-start; }
 #hint { color: var(--muted); font-size: 13px; text-align: center; }
 [hidden] { display: none !important; }
-@media (orientation: landscape) { #shift { flex-direction: row; } }
+/* Side by side: the big buttons on the left, the grid on the right. */
+@media (orientation: landscape) {
+  main { flex-direction: row; }
+  #big { min-height: 0; }
+  #small { flex: 1; align-content: start; overflow-y: auto; }
+  #small button { min-height: 48px; }
+}
 </style>
 </head>
 <body class="idle">
-<header><strong id="title"></strong><span id="status"></span></header>
+<header>
+  <div class="brand" role="img" aria-label="Torqa">{{MARK}}{{WORDMARK}}</div>
+  <span id="status"></span>
+</header>
 <div id="gear" hidden><span data-word="gear"></span> <b id="gear-number"></b> <span id="gear-count"></span></div>
-<div id="shift">
-  <button data-action="shift_up"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg><span data-word="shift_up"></span></button>
-  <button data-action="shift_down"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg><span data-word="shift_down"></span></button>
-</div>
-<div class="controls">
-  <button data-action="pause" id="pause"></button>
-  <button data-action="next_camera" data-word="next_camera"></button>
-  <button data-action="difficulty_down" data-word="difficulty_down" class="course"></button>
-  <button data-action="difficulty_up" data-word="difficulty_up" class="course"></button>
-  <button data-action="intensity_down" data-word="intensity_down" class="workout" hidden></button>
-  <button data-action="intensity_up" data-word="intensity_up" class="workout" hidden></button>
-  <button data-action="skip_step" data-word="skip_step" class="workout wide" hidden></button>
-</div>
-<div class="music">
-  <button data-action="previous_track" data-label="previous_track"><svg viewBox="0 0 24 24"><path d="M18 19 9 12l9-7v14z"/><path d="M5 5v14"/></svg></button>
-  <button data-action="play_pause" data-label="play_pause"><svg viewBox="0 0 24 24"><path d="M4 5v14l8-7z"/><path d="M16 5v14M20 5v14"/></svg></button>
-  <button data-action="next_track" data-label="next_track"><svg viewBox="0 0 24 24"><path d="M6 5l9 7-9 7V5z"/><path d="M19 5v14"/></svg></button>
-</div>
+<main><div id="big"></div><div id="small"></div></main>
 <p id="hint" data-word="keep_awake" hidden></p>
 <script id="words" type="application/json">{{WORDS}}</script>
 <script>
 "use strict";
 const words = JSON.parse(document.getElementById("words").textContent);
-const word = (key) => words[key] ?? key;
+// A number stays with its unit, e.g. "+10 %", however a label wraps.
+const word = (key) => (words[key] ?? key).replace(/ %/g, "\u00a0%");
 const element = (id) => document.getElementById(id);
 // The token is the first part of the path; everything else lies below it.
 const base = location.pathname.endsWith("/") ? location.pathname : location.pathname + "/";
 const send = (path) => fetch(base + path, { method: "POST", cache: "no-store" }).catch(() => {});
+// The first buttons are the big ones; the rest stand in a grid below them.
+const BIG = 2;
+// A line drawing for each action, in the app's icon style.
+const ICONS = {
+  shift_up: '<path d="M6 15l6-6 6 6"/>',
+  shift_down: '<path d="M6 9l6 6 6-6"/>',
+  shift_up_two: '<path d="M6 12l6-6 6 6"/><path d="M6 18l6-6 6 6"/>',
+  shift_down_two: '<path d="M6 6l6 6 6-6"/><path d="M6 12l6 6 6-6"/>',
+  pause: '<path d="M8 5v14"/><path d="M16 5v14"/>',
+  resume: '<path d="M7 4l12 8-12 8z"/>',
+  next_camera: '<path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/>',
+  overlay: '<rect x="3" y="4" width="18" height="14" rx="2"/><rect x="12" y="9" width="7" height="7" rx="1.5"/>',
+  previous_track: '<path d="M18 19 9 12l9-7v14z"/><path d="M5 5v14"/>',
+  play_pause: '<path d="M4 5v14l8-7z"/><path d="M16 5v14M20 5v14"/>',
+  next_track: '<path d="M6 5l9 7-9 7V5z"/><path d="M19 5v14"/>',
+  difficulty_up: '<path d="M3 19l6-9 4 5 3-4 5 8z"/><path d="M18 3v5M15.5 5.5h5"/>',
+  difficulty_down: '<path d="M3 19l6-9 4 5 3-4 5 8z"/><path d="M15.5 5.5h5"/>',
+  intensity_up: '<path d="M11 3L4 13h6l-1 8 7-10h-6z"/><path d="M19 3v5M16.5 5.5h5"/>',
+  intensity_down: '<path d="M11 3L4 13h6l-1 8 7-10h-6z"/><path d="M16.5 5.5h5"/>',
+  skip_step: '<path d="M5 5l7 7-7 7"/><path d="M12 5l7 7-7 7"/>',
+};
 
 document.title = word("title");
-element("title").textContent = word("title");
 for (const node of document.querySelectorAll("[data-word]")) node.textContent = word(node.dataset.word);
-for (const node of document.querySelectorAll("[data-label]")) node.setAttribute("aria-label", word(node.dataset.label));
 
-// On touch: a press acts when the finger lands, not when it lifts.
-for (const button of document.querySelectorAll("[data-action]")) {
-  button.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    navigator.vibrate?.(15);
-    button.classList.add("pressed");
-    setTimeout(() => button.classList.remove("pressed"), 150);
-    send("press/" + button.dataset.action);
-  });
-  button.addEventListener("contextmenu", (event) => event.preventDefault());
-}
-
-let state = { riding: false, paused: false, gear: null, gears: null, workout: false };
+let state = { riding: false, paused: false, gear: null, gears: null, workout: false, buttons: [] };
 // "online", "offline" (Torqa out of reach: the browser tries again) or "gone" (a new link).
 let connection = "offline";
+let shown = "";
+
+// Whether `action` does anything in the ride as it is: with the bike's own gears there is
+// nothing to shift, the trainer difficulty is a course's, intensity and steps a workout's.
+function applies(action) {
+  if (action.startsWith("shift_")) return !state.riding || state.gear !== null;
+  if (action.startsWith("difficulty_")) return !state.workout;
+  if (action.startsWith("intensity_") || action === "skip_step") return state.workout;
+  return true;
+}
+
+function icon(action) {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[action] ?? "") + "</svg>";
+}
+
+// Builds a button per assigned slot; a press sends the slot's number when the finger lands.
+function build() {
+  const big = element("big");
+  const small = element("small");
+  big.replaceChildren();
+  small.replaceChildren();
+  state.buttons.forEach((action, index) => {
+    if (!action) return;
+    const button = document.createElement("button");
+    button.dataset.action = action;
+    button.innerHTML = icon(action) + "<span></span>";
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      navigator.vibrate?.(15);
+      button.classList.add("pressed");
+      setTimeout(() => button.classList.remove("pressed"), 150);
+      send("press/" + (index + 1));
+    });
+    button.addEventListener("contextmenu", (event) => event.preventDefault());
+    (index < BIG ? big : small).append(button);
+  });
+}
 
 function show() {
   const status = element("status");
@@ -120,11 +156,19 @@ function show() {
     element("gear-number").textContent = state.gear;
     element("gear-count").textContent = "/ " + state.gears;
   }
-  // With the bike's own gears there is nothing to shift here.
-  element("shift").hidden = state.riding && !gears;
-  element("pause").textContent = word(state.paused ? "resume" : "pause");
-  for (const node of document.querySelectorAll(".course")) node.hidden = state.workout;
-  for (const node of document.querySelectorAll(".workout")) node.hidden = !state.workout;
+  const assigned = JSON.stringify(state.buttons);
+  if (assigned !== shown) {
+    shown = assigned;
+    build();
+  }
+  for (const button of document.querySelectorAll("button[data-action]")) {
+    const action = button.dataset.action;
+    button.hidden = !applies(action);
+    const shownAs = action === "pause" && state.paused ? "resume" : action;
+    button.querySelector("svg").innerHTML = ICONS[shownAs] ?? "";
+    button.querySelector("span").textContent = word(shownAs);
+  }
+  element("big").hidden = !element("big").querySelector("button:not([hidden])");
   document.body.classList.toggle("idle", connection !== "online" || !state.riding);
 }
 

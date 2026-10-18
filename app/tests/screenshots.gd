@@ -245,6 +245,13 @@ func _run() -> void:
 			root.get_texture().get_image().save_png(out_dir.path_join("start-devices-remote.png"))
 			var remote_dialog: RemoteDialog = devices_tab.get("_remote_dialog")
 			remote_dialog.hide()
+			# What the phone's buttons do, behind the pen beside its row.
+			var buttons_dialog: ButtonDialog = devices_tab.get("_button_dialog")
+			buttons_dialog.open(ButtonDialog.PHONE_REMOTE, tr(TorqaApp.phone_remote_name()))
+			await create_timer(0.5).timeout
+			var buttons_shot: String = out_dir.path_join("start-devices-remote-buttons.png")
+			root.get_texture().get_image().save_png(buttons_shot)
+			buttons_dialog.hide()
 			remote.button_pressed = false
 	# The settings from the cog at the top right (R83): Graphics, then About.
 	var settings: SettingsDialog = start.get("_settings")

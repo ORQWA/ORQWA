@@ -7,8 +7,9 @@ extends VBoxContainer
 ## is chosen, and each row says how its device is doing: connecting, connected, reconnecting
 ## after a drop, not found, or failed. Beside a connected device stands what it reports, and
 ## beside a failed one why it failed (R80). All of it is the active rider's (R82): switching
-## riders brings their own devices. The last row is the phone remote (#228), this computer's
-## own: turned on, it shows its code to scan, and it says when a phone has it open.
+## riders brings their own devices. The last row is the phone remote (#228), on or off for
+## this computer: turned on, it shows its code to scan, and it says when a phone has it open;
+## what its buttons do is the rider's, behind its pen like a shifter's.
 
 const FAKE_TRAINER: int = -1
 const NO_HEART_RATE: int = -1
@@ -91,9 +92,10 @@ var _reasons: Dictionary[String, String] = {}
 var _readings: Dictionary[String, String] = {}
 var _since_reading: float = 0.0
 var _status: Label = Label.new()
-## The phone remote (#228): on or off, its code behind the button beside it, and how it is
-## doing; its last attempt to start may have failed.
+## The phone remote (#228): on or off, what its buttons do behind its pen, its code behind the
+## button beside it, and how it is doing; its last attempt to start may have failed.
 var _remote: CheckButton = CheckButton.new()
+var _remote_pen: Button = Button.new()
 var _remote_code: Button = Button.new()
 var _remote_state: Label = Label.new()
 var _remote_dialog: RemoteDialog = RemoteDialog.new()
@@ -257,15 +259,25 @@ func _add_remote_row(grid: GridContainer) -> void:
 	_remote.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_remote.toggled.connect(_on_remote_toggled)
 	grid.add_child(_remote)
+	# The rider's buttons, set up whether the remote is on or not.
+	_remote_pen.icon = UiIcons.texture("pencil")
+	_remote_pen.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_remote_pen.tooltip_text = tr("What the buttons do")
+	_remote_pen.custom_minimum_size = Vector2(44, 0)
+	_remote_pen.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_remote_pen.pressed.connect(
+		func() -> void:
+			_button_dialog.open(ButtonDialog.PHONE_REMOTE, tr(TorqaApp.phone_remote_name()))
+	)
+	grid.add_child(_remote_pen)
+	_remote_code.text = tr("Code")
 	_remote_code.icon = UiIcons.texture("qr")
-	_remote_code.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_remote_code.tooltip_text = tr("Code and address for the phone")
-	_remote_code.custom_minimum_size = Vector2(44, 0)
+	_remote_code.custom_minimum_size = Vector2(110, 0)
 	_remote_code.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_remote_code.disabled = true
 	_remote_code.pressed.connect(_remote_dialog.open)
 	grid.add_child(_remote_code)
-	grid.add_child(Control.new())
 	_remote_state.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_remote_state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_remote_state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -284,6 +296,8 @@ func _notification(what: int) -> void:
 			_render_state(role)
 		_remote.text = tr("Shift from a phone's browser")
 		_remote.tooltip_text = tr("A phone in the same network shifts and controls the ride")
+		_remote_pen.tooltip_text = tr("What the buttons do")
+		_remote_code.text = tr("Code")
 		_remote_code.tooltip_text = tr("Code and address for the phone")
 		_show_remote()
 

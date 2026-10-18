@@ -7,16 +7,34 @@ const TOKEN: &str = "0123456789abcdef";
 fn texts() -> Texts {
     Texts {
         language: "de".to_owned(),
-        words: WORDS
-            .iter()
-            .map(|&key| (key.to_owned(), format!("{key} auf Deutsch")))
+        words: words()
+            .map(|key| (key.to_owned(), format!("{key} auf Deutsch")))
             .collect(),
     }
 }
 
-/// A remote on a free port.
+/// The page's buttons as a rider gave them: up and two up big, pause and skip below, the
+/// fifth left out.
+fn buttons() -> [Option<ButtonAction>; BUTTONS as usize] {
+    let mut buttons = [None; BUTTONS as usize];
+    buttons[..4].copy_from_slice(&[
+        Some(ButtonAction::ShiftUp),
+        Some(ButtonAction::ShiftUpTwo),
+        Some(ButtonAction::Control(Control::Pause)),
+        Some(ButtonAction::Control(Control::SkipStep)),
+    ]);
+    buttons[5] = Some(ButtonAction::Control(Control::NextCamera));
+    buttons
+}
+
+/// A remote on a free port, its buttons as [`buttons`] gives them.
 fn remote() -> (RemoteServer, Remote) {
-    start(&tokio::runtime::Handle::current(), 0, TOKEN, &texts()).unwrap()
+    let started = start(&tokio::runtime::Handle::current(), 0, TOKEN, &texts()).unwrap();
+    started.0.show(RemoteState {
+        buttons: buttons(),
+        ..RemoteState::default()
+    });
+    started
 }
 
 /// Sends a request for `path` and reads the whole answer.
@@ -69,11 +87,11 @@ async fn next_event(reader: &mut BufReader<TcpStream>) -> serde_json::Value {
 }
 
 #[tokio::test]
-async fn a_press_on_the_phone_shifts_or_asks_for_its_control() {
+async fn a_press_on_the_phone_does_what_its_button_was_given() {
     let (server, mut remote) = remote();
 
-    for action in ["shift_up", "shift_up_two", "pause", "skip_step"] {
-        let answer = request(server.port(), "POST", &format!("/{TOKEN}/press/{action}")).await;
+    for button in 1..=4 {
+        let answer = request(server.port(), "POST", &format!("/{TOKEN}/press/{button}")).await;
         assert!(answer.starts_with("HTTP/1.1 204"), "{answer}");
     }
 
@@ -84,14 +102,29 @@ async fn a_press_on_the_phone_shifts_or_asks_for_its_control() {
 }
 
 #[tokio::test]
+async fn a_button_given_something_else_does_that_from_then_on() {
+    let (server, mut remote) = remote();
+    let mut buttons = buttons();
+    buttons[0] = Some(ButtonAction::ShiftDown);
+
+    server.show(RemoteState {
+        buttons,
+        ..RemoteState::default()
+    });
+    request(server.port(), "POST", &format!("/{TOKEN}/press/1")).await;
+
+    assert_eq!(remote.poll(), [Shift::Down]);
+}
+
+#[tokio::test]
 async fn without_the_token_nothing_is_there_and_nothing_is_pressed() {
     let (server, mut remote) = remote();
 
     for path in [
-        "/press/shift_up".to_owned(),
-        "/fedcba9876543210/press/shift_up".to_owned(),
-        format!("/{}/press/shift_up", &TOKEN[..15]),
-        format!("/{TOKEN}0/press/shift_up"),
+        "/press/1".to_owned(),
+        "/fedcba9876543210/press/1".to_owned(),
+        format!("/{}/press/1", &TOKEN[..15]),
+        format!("/{TOKEN}0/press/1"),
         "/".to_owned(),
         "/fedcba9876543210/".to_owned(),
     ] {
@@ -109,14 +142,23 @@ async fn without_the_token_nothing_is_there_and_nothing_is_pressed() {
 }
 
 #[tokio::test]
-async fn an_unknown_action_presses_nothing() {
+async fn a_button_that_is_not_there_presses_nothing() {
     let (server, mut remote) = remote();
 
-    for path in ["press/launch", "press/", "press", "shift_up"] {
+    for path in [
+        "press/5",
+        "press/0",
+        "press/11",
+        "press/-1",
+        "press/shift_up",
+        "press/",
+        "press",
+        "1",
+    ] {
         let answer = request(server.port(), "POST", &format!("/{TOKEN}/{path}")).await;
         assert!(answer.starts_with("HTTP/1.1 404"), "{path}: {answer}");
     }
-    let answer = request(server.port(), "GET", &format!("/{TOKEN}/press/shift_up")).await;
+    let answer = request(server.port(), "GET", &format!("/{TOKEN}/press/1")).await;
     assert!(
         answer.starts_with("HTTP/1.1 404"),
         "a press is posted: {answer}"
@@ -126,7 +168,7 @@ async fn an_unknown_action_presses_nothing() {
 }
 
 #[tokio::test]
-async fn the_page_speaks_the_riders_language_and_loads_nothing_from_elsewhere() {
+async fn the_page_speaks_the_riders_language_shows_the_logo_and_loads_nothing_from_elsewhere() {
     let (server, _remote) = remote();
 
     for path in [
@@ -138,6 +180,15 @@ async fn the_page_speaks_the_riders_language_and_loads_nothing_from_elsewhere() 
         assert!(page.starts_with("HTTP/1.1 200"), "{path}: {page}");
         assert!(page.contains(r#"<html lang="de">"#));
         assert!(page.contains(r#""shift_up":"shift_up auf Deutsch""#));
+        assert!(
+            page.contains(r#"class="mark" aria-hidden="true""#),
+            "the logo's mark"
+        );
+        assert!(
+            page.contains(r#"class="wordmark" aria-hidden="true""#),
+            "and its wordmark"
+        );
+        assert!(!page.contains("<title id="), "the header says Torqa once");
         assert!(page.contains("Content-Security-Policy: default-src 'none';"));
         assert!(page.contains("Referrer-Policy: no-referrer"));
     }
@@ -168,6 +219,22 @@ async fn the_phone_sees_the_gear_and_the_pause_as_they_change() {
     let first = next_event(&mut phone).await;
     assert_eq!(first["riding"], false);
     assert!(first["gear"].is_null());
+    assert_eq!(
+        first["buttons"],
+        serde_json::json!([
+            "shift_up",
+            "shift_up_two",
+            "pause",
+            "skip_step",
+            null,
+            "next_camera",
+            null,
+            null,
+            null,
+            null
+        ]),
+        "what each button does, to show it"
+    );
     assert!(remote.connected(), "a phone listens");
 
     server.show(RemoteState {
@@ -175,6 +242,7 @@ async fn the_phone_sees_the_gear_and_the_pause_as_they_change() {
         paused: false,
         gear: Some((7, 24)),
         workout: false,
+        buttons: buttons(),
     });
     let riding = next_event(&mut phone).await;
     assert_eq!(riding["riding"], true);
@@ -187,12 +255,14 @@ async fn the_phone_sees_the_gear_and_the_pause_as_they_change() {
         paused: false,
         gear: Some((7, 24)),
         workout: false,
+        buttons: buttons(),
     });
     server.show(RemoteState {
         riding: true,
         paused: true,
         gear: Some((7, 24)),
         workout: true,
+        buttons: buttons(),
     });
     let paused = next_event(&mut phone).await;
     assert_eq!(paused["paused"], true);

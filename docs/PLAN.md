@@ -227,9 +227,10 @@ Built in rideable steps:
     and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
     written from the community's drivers, **not yet checked on the hardware**
   - [x] The phone remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
-    that a phone's browser opens from a QR code, shifting and working the ride's controls,
-    showing the gear and the pause; off until turned on under Devices, a secret token in its
-    address, a new address to lock out phones paired before; **not yet tried on a real phone**
+    that a phone's browser opens from a QR code, its ten buttons (two big) doing what the
+    rider gave them behind a pen like a shifter's, showing the gear and the pause under the
+    Torqa logo; off until turned on under Devices, a secret token in its address, a new
+    address to lock out phones paired before; **not yet tried on a real phone**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their

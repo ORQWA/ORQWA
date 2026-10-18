@@ -1,8 +1,9 @@
 //! The phone remote (#228): a page on the local network that a phone's browser opens to shift
-//! and work the ride's controls, as a shifter's buttons do (#139). Whether it is on, its port
-//! and its secret address are this computer's (R78).
+//! and work the ride's controls. Its buttons do what the rider gave them, as a shifter's do
+//! (#139, R84); whether it is on, its port and its secret address are this computer's (R78).
 
-pub use torqa_remote::{NAME as REMOTE_NAME, QrCode, Texts as RemoteTexts, WORDS as REMOTE_WORDS};
+use torqa_domain::shifting::{ButtonMap, ControllerModel, Press};
+pub use torqa_remote::{NAME as REMOTE_NAME, QrCode, Texts as RemoteTexts, words as remote_words};
 use torqa_remote::{RemoteServer, RemoteState};
 use torqa_storage::computer::{self, PhoneRemote};
 
@@ -141,7 +142,10 @@ impl App {
             &mut remote.connected,
             events,
         );
-        remote.server.show(remote_state(self.ride.as_ref()));
+        let buttons = self.buttons.get(ControllerModel::PhoneRemote);
+        remote
+            .server
+            .show(remote_state(self.ride.as_ref(), &buttons));
     }
 
     /// Starts the remote as `settings` say, with a secret address if it has none yet, and
@@ -156,6 +160,9 @@ impl App {
             torqa_remote::start(self.runtime.handle(), port, &token, &self.remote_texts).map_err(
                 |error| AppError::Reported(Failure::new(Kind::StartRemote, error).arg(port)),
             )?;
+        // A phone may press before the next update: its buttons are there from the start.
+        let buttons = self.buttons.get(ControllerModel::PhoneRemote);
+        server.show(remote_state(self.ride.as_ref(), &buttons));
         self.remote = Some(RunningRemote {
             server,
             input,
@@ -191,18 +198,24 @@ fn save(file: &std::path::Path, settings: &PhoneRemote) -> Result<(), AppError> 
         .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
 }
 
-/// What the phone shows of `ride`.
-fn remote_state(ride: Option<&ActiveRide>) -> RemoteState {
-    let Some(active) = ride.filter(|active| !active.finished) else {
-        return RemoteState::default();
+/// What the phone shows of `ride`, with its buttons doing what `buttons` gives them.
+fn remote_state(ride: Option<&ActiveRide>, buttons: &ButtonMap) -> RemoteState {
+    let mut shown = RemoteState {
+        buttons: std::array::from_fn(|index| {
+            u8::try_from(index + 1)
+                .ok()
+                .and_then(|button| buttons.action(button, Press::Short))
+        }),
+        ..RemoteState::default()
     };
-    let state = active.ride.state();
-    RemoteState {
-        riding: true,
-        paused: active.paused,
-        gear: state.gear.map(|gear| (gear.number, gear.of)),
-        workout: state.workout.is_some(),
+    if let Some(active) = ride.filter(|active| !active.finished) {
+        let state = active.ride.state();
+        shown.riding = true;
+        shown.paused = active.paused;
+        shown.gear = state.gear.map(|gear| (gear.number, gear.of));
+        shown.workout = state.workout.is_some();
     }
+    shown
 }
 
 #[cfg(test)]
@@ -213,7 +226,7 @@ mod tests {
 
     use torqa_devices::fake::FakeRider;
     use torqa_domain::profile::Drivetrain;
-    use torqa_domain::shifting::Control;
+    use torqa_domain::shifting::{ButtonAction, Control};
     use torqa_domain::units::{Percent, Rpm, Watts};
     use torqa_physics::DescentMode;
 
@@ -233,12 +246,13 @@ mod tests {
         computer::phone_remote(&app.computer).token.unwrap()
     }
 
-    /// Presses `action` as the phone does, with `token`; the answer's status line.
-    fn press(port: u16, token: &str, action: &str) -> String {
+    /// Presses `button` (1 for the first) as the phone does, with `token`; the answer's status
+    /// line.
+    fn press(port: u16, token: &str, button: &str) -> String {
         let mut socket = TcpStream::connect((Ipv4Addr::LOCALHOST, port)).unwrap();
         write!(
             socket,
-            "POST /{token}/press/{action} HTTP/1.1\r\nHost: torqa\r\n\r\n"
+            "POST /{token}/press/{button} HTTP/1.1\r\nHost: torqa\r\n\r\n"
         )
         .unwrap();
         let mut answer = String::new();
@@ -292,10 +306,7 @@ mod tests {
         assert!(on.on);
         assert_ne!(on.port, 0, "listening on a port of its own");
         let token = token(&app);
-        assert_eq!(
-            press(on.port, &token, "shift_up"),
-            "HTTP/1.1 204 No Content"
-        );
+        assert_eq!(press(on.port, &token, "1"), "HTTP/1.1 204 No Content");
         if let Some(address) = &on.address {
             assert!(
                 address.ends_with(&format!(":{}/{token}/", on.port)),
@@ -355,8 +366,9 @@ mod tests {
         let before = app.ride_state().unwrap().gear.unwrap();
 
         let mut phone = listen(port, &token);
-        assert_eq!(press(port, &token, "shift_up"), "HTTP/1.1 204 No Content");
-        assert_eq!(press(port, &token, "pause"), "HTTP/1.1 204 No Content");
+        // Its first button shifts up and its third pauses, until the rider says otherwise.
+        assert_eq!(press(port, &token, "1"), "HTTP/1.1 204 No Content");
+        assert_eq!(press(port, &token, "3"), "HTTP/1.1 204 No Content");
         let events = app.update(Duration::from_millis(16));
 
         assert_eq!(
@@ -385,6 +397,41 @@ mod tests {
     }
 
     #[test]
+    fn the_phones_buttons_do_what_the_rider_gave_them() {
+        let (_dir, mut app) = app("remote-buttons");
+        app.set_phone_remote(true).unwrap();
+        let (port, token) = (app.phone_remote().port, token(&app));
+        let mut phone = listen(port, &token);
+        wait_for(&mut phone, |state| state["buttons"][0] == "shift_up");
+
+        let mut map = app.button_map(ControllerModel::PhoneRemote);
+        map.assign(
+            1,
+            Press::Short,
+            Some(ButtonAction::Control(Control::NextCamera)),
+        );
+        map.assign(2, Press::Short, None);
+        app.set_button_map(ControllerModel::PhoneRemote, map)
+            .unwrap();
+        app.update(Duration::from_millis(16));
+
+        wait_for(&mut phone, |state| {
+            state["buttons"][0] == "next_camera" && state["buttons"][1].is_null()
+        });
+        assert_eq!(
+            press(port, &token, "2"),
+            "HTTP/1.1 404 Not Found",
+            "a button given nothing is not there"
+        );
+        assert_eq!(
+            app.button_map(ControllerModel::Di2),
+            ControllerModel::Di2.default_buttons(),
+            "a shifter's buttons stay theirs"
+        );
+        app.shutdown();
+    }
+
+    #[test]
     fn a_new_address_locks_out_the_phones_paired_before() {
         let (_dir, mut app) = app("remote-renew");
         app.set_phone_remote(true).unwrap();
@@ -395,8 +442,8 @@ mod tests {
 
         let (port, new) = (app.phone_remote().port, token(&app));
         assert_ne!(new, old);
-        assert_eq!(press(port, &old, "shift_up"), "HTTP/1.1 404 Not Found");
-        assert_eq!(press(port, &new, "shift_up"), "HTTP/1.1 204 No Content");
+        assert_eq!(press(port, &old, "1"), "HTTP/1.1 404 Not Found");
+        assert_eq!(press(port, &new, "1"), "HTTP/1.1 204 No Content");
         let mut rest = String::new();
         // With the read timeout, a stream left open is an error here.
         assert!(

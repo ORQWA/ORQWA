@@ -20,11 +20,16 @@ with every Torqa version. Torqa has no server of its own (R3) to pair the two th
 browser. The Torqa a rider runs serves the page too, so the two never disagree, and any phone,
 tablet or computer works.
 
-- **A shift input.** `torqa_remote::Remote` implements `ShiftInput`. A press is an action
-  by the name a shifter's button gives it (`ButtonAction::name`, moved from storage to the
-  domain), so the page offers what a shifter's buttons can do (#139, R66) without anything new
-  in the ride. The app polls the remote beside the keyboard and the Bluetooth shifter. It does
-  not keep it in their list, whose second place belongs to the shifter.
+- **A shift input with assignable buttons.** `torqa_remote::Remote` implements `ShiftInput`.
+  The page has ten buttons, two big ones first. The phone remote is a `ControllerModel` like
+  the shifters (`PhoneRemote`), so its buttons are the rider's own (R84). The ride's state
+  that the page hears carries each button's action, by the name a shifter's button gives it
+  (`ButtonAction::name`, moved from storage to the domain). A press names its button, and the
+  server maps it through the actions it last showed, so the phone presses what it displays.
+  Presses only: a hold would make every press wait for the finger to lift. The
+  assignments every shifter shared before R84 are not carried to the phone (`SHIFTERS`). The
+  app polls the remote beside the keyboard and the Bluetooth shifter. It does not keep it in
+  their list, whose second place belongs to the shifter.
 - **Plain HTTP/1.1, hand-written** on Tokio, as the OAuth login's loopback answer already is
   (`torqa-upload`). Presses are `POST`s and the page hears the ride (gear, paused, workout) as
   **Server-Sent Events**. A WebSocket would need SHA-1 and base64 for its handshake, so a
@@ -48,7 +53,8 @@ tablet or computer works.
   25 s: the page says it is there every 10 s. A locked phone stops talking long before its
   connection notices.
 - **Texts come from the front end**, translated with `tr()` like everything else (R24), and
-  are embedded in the page with every `<` escaped.
+  are embedded in the page with every `<` escaped. The header's logo is the app's own mark
+  and wordmark (`app/assets/brand/`), inlined as SVG.
 
 ## Consequences
 

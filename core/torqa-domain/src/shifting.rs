@@ -166,11 +166,22 @@ pub enum ControllerModel {
     ZwiftClick,
     /// The Zwift Click v2 (R77): two pods, + and − and eight more buttons, presses and holds.
     ZwiftClickV2,
+    /// The phone remote (#228): ten buttons on a page in the phone's browser, two big ones
+    /// first, each acting the moment it is pressed; no holds.
+    PhoneRemote,
 }
 
 impl ControllerModel {
-    /// Every shifter model.
-    pub const ALL: [Self; 3] = [Self::Di2, Self::ZwiftClick, Self::ZwiftClickV2];
+    /// Every model whose buttons the rider assigns.
+    pub const ALL: [Self; 4] = [
+        Self::Di2,
+        Self::ZwiftClick,
+        Self::ZwiftClickV2,
+        Self::PhoneRemote,
+    ];
+
+    /// The Bluetooth shifters, which shared one assignment before R84.
+    pub const SHIFTERS: [Self; 3] = [Self::Di2, Self::ZwiftClick, Self::ZwiftClickV2];
 
     /// The model's name as the front end and the settings files know it.
     #[must_use]
@@ -179,6 +190,34 @@ impl ControllerModel {
             Self::Di2 => "di2",
             Self::ZwiftClick => "zwift_click",
             Self::ZwiftClickV2 => "zwift_click_v2",
+            Self::PhoneRemote => "phone_remote",
+        }
+    }
+
+    /// What its buttons do until the rider gives them something else: a shifter's first two
+    /// shift; the phone remote's big ones shift and the others work the ride.
+    #[must_use]
+    pub fn default_buttons(self) -> ButtonMap {
+        match self {
+            Self::PhoneRemote => {
+                let mut map = ButtonMap::NONE;
+                for (button, action) in (1..).zip([
+                    ButtonAction::ShiftUp,
+                    ButtonAction::ShiftDown,
+                    ButtonAction::Control(Control::Pause),
+                    ButtonAction::Control(Control::NextCamera),
+                    ButtonAction::Control(Control::DifficultyDown),
+                    ButtonAction::Control(Control::DifficultyUp),
+                    ButtonAction::Control(Control::IntensityDown),
+                    ButtonAction::Control(Control::IntensityUp),
+                    ButtonAction::Control(Control::SkipStep),
+                    ButtonAction::Control(Control::PlayPause),
+                ]) {
+                    map.assign(button, Press::Short, Some(action));
+                }
+                map
+            }
+            _ => ButtonMap::default(),
         }
     }
 
@@ -288,6 +327,27 @@ mod tests {
             assert_eq!(ButtonAction::from_name(action.name()), Some(action));
         }
         assert_eq!(ButtonAction::from_name("launch"), None);
+    }
+
+    #[test]
+    fn the_phone_remote_shifts_with_its_big_buttons_and_works_the_ride_with_the_rest() {
+        let map = ControllerModel::PhoneRemote.default_buttons();
+        let pressed = |button| map.action(button, Press::Short);
+
+        assert_eq!(pressed(1), Some(ButtonAction::ShiftUp));
+        assert_eq!(pressed(2), Some(ButtonAction::ShiftDown));
+        assert!(
+            (3..=BUTTONS).all(|button| matches!(pressed(button), Some(ButtonAction::Control(_))))
+        );
+        assert!(
+            (1..=BUTTONS).all(|button| map.action(button, Press::Long).is_none()),
+            "a page has no holds"
+        );
+        assert_eq!(
+            ControllerModel::from_name("phone_remote"),
+            Some(ControllerModel::PhoneRemote)
+        );
+        assert_eq!(ControllerModel::Di2.default_buttons(), ButtonMap::default());
     }
 
     fn press(channel: u8, press: Press) -> ButtonPress {

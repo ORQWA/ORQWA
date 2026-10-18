@@ -1561,9 +1561,8 @@ impl TorqaApp {
     /// The keys of the texts the phone remote's page says, for [`Self::set_phone_remote_texts`].
     #[func]
     fn phone_remote_words() -> PackedStringArray {
-        torqa_app::remote::REMOTE_WORDS
-            .iter()
-            .map(|&key| GString::from(key))
+        torqa_app::remote::remote_words()
+            .map(GString::from)
             .collect()
     }
 
@@ -2032,10 +2031,11 @@ impl TorqaApp {
             .collect()
     }
 
-    /// What the buttons of the shifter `model` (`"di2"`, `"zwift_click"` or
-    /// `"zwift_click_v2"`) do (#139, R84): for each button 1–10 (a Di2's D-Fly channels 1–4; a
-    /// Zwift Click's + is 1 and its − 2, with no double press), the action names of a press, a
-    /// hold and a double press, "" where it does nothing. Empty for an unknown model.
+    /// What the buttons of the shifter `model` (`"di2"`, `"zwift_click"`, `"zwift_click_v2"`
+    /// or the phone remote's `"phone_remote"`) do (#139, R84, #228): for each button 1–10 (a
+    /// Di2's D-Fly channels 1–4; a Zwift Click's + is 1 and its − 2, with no double press; the
+    /// phone's presses only), the action names of a press, a hold and a double press, "" where
+    /// it does nothing. Empty for an unknown model.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn button_map(&self, model: GString) -> VarArray {

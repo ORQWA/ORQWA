@@ -792,11 +792,16 @@ pub fn set_cadence_source(
 #[must_use]
 pub fn button_map(data_dir: &Path, id: &str, model: ControllerModel) -> ButtonMap {
     let devices = devices(data_dir, id);
+    // The buttons every shifter shared before R84 were never the phone remote's.
+    let shared = devices
+        .buttons
+        .as_ref()
+        .filter(|_| ControllerModel::SHIFTERS.contains(&model));
     devices
         .shifter_buttons
         .get(model.name())
-        .or(devices.buttons.as_ref())
-        .map_or_else(ButtonMap::default, ButtonsFile::map)
+        .or(shared)
+        .map_or_else(|| model.default_buttons(), ButtonsFile::map)
 }
 
 /// Remembers what the buttons of the rider's shifter `model` do; the other models' stay.
@@ -812,7 +817,7 @@ pub fn set_button_map(
     let mut devices = devices(data_dir, id);
     // What every model did before stays each one's own.
     if let Some(shared) = devices.buttons.take() {
-        for other in ControllerModel::ALL {
+        for other in ControllerModel::SHIFTERS {
             devices
                 .shifter_buttons
                 .entry(other.name().to_owned())
@@ -924,9 +929,13 @@ mod tests {
     fn buttons_shift_until_the_rider_gives_them_something_else() {
         let dir = temp_dir("buttons-default");
 
-        for model in ControllerModel::ALL {
+        for model in ControllerModel::SHIFTERS {
             assert_eq!(button_map(&dir, "anna", model), ButtonMap::shifting(1, 2));
         }
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::PhoneRemote),
+            ControllerModel::PhoneRemote.default_buttons()
+        );
     }
 
     #[test]
@@ -1013,6 +1022,11 @@ mod tests {
         for model in [ControllerModel::ZwiftClick, ControllerModel::ZwiftClickV2] {
             assert_eq!(button_map(&dir, "anna", model), shared, "{model:?}");
         }
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::PhoneRemote),
+            ControllerModel::PhoneRemote.default_buttons(),
+            "never the phone remote's"
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 
@@ -1199,13 +1213,18 @@ mod tests {
         assert_eq!(anna.trainer.map(|d| d.name).as_deref(), Some("KICKR CORE"));
         assert_eq!(anna.heart_rate.map(|d| d.name).as_deref(), Some("Polar H9"));
         assert_eq!(cadence_source(&dir, "anna"), CadenceSource::Trainer);
-        for model in ControllerModel::ALL {
+        for model in ControllerModel::SHIFTERS {
             assert_eq!(
                 button_map(&dir, "anna", model),
                 ButtonMap::shifting(2, 1),
                 "the channels chosen before still shift"
             );
         }
+        assert_eq!(
+            button_map(&dir, "anna", ControllerModel::PhoneRemote),
+            ControllerModel::PhoneRemote.default_buttons(),
+            "a shifter's channels were never the phone's"
+        );
         let ben = remembered_devices(&dir, "ben");
         assert_eq!(ben.heart_rate, Some(own), "a rider's own stay");
         assert_eq!(ben.trainer, None, "and are not mixed with everyone's");
