@@ -46,7 +46,8 @@ pub(crate) async fn read_request(socket: &mut TcpStream) -> Option<Request> {
 }
 
 /// Answers with `body`, then closes the connection. The page loads nothing from elsewhere
-/// and never passes its address on: it holds the token.
+/// and never passes its address on: it holds the token. Its one video, the clip that keeps
+/// the screen on, is embedded in it as a `data:` address.
 pub(crate) async fn reply(
     socket: &mut TcpStream,
     status: &str,
@@ -57,7 +58,8 @@ pub(crate) async fn reply(
         "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\n\
          Cache-Control: no-store\r\nReferrer-Policy: no-referrer\r\n\
          Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; \
-         style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'\r\n\
+         style-src 'unsafe-inline'; media-src data:; connect-src 'self'; \
+         frame-ancestors 'none'\r\n\
          X-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n",
         body.len()
     );

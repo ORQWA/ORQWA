@@ -235,6 +235,9 @@ Built in rideable steps:
   - [x] A TV remote between rides (R87): a pad of arrows, OK and Back goes through Torqa's
     screens to start a course or workout, a held Finish & save ends a ride, and a focus ring
     shows where keyboard and remote are (Escape goes back too)
+  - [x] The remote keeps the screen on (R88): an unseen silent clip, muted for Chrome and
+    mixed into the rider's music on an iPhone, as plain http gives no wake lock; checked in
+    headless Chromium, **not yet tried on a real phone or tablet**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their

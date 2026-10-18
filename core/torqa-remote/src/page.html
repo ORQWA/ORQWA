@@ -81,6 +81,12 @@ main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;
 #pad [data-step="down"] { grid-area: down; }
 #pad [data-step="back"] { grid-area: back; min-height: 64px; font-size: 18px; }
 #pad [data-step="back"] svg { width: 28px; height: 28px; }
+/* Keeps the screen on (keepAwake), unseen: Chrome counts only a video that covers much of the
+   screen, however transparent. */
+#awake {
+  position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none;
+  z-index: -1;
+}
 [hidden] { display: none !important; }
 /* A short screen, e.g. a small phone or one turned sideways: the big buttons put their icon
    beside the label, so they fit in less height. */
@@ -115,6 +121,8 @@ main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;
   <button data-step="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-word="back"></span></button>
 </div>
 <p id="hint" data-word="keep_awake" hidden></p>
+<video id="awake" src="data:video/mp4;base64,{{KEEP_AWAKE}}" playsinline disablepictureinpicture
+  disableremoteplayback aria-hidden="true" tabindex="-1"></video>
 <script id="words" type="application/json">{{WORDS}}</script>
 <script>
 "use strict";
@@ -314,17 +322,45 @@ events.onerror = () => {
   show();
 };
 
-// The browser keeps the screen on where it may (not over plain http); else the rider is told.
-async function keepAwake() {
-  try {
-    await navigator.wakeLock.request("screen");
-  } catch {
-    element("hint").hidden = false;
-  }
+// The screen stays on while the page shows. Over plain http, as Torqa serves it, the browser
+// has no wake lock to give, so the page plays a silent clip unseen, for which phones keep the
+// screen on as for any video: Chrome for a muted one that covers the screen, Safari only for one
+// that may sound and does not loop, so there it plays its silence beside the rider's music.
+// Where the clip cannot play either, the rider is told to turn the auto-lock off.
+const awake = element("awake");
+if (navigator.audioSession) {
+  navigator.audioSession.type = "ambient";
+} else {
+  awake.muted = true;
 }
-// Torqa counts the phone gone once it stops hearing this, e.g. when its screen locks.
+awake.addEventListener("timeupdate", () => {
+  if (awake.currentTime > awake.duration - 1) awake.currentTime = 0;
+});
+// Held while the page shows; the browser lets it go when the page hides.
+let lock = null;
+awake.addEventListener("error", () => {
+  if (!lock) element("hint").hidden = false;
+});
+function keepAwake() {
+  if (document.visibilityState !== "visible" || (lock && !lock.released)) return;
+  if (!navigator.wakeLock) {
+    // Safari plays sound only from a touch on the page, so until the first one this waits.
+    if (awake.paused) awake.play().catch(() => {});
+    return;
+  }
+  navigator.wakeLock.request("screen").then(
+    (sentinel) => { lock = sentinel; },
+    () => awake.play().catch(() => {}),
+  );
+}
+for (const type of ["touchend", "click"]) document.addEventListener(type, keepAwake);
+// Torqa counts the phone gone once it stops hearing this, e.g. when its screen locks. The clip
+// starts again too if the phone stopped it, say for a call.
 setInterval(() => {
-  if (document.visibilityState === "visible") send("alive");
+  if (document.visibilityState === "visible") {
+    send("alive");
+    keepAwake();
+  }
 }, 10000);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
