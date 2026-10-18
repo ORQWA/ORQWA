@@ -191,6 +191,12 @@ func _run() -> void:
 	detail.back_requested.emit()
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery.png"))
+	# The remote's pad, or the keyboard, on the first course: its ring shows (#228).
+	var first_card: CourseCard = courses.find_children("*", "CourseCard", true, false)[0]
+	first_card.grab_focus()
+	await create_timer(0.3).timeout
+	root.get_texture().get_image().save_png(out_dir.path_join("start-gallery-focus.png"))
+	first_card.release_focus()
 	# The filters' panel open, a chip on (R85).
 	var chips: GridContainer = courses.get("_chips")
 	for chip: Node in chips.find_children("*", "Button", true, false):
@@ -236,6 +242,23 @@ func _run() -> void:
 				root.get_texture().get_image().save_png(out_dir.path_join(shot + ".png"))
 				if dialog_shown != null:
 					dialog_shown.hide()
+		if index == StartPage.Tab.DEVICES:
+			# The phone remote's code to scan (#228); off again afterwards, as it was.
+			var devices_tab: DevicesTab = start.find_children("*", "DevicesTab", true, false)[0]
+			var remote: CheckButton = devices_tab.get("_remote")
+			remote.button_pressed = true
+			await create_timer(0.5).timeout
+			root.get_texture().get_image().save_png(out_dir.path_join("start-devices-remote.png"))
+			var remote_dialog: RemoteDialog = devices_tab.get("_remote_dialog")
+			remote_dialog.hide()
+			# What the phone's buttons do, behind the pen beside its row.
+			var buttons_dialog: ButtonDialog = devices_tab.get("_button_dialog")
+			buttons_dialog.open(ButtonDialog.PHONE_REMOTE, TorqaApp.phone_remote_name())
+			await create_timer(0.5).timeout
+			var buttons_shot: String = out_dir.path_join("start-devices-remote-buttons.png")
+			root.get_texture().get_image().save_png(buttons_shot)
+			buttons_dialog.hide()
+			remote.button_pressed = false
 	# The settings from the cog at the top right (R83): Graphics, then About.
 	var settings: SettingsDialog = start.get("_settings")
 	var settings_button: Button = start.get("_settings_button")

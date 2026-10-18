@@ -69,10 +69,14 @@ static func build() -> Theme:
 		theme.set_stylebox("hover", type, _button_box(Color(1, 1, 1, 0.13)))
 		theme.set_stylebox("pressed", type, _button_box(Color(ACCENT, 0.85)))
 		theme.set_stylebox("disabled", type, _button_box(Color(1, 1, 1, 0.04)))
-		theme.set_stylebox("focus", type, StyleBoxEmpty.new())
+	# The focus a keyboard or the remote moves (#228); a click shows none (the project's
+	# gui/common/show_focus_state_on_pointer_event).
+	for type: String in ["Button", "OptionButton", "CheckBox", "CheckButton"]:
+		theme.set_stylebox("focus", type, focus_ring())
+	theme.set_stylebox("tab_focus", "TabBar", focus_ring())
 	# Every state: one left to Godot's default has margins, so a ticked box shifted and cut its
 	# text off when hovered.
-	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 		theme.set_stylebox(state, "CheckBox", StyleBoxEmpty.new())
 	# The default boxes are dark grey, invisible on dark panels.
 	theme.set_icon("unchecked", "CheckBox", _check_icon(false))
@@ -323,6 +327,19 @@ static func _box(color: Color, radius: int, horizontal: int, vertical: int) -> S
 	box.content_margin_bottom = vertical
 	box.anti_aliasing = true
 	return box
+
+
+## The ring round what has the focus, for keyboard and remote navigation (#228): an accent
+## line `outside` pixels outside a control's edge, rounded as its corners (`radius`) are.
+static func focus_ring(radius: int = 10, outside: int = 3) -> StyleBoxFlat:
+	var ring: StyleBoxFlat = StyleBoxFlat.new()
+	ring.draw_center = false
+	ring.set_border_width_all(2)
+	ring.border_color = ACCENT
+	ring.set_corner_radius_all(radius + outside)
+	ring.set_expand_margin_all(outside)
+	ring.anti_aliasing = true
+	return ring
 
 
 static func _button_box(color: Color) -> StyleBoxFlat:

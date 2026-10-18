@@ -1,4 +1,4 @@
-Rust libraries in Torqa, by licence: MIT License (185), Unicode License v3 (19), BSD 3-Clause "New" or "Revised" License (5), Mozilla Public License 2.0 (5), Apache License 2.0 (4), ISC License (4), BSD 2-Clause "Simplified" License (3), Do What The F*ck You Want To Public License (2), zlib License (2), Creative Commons Zero v1.0 Universal (1).
+Rust libraries in Torqa, by licence: MIT License (186), Unicode License v3 (19), BSD 3-Clause "New" or "Revised" License (5), Mozilla Public License 2.0 (5), Apache License 2.0 (4), ISC License (4), BSD 2-Clause "Simplified" License (3), Do What The F*ck You Want To Public License (2), zlib License (2), Creative Commons Zero v1.0 Universal (1).
 
 ────────────────────────────────────────
 
@@ -2880,7 +2880,7 @@ SOFTWARE.
 ────────────────────────────────────────
 
 MIT License
-atomig-macro 0.4.0, block2 0.6.2, bluez-async 0.9.0, bluez-generated 0.4.0, btleplug 0.13.5, libm 0.2.16, objc2-core-bluetooth 0.3.2, objc2-encode 4.1.0, objc2-foundation 0.3.2, objc2 0.6.4, windows-collections 0.3.2, windows-core 0.62.2, windows-future 0.3.2, windows-implement 0.60.2, windows-interface 0.59.3, windows-link 0.2.1, windows-numerics 0.3.1, windows-registry 0.6.1, windows-result 0.4.1, windows-strings 0.5.1, windows-sys 0.61.2, windows-threading 0.2.1, windows 0.62.2
+atomig-macro 0.4.0, block2 0.6.2, bluez-async 0.9.0, bluez-generated 0.4.0, btleplug 0.13.5, fast_qr 0.14.0, libm 0.2.16, objc2-core-bluetooth 0.3.2, objc2-encode 4.1.0, objc2-foundation 0.3.2, objc2 0.6.4, windows-collections 0.3.2, windows-core 0.62.2, windows-future 0.3.2, windows-implement 0.60.2, windows-interface 0.59.3, windows-link 0.2.1, windows-numerics 0.3.1, windows-registry 0.6.1, windows-result 0.4.1, windows-strings 0.5.1, windows-sys 0.61.2, windows-threading 0.2.1, windows 0.62.2
 
 MIT License
 

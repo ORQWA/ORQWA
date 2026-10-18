@@ -568,6 +568,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
+name = "fast_qr"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aafa8088286fa3903718197ceb03dac70f8b4763748fbdca1e431a5a7217a09e"
+
+[[package]]
 name = "fdeflate"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2484,14 +2490,16 @@ checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
 
 [[package]]
 name = "torqa-app"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
+ "serde_json",
  "thiserror",
  "tokio",
  "torqa-devices",
  "torqa-domain",
  "torqa-osm",
  "torqa-physics",
+ "torqa-remote",
  "torqa-routes",
  "torqa-session",
  "torqa-storage",
@@ -2505,7 +2513,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-cli"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2526,7 +2534,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-devices"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "btleplug",
  "futures",
@@ -2538,11 +2546,11 @@ dependencies = [
 
 [[package]]
 name = "torqa-domain"
-version = "0.2.2"
+version = "0.3.0"
 
 [[package]]
 name = "torqa-gd"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "godot",
  "torqa-app",
@@ -2558,7 +2566,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-osm"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "futures",
  "geo-types",
@@ -2574,14 +2582,25 @@ dependencies = [
 
 [[package]]
 name = "torqa-physics"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "torqa-domain",
 ]
 
 [[package]]
+name = "torqa-remote"
+version = "0.3.0"
+dependencies = [
+ "fast_qr",
+ "serde_json",
+ "tokio",
+ "torqa-domain",
+ "tracing",
+]
+
+[[package]]
 name = "torqa-routes"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "quick-xml",
  "thiserror",
@@ -2594,7 +2613,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-session"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "tokio",
  "torqa-devices",
@@ -2605,7 +2624,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-storage"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "embedded-io-adapters",
  "rusqlite",
@@ -2620,7 +2639,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-terrain"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "image-webp",
  "png",
@@ -2633,7 +2652,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-upload"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "reqwest",
  "serde_json",
@@ -2644,7 +2663,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-video"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "ffmpeg-next",
  "quick-xml",
@@ -2654,7 +2673,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-workouts"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "embedded-io-adapters",
  "quick-xml",
@@ -2665,7 +2684,7 @@ dependencies = [
 
 [[package]]
 name = "torqa-world"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",

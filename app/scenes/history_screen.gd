@@ -745,6 +745,11 @@ func _keep() -> void:
 	_close()
 
 
+## Back home, as the back button goes (the remote's Back, Escape).
+func go_back() -> void:
+	_close()
+
+
 func _close() -> void:
 	_rename()
 	_summary = false
