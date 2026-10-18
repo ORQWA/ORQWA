@@ -1,7 +1,7 @@
 # Human Base Meshes — realistic bodies
 
 The riders (`art/riders/build.py`) are derived from this extract: rigged from the skeleton's
-joints, posed on the bike, dressed and fitted with a helmet by script (ADR 0019). (Until
+joints, posed on the bike, dressed and fitted with a helmet by script (ADR 0020). (Until
 2026-10-18 they came from the bundle's stylized "primitive" bodies; that extract is gone.)
 
 ## What and where from

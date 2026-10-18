@@ -1,4 +1,4 @@
-"""Bakes tileable PBR textures from procedural Blender materials (ADR 0019).
+"""Bakes tileable PBR textures from procedural Blender materials (ADR 0020).
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/textures/build.py
@@ -12,7 +12,7 @@ into app/assets/textures: <name>_albedo.webp (sRGB), <name>_normal.webp (OpenGL 
 as Godot expects) and <name>_rough.webp. Adapted from the author's earlier game project
 (choppa, tools/blender/make_textures.py).
 
-Formats (ADR 0019): colour and roughness as lossy WebP (quality 90), since Godot compresses
+Formats (ADR 0020): colour and roughness as lossy WebP (quality 90), since Godot compresses
 every texture for the GPU anyway and loses more than that; normal maps lossless, because lossy
 WebP subsamples the colour channels, which in a normal map are directions.
 """

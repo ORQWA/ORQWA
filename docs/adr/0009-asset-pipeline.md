@@ -64,12 +64,12 @@ container, `.glb` files committed, material names styled by the app — but:
   Blender Studio's **Human Base Meshes** (CC0), kept untouched under `art/sources/`.
 - **No textures.** Every model carries material names only and gets flat palette colours
   (`app/assets/palette.json`); the CC0 texture sets were retired with their credits.
-  (Superseded by ADR 0019: models are textured again, from textures baked by `art/textures`.)
+  (Superseded by ADR 0020: models are textured again, from textures baked by `art/textures`.)
 - **Model groups** are `art/buildings` (houses, chalets, farmhouses, churches, chapels, sheds,
   offices, hotels, public buildings; since #136 and #137 also castles, lighthouses and houses
   for the subtropics), `art/vegetation` (trees, bushes and rocks; palms and tropical plants
   since #136), `art/clouds` and `art/riders`, each with a `build.py` writing its models and
-  manifest under `app/assets/models/`. (Amended 2026-10-18, ADR 0019: `art/clouds` is gone —
+  manifest under `app/assets/models/`. (Amended 2026-10-18, ADR 0020: `art/clouds` is gone —
   the sky draws the clouds — and `art/textures` bakes the textures the models use again.) `scripts/render-models.sh` and
   `scripts/render-riders.sh` render them all for review and, with `GALLERY` (2026-10-10), for
   the gallery in `art/README.md`.

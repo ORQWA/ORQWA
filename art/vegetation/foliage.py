@@ -1,4 +1,4 @@
-"""Draws the foliage cards of the trees and bushes (ADR 0019): clusters of leaves and sprays of
+"""Draws the foliage cards of the trees and bushes (ADR 0020): clusters of leaves and sprays of
 needles on transparent ground, in grey — the app tints each plant from the palette — so a
 crown of many such cards reads as foliage, not as a solid shape.
 

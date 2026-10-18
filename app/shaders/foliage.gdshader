@@ -2,7 +2,7 @@ shader_type spatial;
 render_mode cull_disabled;
 // The wind clock: the world advances it, and holds it while the ride is paused.
 global uniform float wind_time;
-// Foliage cards of trees and bushes (art/vegetation, R86, ADR 0019): clusters of leaves or
+// Foliage cards of trees and bushes (art/vegetation, R89, ADR 0020): clusters of leaves or
 // sprays of needles cut out by their alpha, seen from both sides, tinted per plant (COLOR, sRGB,
 // chosen by the world from the palette), lit through from behind when the sun is beyond them,
 // swaying with the tree and fluttering on their own.

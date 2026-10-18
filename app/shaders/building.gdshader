@@ -1,5 +1,5 @@
 shader_type spatial;
-// Building shells (R86, ADR 0019): buildings drawn by the world itself — far away, and up close
+// Building shells (R89, ADR 0020): buildings drawn by the world itself — far away, and up close
 // where no model fits. Walls of textured plaster or boards, roofs of clay tiles or gravel
 // (textures baked in Blender, tinted by the surface's palette colour), with window rectangles
 // of dark, reflective glass. Each surface's style arrives in the vertex colour's alpha as code / 11 and its colour in

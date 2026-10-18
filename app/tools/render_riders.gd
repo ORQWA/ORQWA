@@ -3,7 +3,7 @@ extends SceneTree
 ## views and at a few crank angles, into $OUT_DIR/<rider>-<view>.png for review (ADR 0009). Run
 ## it with scripts/render-riders.sh. With $GALLERY set, every view also goes there as a small
 ## JPEG, riders/<rider>-<view>.jpg, for the gallery in art/README.md. Light and colours are the
-## world's (ADR 0019).
+## world's (ADR 0020).
 
 ## Name, camera position and target (rider's local axes: −z forward), crank angle in degrees,
 ## whether the rider leans into a bend (40 km/h, 40 m radius, to the right) and whether they

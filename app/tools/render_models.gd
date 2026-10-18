@@ -6,7 +6,7 @@ extends SceneTree
 ## (names) limit it to some. With $GALLERY set, every overview also goes
 ## there as a small JPEG, <group>/<name>.jpg, for the galleries in art/README.md; a run of a
 ## whole group replaces its old pictures, so models taken out leave none behind. Light and
-## colours are the world's (ADR 0019).
+## colours are the world's (ADR 0020).
 
 const GROUPS: PackedStringArray = ["buildings", "vegetation", "props"]
 ## Plaster and roof colour (indices into the palette's walls and tiles, or a plant's colours)

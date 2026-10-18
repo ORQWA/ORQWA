@@ -1,5 +1,5 @@
 shader_type spatial;
-// Lakes and rivers (R86, ADR 0019): dark, clear water that reflects the sky — glossy, with the
+// Lakes and rivers (R89, ADR 0020): dark, clear water that reflects the sky — glossy, with the
 // Fresnel effect of physically based light, so it mirrors more at a low angle — rippled by small
 // waves drifting with the wind, larger swell further out. Shallow water shows a lighter green.
 

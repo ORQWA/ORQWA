@@ -911,7 +911,7 @@ func _overlay_size() -> void:
 	overlay.leave()
 
 
-## The sky's clouds follow the weather (ADR 0019): some on a clear day, more as it clouds over,
+## The sky's clouds follow the weather (ADR 0020): some on a clear day, more as it clouds over,
 ## a closed grey cover in rain.
 func _clouds() -> void:
 	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
