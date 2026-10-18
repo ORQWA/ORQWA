@@ -189,8 +189,11 @@ and aims the legs at the pedals (inverse kinematics).
 | `tyre`, `rim`, `metal`, `saddle`, `bar` | the bike's other parts |
 
 Colours: the rider's own palette section (`rider_female`, `rider_male`; `frame` there too) and
-`bike` for the bike's other parts. A rider about 17,600–20,800 triangles, a bike about 3,000
-(round wheels with 20 spokes).
+`bike` for the bike's other parts. The kit has socks and dark soles painted on the shins' and
+shoes' lower ends. The bike has round tyres on deep rims with disc rotors, an 11-speed cassette,
+toothed chainrings on a spider, tapered cranks, a rear derailleur and the chain, brake hoods
+with lever blades, saddle rails and a bottle in its cage. A rider about 17,600–20,800
+triangles, a bike about 7,300.
 Both riders, from every side, are in the [gallery](#riders).
 
 ## Gallery

@@ -98,36 +98,36 @@
     "tropical_walls": ["#ece8de", "#e6dccc", "#e2d6b0", "#c9d2d6", "#d0d8c8", "#e2c4a4"]
   },
   "rider_female": {
-    "jersey": "#efb5cc",
-    "sleeve": "#ce5aa5",
-    "shorts": "#2e3e7a",
-    "gloves": "#614367",
-    "shoes": "#3959a0",
-    "helmet": "#f4c16e",
-    "vents": "#4b2e44",
-    "glasses": "#4b2e44",
-    "hair": "#614367",
-    "skin": "#bd8877",
-    "frame": "#e2705e"
+    "jersey": "#c8325a",
+    "sleeve": "#1e2228",
+    "shorts": "#16181c",
+    "gloves": "#1e2228",
+    "shoes": "#e9e9e6",
+    "helmet": "#f0f0ec",
+    "vents": "#1e2228",
+    "glasses": "#15171a",
+    "hair": "#4a3426",
+    "skin": "#c79a84",
+    "frame": "#b8202b", "socks": "#efefec", "soles": "#1a1b1e"
   },
   "rider_male": {
-    "jersey": "#5b97c8",
-    "sleeve": "#f4c16e",
-    "shorts": "#2e3e7a",
-    "gloves": "#614367",
-    "shoes": "#614367",
-    "helmet": "#ce5aa5",
-    "vents": "#4b2e44",
-    "glasses": "#4b2e44",
-    "hair": "#614367",
-    "skin": "#a4665a",
-    "frame": "#f4c16e"
+    "jersey": "#2563a8",
+    "sleeve": "#1e2228",
+    "shorts": "#16181c",
+    "gloves": "#1e2228",
+    "shoes": "#1e2228",
+    "helmet": "#f0f0ec",
+    "vents": "#1e2228",
+    "glasses": "#15171a",
+    "hair": "#2b211b",
+    "skin": "#a26b55",
+    "frame": "#d9d6cf", "socks": "#efefec", "soles": "#1a1b1e"
   },
   "bike": {
-    "tyre": "#4b2e44",
-    "rim": "#f2ebd9",
-    "metal": "#8e959b",
-    "saddle": "#614367",
-    "bar": "#614367"
+    "tyre": "#1b1b1c",
+    "rim": "#232426",
+    "metal": "#a6aaae",
+    "saddle": "#18191b",
+    "bar": "#18191b"
   }
 }
