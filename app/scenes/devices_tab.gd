@@ -49,7 +49,7 @@ const STATE_LABELS: Dictionary[String, String] = {
 	"reconnecting": "Reconnecting…",
 	"missing": "Not found",
 	"failed": "Failed",
-	"waiting": "Waiting for a phone…",
+	"waiting": "Waiting for a phone or tablet…",
 }
 # i18n-end
 ## The core's name for the fake trainer, as its connection is reported.
@@ -254,8 +254,8 @@ func _add_remote_row(grid: GridContainer) -> void:
 	caption.text = TorqaApp.phone_remote_name()
 	caption.custom_minimum_size = Vector2(RideOptions.CAPTION_WIDTH, 0)
 	grid.add_child(caption)
-	_remote.text = tr("Shift from a phone's browser")
-	_remote.tooltip_text = tr("A phone in the same network shifts and controls the ride")
+	_remote.text = tr("Shift from a phone or tablet")
+	_remote.tooltip_text = tr("A phone or tablet on the same Wi-Fi shifts and controls the ride")
 	_remote.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_remote.toggled.connect(_on_remote_toggled)
 	grid.add_child(_remote)
@@ -266,13 +266,12 @@ func _add_remote_row(grid: GridContainer) -> void:
 	_remote_pen.custom_minimum_size = Vector2(44, 0)
 	_remote_pen.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_remote_pen.pressed.connect(
-		func() -> void:
-			_button_dialog.open(ButtonDialog.PHONE_REMOTE, tr(TorqaApp.phone_remote_name()))
+		func() -> void: _button_dialog.open(ButtonDialog.PHONE_REMOTE, TorqaApp.phone_remote_name())
 	)
 	grid.add_child(_remote_pen)
 	_remote_code.text = tr("Code")
 	_remote_code.icon = UiIcons.texture("qr")
-	_remote_code.tooltip_text = tr("Code and address for the phone")
+	_remote_code.tooltip_text = tr("Code and address for the phone or tablet")
 	_remote_code.custom_minimum_size = Vector2(110, 0)
 	_remote_code.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_remote_code.disabled = true
@@ -294,11 +293,13 @@ func _notification(what: int) -> void:
 		_edit_button.tooltip_text = tr("What the buttons do")
 		for role: String in _states:
 			_render_state(role)
-		_remote.text = tr("Shift from a phone's browser")
-		_remote.tooltip_text = tr("A phone in the same network shifts and controls the ride")
+		_remote.text = tr("Shift from a phone or tablet")
+		_remote.tooltip_text = tr(
+			"A phone or tablet on the same Wi-Fi shifts and controls the ride"
+		)
 		_remote_pen.tooltip_text = tr("What the buttons do")
 		_remote_code.text = tr("Code")
-		_remote_code.tooltip_text = tr("Code and address for the phone")
+		_remote_code.tooltip_text = tr("Code and address for the phone or tablet")
 		_show_remote()
 
 

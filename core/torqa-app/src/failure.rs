@@ -134,7 +134,7 @@ pub enum Kind {
     InactiveApplication,
     /// Could not read the workouts planned on %s: %s
     PlannedWorkouts,
-    /// Could not start the phone remote on port %s.
+    /// Could not start the remote on port %s.
     StartRemote,
 }
 impl Kind {
@@ -219,7 +219,7 @@ impl Kind {
             }
             Self::PlannedWorkouts => "Could not read the workouts planned on %s: %s",
             Self::StartRemote => {
-                "Could not start the phone remote on port %s. Another program may use it: choose another port."
+                "Could not start the remote on port %s. Another program may use it: choose another port."
             }
         }
         // i18n-end

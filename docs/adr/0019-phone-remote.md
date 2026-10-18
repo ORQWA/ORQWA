@@ -1,4 +1,4 @@
-# ADR 0019 — Phone remote in the browser
+# ADR 0019 — A remote in the browser of a phone or tablet
 
 - Status: accepted
 - Date: 2026-10-18
@@ -8,7 +8,7 @@
 Without a Shimano Di2 or a Zwift Click, a rider shifts the virtual gears from the keyboard
 (#228), which is out of reach on the bike. R25 left a phone companion app for later.
 OpenBikeControl through BikeControl needs a paid subscription and Zwift's own controllers are
-locked (R59), so neither helps. Most riders have a phone on the handlebar anyway.
+locked (R59), so neither helps. Most riders have a phone or a tablet at hand anyway.
 
 A native companion app means a second code base (Swift and Kotlin, or a cross-platform
 toolkit), an Apple developer account, review in two stores, and keeping its protocol in step
@@ -16,9 +16,9 @@ with every Torqa version. Torqa has no server of its own (R3) to pair the two th
 
 ## Decision
 
-**A page Torqa serves on the local network** (`torqa-remote`, R86), opened in the phone's
-browser. The Torqa a rider runs serves the page too, so the two never disagree, and any phone,
-tablet or computer works.
+**A page Torqa serves on the local network** (`torqa-remote`, R86), opened in the browser of
+a phone or tablet ("the phone" below stands for either). The Torqa a rider runs serves the page
+too, so the two never disagree, and any phone, tablet or computer works.
 
 - **A shift input with assignable buttons.** `torqa_remote::Remote` implements `ShiftInput`.
   The page has ten buttons, two big ones first. The phone remote is a `ControllerModel` like

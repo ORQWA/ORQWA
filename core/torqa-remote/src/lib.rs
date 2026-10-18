@@ -31,7 +31,7 @@ pub const DEFAULT_PORT: u16 = 8571;
 
 // i18n-begin
 /// What the rider knows the remote by, as its connection is reported.
-pub const NAME: &str = "Phone remote";
+pub const NAME: &str = "Remote";
 // i18n-end
 
 /// What the page says besides the actions' names, by key.

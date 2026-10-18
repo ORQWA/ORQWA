@@ -87,7 +87,12 @@ func bind(torqa: TorqaApp) -> void:
 ## assignments as the core has them.
 func open(model: String, device_name: String) -> void:
 	_model = model
-	title = tr("What the buttons of %s do") % device_name
+	# A shifter by its own name; the remote is Torqa's.
+	title = (
+		tr("What the remote's buttons do")
+		if model == PHONE_REMOTE
+		else tr("What the buttons of %s do") % device_name
+	)
 	_layout()
 	if _torqa != null:
 		var assigned: Array = _torqa.button_map(_model)

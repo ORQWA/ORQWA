@@ -1923,44 +1923,44 @@ msgstr "Für heute ist nichts geplant."
 msgid "Could not read the workouts planned on %s: %s"
 msgstr "Die auf %s geplanten Workouts konnten nicht gelesen werden: %s"
 
-msgid "A phone in the same network shifts and controls the ride"
-msgstr "Ein Handy im selben Netzwerk schaltet und steuert die Fahrt"
+msgid "A phone or tablet on the same Wi-Fi shifts and controls the ride"
+msgstr "Ein Smartphone oder Tablet im selben WLAN schaltet und steuert die Fahrt"
 
 msgid "Change it if another program uses this port"
 msgstr "Ändere ihn, wenn ein anderes Programm diesen Port nutzt"
 
-msgid "Code and address for the phone"
-msgstr "Code und Adresse für das Handy"
+msgid "Code and address for the phone or tablet"
+msgstr "Code und Adresse für Smartphone oder Tablet"
 
-msgid "Could not start the phone remote on port %s. Another program may use it: choose another port."
-msgstr "Die Handy-Fernbedienung konnte auf Port %s nicht starten. Vielleicht nutzt ihn ein anderes Programm: Wähle einen anderen Port."
+msgid "Could not start the remote on port %s. Another program may use it: choose another port."
+msgstr "Die Fernbedienung konnte auf Port %s nicht gestartet werden. Vielleicht nutzt ihn ein anderes Programm: Wähle einen anderen Port."
 
 msgid "Keep this screen on while you ride: turn off its auto-lock."
-msgstr "Lass diesen Bildschirm während der Fahrt an: Schalte die automatische Sperre aus."
+msgstr "Lass diesen Bildschirm während der Fahrt an: Schalte die automatische Bildschirmsperre aus."
 
 msgid "New address"
 msgstr "Neue Adresse"
 
-msgid "Phone remote"
-msgstr "Handy-Fernbedienung"
+msgid "Remote"
+msgstr "Fernbedienung"
 
-msgid "Phones with the old address can no longer press"
-msgstr "Handys mit der alten Adresse steuern nichts mehr"
+msgid "Phones and tablets with the old address can no longer control the ride"
+msgstr "Smartphones und Tablets mit der alten Adresse können die Fahrt nicht mehr steuern"
 
 msgid "Port"
 msgstr "Port"
 
 msgid "Reconnecting to Torqa…"
-msgstr "Verbinde wieder mit Torqa …"
+msgstr "Verbinde erneut mit Torqa…"
 
-msgid "Scan the code with a phone in the same network, or open the address in its browser."
-msgstr "Scanne den Code mit einem Handy im selben Netzwerk oder öffne die Adresse in seinem Browser."
+msgid "Scan the code with a phone or tablet on the same Wi-Fi, or open the address in its browser."
+msgstr "Scanne den Code mit einem Smartphone oder Tablet im selben WLAN oder öffne die Adresse in seinem Browser."
 
-msgid "Keep the phone's screen on while you ride."
-msgstr "Lass den Bildschirm des Handys während der Fahrt an."
+msgid "Keep its screen on while you ride."
+msgstr "Lass seinen Bildschirm während der Fahrt an."
 
-msgid "Shift from a phone's browser"
-msgstr "Im Browser eines Handys schalten"
+msgid "Shift from a phone or tablet"
+msgstr "Mit Smartphone oder Tablet schalten"
 
 msgid "Start a ride in Torqa"
 msgstr "Starte eine Fahrt in Torqa"
@@ -1968,14 +1968,14 @@ msgstr "Starte eine Fahrt in Torqa"
 msgid "This address no longer works: scan the new code in Torqa."
 msgstr "Diese Adresse gilt nicht mehr: Scanne den neuen Code in Torqa."
 
-msgid "This computer is on no network: connect it to the phone's Wi-Fi."
-msgstr "Dieser Computer ist in keinem Netzwerk: Verbinde ihn mit dem WLAN des Handys."
+msgid "This computer has no network: connect it to the same Wi-Fi as the phone or tablet."
+msgstr "Dieser Computer hat kein Netzwerk: Verbinde ihn mit demselben WLAN wie Smartphone oder Tablet."
 
 msgid "Torqa remote"
 msgstr "Torqa-Fernbedienung"
 
-msgid "Waiting for a phone…"
-msgstr "Warte auf ein Handy …"
+msgid "Waiting for a phone or tablet…"
+msgstr "Warte auf ein Smartphone oder Tablet…"
 
 msgid "Big button 1"
 msgstr "Grosse Taste 1"
@@ -2009,4 +2009,7 @@ msgstr "Reihe 4, rechts"
 
 msgid "Code"
 msgstr "Code"
+
+msgid "What the remote's buttons do"
+msgstr "Was die Tasten der Fernbedienung tun"
 

@@ -26,7 +26,8 @@ core/                      Rust workspace (tokio + tracing)
   torqa-storage/           FIT files, ride summaries, profiles and accounts, course files (.tqc)
   torqa-upload/            uploads to training platforms (intervals.icu, Strava) behind
                            ActivityUploader, the OAuth login in the browser
-  torqa-remote/            the phone remote: a page on the local network, a ShiftInput
+  torqa-remote/            the remote for a phone or tablet: a page on the local network,
+                           a ShiftInput
                            (ADR 0019)
   torqa-app/               application layer: commands + update() per frame for front ends,
                            the analysis across a rider's rides
@@ -47,7 +48,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 ### Key design points
 
 - **Plugin traits**: `RouteImporter`, `TrainerDriver`, `SensorDriver`, `ShiftInput`,
-  `ActivityUploader`, `WorkoutParser`. `ShiftInput` (keyboard, Shimano Di2, Zwift Click, phone remote),
+  `ActivityUploader`, `WorkoutParser`. `ShiftInput` (keyboard, Shimano Di2, Zwift Click, the remote),
   `WorkoutParser` (ZWO, ERG/MRC, FIT) and `ActivityUploader` (intervals.icu, Strava;
   ADR 0013) exist, as does `ElevationModel`; the others
   are not introduced yet: today there is one implementation of each (or none), behind concrete
@@ -226,11 +227,11 @@ Built in rideable steps:
     what any shifter's buttons do set in a dialog behind a pen beside its row (#271)
     and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
     written from the community's drivers, **not yet checked on the hardware**
-  - [x] The phone remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
-    that a phone's browser opens from a QR code, its ten buttons (two big) doing what the
+  - [x] The remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
+    that a phone's or tablet's browser opens from a QR code, its ten buttons (two big) doing what the
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the
     Torqa logo; off until turned on under Devices, a secret token in its address, a new
-    address to lock out phones paired before; **not yet tried on a real phone**
+    address to lock out those paired before; **not yet tried on a real phone or tablet**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
     (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their
@@ -505,7 +506,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
 
 - The Shimano Di2 button protocol is reverse-engineered (community findings, no code reused)
   and may change → isolated behind `ShiftInput`.
-- The phone remote listens on the local network over plain http → off until turned on, a
+- The remote listens on the local network over plain http → off until turned on, a
   secret token in every address, renewable; the token can be read by anyone who can watch the
   network's traffic, acceptable for shifting gears (ADR 0019).
 - Garmin / TrainingPeaks / Komoot upload APIs need partner approval (Garmin's developer

@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 
-#: app/scenes/devices_tab.gd:512
+#: app/scenes/devices_tab.gd:513
 msgid "%d W"
 msgstr ""
 
@@ -11,7 +11,7 @@ msgstr ""
 msgid "%d W  ·  %.1f W/kg"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:518 app/scenes/profile_tab.gd:278
+#: app/scenes/devices_tab.gd:519 app/scenes/profile_tab.gd:278
 msgid "%d bpm"
 msgstr ""
 
@@ -31,7 +31,7 @@ msgstr ""
 msgid "%d of %d figures. The first one is shown large. Values are examples."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:515
+#: app/scenes/devices_tab.gd:516
 msgid "%d rpm"
 msgstr ""
 
@@ -160,7 +160,7 @@ msgid "A ghost rider on the road: your best time, a pacer or a recorded activity
 msgstr ""
 
 #: app/scenes/devices_tab.gd:258 app/scenes/devices_tab.gd:298
-msgid "A phone in the same network shifts and controls the ride"
+msgid "A phone or tablet on the same Wi-Fi shifts and controls the ride"
 msgstr ""
 
 #: app/ui/ghost_picker.gd:27
@@ -299,7 +299,7 @@ msgstr ""
 msgid "Aug"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:751
+#: app/scenes/devices_tab.gd:752
 msgid "Automatic"
 msgstr ""
 
@@ -407,7 +407,7 @@ msgstr ""
 msgid "Chainring"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:107
+#: app/scenes/remote_dialog.gd:111
 msgid "Change it if another program uses this port"
 msgstr ""
 
@@ -491,12 +491,12 @@ msgstr ""
 msgid "Cloudy"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:273 app/scenes/devices_tab.gd:300
+#: app/scenes/devices_tab.gd:272 app/scenes/devices_tab.gd:301
 msgid "Code"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:275 app/scenes/devices_tab.gd:301
-msgid "Code and address for the phone"
+#: app/scenes/devices_tab.gd:274 app/scenes/devices_tab.gd:302
+msgid "Code and address for the phone or tablet"
 msgstr ""
 
 #: app/scenes/profile_dialog.gd:115
@@ -692,7 +692,7 @@ msgid "Could not search for devices."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs:222
-msgid "Could not start the phone remote on port %s. Another program may use it: choose another port."
+msgid "Could not start the remote on port %s. Another program may use it: choose another port."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs:206
@@ -727,7 +727,7 @@ msgstr ""
 msgid "Custom"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:203
+#: app/scenes/button_dialog.gd:208
 msgid "D-Fly channel %d"
 msgstr ""
 
@@ -819,7 +819,7 @@ msgstr ""
 msgid "Distance"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:106 app/scenes/button_dialog.gd:160 app/scenes/history_screen.gd:306 app/scenes/remote_dialog.gd:74 app/scenes/remote_dialog.gd:124 app/scenes/ride_settings_dialog.gd:25 app/scenes/settings_dialog.gd:15
+#: app/scenes/button_dialog.gd:111 app/scenes/button_dialog.gd:165 app/scenes/history_screen.gd:306 app/scenes/remote_dialog.gd:74 app/scenes/remote_dialog.gd:130 app/scenes/ride_settings_dialog.gd:25 app/scenes/settings_dialog.gd:15
 msgid "Done"
 msgstr ""
 
@@ -863,7 +863,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:111
+#: app/scenes/button_dialog.gd:116
 msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
 msgstr ""
 
@@ -951,7 +951,7 @@ msgstr ""
 msgid "Failed"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:289 app/scenes/devices_tab.gd:782
+#: app/scenes/devices_tab.gd:288 app/scenes/devices_tab.gd:783
 msgid "Fake trainer (200 W, for testing)"
 msgstr ""
 
@@ -1055,7 +1055,7 @@ msgstr ""
 msgid "Form is fitness minus fatigue: fresh above zero, tired below it."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:384
+#: app/scenes/devices_tab.gd:385
 msgid "Found %d device(s)"
 msgstr ""
 
@@ -1247,8 +1247,8 @@ msgstr ""
 msgid "Keep both"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:81
-msgid "Keep the phone's screen on while you ride."
+#: app/scenes/remote_dialog.gd:83
+msgid "Keep its screen on while you ride."
 msgstr ""
 
 #: app/scenes/remote_dialog.gd:26
@@ -1427,7 +1427,7 @@ msgstr ""
 msgid "Neuromuscular"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:113
+#: app/scenes/remote_dialog.gd:117
 msgid "New address"
 msgstr ""
 
@@ -1511,15 +1511,15 @@ msgstr ""
 msgid "Nobody"
 msgstr ""
 
-#: app/scenes/courses_tab.gd:32 app/scenes/devices_tab.gd:290 app/scenes/devices_tab.gd:785
+#: app/scenes/courses_tab.gd:32 app/scenes/devices_tab.gd:289 app/scenes/devices_tab.gd:786
 msgid "None"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:293 app/scenes/devices_tab.gd:797
+#: app/scenes/devices_tab.gd:292 app/scenes/devices_tab.gd:798
 msgid "None (keyboard: ↑ / ↓)"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:291 app/scenes/devices_tab.gd:788
+#: app/scenes/devices_tab.gd:290 app/scenes/devices_tab.gd:789
 msgid "None (the trainer measures)"
 msgstr ""
 
@@ -1543,11 +1543,11 @@ msgstr ""
 msgid "Not found"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:537
+#: app/scenes/devices_tab.gd:538
 msgid "Not found: %s. Wake the devices, then scan again."
 msgstr ""
 
-#: app/scenes/button_dialog.gd:213
+#: app/scenes/button_dialog.gd:218
 msgid "Nothing"
 msgstr ""
 
@@ -1655,12 +1655,8 @@ msgstr ""
 msgid "Per kilogram"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:73 app/scenes/remote_dialog.gd:123 core/torqa-remote/src/lib.rs:34
-msgid "Phone remote"
-msgstr ""
-
-#: app/scenes/remote_dialog.gd:114
-msgid "Phones with the old address can no longer press"
+#: app/scenes/remote_dialog.gd:119
+msgid "Phones and tablets with the old address can no longer control the ride"
 msgstr ""
 
 #: app/ui/workout_options.gd:77
@@ -1687,7 +1683,7 @@ msgstr ""
 msgid "Points must follow each other on the route and in the video."
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:101
+#: app/scenes/remote_dialog.gd:105
 msgid "Port"
 msgstr ""
 
@@ -1715,7 +1711,7 @@ msgstr ""
 msgid "Power curve"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:158 app/scenes/devices_tab.gd:751 app/ui/ride_devices.gd:50
+#: app/scenes/devices_tab.gd:158 app/scenes/devices_tab.gd:752 app/ui/ride_devices.gd:50
 msgid "Power meter"
 msgstr ""
 
@@ -1795,7 +1791,7 @@ msgstr ""
 msgid "Reconnecting to Torqa…"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:309 app/scenes/devices_tab.gd:684
+#: app/scenes/devices_tab.gd:310 app/scenes/devices_tab.gd:685
 msgid "Reconnecting your devices…"
 msgstr ""
 
@@ -1805,6 +1801,10 @@ msgstr ""
 
 #: app/ui/ui_theme.gd:20
 msgid "Recovery"
+msgstr ""
+
+#: app/scenes/remote_dialog.gd:73 app/scenes/remote_dialog.gd:129 core/torqa-remote/src/lib.rs:34
+msgid "Remote"
 msgstr ""
 
 #: app/ui/video_align_dialog.gd:172
@@ -1959,11 +1959,11 @@ msgstr ""
 msgid "Scan for all devices"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:79
-msgid "Scan the code with a phone in the same network, or open the address in its browser."
+#: app/scenes/remote_dialog.gd:80
+msgid "Scan the code with a phone or tablet on the same Wi-Fi, or open the address in its browser."
 msgstr ""
 
-#: app/scenes/devices_tab.gd:333
+#: app/scenes/devices_tab.gd:334
 msgid "Scanning…"
 msgstr ""
 
@@ -2007,8 +2007,8 @@ msgstr ""
 msgid "Shift down two gears"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:257 app/scenes/devices_tab.gd:297
-msgid "Shift from a phone's browser"
+#: app/scenes/devices_tab.gd:257 app/scenes/devices_tab.gd:296
+msgid "Shift from a phone or tablet"
 msgstr ""
 
 #: app/scenes/button_dialog.gd:44
@@ -2207,8 +2207,8 @@ msgstr ""
 msgid "This address no longer works: scan the new code in Torqa."
 msgstr ""
 
-#: app/scenes/remote_dialog.gd:94
-msgid "This computer is on no network: connect it to the phone's Wi-Fi."
+#: app/scenes/remote_dialog.gd:97
+msgid "This computer has no network: connect it to the same Wi-Fi as the phone or tablet."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs:187
@@ -2299,7 +2299,7 @@ msgstr ""
 msgid "Torqa remote"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:157 app/scenes/devices_tab.gd:751 app/ui/ride_devices.gd:48
+#: app/scenes/devices_tab.gd:157 app/scenes/devices_tab.gd:752 app/ui/ride_devices.gd:48
 msgid "Trainer"
 msgstr ""
 
@@ -2440,14 +2440,14 @@ msgid "W/kg"
 msgstr ""
 
 #: app/scenes/devices_tab.gd:52
-msgid "Waiting for a phone…"
+msgid "Waiting for a phone or tablet…"
 msgstr ""
 
 #: app/scenes/ride_screen.gd:145
 msgid "Waiting for the trainer…"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:220 app/scenes/devices_tab.gd:326
+#: app/scenes/devices_tab.gd:220 app/scenes/devices_tab.gd:327
 msgid "Wake the devices first."
 msgstr ""
 
@@ -2483,12 +2483,16 @@ msgstr ""
 msgid "Weight"
 msgstr ""
 
-#: app/scenes/devices_tab.gd:182 app/scenes/devices_tab.gd:265 app/scenes/devices_tab.gd:294 app/scenes/devices_tab.gd:299
+#: app/scenes/devices_tab.gd:182 app/scenes/devices_tab.gd:265 app/scenes/devices_tab.gd:293 app/scenes/devices_tab.gd:300
 msgid "What the buttons do"
 msgstr ""
 
-#: app/scenes/button_dialog.gd:90
+#: app/scenes/button_dialog.gd:94
 msgid "What the buttons of %s do"
+msgstr ""
+
+#: app/scenes/button_dialog.gd:92
+msgid "What the remote's buttons do"
 msgstr ""
 
 #: app/scenes/workouts_tab.gd:185

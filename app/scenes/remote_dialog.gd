@@ -70,15 +70,17 @@ func refresh() -> void:
 
 
 func _init() -> void:
-	title = tr("Phone remote")
+	title = tr("Remote")
 	ok_button_text = tr("Done")
 	var rows: VBoxContainer = VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 12)
 	var note: Label = Label.new()
 	note.text = (
-		tr("Scan the code with a phone in the same network, or open the address in its browser.")
+		tr(
+			"Scan the code with a phone or tablet on the same Wi-Fi, or open the address in its browser."
+		)
 		+ " "
-		+ tr("Keep the phone's screen on while you ride.")
+		+ tr("Keep its screen on while you ride.")
 	)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size = Vector2(480, 0)
@@ -91,7 +93,9 @@ func _init() -> void:
 	_address.select_all_on_focus = true
 	_address.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	rows.add_child(_address)
-	_no_network.text = tr("This computer is on no network: connect it to the phone's Wi-Fi.")
+	_no_network.text = tr(
+		"This computer has no network: connect it to the same Wi-Fi as the phone or tablet."
+	)
 	_no_network.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_no_network.add_theme_color_override("font_color", UiTheme.WARNING)
 	rows.add_child(_no_network)
@@ -111,7 +115,9 @@ func _init() -> void:
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	port_row.add_child(gap)
 	_renew.text = tr("New address")
-	_renew.tooltip_text = tr("Phones with the old address can no longer press")
+	_renew.tooltip_text = tr(
+		"Phones and tablets with the old address can no longer control the ride"
+	)
 	_renew.pressed.connect(_on_renew_pressed)
 	port_row.add_child(_renew)
 	rows.add_child(port_row)
@@ -120,7 +126,7 @@ func _init() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
-		title = tr("Phone remote")
+		title = tr("Remote")
 		ok_button_text = tr("Done")
 		_send_texts()
 
