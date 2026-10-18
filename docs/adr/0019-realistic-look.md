@@ -53,7 +53,11 @@ Decisions (user, 2026-10-18):
   Measured on five baked 1024 px materials: 19 MB as PNG, about 13 MB as lossless WebP, about
   10 MB with this split (colour maps 1.1 MB in all), and the normal maps exactly as baked.
   1024 px by default, 2048 px for the road and the ground near it. No Git LFS while the
-  textures stay below about 150 MB; past that, decide again.
+  textures stay below about 150 MB; past that, decide again. Both GPU layers, S3TC/BPTC and
+  ETC2/ASTC, are imported on every editor (`import_s3tc_bptc` and `import_etc2_astc` pinned
+  in `project.godot`): Godot's defaults follow the editor's own architecture, and an arm64
+  editor imported only ETC2 while the Linux arm64 preset packed S3TC — the arm64 app shipped
+  without a single texture and crashed on start (found by CI's smoke test, 2026-10-18).
 - **Palette.** `app/assets/palette.json` stays the one place for colours that the Rust core and
   the shaders pick per instance (walls, roofs, leaves, kits); they tint neutral textures, and
   the values move from pastels to natural tones as each group is restyled.
