@@ -74,6 +74,10 @@ const PAGE: &str = include_str!("page.html");
 /// The app's own logo for the page's header: the mark and the wordmark.
 const MARK: &str = include_str!("../../../app/assets/brand/torqa-logo-dark.svg");
 const WORDMARK: &str = include_str!("../../../app/assets/brand/torqa-wordmark-dark.svg");
+/// The silent clip the page plays to keep the phone's screen on, made by
+/// `art/remote/keep_awake.py`. Embedded rather than served: Safari asks for a video in byte
+/// ranges, which this server does not answer.
+const KEEP_AWAKE: &[u8] = include_bytes!("keep-awake.mp4");
 
 /// What the phone shows of the ride.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -397,8 +401,30 @@ fn render(texts: &Texts) -> Vec<u8> {
     PAGE.replace("{{LANGUAGE}}", &language)
         .replace("{{MARK}}", &decoration(MARK, "mark"))
         .replace("{{WORDMARK}}", &decoration(WORDMARK, "wordmark"))
+        .replace("{{KEEP_AWAKE}}", &base64(KEEP_AWAKE))
         .replace("{{WORDS}}", &words)
         .into_bytes()
+}
+
+/// `bytes` in base64 (RFC 4648), as a `data:` address carries them. Written out here, as the
+/// WebSocket handshake's would have been (ADR 0019): a few lines, no crate.
+fn base64(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut text = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let group = chunk.iter().enumerate().fold(0, |group, (i, &byte)| {
+            group | usize::from(byte) << (16 - 8 * i)
+        });
+        // Three bytes make four digits; a short last group pads with `=` what it lacks.
+        for i in 0..4 {
+            if i <= chunk.len() {
+                text.push(char::from(DIGITS[group >> (18 - 6 * i) & 0x3f]));
+            } else {
+                text.push('=');
+            }
+        }
+    }
+    text
 }
 
 /// A logo `svg` as a decoration in the header with the class `class`: the header already says

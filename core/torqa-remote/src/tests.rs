@@ -233,6 +233,52 @@ async fn the_page_speaks_the_riders_language_shows_the_logo_and_loads_nothing_fr
 }
 
 #[tokio::test]
+async fn the_page_carries_the_clip_that_keeps_the_screen_on() {
+    let (server, _remote) = remote();
+
+    let page = request(server.port(), "GET", &format!("/{TOKEN}/")).await;
+    assert!(page.contains(&format!(
+        r#"<video id="awake" src="data:video/mp4;base64,{}""#,
+        base64(KEEP_AWAKE)
+    )));
+    assert!(
+        page.contains("media-src data:;"),
+        "the policy lets it play from the page, and nothing from elsewhere"
+    );
+}
+
+#[test]
+fn the_clip_has_a_picture_and_a_sound_that_every_phone_plays() {
+    // Safari and Firefox keep the screen on only for a video with a sound track; H.264 and
+    // AAC play everywhere.
+    let has = |tag: &[u8]| KEEP_AWAKE.windows(tag.len()).any(|window| window == tag);
+    for (tag, what) in [
+        (b"vide", "a picture"),
+        (b"soun", "a sound"),
+        (b"avc1", "in H.264"),
+        (b"mp4a", "in AAC"),
+    ] {
+        assert!(has(tag), "{what}");
+    }
+}
+
+#[test]
+fn base64_is_as_rfc_4648_writes_it() {
+    for (bytes, text) in [
+        ("", ""),
+        ("f", "Zg=="),
+        ("fo", "Zm8="),
+        ("foo", "Zm9v"),
+        ("foob", "Zm9vYg=="),
+        ("fooba", "Zm9vYmE="),
+        ("foobar", "Zm9vYmFy"),
+    ] {
+        assert_eq!(base64(bytes.as_bytes()), text);
+    }
+    assert_eq!(base64(&[0xfb, 0xff, 0xbf]), "+/+/", "the last two digits");
+}
+
+#[tokio::test]
 async fn the_phone_sees_the_gear_and_the_pause_as_they_change() {
     let (server, remote) = remote();
     assert!(!remote.connected(), "no phone yet");
