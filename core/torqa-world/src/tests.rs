@@ -3822,7 +3822,9 @@ async fn route_north_at(elevation: f64, map: &MapData) -> Route {
         );
     }
     xml.push_str("</trkseg></trk></gpx>");
-    Route::from_gpx_with::<Level>(&xml, None, map).await.unwrap()
+    Route::from_gpx_with::<Level>(&xml, None, map)
+        .await
+        .unwrap()
 }
 
 /// The road ridden by [`route_north_at`], as a street of the map.
@@ -3931,8 +3933,7 @@ async fn delineators_mark_country_roads_but_not_towns() {
         .filter(|p| (100.0..450.0).contains(&p[2]))
         .collect();
     // Every 50 m, both sides.
-    let (west, east): (Vec<[f64; 3]>, Vec<[f64; 3]>) =
-        country.iter().partition(|p| p[0] < 0.0);
+    let (west, east): (Vec<[f64; 3]>, Vec<[f64; 3]>) = country.iter().partition(|p| p[0] < 0.0);
     assert!((6..=8).contains(&west.len()), "{} west", west.len());
     assert_eq!(west.len(), east.len());
     let mut north: Vec<f64> = east.iter().map(|p| p[2]).collect();
@@ -3976,11 +3977,15 @@ async fn nothing_stands_where_a_street_joins_the_road() {
     let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
     let posts = props_of(&world, "delineator");
     assert!(
-        !posts.iter().any(|p| p[0] > 0.0 && (p[2] - 300.0).abs() < 8.0),
+        !posts
+            .iter()
+            .any(|p| p[0] > 0.0 && (p[2] - 300.0).abs() < 8.0),
         "the mouth is clear"
     );
     assert!(
-        posts.iter().any(|p| p[0] < 0.0 && (p[2] - 300.0).abs() < 1.0),
+        posts
+            .iter()
+            .any(|p| p[0] < 0.0 && (p[2] - 300.0).abs() < 1.0),
         "the other side keeps its post"
     );
 }

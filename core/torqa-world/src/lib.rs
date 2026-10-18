@@ -36,8 +36,8 @@ use tracing::{info, warn};
 pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
 pub use minimap::{FlatMap, MapFeature, minimap};
-use road::RoadIndex;
 pub use props::Props;
+use road::RoadIndex;
 pub use vegetation::Trees;
 
 /// Edge length of a terrain chunk.

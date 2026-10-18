@@ -183,7 +183,9 @@ fn falls_away(station: &Station, side: f64, roadside: &Roadside) -> bool {
 /// Whether the land at the road is built up: towns get kerbs and lamps, not posts.
 fn built_up(station: &Station, roadside: &Roadside) -> bool {
     matches!(
-        roadside.land.cover_at(station.position.0, station.position.1),
+        roadside
+            .land
+            .cover_at(station.position.0, station.position.1),
         Some(
             LandCover::Residential
                 | LandCover::Industrial
@@ -266,15 +268,24 @@ mod tests {
             let file = format!("{directory}/{name}.glb");
             assert!(std::path::Path::new(&file).exists(), "{file}");
         }
-        let manifest: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../app/assets/models/props/models.json"
-        ))
-        .unwrap();
+        let manifest: serde_json::Value =
+            serde_json::from_str(include_str!("../../../app/assets/models/props/models.json"))
+                .unwrap();
         for name in PLACED {
-            assert!(manifest["models"].get(name).is_some(), "{name} in models.json");
+            assert!(
+                manifest["models"].get(name).is_some(),
+                "{name} in models.json"
+            );
         }
         // The app colours each material from the palette; `srgb` panics on a missing colour.
-        for material in ["galvanised", "post", "band", "reflector", "pole_red", "pole_white"] {
+        for material in [
+            "galvanised",
+            "post",
+            "band",
+            "reflector",
+            "pole_red",
+            "pole_white",
+        ] {
             crate::palette::srgb(&format!("props.{material}"), 1.0);
         }
     }

@@ -415,8 +415,8 @@ impl RoadIndex {
                     segment.a.0 + (segment.b.0 - segment.a.0) * t,
                     segment.a.1 + (segment.b.1 - segment.a.1) * t,
                 );
-                let inside = (low.0..high.0).contains(&position.0)
-                    && (low.1..high.1).contains(&position.1);
+                let inside =
+                    (low.0..high.0).contains(&position.0) && (low.1..high.1).contains(&position.1);
                 if inside {
                     stations.push(Station {
                         position,
