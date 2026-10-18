@@ -104,8 +104,6 @@ playing, wake lock or not, each by its own rule, which the page meets with one c
   is does not count. **WebKit** (`HTMLMediaElement::shouldDisableSleep`), the engine of every
   browser on iOS, holds it only for a video that can produce sound (an audio track, not muted)
   and does not `loop`. NoSleep.js stopped working on iOS when it came to loop its clip.
-  **Gecko** (`HTMLVideoElement::ShouldCreateVideoWakeLock`) holds it for any playing video
-  with a sound track, muted or not.
 - **The clip covers the page, transparent**, and goes back to its start a second before its
   end instead of looping. Where `navigator.audioSession` exists (WebKit), it plays its silent
   track unmuted with the session set to `ambient`, which mixes with the rider's music instead of
@@ -120,6 +118,6 @@ playing, wake lock or not, each by its own rule, which the page meets with one c
   (written out by hand, as the WebSocket's would have been), it needs only `media-src data:`
   in the Content-Security-Policy and still loads nothing from elsewhere.
 - **Consequences:** an engine may change its rule; where the clip cannot play at all, the
-  page shows the old hint, but where it plays and the browser keeps no screen on for it, the
-  rider gets no hint. On an iPhone the screen can still lock before the first touch. Firefox
-  on Android keeps the screen on with it (tried 2026-10-18).
+  page shows the old hint, but where it plays and the browser keeps no screen on for it (e.g.
+  Firefox, not checked), the rider gets no hint. On an iPhone the screen can still lock before
+  the first touch.

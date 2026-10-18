@@ -5,8 +5,7 @@ Run in the art container:
 
 Over plain http the page has no wake lock, so it plays this clip unseen (ADR 0019). A black
 picture and a silent sound, both needed: Safari keeps the screen on only for a video with sound
-that is not muted, Firefox for one with a sound track, muted or not, Chrome for any video big
-enough on screen. H.264 and AAC in MP4, the one
+that is not muted, Chrome for any video big enough on screen. H.264 and AAC in MP4, the one
 format both play on every phone. Tiny, as it is embedded in the page: 64 px, a few frames a
 second, mono.
 """

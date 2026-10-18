@@ -249,8 +249,7 @@ async fn the_page_carries_the_clip_that_keeps_the_screen_on() {
 
 #[test]
 fn the_clip_has_a_picture_and_a_sound_that_every_phone_plays() {
-    // Safari and Firefox keep the screen on only for a video with a sound track; H.264 and
-    // AAC play everywhere.
+    // Safari keeps the screen on only for a video with sound; H.264 and AAC play everywhere.
     let has = |tag: &[u8]| KEEP_AWAKE.windows(tag.len()).any(|window| window == tag);
     for (tag, what) in [
         (b"vide", "a picture"),

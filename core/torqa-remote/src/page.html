@@ -324,9 +324,8 @@ events.onerror = () => {
 
 // The screen stays on while the page shows. Over plain http, as Torqa serves it, the browser
 // has no wake lock to give, so the page plays a silent clip unseen, for which phones keep the
-// screen on as for any video: Chrome for a muted one that covers the screen, Firefox for a muted
-// one with a sound track, Safari only for one that may sound and does not loop, so there it
-// plays its silence beside the rider's music.
+// screen on as for any video: Chrome for a muted one that covers the screen, Safari only for one
+// that may sound and does not loop, so there it plays its silence beside the rider's music.
 // Where the clip cannot play either, the rider is told to turn the auto-lock off.
 const awake = element("awake");
 if (navigator.audioSession) {

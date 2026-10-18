@@ -73,10 +73,10 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
 
 `art/remote/keep_awake.py` renders the silent H.264 + AAC clip the phone remote's page plays to
 keep the screen on (R88) into `core/torqa-remote/src/keep-awake.mp4`, from the sequencer (no
-GPU), with Blender's FFmpeg, as the dev container's cannot encode H.264. Keep its sound track
-(Safari and Firefox need it), a length of at least 2 s (the page rewinds it a second before its
-end instead of looping) and its stamps off (a render date in the metadata makes rebuilds
-differ); `cargo test -p torqa-remote` checks the tracks are there.
+GPU), with Blender's FFmpeg, as the dev container's cannot encode H.264. Keep its sound track,
+a length of at least 2 s (the page rewinds it a second before its end instead of looping) and
+its stamps off (a render date in the metadata makes rebuilds differ); `cargo test -p
+torqa-remote` checks the tracks are there.
 
 ## Third-party bases (CC0 characters and the like)
 
