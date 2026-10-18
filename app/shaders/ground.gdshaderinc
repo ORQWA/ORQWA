@@ -1,4 +1,4 @@
-// Shared by the ground, road and street shaders (R86, ADR 0019): tileable PBR textures baked in
+// Shared by the ground, road and street shaders (R89, ADR 0020): tileable PBR textures baked in
 // Blender (art/textures), sampled so they keep their size in metres, read without visible
 // repeats, and bend the surface's own smooth normal by their normal maps.
 

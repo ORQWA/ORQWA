@@ -1,4 +1,4 @@
-"""Builds the riders on their bikes (R46, ADR 0019) and exports them for Godot.
+"""Builds the riders on their bikes (R46, ADR 0020) and exports them for Godot.
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/riders/build.py
@@ -263,7 +263,7 @@ class Faces:
 
 
 def smooth(mesh):
-    """Smooth shading, hard only where faces meet at a sharp angle (ADR 0019)."""
+    """Smooth shading, hard only where faces meet at a sharp angle (ADR 0020)."""
     mesh.shade_smooth()
     mesh.set_sharp_from_angle(angle=math.radians(40))
 

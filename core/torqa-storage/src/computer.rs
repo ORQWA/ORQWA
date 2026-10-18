@@ -1,5 +1,5 @@
 //! Settings of this computer (R78, #257): how detailed the 3D world is drawn (R43), the
-//! graphics options set apart from that preset (R87), whether the app fills the screen (#218)
+//! graphics options set apart from that preset (R90), whether the app fills the screen (#218)
 //! and the phone remote (#228) depend on the machine in front of the rider, so they live in
 //! `computer.toml` next to the cache, never in the data directory, which a rider may share
 //! between computers (R30): there the last one to save would win.
@@ -22,7 +22,7 @@ struct ComputerFile {
     graphics_quality: Option<GraphicsQuality>,
     /// Whether the app fills the screen (#218).
     fullscreen: Option<bool>,
-    /// Graphics options set apart from the preset (R87), by name; the others follow it.
+    /// Graphics options set apart from the preset (R90), by name; the others follow it.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     graphics: BTreeMap<String, String>,
     /// The phone remote (#228).
@@ -44,7 +44,7 @@ pub struct PhoneRemote {
     pub token: Option<String>,
 }
 
-/// The graphics options a rider may set apart from the quality preset (R87), each with the
+/// The graphics options a rider may set apart from the quality preset (R90), each with the
 /// values it takes. An option left unset follows the preset ("auto"); the app turns the values
 /// into engine settings.
 pub const GRAPHICS_OPTIONS: &[(&str, &[&str])] = &[
@@ -63,7 +63,7 @@ pub const GRAPHICS_OPTIONS: &[(&str, &[&str])] = &[
 /// The value of a graphics option that follows the preset.
 pub const AUTO: &str = "auto";
 
-/// The graphics options set on this computer (R87), by name; options following the preset
+/// The graphics options set on this computer (R90), by name; options following the preset
 /// are missing. Values no longer known (from another version) are left out.
 #[must_use]
 pub fn graphics_options(file: &Path) -> BTreeMap<String, String> {
@@ -74,7 +74,7 @@ pub fn graphics_options(file: &Path) -> BTreeMap<String, String> {
         .collect()
 }
 
-/// Sets graphics option `name` to `value` on this computer (R87); [`AUTO`] lets it follow the
+/// Sets graphics option `name` to `value` on this computer (R90); [`AUTO`] lets it follow the
 /// preset again. Returns false, changing nothing, for an unknown option or value.
 ///
 /// # Errors

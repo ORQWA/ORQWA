@@ -1,6 +1,6 @@
 class_name RiderAvatar
 extends Node3D
-## A rider on a road bike (R46, ADR 0019): the Blender-made models of art/riders — a realistic
+## A rider on a road bike (R46, ADR 0020): the Blender-made models of art/riders — a realistic
 ## body skinned to a skeleton — coloured from the palette. The cranks turn with the cadence and
 ## come level when coasting, the leg bones follow the pedals (two-bone inverse kinematics), the
 ## wheels turn with the speed, the arms keep the hands on the hoods, and the upper body (the

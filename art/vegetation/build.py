@@ -4,7 +4,7 @@
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/vegetation/build.py
 
-The look is realistic (skill torqa-look, ADR 0019): smooth, tapered trunks with bark; crowns of
+The look is realistic (skill torqa-look, ADR 0020): smooth, tapered trunks with bark; crowns of
 many foliage cards — sprays of needles drooping in whorls for conifers, clusters of leaves for
 broadleaf trees and bushes — whose normals point out of the crown so it is lit as a whole;
 rounded rocks. Each model is one mesh with named materials (`trunk`, `leaves`, `needles`,

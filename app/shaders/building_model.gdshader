@@ -1,5 +1,5 @@
 shader_type spatial;
-// Materials of the Blender-made building models (R86, ADR 0019, art/buildings): textures baked
+// Materials of the Blender-made building models (R89, ADR 0020, art/buildings): textures baked
 // in Blender (plaster, clay tiles, slate, boards, masonry, gravel) by the models' coordinates in
 // metres, tinted by palette colours; glass dark and reflective, metal and copper with a sheen,
 // sheet roofs with standing seams. Walls darken towards their foot, where rain splashes.

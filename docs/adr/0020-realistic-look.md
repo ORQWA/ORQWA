@@ -1,4 +1,4 @@
-# ADR 0019 — Realistic look instead of faceted low-poly
+# ADR 0020 — Realistic look instead of faceted low-poly
 
 - Status: accepted
 - Date: 2026-10-18

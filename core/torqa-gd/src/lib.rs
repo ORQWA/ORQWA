@@ -1364,7 +1364,7 @@ impl TorqaApp {
         self.command(|app| app.set_graphics_quality(quality))
     }
 
-    /// The graphics options a rider may set apart from the preset (R87): option name → the
+    /// The graphics options a rider may set apart from the preset (R90): option name → the
     /// values it takes, in order (without "auto", which every option also takes).
     #[func]
     fn graphics_option_values() -> VarDictionary {
@@ -1376,7 +1376,7 @@ impl TorqaApp {
         options
     }
 
-    /// Every graphics option's value on this computer (R87): "auto" for those following the
+    /// Every graphics option's value on this computer (R90): "auto" for those following the
     /// preset.
     #[func]
     fn graphics_options(&self) -> VarDictionary {
@@ -1395,7 +1395,7 @@ impl TorqaApp {
         options
     }
 
-    /// Sets a graphics option on this computer (R87), "auto" to follow the preset; false for
+    /// Sets a graphics option on this computer (R90), "auto" to follow the preset; false for
     /// unknown options or values, or when it cannot be saved.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot

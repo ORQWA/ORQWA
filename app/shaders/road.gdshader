@@ -1,5 +1,5 @@
 shader_type spatial;
-// The road ridden (R86, ADR 0019): textured asphalt, slightly darker and smoother where wheels
+// The road ridden (R89, ADR 0020): textured asphalt, slightly darker and smoother where wheels
 // run, white markings worn by traffic — solid edge lines and a dashed centre line, anti-aliased
 // so they hold in the distance — and its skirts below the edges: a narrow, ragged strip of
 // gravel the asphalt frays into, then the verge's grass, mapped like the ground's so the two

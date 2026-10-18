@@ -1,6 +1,6 @@
 class_name RiderMotion
 extends RefCounted
-## How rider and bike move on the road besides pedalling (R46, R86): the bike pitches with the
+## How rider and bike move on the road besides pedalling (R46, R91): the bike pitches with the
 ## road and leans into bends as speed and curve ask, without jolts when the grade or the curve
 ## steps; the rider stands up on the pedals on steep climbs with effort and in sprints, and sits
 ## down again only once that has passed for a moment; standing, the bike rocks under the rider

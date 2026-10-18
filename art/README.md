@@ -35,7 +35,7 @@ scripts/art.sh blender --background --factory-startup --python art/buildings/bui
 
 ## Look
 
-Since 2026-10-18 the target is as realistic as possible ([ADR 0019](../docs/adr/0019-realistic-look.md)):
+Since 2026-10-18 the target is as realistic as possible ([ADR 0020](../docs/adr/0020-realistic-look.md)):
 smooth shading, real proportions, physically based materials and light. Every group below has
 left the faceted look of ADR 0011; riders are smooth but still stylized figures (`docs/PLAN.md`,
 Phase 9).

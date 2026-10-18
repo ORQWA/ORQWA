@@ -1871,13 +1871,13 @@ impl App {
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
-    /// The graphics options set apart from the preset on this computer (R87), by name.
+    /// The graphics options set apart from the preset on this computer (R90), by name.
     #[must_use]
     pub fn graphics_options(&self) -> std::collections::BTreeMap<String, String> {
         computer::graphics_options(&self.computer)
     }
 
-    /// Sets a graphics option on this computer (R87); `"auto"` follows the preset again.
+    /// Sets a graphics option on this computer (R90); `"auto"` follows the preset again.
     /// Returns false for an unknown option or value.
     ///
     /// # Errors

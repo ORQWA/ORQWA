@@ -40,7 +40,7 @@ const TIMES: Dictionary[String, Dictionary] = {
 const WEATHERS: Array[String] = ["Clear", "Cloudy", "Hazy", "Rain"]
 # i18n-end
 
-## Textures baked in Blender (art/textures, ADR 0019) for the ground and roads.
+## Textures baked in Blender (art/textures, ADR 0020) for the ground and roads.
 const TEXTURES: Dictionary[String, Texture2D] = {
 	"grass_albedo": preload("res://assets/textures/grass_albedo.webp"),
 	"grass_normal": preload("res://assets/textures/grass_normal.webp"),
@@ -324,7 +324,7 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 	var wind_strength: float = wind.get(weather, 0.08)
 	_plant_material.set_shader_parameter("wind_strength", wind_strength)
 	VegetationModels.set_wind(wind_strength)
-	# The sky shader scatters the sun's light itself (ADR 0019); these colours tint the haze and
+	# The sky shader scatters the sun's light itself (ADR 0020); these colours tint the haze and
 	# the puddles, which have no sky of their own.
 	var sky_horizon: Color = horizon.lerp(Palette.color("sky.overcast_horizon"), overcast)
 	_sky.set_shader_parameter("cloud_cover", cover)
@@ -349,7 +349,7 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 
 
 ## Applies a graphics preset (`QUALITY` key, as `TorqaApp.graphics_quality()` names it) and the
-## options set apart from it (R87, as `TorqaApp.graphics_options()` gives them; "auto" follows
+## options set apart from it (R90, as `TorqaApp.graphics_options()` gives them; "auto" follows
 ## the preset).
 func apply_quality(name: String, options: Dictionary = {}) -> void:
 	var preset: Dictionary = QUALITY.get(name, QUALITY["medium"])
@@ -367,7 +367,7 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	# A sun of real size casts soft shadows (PCSS): softer further from the caster.
 	_sun.light_angular_distance = _quality["soft_shadows"]
 	_environment.ssao_enabled = _quality["ssao"]
-	# Water mirrors the land, not only the sky (ADR 0019); costly, so only on stronger GPUs.
+	# Water mirrors the land, not only the sky (ADR 0020); costly, so only on stronger GPUs.
 	_environment.ssr_enabled = _quality["ssr"]
 	_environment.glow_enabled = _quality["glow"]
 	_rain.amount = _quality["rain"]
@@ -395,7 +395,7 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	)
 
 
-## Overrides the preset's settings in `_quality` with the options set apart from it (R87).
+## Overrides the preset's settings in `_quality` with the options set apart from it (R90).
 func _apply_options_over_preset(options: Dictionary) -> void:
 	var levels: Dictionary[String, String] = {
 		"low": "low", "medium": "medium", "high": "high", "ultra": "ultra"
@@ -451,7 +451,7 @@ func reset_view() -> void:
 
 
 func _ready() -> void:
-	# Ground and roads textured (ADR 0019); the rest keeps the flat palette colours of ADR 0011
+	# Ground and roads textured (ADR 0020); the rest keeps the flat palette colours of ADR 0011
 	# until restyled.
 	_terrain_material.shader = preload("res://shaders/terrain.gdshader")
 	for material: String in ["grass", "dirt", "gravel", "rock"]:
@@ -498,7 +498,7 @@ func _ready() -> void:
 	_sky.set_shader_parameter("overcast_top", Palette.color("sky.overcast_top"))
 	_sky.set_shader_parameter("overcast_horizon", Palette.color("sky.overcast_horizon"))
 	_environment.sky.sky_material = _sky
-	# Filmic tone mapping for physically based light (ADR 0019): a bright sun, the sky lighting the
+	# Filmic tone mapping for physically based light (ADR 0020): a bright sun, the sky lighting the
 	# shadows.
 	_environment.tonemap_mode = Environment.TONE_MAPPER_AGX
 	_environment.ambient_light_color = Palette.color("light.ambient")
