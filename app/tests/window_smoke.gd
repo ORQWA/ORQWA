@@ -56,6 +56,8 @@ func _fullscreen() -> void:
 		_check(not torqa.fullscreen(), "and puts it back in a window")
 
 	var ride: RideScreen = main.get_node("RideScreen")
+	# The start page goes as a ride starts: the gallery is not made for the overlay's size.
+	(main.get_node("StartPage") as Control).hide()
 	ride.begin({"workout": {"kind": "zone", "zone": 3}, "on_course": false})
 	ride.show()
 	ride.overlay_requested.emit(true)
