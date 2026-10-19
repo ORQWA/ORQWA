@@ -319,7 +319,9 @@ def hay_bale(spec):
                  centre_z + radius * math.sin(2 * math.pi * i / sides)) for i in range(sides)]
 
     rings = [ring(-width / 2), ring(width / 2)]
-    mesh.strip(rings, material, smooth=True, closed=True)
+    # From +y to -y: the rings run round the axis the other way to a pole's, and the strip
+    # would face inwards otherwise, drawing only the bale's ends.
+    mesh.strip(rings[::-1], material, smooth=True, closed=True)
     # The flat ends as fans round their centres, facing out.
     for y, ring_points, outward in ((-width / 2, rings[0], -1), (width / 2, rings[1], 1)):
         centre = (0.0, y, centre_z)
@@ -442,7 +444,7 @@ def power_pole(spec):
 
     mesh.strip([ring(0.0, -BURIED, 0.13), ring(0.0, 8.25, 0.09)], "wood_weathered",
                smooth=True, closed=True)
-    mesh.face(list(reversed(ring(0.0, 8.25, 0.09))), "wood_weathered")
+    mesh.face(ring(0.0, 8.25, 0.09), "wood_weathered")
     mesh.box((-0.85, -0.05, 7.55), (0.85, 0.05, 7.67), "wood_weathered")
     for x, z in ((-0.7, 7.67), (0.7, 7.67), (0.0, 8.25)):
         mesh.strip([ring(x, z, 0.04), ring(x, z + 0.1, 0.03)], "insulator", smooth=True,
