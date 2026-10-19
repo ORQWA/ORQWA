@@ -50,3 +50,9 @@ for the macOS bundle, in `app/export_presets.cfg`; `scripts/release/version.py` 
 `scripts/check.sh` while they disagree, and fails a tag's CI run, and so its release, unless
 the tag is `v` followed by that version. Releasing means merging the new version first, then
 tagging it (docs/development.md).
+
+## Amendment 2026-10-19: the Windows `.exe`'s version
+
+The Windows `.exe` now carries Torqa's icon, name and version instead of the Godot template's.
+Its file and product versions take four numbers, so the preset holds the version with a fourth
+0 (`0.3.0.0`); `scripts/release/version.py` checks and sets them with the macOS bundle's.
