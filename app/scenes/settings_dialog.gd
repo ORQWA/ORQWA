@@ -28,4 +28,4 @@ func bind(torqa: TorqaApp) -> void:
 ## Opens the settings on their first tab.
 func open() -> void:
 	_tabs.current_tab = 0
-	popup_centered(Vector2i(960, 640))
+	UiScale.popup(self, Vector2i(960, 640))

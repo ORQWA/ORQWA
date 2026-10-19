@@ -15,14 +15,15 @@ ARG CARGO_DENY_SHA256_AARCH64=995c82be0defc7a025cae49a2aa2644ce8245c9a3318fc4103
 # libfontconfig: needed by the Godot binary even in headless mode.
 # mesa-vulkan-drivers (lavapipe) + xvfb: software rendering for 3D screenshots without a GPU.
 # libclang-dev: ffmpeg-sys-next's bindgen. nasm: FFmpeg's assembly (built below).
+# gcc-mingw-w64-x86-64: the Windows extension for native GPU renders (ADR 0021).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libdbus-1-dev pkg-config libfontconfig1 pipx unzip ca-certificates \
         mesa-vulkan-drivers xvfb xauth libxcursor1 libxinerama1 libxrandr2 libxi6 libgl1 \
-        libclang-dev nasm \
+        libclang-dev nasm gcc-mingw-w64-x86-64 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rustup component add rustfmt clippy
+RUN rustup component add rustfmt clippy && rustup target add x86_64-pc-windows-gnu
 
 RUN arch="$(uname -m)" \
     && case "$arch" in \
@@ -51,9 +52,12 @@ RUN case "$(uname -m)" in \
     && rm -rf /tmp/godot /tmp/godot.zip
 
 # FFmpeg's libraries for torqa-video (ADR 0010), from the pinned release the script verifies;
-# ffmpeg-sys-next finds them through FFMPEG_DIR instead of building its own.
+# ffmpeg-sys-next finds them through FFMPEG_DIR instead of building its own. The Windows build
+# is for scripts/build-gdext.sh's Windows extension (ADR 0021).
 COPY scripts/build-ffmpeg.sh /tmp/build-ffmpeg.sh
-RUN sh /tmp/build-ffmpeg.sh /opt/ffmpeg && rm /tmp/build-ffmpeg.sh
+RUN sh /tmp/build-ffmpeg.sh /opt/ffmpeg \
+    && sh /tmp/build-ffmpeg.sh /opt/ffmpeg-windows windows \
+    && rm /tmp/build-ffmpeg.sh
 ENV FFMPEG_DIR=/opt/ffmpeg
 
 # cargo-about writes the crates' licence notices the app shows (scripts/notices.sh, ADR 0018).

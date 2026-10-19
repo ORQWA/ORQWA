@@ -20,6 +20,8 @@ var _failures: FailureDetails = FailureDetails.new()
 func _ready() -> void:
 	var commit: String = TorqaCore.commit()
 	print("Torqa %s" % TorqaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
+	UiScale.apply(get_window())
+	UiScale.size_new(get_window())
 	theme = UiTheme.build()
 	add_child(_failures)
 	# Anchored at the bottom right, as wide as set and as tall as it needs, growing upward.
@@ -147,7 +149,14 @@ func _shortcut_input(event: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what != NOTIFICATION_WM_CLOSE_REQUEST or _overlay == null:
+	if _overlay == null:
+		return
+	# Moved to a screen at another scale; the overlay sizes its content itself.
+	if what in [NOTIFICATION_WM_POSITION_CHANGED, NOTIFICATION_WM_DPI_CHANGE]:
+		if not _overlay.active:
+			UiScale.apply(get_window())
+		return
+	if what != NOTIFICATION_WM_CLOSE_REQUEST:
 		return
 	if _overlay.active:
 		# Quit from the overlay: it opens there next time.

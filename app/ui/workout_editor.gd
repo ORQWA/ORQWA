@@ -69,7 +69,7 @@ func edit(plan: Dictionary, ftp_w: float) -> void:
 	get_cancel_button().text = tr("Cancel")
 	_delete_button.visible = not _replace.is_empty()
 	_update_preview()
-	popup_centered(Vector2i(1100, 680))
+	UiScale.popup(self, Vector2i(1100, 680))
 
 
 ## The workout as `TorqaApp.save_workout()` takes it.

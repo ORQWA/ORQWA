@@ -89,7 +89,7 @@ func edit(
 	_options.show_option_groups(world_options, not world_options, workout.is_empty())
 	_hud.edit(layout, imperial)
 	_devices.refresh()
-	popup_centered(Vector2i(960, 600))
+	UiScale.popup(self, Vector2i(960, 600))
 
 
 func _on_workout_changed() -> void:

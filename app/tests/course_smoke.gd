@@ -278,6 +278,8 @@ func _course_gallery() -> void:
 	root.add_child(tab)
 	tab.theme = UiTheme.build()
 	tab.size = Vector2(1600, 900)
+	# The window as large, for the clicks to land in it: headless, it is otherwise tiny.
+	root.size = Vector2i(tab.size)
 	tab.bind(torqa)
 	var asked: Dictionary = tab.query()
 	var asked_sort: String = asked["sort"]
@@ -410,7 +412,7 @@ func _course_gallery() -> void:
 
 ## The toolbar as a library with courses shows it, whatever the test's library holds.
 func _as_if_courses(tab: CoursesTab) -> void:
-	var toolbar: HBoxContainer = tab.get("_toolbar")
+	var toolbar: HFlowContainer = tab.get("_toolbar")
 	var heading: Label = tab.get("_heading")
 	toolbar.show()
 	heading.size_flags_horizontal = Control.SIZE_FILL

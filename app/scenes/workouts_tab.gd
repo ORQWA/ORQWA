@@ -12,6 +12,9 @@ signal start_requested(workout: Dictionary, course_path: String)
 ## The course asked for with `prepare()` is ready: the workout can start.
 signal ready_to_start
 
+## The workout's side of the page takes this many times the start panel's share of its width.
+const WORKOUT_SHARE: float = 1.8
+
 var _torqa: TorqaApp
 var _options: WorkoutOptions = WorkoutOptions.new()
 ## The structured workout chosen: what it is about and its steps.
@@ -119,7 +122,6 @@ func show_status(message: String) -> void:
 func _init() -> void:
 	add_theme_constant_override("separation", 24)
 	var left: VBoxContainer = VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 14)
 	var heading: Label = Label.new()
 	heading.text = tr("Workout")
@@ -165,7 +167,10 @@ func _init() -> void:
 	_planned_panel.add_child(planned_rows)
 	_planned_panel.hide()
 	left.add_child(_planned_panel)
-	add_child(left)
+	var left_scroll: ScrollContainer = UiTheme.scrolling(left)
+	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_scroll.size_flags_stretch_ratio = WORKOUT_SHARE
+	add_child(left_scroll)
 	_options.changed.connect(_show_plan)
 	_options.import_requested.connect(func() -> void: _import_dialog.popup_centered_ratio(0.7))
 	_import_dialog.title = tr("Choose a workout file")
@@ -180,12 +185,13 @@ func _init() -> void:
 	add_child(_import_dialog)
 
 	var panel: PanelContainer = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(520, 0)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var right: VBoxContainer = VBoxContainer.new()
 	right.add_theme_constant_override("separation", 14)
 	right.add_child(UiTheme.caption(tr("Where")))
 	# Course names are never translated.
 	_where.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	UiTheme.narrowable(_where)
 	_where.tooltip_text = tr(
 		"On a course, the trainer holds the workout's power while you ride through its 3D world"
 	)
