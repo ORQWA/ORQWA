@@ -2,7 +2,7 @@ extends SceneTree
 ## Headless checks of the Workouts tab's planned workouts (R81): the day's workouts from the
 ## platform holding the rider's plan are listed with a button that chooses each, are edited
 ## only as copies, the section is hidden without such an account, and says so when nothing is
-## planned.
+## planned. Choosing another course clears the build log of the one before (R93).
 ## Run: godot --headless --path app -s res://tests/workouts_smoke.gd
 
 var _failed: bool = false
@@ -14,6 +14,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_planned()
+	_course_choice()
 	if not _failed:
 		print("WORKOUTS SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -69,6 +70,28 @@ static func _plan(id: String, workout_name: String, platform: String) -> Diction
 		"planned": platform,
 		"steps": [],
 	}
+
+
+## The log of the world built for one course goes once another is chosen; the log of a world
+## still being built stays.
+func _course_choice() -> void:
+	var tab: WorkoutsTab = WorkoutsTab.new()
+	root.add_child(tab)
+	var where: OptionButton = tab._where
+	where.add_item("On its own (HUD only)")
+	where.add_item("Alps")
+	where.add_item("Coast")
+	var log: PreparationLog = tab._log
+	log.start()
+	log.step("Building 3D world", "chunks", 40, 40)
+	tab._building = true
+	where.item_selected.emit(2)
+	_check(log.visible and not log.steps().is_empty(), "a build under way keeps its log")
+	tab._building = false
+	log.finish()
+	where.item_selected.emit(2)
+	_check(not log.visible and log.steps().is_empty(), "another course clears the built one's log")
+	tab.free()
 
 
 func _check(condition: bool, what: String) -> void:
