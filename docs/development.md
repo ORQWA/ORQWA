@@ -126,6 +126,19 @@ A workflow fix does not change an existing tag's CI run. For a failure caused by
 itself, merge the fix with a new version and tag that rather than rerunning the old
 workflow.
 
+### Android
+
+The APK comes from a container of its own ([ADR 0024](adr/0024-android.md)), built on the dev
+image only when needed. `app/` is never changed: the build works on a copy.
+
+```sh
+scripts/android.sh scripts/build-android.sh release   # → dist/Torqa-android-arm64.apk
+```
+
+Install it on a tablet with adb over USB or wireless debugging (`adb install -r …`) and read
+Torqa's log with `adb logcat -s Torqa godot`. [android/README.md](../android/README.md) lists
+the parts and how to remove Android support again.
+
 ## More
 
 - Contributor conventions: [CLAUDE.md](../CLAUDE.md)

@@ -36,6 +36,7 @@ core/                      Rust workspace (tokio + tracing)
                            rides
 app/                       Godot 4 project: scenes/ (screens, 3D world, video view), ui/ (shared
                            controls and theme), shaders/, translations/, tests/ (smoke tests)
+android/                   the Android APK's image, Godot plugin and export additions (ADR 0024)
 art/                       Blender Python scripts for the 3D models: buildings, vegetation,
                            clouds, riders and bikes; third-party bases in art/sources/ (ADR 0009)
 docs/                      requirements, plan, ADRs, development guides and shared images
@@ -573,6 +574,19 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   three-parameter critical power, else 95 % of 20 min) offered, never applied
 - **Exit:** a season of real rides shows where the rider got stronger, and how fit and fresh
   they are, without leaving Torqa
+
+### Phase 12 — Android tablets (R100, [ADR 0024](adr/0024-android.md))
+- [x] A — trial: a separate Android image, the core for `aarch64-linux-android`, a Godot
+  Android plugin that readies btleplug through `JNI_OnLoad`, the project staged so `app/` stays
+  untouched; on a Galaxy Tab S7 (Android 16) the KICKR's power and the Click's shifting work;
+  the core's log in Android's log; picked files copied from `content://` addresses
+- [ ] B — an `android` CI job beside the others; `Torqa-android-arm64.apk` on releases
+- [ ] C — fitting Android: profiles and courses in the data folder (not the cache), saving to
+  picked places, a tablet graphics preset (smooth on the Tab S7; no SSAO in the mobile
+  renderer), touch, HTTPS (rustls-platform-verifier's Android set-up), no music control,
+  overlay window or MSI updater (the update check points to the APK)
+- [ ] D — a release-signed APK, the wiki (installing, permissions), the internet list
+- **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ## Risks
 
