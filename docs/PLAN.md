@@ -333,6 +333,9 @@ Built in rideable steps:
     bin to delete it
   - [x] A spinner above Ride while the course page loads its route; a course that failed to
     open tries again when reopened
+  - [x] The interface at the screen's scale rather than stretched to the window (R94): a
+    smaller window shows less, not smaller text; the layouts reflow down to 1024 × 640
+    (`ReflowGrid`, a wrapping gallery toolbar, scrolling pages) and dialogs fit the window
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
 ### Phase 9 — Graphics (R43–R47, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md))
