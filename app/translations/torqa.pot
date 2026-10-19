@@ -411,7 +411,7 @@ msgstr ""
 msgid "Cannot connect."
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd app/ui/ride_devices.gd
 msgid "Cassette: shift on the bike"
 msgstr ""
 
@@ -431,7 +431,7 @@ msgstr ""
 msgid "Cat 4"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd
+#: app/scenes/profile_dialog.gd app/ui/ride_devices.gd
 msgid "Chainring"
 msgstr ""
 
@@ -527,7 +527,7 @@ msgstr ""
 msgid "Code and address for the phone or tablet"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd
+#: app/scenes/profile_dialog.gd app/ui/ride_devices.gd
 msgid "Cog"
 msgstr ""
 
@@ -883,7 +883,7 @@ msgstr ""
 msgid "Drag to resize the overlay"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd app/ui/ride_devices.gd
 msgid "Drivetrain"
 msgstr ""
 
@@ -1651,7 +1651,7 @@ msgstr ""
 msgid "On a course, the trainer holds the workout's power while you ride through its 3D world"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd
+#: app/scenes/profile_dialog.gd app/ui/ride_devices.gd
 msgid "On a single cog such as the Zwift Cog, Torqa shifts 24 virtual gears: ↑ and ↓ while riding"
 msgstr ""
 
@@ -2139,7 +2139,7 @@ msgstr ""
 msgid "Simulation: %d×"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd app/ui/ride_devices.gd
 msgid "Single cog: virtual gears"
 msgstr ""
 

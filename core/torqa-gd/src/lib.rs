@@ -2365,22 +2365,27 @@ impl TorqaApp {
             } else {
                 MapStyle::Coloured
             },
-            drivetrain: if data
+            // A rider saved without one, such as a new one, starts on the default (R98).
+            drivetrain: match data
                 .get("drivetrain")
                 .and_then(|v| v.try_to::<GString>().ok())
-                .is_some_and(|d| d == "single_cog")
+                .map(|d| d.to_string())
+                .as_deref()
             {
-                let teeth = |key: &str, default: f64| {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // clamped
-                    let teeth = number(key, default).round().clamp(1.0, 99.0) as u8;
-                    teeth
-                };
-                Drivetrain::SingleCog {
-                    chainring: teeth("chainring", 50.0),
-                    cog: teeth("cog", 14.0),
+                Some("cassette") => Drivetrain::Cassette,
+                Some("single_cog") => {
+                    let teeth = |key: &str, default: f64| {
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                        // clamped
+                        let teeth = number(key, default).round().clamp(1.0, 99.0) as u8;
+                        teeth
+                    };
+                    Drivetrain::SingleCog {
+                        chainring: teeth("chainring", 50.0),
+                        cog: teeth("cog", 14.0),
+                    }
                 }
-            } else {
-                Drivetrain::Cassette
+                _ => Drivetrain::default(),
             },
         };
         let id = id.to_string();
@@ -2397,6 +2402,30 @@ impl TorqaApp {
                 self.report_failure(&Failure::from(error));
                 GString::new()
             }
+        }
+    }
+
+    /// Changes the rider's drivetrain, also during a ride (R98): `"cassette"` or
+    /// `"single_cog"` with its chainring's and cog's teeth. Emits `profile_changed`, or
+    /// `failed` if the profile cannot be saved.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn set_drivetrain(&mut self, drivetrain: GString, chainring: i64, cog: i64) {
+        let teeth = |n: i64| u8::try_from(n.clamp(1, 99)).unwrap_or(1);
+        let drivetrain = if drivetrain == "single_cog" {
+            Drivetrain::SingleCog {
+                chainring: teeth(chainring),
+                cog: teeth(cog),
+            }
+        } else {
+            Drivetrain::Cassette
+        };
+        let Some(app) = self.app.as_mut() else {
+            return;
+        };
+        match app.set_drivetrain(drivetrain) {
+            Ok(()) => self.signals().profile_changed().emit(),
+            Err(error) => self.report_failure(&Failure::from(error)),
         }
     }
 

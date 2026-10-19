@@ -2709,12 +2709,24 @@ impl App {
             setup: self.rider_setup(),
             difficulty,
             descent,
-            gears: match self.profile.profile.drivetrain {
-                Drivetrain::SingleCog { chainring, cog } => Some(VirtualGears::new(chainring, cog)),
-                Drivetrain::Cassette => None,
-            },
+            gears: virtual_gears(self.profile.profile.drivetrain),
             cadence: self.cadence_source(),
         }
+    }
+
+    /// Changes the rider's drivetrain, also during a ride (R98): the current ride shifts with
+    /// it at once, and the profile keeps it.
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if the profile cannot be written; the ride changes anyway.
+    pub fn set_drivetrain(&mut self, drivetrain: Drivetrain) -> Result<(), AppError> {
+        if let Some(active) = &mut self.ride {
+            active.ride.change_gears(virtual_gears(drivetrain));
+        }
+        let mut profile = self.profile.profile.clone();
+        profile.drivetrain = drivetrain;
+        let id = self.profile.id.clone();
+        self.save_profile(Some(&id), profile).map(drop)
     }
 
     /// A shift key was pressed (R7); the ride shifts on the next update.
@@ -4026,6 +4038,13 @@ fn unique_course_path(library: &Path, name: &str) -> PathBuf {
     path
 }
 
+/// The virtual gears a drivetrain shifts (R9): none with a cassette.
+fn virtual_gears(drivetrain: Drivetrain) -> Option<VirtualGears> {
+    match drivetrain {
+        Drivetrain::SingleCog { chainring, cog } => Some(VirtualGears::new(chainring, cog)),
+        Drivetrain::Cassette => None,
+    }
+}
 #[cfg(test)]
 mod tests {
     use std::fmt::Write as _;
@@ -4557,6 +4576,45 @@ mod tests {
 
         assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
         app.shutdown();
+    }
+
+    #[test]
+    fn the_drivetrain_changes_during_a_ride_and_stays() {
+        let dir = temp_dir("drivetrain");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        app.set_drivetrain(Drivetrain::Cassette).unwrap();
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(200.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+        app.start_ride(Percent(50.0), DescentMode::Coast, &GhostChoice::None)
+            .unwrap();
+        assert_eq!(app.ride_state().unwrap().gear, None, "a cassette");
+
+        let single_cog = Drivetrain::SingleCog {
+            chainring: 50,
+            cog: 14,
+        };
+        app.set_drivetrain(single_cog).unwrap();
+        let before = app.ride_state().unwrap().gear.unwrap().number;
+        app.shift(Shift::Up);
+        app.update(Duration::from_millis(16));
+
+        assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
+        let id = app.profile().id.clone();
+        app.shutdown();
+        let mut reopened = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        assert_eq!(reopened.profile().id, id);
+        assert_eq!(
+            reopened.profile().profile.drivetrain,
+            single_cog,
+            "the profile keeps it"
+        );
+        reopened.shutdown();
     }
 
     /// A shifter that shifts and asks for controls as told, and is connected or not.

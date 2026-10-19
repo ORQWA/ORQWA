@@ -303,7 +303,7 @@ func _workout_editor() -> void:
 	editor.free()
 
 
-## The rider's drivetrain (R9): chainring and cog only for a single cog.
+## The rider's drivetrain (R9, R98): chainring and cog only for a single cog, the default.
 func _rider_drivetrain() -> void:
 	var dialog: ProfileDialog = ProfileDialog.new()
 	root.add_child(dialog)
@@ -327,8 +327,10 @@ func _rider_drivetrain() -> void:
 	var drivetrain: String = saved["drivetrain"]
 	var chainring: float = saved["chainring"]
 	_check(drivetrain == "single_cog" and chainring == 46.0, "saved: %s" % saved)
-	dialog.edit({"id": "r", "name": "R"}, PackedStringArray(["power"]))
+	dialog.edit({"id": "r", "name": "R", "drivetrain": "cassette"}, PackedStringArray(["power"]))
 	_check(not cog.visible, "a cassette needs no teeth")
+	dialog.edit({}, PackedStringArray(["power"]))
+	_check(cog.visible, "a new rider starts on virtual gears (R98)")
 	dialog.free()
 
 

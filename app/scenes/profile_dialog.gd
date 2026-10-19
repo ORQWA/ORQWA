@@ -161,7 +161,7 @@ func edit(profile: Dictionary, hud_layout: PackedStringArray) -> void:
 	var avatar: String = profile.get("avatar", RiderAvatar.RIDERS[0])
 	_avatar.select(maxi(RiderAvatar.RIDERS.find(avatar), 0))
 	_map_style.select(maxi(MAP_STYLES.find(profile.get("map_style", "coloured")), 0))
-	var drivetrain: String = profile.get("drivetrain", "cassette")
+	var drivetrain: String = profile.get("drivetrain", "single_cog")
 	_drivetrain.select(maxi(DRIVETRAINS.find(drivetrain), 0))
 	_chainring.value = profile.get("chainring", 50)
 	_cog.value = profile.get("cog", 14)

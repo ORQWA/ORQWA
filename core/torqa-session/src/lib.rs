@@ -330,6 +330,14 @@ impl Ride {
         }
     }
 
+    /// Changes the drivetrain during the ride (R98): virtual gears start again from the gear
+    /// nearest the real one, and the trainer feels the change on the next tick.
+    pub fn change_gears(&mut self, gears: Option<VirtualGears>) {
+        self.config.gears = gears;
+        self.gear = gears.map_or(0, |gears| gears.neutral());
+        self.last_control = None;
+    }
+
     /// Shifts the virtual gears (R9); the trainer feels the new gear at once. Without virtual
     /// gears, and in ERG (where the trainer holds the power in any gear), nothing changes.
     pub fn shift(&mut self, shift: Shift) {
@@ -1192,6 +1200,38 @@ mod tests {
             ride.state().gear.unwrap().number,
             GEARS,
             "no gear beyond the last"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_drivetrain_changes_during_the_ride() {
+        let config = RideConfig {
+            difficulty: Percent(100.0),
+            ..RideConfig::default()
+        };
+        let mut ride = Ride::new(route(&[4.0], 3000.0).await, config);
+        let road = pedal(&mut ride, 200.0, 5);
+
+        ride.change_gears(Some(VirtualGears::new(50, 14)));
+        let geared = ride.state().gear.expect("virtual gears now");
+        ride.shift(Shift::To(1));
+        let easiest = pedal(&mut ride, 200.0, 1);
+        ride.change_gears(None);
+        let back = pedal(&mut ride, 200.0, 1);
+
+        assert!(
+            (geared.ratio - 50.0 / 14.0).abs() < 0.2,
+            "starts from the real gear: {geared:?}"
+        );
+        assert!(
+            grade_of(&easiest[0]) < grade_of(&road[0]) * 0.4,
+            "the shifts reach the trainer: {easiest:?}"
+        );
+        assert_eq!(ride.state().gear, None);
+        assert_eq!(back.len(), 1, "the trainer hears of the cassette at once");
+        assert!(
+            (grade_of(&back[0]) - grade_of(&road[0])).abs() < 1e-9,
+            "the road again: {back:?} {road:?}"
         );
     }
 

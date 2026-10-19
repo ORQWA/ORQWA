@@ -1307,8 +1307,27 @@ mod tests {
         assert_eq!(profile.avatar, Profile::default().avatar);
         assert_eq!(
             profile.drivetrain,
-            Drivetrain::Cassette,
-            "riders shift on the bike"
+            Drivetrain::SingleCog {
+                chainring: 50,
+                cog: 14
+            },
+            "a shifter shifts virtual gears from the first ride (R98)"
+        );
+        std::fs::remove_dir_all(data).unwrap();
+    }
+
+    #[test]
+    fn a_cassette_chosen_before_stays_with_the_new_default() {
+        let data = temp_dir("cassette");
+        let rider = Profile {
+            drivetrain: Drivetrain::Cassette,
+            ..Profile::default()
+        };
+        save(&data, "rider", &rider).unwrap();
+
+        assert_eq!(
+            load(&data, "rider").unwrap().drivetrain,
+            Drivetrain::Cassette
         );
         std::fs::remove_dir_all(data).unwrap();
     }

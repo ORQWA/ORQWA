@@ -269,7 +269,7 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 		var language_name: String = entry[1]
 		if code == chosen and not code.is_empty():
 			language = language_name
-	var single_cog: bool = rider.get("drivetrain", "cassette") == "single_cog"
+	var single_cog: bool = rider.get("drivetrain", "single_cog") == "single_cog"
 	var id: String = rider.get("id", "")
 	var hud: PackedStringArray = (
 		_torqa.hud_layout_of(id) if _torqa != null else TorqaApp.hud_default_layout()
