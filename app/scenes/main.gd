@@ -2,6 +2,10 @@ extends Control
 ## Root scene: owns the Torqa node and switches between the start page, the ride, the overlay
 ## (R55) and the ride summary.
 
+## Torqa's Android plugin (ADR 0024), for picture-in-picture, which Godot's Android activity
+## already allows.
+const ANDROID: StringName = &"TorqaAndroid"
+
 ## Video courses are ridden along their video instead of the 3D world (R17).
 var _video: VideoView = VideoView.new()
 var _overlay: OverlayWindow
@@ -9,6 +13,8 @@ var _overlay: OverlayWindow
 ## on Windows (#220, see opaque.gdshader).
 var _opaque: ColorRect = ColorRect.new()
 var _failures: FailureDetails = FailureDetails.new()
+## On Android: the ride's HUD shows in a small window on top of other apps.
+var _picture_in_picture: bool = false
 
 @onready var _torqa: TorqaApp = $Torqa
 @onready var _world: RideWorld = $World
@@ -95,8 +101,8 @@ func _on_ride_started(options: Dictionary) -> void:
 
 ## Turns the window into the overlay (R55, R57) or back; the ride goes on either way.
 func _set_overlay(on: bool) -> void:
-	# Android has no window on top of others (ADR 0024); O does nothing there.
-	if on and OS.has_feature("android"):
+	if Engine.has_singleton(ANDROID):
+		_set_picture_in_picture(on)
 		return
 	if on == _overlay.active:
 		return
@@ -120,7 +126,37 @@ func _set_overlay(on: bool) -> void:
 		_opaque.show()
 
 
+## On Android the overlay is picture-in-picture (ADR 0024): Android makes the window small and
+## keeps it on top; the ride's HUD-only layout is scaled to fit it.
+func _set_picture_in_picture(on: bool) -> void:
+	if on == _picture_in_picture:
+		return
+	_picture_in_picture = on
+	_ride.set_overlay(on)
+	_video.visible = not on and _ride.visible and _torqa.riding_along_video()
+	if on:
+		# One frame for the overlay's content to take its size.
+		await get_tree().process_frame
+		var content: Vector2 = _ride.overlay_content_size()
+		Engine.get_singleton(ANDROID).call(
+			"enterPictureInPicture", roundi(content.x), roundi(content.y)
+		)
+	else:
+		UiScale.apply(get_window())
+
+
 func _on_window_resized() -> void:
+	if _picture_in_picture:
+		var android: Object = Engine.get_singleton(ANDROID)
+		var still: bool = android.call("isInPictureInPicture")
+		if not still:
+			_set_picture_in_picture(false)
+			return
+		var window: Window = get_window()
+		var content: Vector2 = _ride.overlay_content_size()
+		var fits: Vector2 = Vector2(window.size) / content
+		window.content_scale_factor = minf(fits.x, fits.y)
+		return
 	if _overlay.active:
 		_overlay.window_resized()
 		_overlay.set_clickable(_ride.overlay_outline())
