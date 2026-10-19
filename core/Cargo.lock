@@ -2554,6 +2554,7 @@ name = "torqa-gd"
 version = "0.4.0"
 dependencies = [
  "godot",
+ "rustls-platform-verifier",
  "torqa-app",
  "torqa-devices",
  "torqa-domain",

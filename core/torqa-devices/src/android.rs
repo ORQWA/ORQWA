@@ -8,6 +8,8 @@ use std::ffi::{CString, c_char, c_int};
 
 use jni::JavaVM;
 
+/// jni-rs, for the library's other Android entry points (torqa-gd).
+pub use jni;
 /// The Java VM's types, for the library's entry point.
 pub use jni::sys;
 

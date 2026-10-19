@@ -42,7 +42,8 @@ cp "$root/app/bin/libtorqa_gd.so" "$stage/app/bin/"
 "$bin/llvm-strip" -o "$stage/app/bin/android/libtorqa_gd.so" \
     "$root/core/target/$triple/$profile/libtorqa_gd.so"
 cp -r "$root/android/godot/addons" "$stage/app/"
-python3 "$root/android/stage.py" "$stage/app" "$root/android/godot/export_preset.cfg"
+python3 "$root/android/stage.py" "$stage/app" "$root/android/godot/export_preset.cfg" \
+    "$root/core/Cargo.lock"
 
 # Godot's Android build, then Torqa's plugin built with its Gradle, btleplug's Java sources
 # taken from the crate cargo built.

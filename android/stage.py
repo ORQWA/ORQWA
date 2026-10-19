@@ -1,6 +1,7 @@
 """Adds what only the Android build needs to its copy of the project (ADR 0024): the extension's
 Android library, Android's texture formats, Torqa's Android plugin and the Android preset.
-Usage: stage.py <copied app folder> <android/godot/export_preset.cfg>"""
+And the version of rustls-platform-verifier's Java part that matches the crate in Cargo.lock.
+Usage: stage.py <copied app folder> <android/godot/export_preset.cfg> <core/Cargo.lock>"""
 
 import re
 import sys
@@ -8,6 +9,14 @@ from pathlib import Path
 
 app = Path(sys.argv[1])
 preset = Path(sys.argv[2]).read_text()
+lock = Path(sys.argv[3]).read_text()
+
+verifier = re.search(
+    r'name = "rustls-platform-verifier-android"\nversion = "([^"]+)"', lock
+)
+if verifier is None:
+    sys.exit("Cargo.lock names no rustls-platform-verifier-android")
+(app / "addons/torqa_android/verifier_version.txt").write_text(verifier.group(1) + "\n")
 
 extension = app / "torqa.gdextension"
 library = '"res://bin/android/libtorqa_gd.so"'

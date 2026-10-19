@@ -3709,3 +3709,23 @@ pub extern "system" fn JNI_OnLoad(
     }
     torqa_devices::android::sys::JNI_VERSION_1_6
 }
+
+/// Called once by the APK's plugin with the app's context (ADR 0024): HTTPS checks certificates
+/// through Android, which needs it before the first download (map tiles, uploads, updates).
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_torqa_android_TorqaAndroid_initTls<'caller>(
+    mut env: torqa_devices::android::jni::EnvUnowned<'caller>,
+    _class: torqa_devices::android::jni::objects::JClass<'caller>,
+    context: torqa_devices::android::jni::objects::JObject<'caller>,
+) {
+    use torqa_devices::android::jni::Outcome;
+    let outcome = env
+        .with_env(|env| rustls_platform_verifier::android::init_with_env(env, context))
+        .into_outcome();
+    torqa_devices::android::log(&match outcome {
+        Outcome::Ok(()) => "HTTPS ready".to_owned(),
+        Outcome::Err(error) => format!("HTTPS not ready: {error}"),
+        Outcome::Panic(_) => "HTTPS not ready: the set-up panicked".to_owned(),
+    });
+}
