@@ -191,7 +191,7 @@ msgstr ""
 msgid "Abort without saving"
 msgstr ""
 
-#: app/scenes/settings_dialog.gd:19
+#: app/scenes/settings_dialog.gd:21
 msgid "About"
 msgstr ""
 
@@ -1147,7 +1147,7 @@ msgstr ""
 msgid "Grade"
 msgstr ""
 
-#: app/scenes/settings_dialog.gd:17
+#: app/scenes/settings_dialog.gd:19
 msgid "Graphics"
 msgstr ""
 
