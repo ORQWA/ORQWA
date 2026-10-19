@@ -1,5 +1,6 @@
 //! Core domain types and plugin interfaces of Torqa.
 
+pub mod battery;
 pub mod files;
 pub mod profile;
 pub mod recording;

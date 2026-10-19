@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 use tokio::time::{MissedTickBehavior, interval};
+use torqa_domain::battery::Battery;
 use torqa_domain::telemetry::{Telemetry, TrainerControl};
 use torqa_domain::units::{BeatsPerMinute, Rpm, Watts};
 
@@ -149,6 +150,25 @@ pub fn spawn_failing(name: &str, reason: &str, period: Duration) -> DeviceHandle
             {
                 return;
             }
+        }
+    })
+}
+
+/// Starts a fake device that connects and tells how full its batteries are, as a real driver
+/// tells it (R97), then reports nothing more. For checking how battery levels are shown.
+///
+/// Must be called within a Tokio runtime.
+#[must_use]
+pub fn spawn_with_battery(name: &str, battery: Battery) -> DeviceHandle {
+    DeviceHandle::spawn(name.to_owned(), false, move |channels| async move {
+        if channels.events.send(DeviceEvent::Connected).await.is_ok()
+            && channels
+                .events
+                .send(DeviceEvent::Battery(battery))
+                .await
+                .is_ok()
+        {
+            channels.events.closed().await;
         }
     })
 }

@@ -13,10 +13,12 @@ use btleplug::api::{
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use futures::StreamExt;
 use tokio::time::{sleep, timeout};
+use torqa_domain::battery::Battery;
 pub use torqa_domain::shifting::ControllerModel;
 use torqa_domain::telemetry::{Telemetry, TrainerControl};
 use tracing::{debug, info, trace, warn};
 
+use crate::battery;
 use crate::cycling_power;
 use crate::di2;
 use crate::ftms::{self, ControlResult, ResistanceRange};
@@ -31,6 +33,9 @@ const RECONNECT_DELAY: Duration = Duration::from_secs(2);
 const RECONNECT_SCAN: Duration = Duration::from_secs(5);
 /// How long connecting and setting up may take before the attempt starts over.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
+/// A battery that does not answer in this time stays unknown rather than holding up the
+/// connection (R97).
+const BATTERY_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// What a discovered device can do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -186,6 +191,7 @@ impl Bluetooth {
                 click_v2: zwift_click_v2::Buttons::default(),
                 keepalive: Vec::new(),
                 answered: Vec::new(),
+                battery: Battery::default(),
                 cadence: cycling_power::Cadence::default(),
             }
             .run()
@@ -283,6 +289,8 @@ struct Driver {
     /// The Click v2's pods that answered the handshake since connecting: later answers are to
     /// the keepalive, every few seconds, so they go to the trace log only.
     answered: Vec<Side>,
+    /// What the device told of its batteries since connecting (R97).
+    battery: Battery,
     /// A power meter's or cadence sensor's cadence, from its crank counter.
     cadence: cycling_power::Cadence,
 }
@@ -386,6 +394,7 @@ impl Driver {
         info!(device = %self.device.name, "connecting");
         self.keepalive.clear();
         self.answered.clear();
+        self.battery = Battery::default();
         let set_up = timeout(CONNECT_TIMEOUT, self.set_up(&peripheral)).await;
         let (mut notifications, control_point) = match set_up {
             Ok(Ok(set_up)) => set_up,
@@ -401,7 +410,13 @@ impl Driver {
             notifications = self.set_up_partner(partner, notifications).await;
         }
         info!(device = %self.device.name, "connected");
-        if events.send(DeviceEvent::Connected).await.is_err() {
+        if events.send(DeviceEvent::Connected).await.is_err()
+            || (self.battery.is_known()
+                && events
+                    .send(DeviceEvent::Battery(self.battery))
+                    .await
+                    .is_err())
+        {
             return Ok(SessionEnd::HandleDropped);
         }
 
@@ -466,6 +481,8 @@ impl Driver {
             let notifications = partner.peripheral.notifications().await?;
             self.set_up_zwift_click_v2(&partner.peripheral, partner.side)
                 .await?;
+            self.set_up_battery(&partner.peripheral, Some(partner.side))
+                .await;
             Ok::<_, DeviceError>(notifications)
         })
         .await;
@@ -563,7 +580,44 @@ impl Driver {
                 None
             }
         };
+        self.set_up_battery(peripheral, side).await;
         Ok((Box::pin(notifications), control_point))
+    }
+
+    /// Reads how full the battery is where the device has the Battery Service, and follows
+    /// its changes where the device notifies them (R97). Many devices have none, and none of
+    /// this keeps a device from connecting.
+    async fn set_up_battery(&mut self, peripheral: &Peripheral, side: Option<Side>) {
+        let Ok(level) = characteristic(peripheral, battery::LEVEL) else {
+            return;
+        };
+        let name = &self.device.name;
+        let read = timeout(BATTERY_TIMEOUT, async {
+            if level.properties.contains(CharPropFlags::NOTIFY)
+                && let Err(error) = peripheral.subscribe(&level).await
+            {
+                debug!(device = %name, %error, "battery level not followed");
+            }
+            peripheral.read(&level).await
+        })
+        .await;
+        match read {
+            Ok(Ok(value)) => {
+                if let Some(level) = battery::parse_level(&value) {
+                    battery::note(&mut self.battery, side, level);
+                }
+            }
+            Ok(Err(error)) => debug!(device = %name, %error, "battery level not read"),
+            Err(_) => debug!(device = %name, "reading the battery level timed out"),
+        }
+    }
+
+    /// The batteries' event, if a `level` told by the device, or by its `side` of a pair,
+    /// changed them (R97).
+    fn battery_told(&mut self, side: Option<Side>, level: u8) -> Option<DeviceEvent> {
+        let battery = battery::note(&mut self.battery, side, level)?;
+        debug!(device = %self.device.name, pod = ?side, level, "battery level");
+        Some(DeviceEvent::Battery(battery))
     }
 
     /// Subscribes to a Zwift Click's (or a Click v2 pod's) buttons and starts its session
@@ -708,7 +762,13 @@ impl Driver {
                 .inspect_err(|error| warn!(device = %name, %error, "invalid D-Fly buttons"))
                 .ok()?;
             (!presses.is_empty()).then_some(DeviceEvent::Buttons(presses))
+        } else if uuid == uuid_from_u16(battery::LEVEL) {
+            let level = battery::parse_level(value)?;
+            self.battery_told(side, level)
         } else if uuid.to_string() == zwift_click::BUTTONS {
+            if let Some(level) = zwift_click::battery_level(value) {
+                return self.battery_told(side, level);
+            }
             let presses = if self.device.model == Some(ControllerModel::ZwiftClickV2) {
                 let side = side?;
                 debug!(device = %name, pod = side.name(), ?value, "Click v2 buttons");

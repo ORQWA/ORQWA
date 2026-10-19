@@ -2,6 +2,8 @@
 //! interface — the keyboard, Shimano Di2 buttons and, later, others — and what the rider gave
 //! each button to do (#139).
 
+use crate::battery::Battery;
+
 /// What a shift input asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shift {
@@ -373,6 +375,12 @@ pub trait ShiftInput: Send {
     /// never fails.
     fn failure(&self) -> Option<&str> {
         None
+    }
+
+    /// How full its batteries are, as far as it told while connected (R97); a keyboard has
+    /// none.
+    fn battery(&self) -> Battery {
+        Battery::default()
     }
 }
 

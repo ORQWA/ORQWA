@@ -186,3 +186,14 @@ two minutes, each button pressed once):
   [jat255's Click client](https://github.com/jat255/Zwift_click_handling) reads it), and after
   each keepalive a `0x2A` status and an `ff 05 …` holding the pod's serial number. So `ff 05`
   is no stop there; the driver reads it as one only on `…0004`, where it never came.
+
+## Amendment 2026-10-19: battery levels (R97)
+
+The Devices tab tells how full a device's batteries are. A Zwift Click's and a Click v2 pod's
+`0x19` message on `…0002` carries the level in its field 2, and the drivers now read it beside
+the buttons. Every device's level may also come from Bluetooth's Battery Service (`0x180F`,
+level `0x2A19`), read while connecting and followed where the device notifies; a Click v2 pod
+offering it tells its own side's. The read is bounded (3 s), so a battery never holds up a
+connection. A driver tells a level only when it changes, since a pod repeats its own every few
+seconds. Only the left pod's `0x19` has been seen (80 %); the right pod sent none in two
+minutes (OPEN-QUESTIONS).

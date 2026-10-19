@@ -26,6 +26,7 @@ use std::time::{Duration, Instant, SystemTime};
 use torqa_devices::ble::{Bluetooth, ControllerModel, DeviceKind, DiscoveredDevice};
 use torqa_devices::fake::{self, FakeRider};
 use torqa_devices::{DeviceEvent, DeviceHandle};
+use torqa_domain::battery::Battery;
 use torqa_domain::files::UsedFiles;
 use torqa_domain::profile::{Drivetrain, Profile};
 use torqa_domain::recording::{RideSummary, Sample};
@@ -599,6 +600,8 @@ pub struct App {
     /// What each device reported last and when (R80), so the devices screen can show a live
     /// reading beside a connected device, also between rides.
     readings: HashMap<DeviceKind, (Telemetry, Instant)>,
+    /// What each connected device told of its batteries (R97); the shifter keeps its own.
+    batteries: HashMap<DeviceKind, Battery>,
     /// Why the last attempt to connect each device failed, while its driver tries again
     /// (R80); cleared once it connects or is let go.
     failures: HashMap<DeviceKind, String>,
@@ -714,6 +717,7 @@ impl App {
             cadence_sensor_id: None,
             cadence_sensor_connected: None,
             readings: HashMap::new(),
+            batteries: HashMap::new(),
             failures: HashMap::new(),
             reconnecting: false,
             from_course: false,
@@ -2152,9 +2156,26 @@ impl App {
             .map(|(telemetry, _)| *telemetry)
     }
 
-    /// A device chosen anew or let go: its last reading and failure are not its successor's.
+    /// How full the batteries of the device of `kind` are, if it told while connected (R97):
+    /// one level, or a pair's left and right; also between rides, for the devices screen.
+    #[must_use]
+    pub fn device_battery(&self, kind: DeviceKind) -> Option<Battery> {
+        let battery = if kind == DeviceKind::Controller {
+            self.controller_id
+                .as_ref()
+                .and_then(|_| self.shift_inputs.get(1))
+                .map(|input| input.battery())
+        } else {
+            self.batteries.get(&kind).copied()
+        };
+        battery.filter(Battery::is_known)
+    }
+
+    /// A device chosen anew or let go: its last reading, battery and failure are not its
+    /// successor's.
     fn forget_reports(&mut self, kind: DeviceKind) {
         self.readings.remove(&kind);
+        self.batteries.remove(&kind);
         self.failures.remove(&kind);
     }
 
@@ -3664,6 +3685,7 @@ impl App {
                         active.ride.on_trainer_lost();
                     }
                     self.readings.remove(&DeviceKind::Trainer);
+                    self.batteries.remove(&DeviceKind::Trainer);
                     // Each failed attempt to reconnect reports again; the rider hears it once.
                     if self.trainer_connected.take().is_some() {
                         events.push(AppEvent::Disconnected(trainer.name().to_owned()));
@@ -3683,6 +3705,9 @@ impl App {
                     self.readings
                         .insert(DeviceKind::Trainer, (telemetry, Instant::now()));
                 }
+                Ok(Some(DeviceEvent::Battery(battery))) => {
+                    self.batteries.insert(DeviceKind::Trainer, battery);
+                }
                 Ok(Some(DeviceEvent::Buttons(_))) => {}
                 Ok(None) => break,
                 Err(error) => {
@@ -3690,6 +3715,7 @@ impl App {
                     self.trainer = None;
                     self.trainer_connected = None;
                     self.readings.remove(&DeviceKind::Trainer);
+                    self.batteries.remove(&DeviceKind::Trainer);
                     break;
                 }
             }
@@ -3722,6 +3748,7 @@ impl App {
             let ride = self.ride.as_mut().map(|active| &mut active.ride);
             let mut reports = Reports {
                 readings: &mut self.readings,
+                batteries: &mut self.batteries,
                 failures: &mut self.failures,
             };
             poll_sensor(slot, connected, what, ride, feed, &mut reports, events);
@@ -3729,9 +3756,10 @@ impl App {
     }
 }
 
-/// Where the sensors' last readings and failures are kept (R80).
+/// Where the sensors' last readings, batteries and failures are kept (R80, R97).
 struct Reports<'a> {
     readings: &'a mut HashMap<DeviceKind, (Telemetry, Instant)>,
+    batteries: &'a mut HashMap<DeviceKind, Battery>,
     failures: &'a mut HashMap<DeviceKind, String>,
 }
 
@@ -3773,6 +3801,7 @@ fn poll_sensor(
                     on_lost(ride);
                 }
                 reports.readings.remove(&kind);
+                reports.batteries.remove(&kind);
                 // Each failed attempt to reconnect reports again; the rider hears it once.
                 if connected.take().is_some() {
                     events.push(AppEvent::Disconnected(sensor.name().to_owned()));
@@ -3791,6 +3820,9 @@ fn poll_sensor(
                 }
                 reports.readings.insert(kind, (telemetry, Instant::now()));
             }
+            Ok(Some(DeviceEvent::Battery(battery))) => {
+                reports.batteries.insert(kind, battery);
+            }
             Ok(Some(DeviceEvent::Buttons(_))) => {}
             Ok(None) => break,
             Err(error) => {
@@ -3801,6 +3833,7 @@ fn poll_sensor(
                 *slot = None;
                 *connected = None;
                 reports.readings.remove(&kind);
+                reports.batteries.remove(&kind);
                 break;
             }
         }
@@ -6399,6 +6432,51 @@ mod tests {
         app.disconnect_heart_rate().unwrap();
         app.disconnect_controller().unwrap();
         assert_eq!(app.devices(), []);
+        app.shutdown();
+    }
+
+    #[test]
+    fn a_connected_devices_battery_is_kept_until_it_is_let_go() {
+        let dir = temp_dir("device-battery");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let strap = Battery {
+            level: Some(64),
+            ..Battery::default()
+        };
+        let pods = Battery {
+            left: Some(80),
+            right: Some(75),
+            level: None,
+        };
+        {
+            let _runtime = app.runtime.enter();
+            app.sensor = Some(fake::spawn_with_battery("Polar H9", strap));
+            let buttons = Arc::clone(&app.buttons);
+            app.controller_id = Some("click-v2".to_owned());
+            app.add_shift_input(Box::new(torqa_devices::shift::Controller::new(
+                fake::spawn_with_battery("Zwift Click v2", pods),
+                ControllerModel::ZwiftClickV2,
+                buttons,
+            )));
+        }
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        while app.device_battery(DeviceKind::HeartRateSensor).is_none()
+            || app.device_battery(DeviceKind::Controller).is_none()
+        {
+            assert!(std::time::Instant::now() < deadline, "no battery told");
+            std::thread::sleep(Duration::from_millis(16));
+            app.update(Duration::from_millis(16));
+        }
+
+        // Also between rides, for the devices screen (R97).
+        assert_eq!(app.device_battery(DeviceKind::HeartRateSensor), Some(strap));
+        assert_eq!(app.device_battery(DeviceKind::Controller), Some(pods));
+        assert_eq!(app.device_battery(DeviceKind::Trainer), None);
+
+        app.disconnect_heart_rate().unwrap();
+        app.disconnect_controller().unwrap();
+        assert_eq!(app.device_battery(DeviceKind::HeartRateSensor), None);
+        assert_eq!(app.device_battery(DeviceKind::Controller), None);
         app.shutdown();
     }
 
