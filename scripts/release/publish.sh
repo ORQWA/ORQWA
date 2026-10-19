@@ -9,6 +9,7 @@ set -- \
     dist/Torqa-macos-arm64.zip \
     dist/torqa-cli-macos-arm64.tar.gz \
     dist/Torqa-windows-x86_64.zip \
+    dist/Torqa-windows-x86_64.msi \
     dist/torqa-cli-windows-x86_64.zip \
     dist/Torqa-linux-x86_64.tar.gz \
     dist/torqa-cli-linux-x86_64.tar.gz \
