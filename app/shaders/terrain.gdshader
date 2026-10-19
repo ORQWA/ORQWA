@@ -111,9 +111,12 @@ void fragment() {
 	vec3 rock;
 	vec3 rock_n = rock_sides(rock);
 
-	// Fields: grass ripened towards straw, patch by patch.
+	// Grass as it grows here: a deep green. The texture is baked about three times too bright for
+	// grass in sunlight, a pale lime from afar.
+	vec3 green = grass * vec3(0.34, 0.44, 0.27);
+	// Fields: green grass, ripening towards straw in patches.
 	float ripe = ground_noise(world_position.xz / 60.0);
-	vec3 field = mix(grass, grass * vec3(1.45, 1.25, 0.6), 0.45 + 0.4 * ripe);
+	vec3 field = mix(green, grass * vec3(0.9, 0.72, 0.4), 0.1 + 0.3 * ripe);
 	// Forest floor: dark moss and grass, earth and needles showing through in patches.
 	float bare = smoothstep(0.5, 0.8, ground_noise(world_position.xz / 7.0));
 	vec3 moss = grass * vec3(0.6, 0.68, 0.5);
@@ -123,8 +126,8 @@ void fragment() {
 	// Meadows vary as growth does: lusher and drier patches over a hundred metres and more,
 	// drier on steep ground, yellower above the tree line.
 	float lush = ground_noise(world_position.xz / 90.0) * 0.6 + ground_noise(world_position.xz / 310.0) * 0.4;
-	vec3 meadow = grass * mix(vec3(0.98, 0.92, 0.7), vec3(0.7, 0.82, 0.76), lush);
-	float dry = smoothstep(0.97, 0.8, world_normal.y) * 0.5
+	vec3 meadow = green * mix(vec3(1.08, 1.04, 1.04), vec3(0.82, 0.9, 0.96), lush);
+	float dry = smoothstep(0.97, 0.8, world_normal.y) * 0.25
 		+ smoothstep(1700.0, 2300.0, world_position.y) * 0.6;
 	meadow = mix(meadow, meadow * vec3(1.25, 1.08, 0.62), clamp(dry, 0.0, 1.0));
 	vec3 albedo = (meadow * w_meadow + field * w_farmland + floor_colour * w_forest

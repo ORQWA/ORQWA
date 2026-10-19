@@ -55,8 +55,8 @@
     "bushes": ["#4a6936", "#557440", "#41602f"],
     "rocks": ["#e6e2dc", "#d6d2ca", "#eeeae4"],
     "trunk": "#7a5755",
-    "grass_base": "#5a7036",
-    "grass_tip": "#97a95c",
+    "grass_base": "#2f4a1c",
+    "grass_tip": "#4f6e2a",
     "flowers": ["#f4c16e", "#f2ebd9", "#efb5cc", "#e2705e"],
     "palms": ["#5a7a34", "#66843a", "#52722f", "#6f8a3c"],
     "tropical": ["#4f7a2e", "#5b8636", "#46702a", "#62883a"]
