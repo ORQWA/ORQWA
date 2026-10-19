@@ -14,7 +14,12 @@ fi
 
 docker build -q --platform linux/amd64 -t torqa-art "$root/art" >/dev/null
 
-exec docker run --rm --platform linux/amd64 \
+. "$root/scripts/give-back-files.sh"
+
+status=0
+docker run --rm --platform linux/amd64 \
     -v "$root:/workspaces/torqa" \
     -w /workspaces/torqa \
-    torqa-art "$@"
+    torqa-art "$@" || status=$?
+give_back_files --platform linux/amd64 torqa-art
+exit "$status"
