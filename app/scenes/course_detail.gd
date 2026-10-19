@@ -77,6 +77,7 @@ func open(course: Dictionary) -> void:
 	var difficulty: float = rider.get("default_difficulty_pct", 50.0)
 	_options.set_difficulty(difficulty)
 	_loading_bar.hide()
+	_log.clear()
 	_ride_button.disabled = true
 	_loading_route = true
 	_spinner.show()

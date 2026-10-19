@@ -186,7 +186,8 @@ func _estimates() -> void:
 
 
 ## While a course's route is prepared, a spinner turns on its page and Ride waits (R40). A
-## course that cannot be opened stops it with the reason; opening it again tries again.
+## course that cannot be opened stops it with the reason; opening it again tries again. The
+## build log of the course opened before does not stay on the page (R93).
 func _course_loading() -> void:
 	var torqa: TorqaApp = TorqaApp.new()
 	root.add_child(torqa)
@@ -198,6 +199,10 @@ func _course_loading() -> void:
 	var spinner: Spinner = page.get("_spinner")
 	var ride: Button = page.get("_ride_button")
 	var status: Label = page.get("_status")
+	var log: PreparationLog = page.get("_log")
+	log.start()
+	log.step("Building 3D world", "chunks", 40, 40)
+	log.finish()
 	var lost: Dictionary = {
 		"path": OS.get_user_data_dir().path_join("no-such-course.tqc"),
 		"name": "Lost",
@@ -210,6 +215,10 @@ func _course_loading() -> void:
 		_check(
 			spinner.is_visible_in_tree() and ride.disabled and not status.text.is_empty(),
 			"attempt %d: a spinner while the course loads, with what it does" % attempt
+		)
+		_check(
+			not log.visible and log.steps().is_empty(),
+			"attempt %d: no build log of the course before" % attempt
 		)
 		var waited: float = 0.0
 		while failures.size() < attempt and waited < 10.0:

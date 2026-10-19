@@ -106,6 +106,7 @@ func prepare() -> void:
 		ready_to_start.emit()
 		return
 	_start_button.disabled = true
+	_log.clear()
 	_status.text = tr("Loading the course") + " …"
 	_loading_route = true
 	if _torqa.loaded_course() != path:
@@ -195,6 +196,7 @@ func _init() -> void:
 	_where.tooltip_text = tr(
 		"On a course, the trainer holds the workout's power while you ride through its 3D world"
 	)
+	_where.item_selected.connect(_on_where_selected)
 	right.add_child(_where)
 	_overlay.text = tr("Start as overlay")
 	_overlay.tooltip_text = tr("Only the HUD, on top of other windows, e.g. over a video")
@@ -351,6 +353,12 @@ func _import(path: String) -> void:
 	_options.set_plans(_torqa.workouts(), id)
 	_show_plan()
 	_status.text = tr("Added to your workouts.")
+
+
+## The log of an earlier course's world is not this course's; one being built stays.
+func _on_where_selected(_index: int) -> void:
+	if not _loading_route and not _building:
+		_log.clear()
 
 
 func _on_start_pressed() -> void:
