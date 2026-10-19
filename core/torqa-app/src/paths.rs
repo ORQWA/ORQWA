@@ -6,6 +6,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// The platform's per-user data directory for Torqa (rides, routes, settings).
 #[must_use]
 pub fn data_dir() -> PathBuf {
+    if cfg!(target_os = "android") {
+        return android_dirs(&std::env::temp_dir()).0;
+    }
     let env = |key: &str| std::env::var_os(key).map(PathBuf::from);
     let home = env("HOME").or_else(|| env("USERPROFILE"));
     let base = if cfg!(target_os = "macos") {
@@ -26,6 +29,9 @@ pub fn data_dir() -> PathBuf {
 /// The platform's per-user cache directory for Torqa.
 #[must_use]
 pub fn cache_dir() -> PathBuf {
+    if cfg!(target_os = "android") {
+        return android_dirs(&std::env::temp_dir()).1;
+    }
     let env = |key: &str| std::env::var_os(key).map(PathBuf::from);
     let home = env("HOME").or_else(|| env("USERPROFILE"));
     let base = if cfg!(target_os = "macos") {
@@ -36,6 +42,14 @@ pub fn cache_dir() -> PathBuf {
         env("XDG_CACHE_HOME").or_else(|| home.map(|h| h.join(".cache")))
     };
     base.unwrap_or_else(std::env::temp_dir).join("torqa")
+}
+
+/// Torqa's data and cache directories on Android (ADR 0024), from the app's cache directory that
+/// Android gives as the temporary one (`/data/user/0/<app>/cache`): data goes beside it into the
+/// app's own `files`, which Android never clears, unlike the cache when space runs short.
+fn android_dirs(app_cache: &std::path::Path) -> (PathBuf, PathBuf) {
+    let app = app_cache.parent().unwrap_or(app_cache);
+    (app.join("files").join("torqa"), app_cache.join("torqa"))
 }
 
 /// `torqa-YYYYMMDD-HHMMSS.fit` in UTC.
@@ -73,6 +87,20 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[test]
+    fn on_android_data_stays_out_of_the_cache() {
+        let (data, cache) = android_dirs(std::path::Path::new("/data/user/0/org.torqa.app/cache"));
+
+        assert_eq!(
+            data,
+            PathBuf::from("/data/user/0/org.torqa.app/files/torqa")
+        );
+        assert_eq!(
+            cache,
+            PathBuf::from("/data/user/0/org.torqa.app/cache/torqa")
+        );
+    }
 
     #[test]
     fn names_activity_files_by_utc_start() {

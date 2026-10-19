@@ -102,10 +102,17 @@ fn is_known(name: &str, value: &str) -> bool {
         .any(|(known, values)| *known == name && values.contains(&value))
 }
 
-/// The graphics quality chosen on this computer; Medium until one is chosen.
+/// The graphics quality chosen on this computer; until one is chosen Medium, or Low on Android,
+/// where tablets run the 3D world on far less than a computer's graphics card (ADR 0024).
 #[must_use]
 pub fn graphics_quality(file: &Path) -> GraphicsQuality {
-    read(file).graphics_quality.unwrap_or_default()
+    read(file)
+        .graphics_quality
+        .unwrap_or(if cfg!(target_os = "android") {
+            GraphicsQuality::Low
+        } else {
+            GraphicsQuality::default()
+        })
 }
 
 /// Remembers the graphics quality for this computer.
