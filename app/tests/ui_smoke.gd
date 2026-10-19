@@ -311,7 +311,10 @@ func _picked_files() -> void:
 	_check(PickedFile.local_path(path) == path, "a picked path is opened as it is")
 	_check(PickedFile.save_path(path) == path, "and saved as it is")
 	_check(PickedFile.save(path, path), "with nothing to copy")
-	var address: String = "content://com.android.externalstorage.documents/document/primary%3ADownload%2FRide.gpx"
+	var address: String = (
+		"content://com.android.externalstorage.documents/document/"
+		+ "primary%3ADownload%2FRide.gpx"
+	)
 	_check(PickedFile.name_of(address) == "Ride.gpx", "a content address shows its file name")
 	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in Torqa's folder")
 
