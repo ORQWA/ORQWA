@@ -572,8 +572,9 @@ func _export(to: String) -> void:
 	var ride: Dictionary = _rides[_selected]
 	var path: String = ride["path"]
 	_exporting = true
-	if _torqa.export_ride(path, to):
-		_show_status(tr("Saved as %s") % to)
+	var written: String = PickedFile.save_path(to)
+	if _torqa.export_ride(path, written) and PickedFile.save(written, to):
+		_show_status(tr("Saved as %s") % PickedFile.name_of(to))
 	_exporting = false
 
 
