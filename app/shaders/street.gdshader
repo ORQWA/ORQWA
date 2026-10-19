@@ -34,7 +34,8 @@ void fragment() {
 	float off_centre = abs(UV.x - 0.5);
 	float ragged = (ground_noise(vec2(UV.y * 0.8, 1.0)) - 0.5) * 0.06;
 	float middle = middle_grass * (1.0 - smoothstep(0.1, 0.16, off_centre + ragged));
-	vec3 grass = texture(grass_albedo, ground_tiles(world_xz, 3.0)).rgb;
+	// As dark as the meadows beside (terrain.gdshader), not the texture's pale lime.
+	vec3 grass = texture(grass_albedo, ground_tiles(world_xz, 3.0)).rgb * vec3(0.34, 0.44, 0.27);
 	vec3 albedo = mix(surface, grass, middle);
 	vec3 normal = ground_bend(world_normal, detail, vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), 1.0 - middle);
 	float wet = wetness * (1.0 - middle);

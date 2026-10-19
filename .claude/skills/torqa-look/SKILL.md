@@ -37,7 +37,10 @@ surface in view on a ride must reach the same level before the next group starts
   per-instance colours and texture offsets so repeated models differ, and from blending
   materials (grass into dirt, asphalt into gravel) instead of hard edges.
 - **Natural colours.** Close to real albedos (grass about 0.1–0.2, asphalt 0.05–0.1, fresh
-  snow 0.8); no pure black or white, no oversaturation.
+  snow 0.8); no pure black or white, no oversaturation. The baked grass texture is about three
+  times too bright for that, so `terrain.gdshader` and `street.gdshader` darken it to a deep
+  green (the grass tufts' palette colours match); judge grass on a GPU render, as AgX
+  compresses sunlit colours and small tint changes barely show.
 - **Light.** Physically based sky and sun, soft shadows, ambient occlusion in creases, aerial
   perspective (distant terrain fading into blue-grey haze); a filmic tone mapping (AgX or
   Filmic) instead of the linear one the pastels needed, set when light and sky are restyled.
