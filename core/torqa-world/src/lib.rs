@@ -472,6 +472,8 @@ impl Corridor<'_> {
             land: self.land,
             road: self.shapers.road,
             mouths: self.mouths,
+            streets: &self.ways.clearance,
+            buildings: &footprints,
         };
         let props = props::place(heights.origin, CHUNK_SIZE, &roadside, origin);
         vegetation::place_grass(&mut trees, heights.origin, CHUNK_SIZE, &ground, origin);

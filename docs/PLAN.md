@@ -506,7 +506,10 @@ physically based materials and light, restyled group by group.
     - [x] Roadside safety: guard rails where the ground falls away (start and end spans, gaps
       at junctions), delineator posts on country roads, snow poles above 1,300 m
       (`art/props`, `core/torqa-world/src/props.rs`)
-    - [ ] Towns: street lamps, benches, bus shelters, bollards, bins
+    - [x] Towns: street lamps staggered every 60 m, benches with bins, bus shelters every
+      400 m, where they have room (clear of walls, side streets and junctions); villages the
+      map leaves unmarked found by their buildings
+    - [ ] Bollards, fountains and the like
     - [ ] Road signs: town names at each place's edge, warnings before hairpins and steep
       grades, signposts at junctions
     - [ ] Countryside: pasture fences and gates, hay bales, power-line poles, wayside crosses

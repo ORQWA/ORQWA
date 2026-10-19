@@ -127,7 +127,11 @@
     "band": "#17181a",
     "reflector": "#e0821e",
     "pole_red": "#b3261e",
-    "pole_white": "#ecebe6"
+    "pole_white": "#ecebe6",
+    "metal_dark": "#2c2f33",
+    "wood": "#8a6143",
+    "lamp": "#f4ecd2",
+    "glass": "#b9cbd3"
   },
   "bike": {
     "tyre": "#1b1b1c",

@@ -3990,3 +3990,73 @@ async fn nothing_stands_where_a_street_joins_the_road() {
         "the other side keeps its post"
     );
 }
+
+#[tokio::test]
+async fn towns_get_lamps_benches_and_shelters_with_room_to_stand() {
+    // A village over the road's middle, a house beside the road in it and a side street.
+    let village = Area {
+        cover: LandCover::Residential,
+        outer: vec![rectangle(0.0, 500.0, 200.0, 400.0)],
+        inner: vec![],
+    };
+    let house = Building {
+        id: 7,
+        outline: rectangle(9.0, 420.0, 4.0, 6.0),
+        height: None,
+        levels: None,
+        color: None,
+    };
+    let side_street = torqa_osm::Road {
+        class: torqa_osm::RoadClass::Street,
+        line: vec![at(0.0, 600.0), at(-200.0, 600.0)],
+        structure: None,
+    };
+    let map = MapData {
+        roads: vec![road_north(), side_street],
+        areas: vec![village],
+        buildings: vec![house],
+        ..MapData::default()
+    };
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+
+    let lamps = props_of(&world, "street_lamp");
+    let in_town = |p: &&[f64; 3]| (150.0..850.0).contains(&p[2]);
+    let (east, west): (Vec<[f64; 3]>, Vec<[f64; 3]>) =
+        lamps.iter().filter(in_town).partition(|p| p[0] > 0.0);
+    // Every 60 m on each side, staggered, through 700 m of village.
+    assert!((9..=13).contains(&east.len()), "{} east", east.len());
+    assert!((9..=13).contains(&west.len()), "{} west", west.len());
+    assert!(
+        lamps.iter().all(|p| (100.0..900.0).contains(&p[2])),
+        "no lamps outside the village"
+    );
+    for p in lamps
+        .iter()
+        .chain(&props_of(&world, "bench"))
+        .chain(&props_of(&world, "bus_shelter"))
+    {
+        assert!(
+            !((p[0] - 9.0).abs() < 5.5 && (p[2] - 420.0).abs() < 7.5),
+            "nothing inside the house: {p:?}"
+        );
+        assert!(
+            !(p[0] < 0.0 && (p[2] - 600.0).abs() < 4.0),
+            "nothing in the side street's mouth: {p:?}"
+        );
+    }
+    let shelters = props_of(&world, "bus_shelter");
+    assert!(
+        (1..=2).contains(&shelters.len()) && shelters.iter().all(|p| p[0] > 0.0),
+        "a shelter every 400 m on the right: {shelters:?}"
+    );
+    assert_eq!(
+        props_of(&world, "bench").len(),
+        props_of(&world, "bin").len(),
+        "a bin beside every bench"
+    );
+    assert!(
+        props_of(&world, "delineator").iter().all(|p| !in_town(&p)),
+        "town props, not country posts"
+    );
+}

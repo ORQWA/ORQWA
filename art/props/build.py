@@ -1,5 +1,6 @@
-"""Builds the props that stand by the road (R89) — guard rails, delineator posts and snow
-poles — and exports them for Godot (ADR 0009, ADR 0020).
+"""Builds the props that stand by the road (R92) — guard rails, delineator posts and snow
+poles; in towns street lamps, benches, bins and bus shelters — and exports them for Godot
+(ADR 0009, ADR 0020).
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/props/build.py
@@ -10,7 +11,9 @@ back to the road: the model's +x points away from the road, its length runs alon
 it stands. Guard rails are 4 m spans that the world shears to the road's grade, so posts stay
 upright; `guard_rail_end` slopes down into the ground ahead (+y), `guard_rail_start` behind.
 Each model is one mesh with named materials (`galvanised`, `post`, `band`, `reflector`,
-`pole_red`, `pole_white`) that the app colours (`app/scenes/prop_models.gd`). Parts reach
+`pole_red`, `pole_white`, `metal_dark`, `wood`, `lamp`, `glass`) that the app colours
+(`app/scenes/prop_models.gd`). A street lamp's arm reaches over the road (−x); a bench's and
+a shelter's seats face it. Parts reach
 `BURIED` below the origin, so they meet sloping ground. `models.json` lists each model's height.
 Pass model names after `--` to build only those, and `--preview DIR` to render them there
 instead (art/preview.py).
@@ -32,7 +35,8 @@ import preview  # noqa: E402  (needs the path above)
 # Preview colours in Blender only; the app replaces the materials by name.
 PREVIEW = {"galvanised": (0.62, 0.64, 0.66), "post": (0.9, 0.9, 0.88), "band": (0.05, 0.05, 0.05),
            "reflector": (0.95, 0.55, 0.1), "pole_red": (0.7, 0.08, 0.06),
-           "pole_white": (0.92, 0.92, 0.9)}
+           "pole_white": (0.92, 0.92, 0.9), "metal_dark": (0.18, 0.19, 0.2),
+           "wood": (0.45, 0.3, 0.18), "lamp": (0.95, 0.93, 0.85), "glass": (0.7, 0.8, 0.85)}
 
 # How far posts and blades reach below the ground's level at the origin.
 BURIED = 0.4
@@ -167,7 +171,119 @@ def snow_pole(spec):
     return mesh, height
 
 
-KINDS = {"guard_rail": guard_rail, "guard_rail_end": guard_rail_end, "delineator": delineator,
+def street_lamp(spec):
+    """A street lamp: a tapered pole bending at its top into an arm over the road and a flat
+    luminaire, on a small foot."""
+    mesh = Mesh()
+    height = 6.5
+    sides = 10
+
+    def ring(centre, radius, axis):
+        # A ring round `axis` (unit, in the x–z plane) at `centre`.
+        ax, az = axis
+        across = (az, -ax)
+        return [(centre[0] + radius * math.cos(2 * math.pi * i / sides) * across[0],
+                 centre[1] + radius * math.sin(2 * math.pi * i / sides),
+                 centre[2] + radius * math.cos(2 * math.pi * i / sides) * across[1])
+                for i in range(sides)]
+
+    # Up the pole, then bending over toward the road (−x) in a quarter circle.
+    path = [((0.0, 0.0, -BURIED), (0.0, 1.0), 0.075), ((0.0, 0.0, 0.4), (0.0, 1.0), 0.07),
+            ((0.0, 0.0, height - 0.6), (0.0, 1.0), 0.05)]
+    bend = 0.6
+    for k in range(1, 7):
+        a = math.pi / 2 * k / 6
+        centre = (-bend + bend * math.cos(a), 0.0, height - 0.6 + bend * math.sin(a))
+        path.append((centre, (-math.sin(a), math.cos(a)), 0.045))
+    path.append(((-1.5, 0.0, height), (-1.0, 0.0), 0.04))
+    rings = [ring(c, r, axis) for c, axis, r in path]
+    mesh.strip(rings, "metal_dark", smooth=True, closed=True)
+    mesh.face(list(reversed(rings[0])), "metal_dark")
+    # The luminaire: a flat box at the arm's end, its glass underneath.
+    mesh.box((-2.05, -0.16, height - 0.1), (-1.45, 0.16, height + 0.05), "metal_dark")
+    mesh.face([(-2.0, -0.12, height - 0.103), (-2.0, 0.12, height - 0.103),
+               (-1.5, 0.12, height - 0.103), (-1.5, -0.12, height - 0.103)], "lamp")
+    mesh.box((-0.12, -0.12, -BURIED), (0.12, 0.12, 0.35), "metal_dark")
+    return mesh, height + 0.05
+
+
+def bench(spec):
+    """A park bench facing the road (−x): wooden slats for the seat and back on two cast
+    frames."""
+    mesh = Mesh()
+    length = 1.8
+    for y in (-length / 2 + 0.15, length / 2 - 0.15):
+        # Frame: legs, a seat bearer and the back's upright, leaning back.
+        mesh.box((-0.25, y - 0.03, -BURIED), (-0.2, y + 0.03, 0.43), "metal_dark")
+        mesh.box((0.15, y - 0.03, -BURIED), (0.2, y + 0.03, 0.43), "metal_dark")
+        mesh.box((-0.27, y - 0.03, 0.4), (0.22, y + 0.03, 0.44), "metal_dark")
+        for k in range(6):
+            z0, z1 = 0.44 + 0.08 * k, 0.44 + 0.08 * (k + 1)
+            mesh.box((0.16 + 0.02 * k, y - 0.03, z0), (0.21 + 0.02 * k, y + 0.03, z1),
+                     "metal_dark")
+    # Seat slats along the bench.
+    for k in range(4):
+        x = -0.27 + 0.125 * k
+        mesh.box((x, -length / 2, 0.44), (x + 0.1, length / 2, 0.475), "wood")
+    # Back slats, leaning back with the uprights.
+    for k in range(3):
+        z = 0.58 + 0.12 * k
+        x = 0.2 + 0.02 * ((z - 0.44) / 0.08)
+        mesh.box((x, -length / 2, z), (x + 0.03, length / 2, z + 0.09), "wood")
+    return mesh, 0.95
+
+
+def litter_bin(spec):
+    """A litter bin on a post: a round dark drum with a lighter rim."""
+    mesh = Mesh()
+    mesh.box((0.21, -0.03, -BURIED), (0.27, 0.03, 0.95), "metal_dark")
+    # Brackets holding the drum to the post.
+    for z in (0.45, 0.78):
+        mesh.box((0.15, -0.02, z), (0.21, 0.02, z + 0.04), "metal_dark")
+    sides = 14
+
+    def ring(z, radius):
+        return [(radius * math.cos(2 * math.pi * i / sides),
+                 radius * math.sin(2 * math.pi * i / sides), z) for i in range(sides)]
+
+    mesh.strip([ring(0.35, 0.18), ring(0.85, 0.2)], "metal_dark", smooth=True, closed=True)
+    mesh.face(list(reversed(ring(0.35, 0.18))), "metal_dark")
+    mesh.strip([ring(0.85, 0.2), ring(0.88, 0.21)], "galvanised", smooth=True, closed=True)
+    return mesh, 0.95
+
+
+def bus_shelter(spec):
+    """A bus stop's shelter open to the road (−x): a glass back and ends in thin frames, a flat
+    roof reaching over the front, a bench inside."""
+    mesh = Mesh()
+    length, back, height = 3.6, 1.5, 2.4
+    for y in (-length / 2, 0.0, length / 2):
+        mesh.box((back - 0.05, y - 0.03, -BURIED), (back + 0.01, y + 0.03, height), "metal_dark")
+    for y in (-length / 2, length / 2):
+        mesh.box((-0.03, y - 0.03, -BURIED), (0.03, y + 0.03, height), "metal_dark")
+    # Glass: the back wall and the two ends, seen from both sides.
+    for quad in (
+        [(back - 0.02, -length / 2, 0.1), (back - 0.02, length / 2, 0.1),
+         (back - 0.02, length / 2, height - 0.1), (back - 0.02, -length / 2, height - 0.1)],
+        [(0.03, -length / 2, 0.1), (back - 0.05, -length / 2, 0.1),
+         (back - 0.05, -length / 2, height - 0.1), (0.03, -length / 2, height - 0.1)],
+        [(back - 0.05, length / 2, 0.1), (0.03, length / 2, 0.1),
+         (0.03, length / 2, height - 0.1), (back - 0.05, length / 2, height - 0.1)],
+    ):
+        mesh.face(quad, "glass")
+        mesh.face(list(reversed(quad)), "glass")
+    # The roof, reaching a little beyond the front.
+    mesh.box((-0.35, -length / 2 - 0.1, height), (back + 0.1, length / 2 + 0.1, height + 0.08),
+             "metal_dark")
+    # The bench along the back.
+    mesh.box((back - 0.45, -length / 2 + 0.3, 0.42), (back - 0.08, length / 2 - 0.3, 0.46), "wood")
+    for y in (-length / 2 + 0.4, length / 2 - 0.4):
+        mesh.box((back - 0.3, y - 0.03, 0.0), (back - 0.25, y + 0.03, 0.42), "metal_dark")
+    return mesh, height + 0.08
+
+
+KINDS = {"street_lamp": street_lamp, "bench": bench, "bin": litter_bin,
+         "bus_shelter": bus_shelter, "guard_rail": guard_rail, "guard_rail_end": guard_rail_end, "delineator": delineator,
          "snow_pole": snow_pole}
 CATALOGUE = [
     {"name": "guard_rail", "kind": "guard_rail"},
@@ -175,6 +291,10 @@ CATALOGUE = [
     {"name": "guard_rail_start", "kind": "guard_rail_end", "toward": "start"},
     {"name": "delineator", "kind": "delineator"},
     {"name": "snow_pole", "kind": "snow_pole"},
+    {"name": "street_lamp", "kind": "street_lamp"},
+    {"name": "bench", "kind": "bench"},
+    {"name": "bin", "kind": "bin"},
+    {"name": "bus_shelter", "kind": "bus_shelter"},
 ]
 
 

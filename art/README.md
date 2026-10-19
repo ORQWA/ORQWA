@@ -152,7 +152,9 @@ model of the kind it wants per plant. Every plant is in the [gallery](#vegetatio
 `guard_rail_end` and `guard_rail_start` (a span twisting down into the ground ahead or behind,
 flaring away from the road, as a run of rail begins and ends), `delineator` (a 1 m white post,
 its sloping top and black band with a reflector facing the traffic) and `snow_pole` (2.5 m,
-red and white in half-metre bands). Each model's +x points away from the road, its length
+red and white in half-metre bands); in towns `street_lamp` (6.5 m, its arm bending over the
+road to a flat luminaire), `bench` (wooden slats on two cast frames), `bin` (a drum on a post)
+and `bus_shelter` (glass back and ends in thin frames, a flat roof, a bench inside). Each model's +x points away from the road, its length
 runs along it, its origin on the ground where it stands; parts reach 0.4 m below it to meet
 sloping ground. The world shears the rails to the road's grade, so their posts stay upright.
 
@@ -165,15 +167,22 @@ scripts/art.sh blender --background --factory-startup --python art/props/build.p
 | `galvanised` | the rails' beams, posts and blocks (`props.galvanised`, metallic) |
 | `post`, `band`, `reflector` | the delineator's white post, black band and orange reflector |
 | `pole_red`, `pole_white` | the snow pole's bands |
+| `metal_dark` | lamps, bench frames, bins, the shelter's frame and roof |
+| `wood` | bench and shelter seats |
+| `lamp` | the luminaire's glass, faintly lit |
+| `glass` | the shelter's panes, see-through |
 
 The app colours each name from the palette's `props` section (`app/scenes/prop_models.gd`).
 The world (`core/torqa-world/src/props.rs`) places them by rules from the road's shape and
 the ground beside it: guard rails, span by span, on the side where the ground 4.5 m beyond
 the edge lies 2 m or more below the road, with a start and an end span at each run and none
 where a street joins; delineator posts every 50 m on both sides of country roads; snow poles
-every 25 m above 1,300 m, behind the rails where there are any. Towns (residential,
-industrial, commercial and public land) get none, nor do bridges and tunnels. Every prop is
-in the [gallery](#props).
+every 25 m above 1,300 m, behind the rails where there are any. Bridges and tunnels get
+none. Towns — built-up land on the map, or four buildings within 60 m where it maps none —
+get no posts but street lamps every 60 m on each side, staggered; now and then a bench facing
+the road with a bin beside it; and a bus shelter every 400 m on the right. Each stands only
+where it has room: clear of the buildings' walls, side streets and where streets join. Every
+prop is in the [gallery](#props).
 
 ## Riders (`riders/`)
 
@@ -303,7 +312,8 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | | | |
 |---|---|---|
 | ![guard_rail](../docs/images/models/props/guard_rail.jpg)<br>`guard_rail` | ![guard_rail_start](../docs/images/models/props/guard_rail_start.jpg)<br>`guard_rail_start` | ![guard_rail_end](../docs/images/models/props/guard_rail_end.jpg)<br>`guard_rail_end` |
-| ![delineator](../docs/images/models/props/delineator.jpg)<br>`delineator` | ![snow_pole](../docs/images/models/props/snow_pole.jpg)<br>`snow_pole` | |
+| ![delineator](../docs/images/models/props/delineator.jpg)<br>`delineator` | ![snow_pole](../docs/images/models/props/snow_pole.jpg)<br>`snow_pole` | ![street_lamp](../docs/images/models/props/street_lamp.jpg)<br>`street_lamp` |
+| ![bench](../docs/images/models/props/bench.jpg)<br>`bench` | ![bin](../docs/images/models/props/bin.jpg)<br>`bin` | ![bus_shelter](../docs/images/models/props/bus_shelter.jpg)<br>`bus_shelter` |
 
 ### Riders
 

@@ -1,5 +1,6 @@
 //! What stands by the road ridden (R92): guard rails where the ground falls away beside it,
-//! delineator posts along country roads and snow poles on mountain roads, placed by rules from
+//! delineator posts along country roads and snow poles on mountain roads; in towns street
+//! lamps, benches with bins and bus shelters. Placed by rules from
 //! the road's shape, the ground beside it and the land around, as the Blender models of
 //! `art/props` (`app/assets/models/props`).
 
@@ -10,6 +11,8 @@ use torqa_routes::Surface;
 
 use crate::landcover::LandIndex;
 use crate::road::{Mouth, RoadIndex, Station};
+use crate::streets::Clearance;
+use crate::vegetation::Footprint;
 use crate::{HeightGrid, ROAD_HALF_WIDTH};
 
 /// A guard rail's span (`guard_rail`, one post at its middle) and how far its face stands from
@@ -29,6 +32,29 @@ const POLE_SPACING: f64 = 25.0;
 const POLE_OFFSET: f64 = ROAD_HALF_WIDTH + 1.2;
 /// Nothing stands this far either side of where a street joins the road, beyond its half width.
 const MOUTH_CLEAR: f64 = 6.0;
+/// Street lamps in towns: this far apart on each side, staggered (one side's halfway between
+/// the other's), at the road's edge.
+const LAMP_SPACING: f64 = 60.0;
+const LAMP_OFFSET: f64 = ROAD_HALF_WIDTH + 0.7;
+/// Benches face the road from this far out, at about one place in `BENCH_SHARE` of every
+/// `TOWN_STEP`; a bin stands beside each, `BIN_ALONG` along the road.
+const TOWN_STEP: f64 = 10.0;
+const BENCH_OFFSET: f64 = ROAD_HALF_WIDTH + 2.2;
+const BENCH_SHARE: f64 = 0.035;
+const BIN_ALONG: f64 = 1.4;
+/// A bus stop's shelter every `SHELTER_SPACING` of road in town, on the right of travel, its
+/// front this far out.
+const SHELTER_SPACING: f64 = 400.0;
+const SHELTER_OFFSET: f64 = ROAD_HALF_WIDTH + 2.4;
+/// What stands in town keeps this clear of buildings and side streets.
+const TOWN_CLEAR: f64 = 1.0;
+/// Where the map has no built-up land around a village, its buildings make it one: this many
+/// within this far of the road's point.
+const VILLAGE_BUILDINGS: usize = 4;
+const VILLAGE_REACH: f64 = 60.0;
+/// The map's own way of the road ridden may lie this far off the drawn road: its points there
+/// are the road, not a side street.
+const ROAD_WAY_SLACK: f64 = 4.0;
 
 /// Things standing by the road in one chunk.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -38,14 +64,16 @@ pub struct Props {
     pub models: BTreeMap<String, Vec<f32>>,
 }
 
-/// What props are placed by: the chunk's ground, the land cover, the road ridden and where
-/// streets join it.
+/// What props are placed by: the chunk's ground, the land cover, the road ridden, where streets
+/// join it, the streets' room and the buildings around.
 #[derive(Clone, Copy)]
 pub(crate) struct Roadside<'a> {
     pub(crate) heights: &'a HeightGrid,
     pub(crate) land: &'a LandIndex,
     pub(crate) road: &'a RoadIndex,
     pub(crate) mouths: &'a [Mouth],
+    pub(crate) streets: &'a Clearance,
+    pub(crate) buildings: &'a [Footprint],
 }
 
 /// Places the props whose road point lies in the square `[origin, origin + size]` (metres
@@ -61,7 +89,97 @@ pub(crate) fn place(
     let (low, high) = (origin, (origin.0 + size, origin.1 + size));
     rails(&mut props, low, high, roadside, chunk_origin);
     posts(&mut props, low, high, roadside, chunk_origin);
+    town(&mut props, low, high, roadside, chunk_origin);
     props
+}
+
+/// In towns: street lamps staggered along both sides, now and then a bench facing the road with
+/// a bin beside it, and a bus shelter every `SHELTER_SPACING`; each only where it has room
+/// (clear of buildings, side streets and where streets join).
+fn town(
+    props: &mut Props,
+    low: (f64, f64),
+    high: (f64, f64),
+    roadside: &Roadside,
+    chunk_origin: [f64; 3],
+) {
+    for station in roadside.road.stations(TOWN_STEP, low, high) {
+        if station.surface != Surface::Ground || !built_up(&station, roadside) {
+            continue;
+        }
+        let step = (station.distance / TOWN_STEP).round();
+        // Lamps: on the right at whole multiples of the spacing, on the left half way between.
+        let half = LAMP_SPACING / TOWN_STEP / 2.0;
+        if step % half == 0.0 {
+            let side = if (step / half) % 2.0 == 0.0 {
+                1.0
+            } else {
+                -1.0
+            };
+            if let Some(at) = room(&station, side, LAMP_OFFSET, 0.4, roadside) {
+                push(props, "street_lamp", at, &station, side, 0.0, chunk_origin);
+            }
+            continue;
+        }
+        #[allow(clippy::cast_possible_truncation)] // whole metres along the route
+        let seed = station.distance.round() as i64;
+        if (station.distance / SHELTER_SPACING).fract().abs() < 1e-6 {
+            if let Some(at) = room(&station, 1.0, SHELTER_OFFSET, 2.5, roadside) {
+                push(props, "bus_shelter", at, &station, 1.0, 0.0, chunk_origin);
+            }
+            continue;
+        }
+        if crate::hash(seed ^ 0x6265_6e63) < BENCH_SHARE {
+            let side = if crate::hash(seed ^ 0x7369_6465) < 0.5 {
+                1.0
+            } else {
+                -1.0
+            };
+            if let Some(at) = room(&station, side, BENCH_OFFSET, 1.2, roadside) {
+                push(props, "bench", at, &station, side, 0.0, chunk_origin);
+                let bin = Station {
+                    position: (
+                        station.position.0 + station.direction.0 * BIN_ALONG,
+                        station.position.1 + station.direction.1 * BIN_ALONG,
+                    ),
+                    ..station
+                };
+                if let Some(at) = room(&bin, side, BENCH_OFFSET, 0.3, roadside) {
+                    push(props, "bin", at, &bin, side, 0.0, chunk_origin);
+                }
+            }
+        }
+    }
+}
+
+/// The spot `offset` metres out on `side`, on the ground, if something of `reach` metres
+/// fits there: off the road's edge where no street joins, clear of streets and buildings.
+fn room(
+    station: &Station,
+    side: f64,
+    offset: f64,
+    reach: f64,
+    roadside: &Roadside,
+) -> Option<[f64; 3]> {
+    if !open(station, side, roadside) {
+        return None;
+    }
+    let (east, north) = out(station, side, offset);
+    // The road ridden is one of the map's streets too: only the others count.
+    let other_street = |e: f64, n: f64| {
+        roadside
+            .road
+            .nearest(e, n, ROAD_HALF_WIDTH + ROAD_WAY_SLACK)
+            .is_none()
+    };
+    let blocked = roadside
+        .streets
+        .blocked_by(east, north, reach + TOWN_CLEAR, other_street)
+        || roadside
+            .buildings
+            .iter()
+            .any(|b| b.wall_distance(east, north) < reach + TOWN_CLEAR);
+    (!blocked).then(|| beside(station, side, offset, roadside))
 }
 
 /// Guard rails on the side where the ground falls away, span by span. A span stands where the
@@ -180,19 +298,26 @@ fn falls_away(station: &Station, side: f64, roadside: &Roadside) -> bool {
     station.elevation - roadside.heights.at(east, north) >= RAIL_DROP
 }
 
-/// Whether the land at the road is built up: towns get kerbs and lamps, not posts.
+/// Whether the land at the road is built up: towns get lamps, not posts. Built-up land on the
+/// map, or where it maps none, a few buildings close to the road.
 fn built_up(station: &Station, roadside: &Roadside) -> bool {
-    matches!(
-        roadside
-            .land
-            .cover_at(station.position.0, station.position.1),
+    let (east, north) = station.position;
+    let mapped = matches!(
+        roadside.land.cover_at(east, north),
         Some(
             LandCover::Residential
                 | LandCover::Industrial
                 | LandCover::Commercial
                 | LandCover::Public
         )
-    )
+    );
+    mapped
+        || roadside
+            .buildings
+            .iter()
+            .filter(|b| b.distance(east, north) < VILLAGE_REACH)
+            .count()
+            >= VILLAGE_BUILDINGS
 }
 
 /// Whether the road's edge on `side` is free here: no street joins it nearby.
@@ -252,12 +377,16 @@ fn push(
 #[cfg(test)]
 mod tests {
     /// Every model the rules place, as `art/props` builds them.
-    const PLACED: [&str; 5] = [
+    const PLACED: [&str; 9] = [
         "guard_rail",
         "guard_rail_end",
         "guard_rail_start",
         "delineator",
         "snow_pole",
+        "street_lamp",
+        "bench",
+        "bin",
+        "bus_shelter",
     ];
 
     #[test]
@@ -284,6 +413,10 @@ mod tests {
             "reflector",
             "pole_red",
             "pole_white",
+            "metal_dark",
+            "wood",
+            "lamp",
+            "glass",
         ] {
             crate::palette::srgb(&format!("props.{material}"), 1.0);
         }
