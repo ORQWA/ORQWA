@@ -44,7 +44,6 @@ func _ready() -> void:
 	# The rider as a heading, an initial in a badge beside the name, then the figures in a
 	# card (#191).
 	var page: VBoxContainer = VBoxContainer.new()
-	page.name = tr("Profile")
 	page.add_theme_constant_override("separation", 16)
 	var header: HBoxContainer = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
@@ -124,9 +123,12 @@ func _ready() -> void:
 			_teeth_rows.append_array([caption, field])
 	card.add_child(grid)
 	page.add_child(card)
-	tabs.add_child(page)
-	_zones.name = tr("Zones")
-	tabs.add_child(_zones)
+	var profile_page: ScrollContainer = UiTheme.scrolling(page)
+	profile_page.name = tr("Profile")
+	tabs.add_child(profile_page)
+	var zones_page: ScrollContainer = UiTheme.scrolling(_zones)
+	zones_page.name = tr("Zones")
+	tabs.add_child(zones_page)
 	_hud.name = tr("HUD")
 	tabs.add_child(_hud)
 	add_child(tabs)
@@ -171,7 +173,7 @@ func edit(profile: Dictionary, hud_layout: PackedStringArray) -> void:
 	_zones.edit(power_zones, heart_zones, _ftp.value, _max_heart_rate.value)
 	_hud.edit(hud_layout, UNITS[_units.selected] == "imperial")
 	title = tr("New rider") if _id.is_empty() else tr("Rider settings")
-	popup_centered(Vector2i(960, 600))
+	UiScale.popup(self, Vector2i(960, 780))
 	_name_edit.grab_focus()
 
 

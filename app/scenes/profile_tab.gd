@@ -61,7 +61,10 @@ func _init() -> void:
 	row.add_child(_add_button)
 	add_child(row)
 	_cards.add_theme_constant_override("separation", 12)
-	add_child(_cards)
+	# An unfolded rider is taller than a small window (R94).
+	var scroll: ScrollContainer = UiTheme.scrolling(_cards)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(scroll)
 	add_child(_dialog)
 	_dialog.profile_confirmed.connect(_on_profile_confirmed)
 	add_child(_account_dialog)
@@ -163,8 +166,11 @@ func _card(rider: Dictionary, active: bool, deletable: bool) -> PanelContainer:
 	rows.add_child(line)
 
 	if unfolded:
-		var columns: HBoxContainer = HBoxContainer.new()
-		columns.add_theme_constant_override("separation", 32)
+		# Side by side as far as they fit, the zones under the settings in a small window (R94).
+		var columns: ReflowGrid = ReflowGrid.new()
+		columns.max_columns = 3
+		columns.add_theme_constant_override("h_separation", 32)
+		columns.add_theme_constant_override("v_separation", 16)
 		var settings: GridContainer = GridContainer.new()
 		settings.columns = 2
 		settings.add_theme_constant_override("h_separation", 24)
@@ -301,7 +307,7 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 ## The rider's zones (#173) as a column each in `columns`, every zone with its colour, name
 ## and range: power zones 1–7 from the bounds as shares of FTP, heart-rate zones 1–5 from the
 ## maximum heart rate.
-func _show_zones(columns: HBoxContainer, rider: Dictionary) -> void:
+func _show_zones(columns: ReflowGrid, rider: Dictionary) -> void:
 	var ftp: float = rider.get("ftp_w", 200.0)
 	var max_hr: float = rider.get("max_heart_rate_bpm", 185.0)
 	var power: PackedFloat64Array = rider.get("power_zones_pct", ZonesEditor.DEFAULT_POWER)

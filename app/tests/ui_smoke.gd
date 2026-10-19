@@ -684,7 +684,11 @@ func _profile_icons() -> void:
 	var unfolded: Dictionary = tab.get("_unfolded")
 	unfolded["ann"] = true
 	tab.call("_show_riders", [ann, bob], "bob")
-	var grids: Array[Node] = cards.find_children("*", "GridContainer", true, false)
+	var grids: Array[Node] = []
+	for grid: Node in cards.find_children("*", "GridContainer", true, false):
+		# The columns reflow (R94); the settings are a grid of their own in them.
+		if not grid is ReflowGrid:
+			grids.append(grid)
 	var rows: Array[String] = []
 	for label: Node in cards.find_children("*", "Label", true, false):
 		rows.append((label as Label).text)
@@ -707,7 +711,7 @@ func _profile_icons() -> void:
 			and zones[1].containsn("Heart-rate zones")
 			and "Z5 Maximum" in zones[1]
 		),
-		"settings, power zones and heart-rate zones side by side: %s" % [zones]
+		"settings, power zones and heart-rate zones as columns: %s" % [zones]
 	)
 	var bins: Array[Button] = _bins(cards)
 	_check(bins.size() == 2 and not bins[0].disabled, "a bin on every card")
@@ -873,7 +877,16 @@ func _overlay() -> void:
 		not window.borderless and not window.always_on_top and not window.disable_3d,
 		"the window as it was"
 	)
-	_check(window.content_scale_size == scale_before, "the scale as it was")
+	_check(
+		(
+			window.content_scale_size == scale_before
+			and window.content_scale_mode == Window.CONTENT_SCALE_MODE_DISABLED
+			and is_equal_approx(
+				window.content_scale_factor, UiScale.of_screen(window.current_screen)
+			)
+		),
+		"the scale as it was, the interface's own again (R94)"
+	)
 	_check(opaque.visible, "and opaque again (#220)")
 	# Leaving resizes the window; that must not bring the overlay's outline back (#123).
 	_check(window.mouse_passthrough_polygon.is_empty(), "every click is the app's again")
@@ -888,7 +901,7 @@ func _overlay() -> void:
 func _overlay_size() -> void:
 	var overlay: OverlayWindow = OverlayWindow.new(root)
 	var content: Vector2 = Vector2(300.0, 400.0)
-	var screen_scale: float = DisplayServer.screen_get_scale(root.current_screen)
+	var screen_scale: float = UiScale.of_screen(root.current_screen)
 	overlay.enter(content, Rect2i(), 0.0)
 	_check(overlay.scale >= OverlayWindow.DEFAULT_SCALE, "larger than the ride screen's HUD")
 	_check(

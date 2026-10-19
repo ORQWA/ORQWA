@@ -12,7 +12,9 @@ Torqa — offline-first, open-source (GPL-3.0) indoor cycling app. Read before w
   by GitHub Actions macOS runners. Locally, only the portable Godot editor `.app` and downloaded
   Torqa builds run natively, for 3D and real-trainer testing.
 - Same for Windows (a Windows DLL with Windows' Bluetooth behind it): the Windows `.exe` and
-  GDExtension are built by the `windows` job on GitHub Actions Windows runners.
+  GDExtension are built by the `windows` job on GitHub Actions Windows runners. For native GPU
+  renders during development, `scripts/build-gdext.sh release windows` cross-builds the DLL in
+  the container into `app/bin/` for the portable Godot editor (ADR 0021); releases stay on CI.
 - Linux release builds come from the `linux` job on GitHub Actions `ubuntu-22.04` runners, not
   the container: its newer glibc would keep them from starting on older distributions (ADR 0012).
   Linux development and checks still run in the container.
