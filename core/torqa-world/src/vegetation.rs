@@ -176,15 +176,53 @@ impl Trees {
     }
 }
 
-/// A building's footprint as a circle around it, which plants keep out of.
-#[derive(Debug, Clone, Copy)]
+/// A building's footprint as a circle around it, which plants keep out of, and its outline,
+/// for what may stand close to its walls.
+#[derive(Debug, Clone)]
 pub(crate) struct Footprint {
     east: f64,
     north: f64,
     radius: f64,
+    outline: Vec<Point>,
+}
+
+/// Whether something of `reach` metres standing at a point would touch one of `buildings`.
+pub(crate) fn by_building(buildings: &[Footprint], east: f64, north: f64, reach: f64) -> bool {
+    buildings
+        .iter()
+        .any(|b| (b.east - east).hypot(b.north - north) < b.radius + reach)
 }
 
 impl Footprint {
+    /// How far a point is from the building's edge (roughly: from its centre, less its radius).
+    pub(crate) fn distance(&self, east: f64, north: f64) -> f64 {
+        ((self.east - east).hypot(self.north - north) - self.radius).max(0.0)
+    }
+
+    /// How far a point is from the building's walls; 0 inside.
+    pub(crate) fn wall_distance(&self, east: f64, north: f64) -> f64 {
+        if self.distance(east, north) > 0.0 {
+            // Outside the circle round it: no nearer than that.
+            return self.distance(east, north);
+        }
+        let mut inside = false;
+        let mut nearest = f64::INFINITY;
+        let count = self.outline.len();
+        for i in 0..count {
+            let (a, b) = (self.outline[i], self.outline[(i + 1) % count]);
+            if (a.1 > north) != (b.1 > north)
+                && east < a.0 + (north - a.1) * (b.0 - a.0) / (b.1 - a.1)
+            {
+                inside = !inside;
+            }
+            let (de, dn) = (b.0 - a.0, b.1 - a.1);
+            let length_squared = (de * de + dn * dn).max(1e-12);
+            let t = (((east - a.0) * de + (north - a.1) * dn) / length_squared).clamp(0.0, 1.0);
+            nearest = nearest.min((east - a.0 - de * t).hypot(north - a.1 - dn * t));
+        }
+        if inside { 0.0 } else { nearest }
+    }
+
     pub(crate) fn around(outline: &[Point]) -> Self {
         #[allow(clippy::cast_precision_loss)] // few corners
         let count = outline.len().max(1) as f64;
@@ -198,6 +236,7 @@ impl Footprint {
             east,
             north,
             radius,
+            outline: outline.to_vec(),
         }
     }
 }
@@ -217,9 +256,7 @@ pub(crate) struct Ground<'a> {
 impl Ground<'_> {
     /// Whether something of `reach` metres standing at a point would touch a building.
     fn by_building(&self, east: f64, north: f64, reach: f64) -> bool {
-        self.buildings
-            .iter()
-            .any(|b| (b.east - east).hypot(b.north - north) < b.radius + reach)
+        by_building(self.buildings, east, north, reach)
     }
 
     /// The ground's steepest rise over run at a point.

@@ -416,6 +416,27 @@ impl Clearance {
         Self { cells }
     }
 
+    /// Like [`Clearance::blocked`], counting only the points `counts` accepts (e.g. not those
+    /// of the road ridden itself, beside which things are meant to stand).
+    pub(crate) fn blocked_by(
+        &self,
+        east: f64,
+        north: f64,
+        margin: f64,
+        counts: impl Fn(f64, f64) -> bool,
+    ) -> bool {
+        let (ce, cn) = clearance_cell(east, north);
+        (ce - 1..=ce + 1).any(|x| {
+            (cn - 1..=cn + 1).any(|y| {
+                self.cells.get(&(x, y)).is_some_and(|points| {
+                    points.iter().any(|&(e, n, half)| {
+                        (e - east).hypot(n - north) < half + margin + STEP_M / 2.0 && counts(e, n)
+                    })
+                })
+            })
+        })
+    }
+
     /// Whether `(east, north)` lies on a street or within `margin` of its edge.
     pub(crate) fn blocked(&self, east: f64, north: f64, margin: f64) -> bool {
         let (ce, cn) = clearance_cell(east, north);
