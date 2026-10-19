@@ -229,7 +229,8 @@ Built in rideable steps:
   - [x] The Zwift Click v2 (R77): its two pods as one shifter, + and − as buttons 1 and 2;
     what any shifter's buttons do set in a dialog behind a pen beside its row (#271)
     and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
-    written from the community's drivers, **not yet checked on the hardware**
+    written from the community's drivers and checked on a pair (R96): the left pod relays the
+    right pod's buttons, which count once
   - [x] The remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
     that a phone's or tablet's browser opens from a QR code, its ten buttons (two big) doing what the
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the
