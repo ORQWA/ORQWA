@@ -56,8 +56,10 @@ The `macos` CI job builds `Torqa-macos-arm64.zip` and `torqa-cli-macos-arm64.tar
 real trainers on macOS, use the CLI built by CI: see the [command-line guide](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Command-line-tool).
 
 Windows builds come from the `windows` CI job: `Torqa-windows-x86_64.zip` (`Torqa.exe` with
-`torqa_gd.dll` beside it; keep both in one folder) and `torqa-cli-windows-x86_64.zip`, both under
-the run's artifacts. Like the macOS app it is built natively on the runner (MSVC, with MSYS2's
+`torqa_gd.dll` beside it; keep both in one folder), the installer `Torqa-windows-x86_64.msi`
+and `torqa-cli-windows-x86_64.zip`, all under the run's artifacts. The installer is built from
+`scripts/release/Torqa.wxs` with the WiX Toolset ([ADR 0023](adr/0023-windows-installer.md)),
+and the job installs and uninstalls it once to check it. Like the macOS app it is built natively on the runner (MSVC, with MSYS2's
 `sh` and `make` for FFmpeg).
 FFmpeg's libraries come from `scripts/build-ffmpeg.sh` (a pinned, verified release; ADR 0010):
 built into the dev image, and once per platform in CI.
