@@ -35,7 +35,7 @@ var _confirm_delete: ConfirmationDialog = ConfirmationDialog.new()
 var _summary: bool = false
 var _back: Button = Button.new()
 var _subtitle: Label = Label.new()
-var _stats: GridContainer = GridContainer.new()
+var _stats: ReflowGrid = ReflowGrid.new()
 var _climbs: VBoxContainer = VBoxContainer.new()
 ## The durations over which the ride holds the rider's best power (R62).
 var _power_records: HFlowContainer = HFlowContainer.new()
@@ -233,7 +233,7 @@ func _ready() -> void:
 	_confirm_delete.confirmed.connect(_on_delete_confirmed)
 	add_child(_confirm_delete)
 
-	_stats.columns = 6
+	_stats.max_columns = 6
 	_stats.add_theme_constant_override("h_separation", 28)
 	_stats.add_theme_constant_override("v_separation", 12)
 	_detail.add_child(_stats)
@@ -270,8 +270,9 @@ func _ready() -> void:
 	_chart.custom_minimum_size = Vector2(0, 220)
 	_detail.add_child(_chart)
 
-	var zones: HBoxContainer = HBoxContainer.new()
-	zones.add_theme_constant_override("separation", 32)
+	var zones: ReflowGrid = ReflowGrid.new()
+	zones.add_theme_constant_override("h_separation", 32)
+	zones.add_theme_constant_override("v_separation", 16)
 	# i18n-begin
 	for entry: Array in [
 		["Time in power zones", _power_zones],

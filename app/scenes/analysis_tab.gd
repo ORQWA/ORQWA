@@ -31,6 +31,8 @@ const KM_PER_MILE: float = 1.609344
 const METERS_PER_FOOT: float = 0.3048
 ## The durations shown as figures under the curve, in seconds (the records of R62).
 const KEY_DURATIONS: Array[int] = [5, 60, 300, 1200, 3600]
+## How much wider than its figures the curve must be to stand beside the profile (R94).
+const CURVE_ROOM: float = 200.0
 
 var _torqa: TorqaApp
 var _period: OptionButton = OptionButton.new()
@@ -158,8 +160,11 @@ func _power_card() -> PanelContainer:
 	_compare.item_selected.connect(func(_index: int) -> void: refresh())
 	settings.add_child(_compare)
 	rows.add_child(settings)
-	var charts: HBoxContainer = HBoxContainer.new()
-	charts.add_theme_constant_override("separation", 32)
+	# The profile beside the curve, or under it in a small window (R94).
+	var charts: ReflowGrid = ReflowGrid.new()
+	charts.expand_room = CURVE_ROOM
+	charts.add_theme_constant_override("h_separation", 32)
+	charts.add_theme_constant_override("v_separation", 24)
 	charts.add_child(_curve_column())
 	charts.add_child(_profile_column())
 	rows.add_child(charts)
@@ -174,6 +179,7 @@ func _curve_column() -> VBoxContainer:
 	rows.add_child(UiTheme.caption(tr("Power curve")))
 	var about: Label = Label.new()
 	about.text = tr("The best power you held for each length of effort, from a sprint to hours.")
+	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	about.add_theme_color_override("font_color", UiTheme.MUTED)
 	rows.add_child(about)
 	_legend.add_theme_constant_override("separation", 18)

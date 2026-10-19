@@ -104,10 +104,10 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Tagged releases (#273): after checks and all native builds, publish the eight app/CLI
   archives for macOS arm64, Windows x86_64 and Linux x86_64/arm64 on GitHub Releases;
   preserve ZIP uploads as archives when downloading them for publication
-- [x] Release versions: the version stays in `core/Cargo.toml` and the macOS preset, checked to
-  agree on every change and, for a release, to be the tag's (`v<version>`), after v0.2.0
-  shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>` sets it
-  in both and in `core/Cargo.lock`
+- [x] Release versions: the version stays in `core/Cargo.toml` and the macOS and Windows
+  presets, checked to agree on every change and, for a release, to be the tag's (`v<version>`),
+  after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
+  sets it in all of them and in `core/Cargo.lock`
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
@@ -264,6 +264,8 @@ Built in rideable steps:
   - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth FTMS only
 - [x] Windows and Linux builds from CI (Linux x86_64 and arm64 on Ubuntu 22.04, ADR 0012)
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
+- [x] Windows `.exe` with the app icon, Torqa's name and version, as on macOS, rather than the
+  Godot template's (taskbar, Explorer, Task Manager); CI fails a build that keeps them
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)
 - [x] Start page with top tabs (Courses, History, Profile, Devices); ride view separated
@@ -333,6 +335,9 @@ Built in rideable steps:
     bin to delete it
   - [x] A spinner above Ride while the course page loads its route; a course that failed to
     open tries again when reopened
+  - [x] The interface at the screen's scale rather than stretched to the window (R94): a
+    smaller window shows less, not smaller text; the layouts reflow down to 1024 × 640
+    (`ReflowGrid`, a wrapping gallery toolbar, scrolling pages) and dialogs fit the window
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
 ### Phase 9 — Graphics (R43–R47, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md))

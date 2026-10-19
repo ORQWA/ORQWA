@@ -25,6 +25,7 @@ before that setting may hold CRLF files; `git ls-files --eol | grep w/crlf` list
 | Build the GDExtension into `app/bin/` | `scripts/build-gdext.sh [debug\|release]` |
 | Render screenshots of the start page, a ride, the summary and the analysis (software Vulkan, with 16 weeks of made-up rides) into `screenshots/` | `scripts/screenshots.sh` |
 | Render only the English/German error-details views, without preparing a route | `SCREENSHOT_ERRORS_ONLY=1 scripts/screenshots.sh` |
+| Render the screenshots in another window size, e.g. the smallest the layouts are made for (R94) | `SCREENSHOT_SIZE=1024x640 scripts/screenshots.sh` |
 | Render the standard views of the 3D world (before and after a visual change) into `screenshots/views/` | `scripts/render-views.sh` |
 | Render the 3D models (buildings, plants, clouds) and the riders for review; with `GALLERY=docs/images/models`, also the galleries in `art/README.md` | `scripts/render-models.sh`, `scripts/render-riders.sh` |
 | Regenerate the boot splash PNG after a logo change | `scripts/render-splash.sh` |
@@ -84,12 +85,13 @@ the host: a worktree's Git directory lies outside the checkout the container see
 
 A tag does not set the version. The About tab, the first log line, the CLI and the User-Agent
 read `version` in `core/Cargo.toml`; the macOS bundle reads `application/short_version` and
-`application/version` in `app/export_presets.cfg`. First set the new version in those three
-places and update `core/Cargo.lock` to match: `make release-version VERSION=0.3.1` does both
-in the container, refusing anything but three numbers (the macOS bundle's version allows no
-more). Commit that, re-render the About screenshot with `scripts/screenshots.sh` (it shows
-the version and the commit) and merge both. `scripts/check.sh` fails while the versions
-disagree (`scripts/release/version.py`).
+`application/version` in `app/export_presets.cfg`, the Windows `.exe` `application/file_version`
+and `application/product_version` there, with a fourth number 0 (`0.3.1.0`). First set the new
+version in all those places and update `core/Cargo.lock` to match:
+`make release-version VERSION=0.3.1` does both in the container, refusing anything but three
+numbers (the macOS bundle's version allows no more). Commit that, re-render the About
+screenshot with `scripts/screenshots.sh` (it shows the version and the commit) and merge both.
+`scripts/check.sh` fails while the versions disagree (`scripts/release/version.py`).
 
 Then push the tag `v<version>` on the merged commit, for example `git tag v0.2.1` then
 `git push origin v0.2.1`. Every tag triggers CI, but only a tag naming its commit's version is
