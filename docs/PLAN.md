@@ -104,10 +104,10 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Tagged releases (#273): after checks and all native builds, publish the eight app/CLI
   archives for macOS arm64, Windows x86_64 and Linux x86_64/arm64 on GitHub Releases;
   preserve ZIP uploads as archives when downloading them for publication
-- [x] Release versions: the version stays in `core/Cargo.toml` and the macOS preset, checked to
-  agree on every change and, for a release, to be the tag's (`v<version>`), after v0.2.0
-  shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>` sets it
-  in both and in `core/Cargo.lock`
+- [x] Release versions: the version stays in `core/Cargo.toml` and the macOS and Windows
+  presets, checked to agree on every change and, for a release, to be the tag's (`v<version>`),
+  after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
+  sets it in all of them and in `core/Cargo.lock`
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
@@ -262,6 +262,8 @@ Built in rideable steps:
   - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth FTMS only
 - [x] Windows and Linux builds from CI (Linux x86_64 and arm64 on Ubuntu 22.04, ADR 0012)
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
+- [x] Windows `.exe` with the app icon, Torqa's name and version, as on macOS, rather than the
+  Godot template's (taskbar, Explorer, Task Manager); CI fails a build that keeps them
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)
 - [x] Start page with top tabs (Courses, History, Profile, Devices); ride view separated

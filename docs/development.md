@@ -84,12 +84,13 @@ the host: a worktree's Git directory lies outside the checkout the container see
 
 A tag does not set the version. The About tab, the first log line, the CLI and the User-Agent
 read `version` in `core/Cargo.toml`; the macOS bundle reads `application/short_version` and
-`application/version` in `app/export_presets.cfg`. First set the new version in those three
-places and update `core/Cargo.lock` to match: `make release-version VERSION=0.3.1` does both
-in the container, refusing anything but three numbers (the macOS bundle's version allows no
-more). Commit that, re-render the About screenshot with `scripts/screenshots.sh` (it shows
-the version and the commit) and merge both. `scripts/check.sh` fails while the versions
-disagree (`scripts/release/version.py`).
+`application/version` in `app/export_presets.cfg`, the Windows `.exe` `application/file_version`
+and `application/product_version` there, with a fourth number 0 (`0.3.1.0`). First set the new
+version in all those places and update `core/Cargo.lock` to match:
+`make release-version VERSION=0.3.1` does both in the container, refusing anything but three
+numbers (the macOS bundle's version allows no more). Commit that, re-render the About
+screenshot with `scripts/screenshots.sh` (it shows the version and the commit) and merge both.
+`scripts/check.sh` fails while the versions disagree (`scripts/release/version.py`).
 
 Then push the tag `v<version>` on the merged commit, for example `git tag v0.2.1` then
 `git push origin v0.2.1`. Every tag triggers CI, but only a tag naming its commit's version is
