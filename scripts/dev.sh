@@ -24,12 +24,17 @@ if [ -t 0 ] && [ -t 1 ]; then
     tty_flags="-it"
 fi
 
+. "$root/scripts/give-back-files.sh"
+
+status=0
 # shellcheck disable=SC2086 # tty_flags is intentionally empty or a single flag
-exec docker run --rm $tty_flags \
+docker run --rm $tty_flags \
     -e TORQA_COMMIT="$commit" \
     -v "$root:/workspaces/torqa" \
     -v torqa-cargo-registry:/usr/local/cargo/registry \
     -v torqa-target:/workspaces/torqa/core/target \
     -v torqa-cache:/root/.cache \
     -w /workspaces/torqa \
-    torqa-dev "$@"
+    torqa-dev "$@" || status=$?
+give_back_files torqa-dev
+exit "$status"

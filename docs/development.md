@@ -17,6 +17,12 @@ runs the scripts and the Dockerfile from the checkout, and `sh` rejects CRLF. A 
 before that setting may hold CRLF files; `git ls-files --eol | grep w/crlf` lists them, and
 `git add --renormalize .` after a clean `git checkout` puts them right.
 
+The containers run as root. With rootful Docker on Linux, a WSL clone included, what they write
+into the checkout would stay owned by root, so `scripts/dev.sh` and `scripts/art.sh` hand those
+files back to you afterwards (Docker Desktop and rootless setups need nothing and get nothing).
+The VS Code devcontainer does not; after working in it on such a host, one `scripts/dev.sh true`
+does the same.
+
 ## Tasks
 
 | Task | Command (inside the container) |
