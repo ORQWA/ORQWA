@@ -109,8 +109,8 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
   sets it in all of them and in `core/Cargo.lock`
 - [ ] Windows installer and updates (R99, ADR 0023):
-  - [ ] `Torqa-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
-    uninstall, upgrade in place; installed and uninstalled once in CI
+  - [x] `Torqa-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
+    uninstall, upgrade in place; installed and uninstalled once in CI, installed by hand
   - [ ] Update check at start-up (setting to turn it off), download and install the new MSI
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
