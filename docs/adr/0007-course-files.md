@@ -99,7 +99,7 @@ Format 1 (inputs only) is final: a stored pre-built world (format 2) is no longe
 Rebuilding keeps every course on the current generator; the wait before a ride is to be
 hidden by building the world while the course's page is open (#237).
 
-## Amendment 2026-10-19 — a sample course (R94)
+## Amendment 2026-10-19 — a sample course (R95)
 
 A rider who has just downloaded Torqa has no course to ride before importing one, which needs
 the internet. Torqa now ships one prepared course, **Twann – Chasseral** (20.4 km, 1,190 m of

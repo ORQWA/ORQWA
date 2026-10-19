@@ -1757,7 +1757,7 @@ impl App {
     }
 
     /// Starts the library with the sample `course`, saved as `file_name`, if there is no library
-    /// yet (R94): a new rider has a course to ride at once, offline. An existing library stays
+    /// yet (R95): a new rider has a course to ride at once, offline. An existing library stays
     /// as it is, so a deleted sample is not brought back. True if the sample was added.
     ///
     /// # Errors

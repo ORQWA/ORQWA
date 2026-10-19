@@ -31,7 +31,7 @@ core/                      Rust workspace (tokio + tracing)
                            (ADR 0019)
   torqa-app/               application layer: commands + update() per frame for front ends,
                            the analysis across a rider's rides
-  torqa-gd/                gdext bindings (TorqaApp node), the sample course (R94)
+  torqa-gd/                gdext bindings (TorqaApp node), the sample course (R95)
   torqa-cli/               headless: scan devices, ride with fake trainer, export FIT, sample
                            rides
 app/                       Godot 4 project: scenes/ (screens, 3D world, video view), ui/ (shared
@@ -154,7 +154,7 @@ Built in rideable steps:
   error instead of loading forever (#219)
 - [x] Rebuild outdated worlds from stored inputs (format 1 always rebuilds offline)
 - [x] A new library starts with a sample course, Twann – Chasseral, shipped in the
-  GDExtension and ridden offline (R94, ADR 0007 amendment 2026-10-19)
+  GDExtension and ridden offline (R95, ADR 0007 amendment 2026-10-19)
 - Format 2 (a stored pre-built world) dropped: the world is built while the course's page is
   open instead (#237, ADR 0007 amendment 2026-10-15)
 - **Exit:** prepare a course online, ride it offline on another machine from the `.tqc` file ✅

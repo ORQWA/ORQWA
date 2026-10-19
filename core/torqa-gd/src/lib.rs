@@ -85,7 +85,7 @@ impl TorqaCore {
 /// The commit the build script found (see `build.rs`).
 const COMMIT: &str = env!("TORQA_COMMIT");
 
-/// The course a new library starts with (R94), with its terrain and map so that it rides
+/// The course a new library starts with (R95), with its terrain and map so that it rides
 /// offline. Here rather than in the core, which the command-line tool shares: only the app
 /// ships it. See `courses/README.md`.
 const SAMPLE_COURSE: &[u8] = include_bytes!("../courses/twann-chasseral.tqc");

@@ -31,7 +31,7 @@ The Blender skills in `.claude/skills/blender-*` are from
 Map and terrain data credits are shown in the app and stored in every course file; see
 [Courses](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Courses).
 
-The sample course Torqa ships (`core/torqa-gd/courses/twann-chasseral.tqc`, R94) holds such
+The sample course Torqa ships (`core/torqa-gd/courses/twann-chasseral.tqc`, R95) holds such
 data: map tiles © OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0), and
 terrain by Mapterhorn (CC BY 4.0) and AWS Terrain Tiles.
 
