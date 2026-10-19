@@ -56,6 +56,11 @@ jobs:
     needs: image
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Reading the image the image job published; without, GHCR refuses the pull and every run
+    # builds the image again.
+    permissions:
+      contents: read
+      packages: read
     env:
       IMAGE: ${{ needs.image.outputs.tag }}
     steps:
