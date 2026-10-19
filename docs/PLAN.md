@@ -515,7 +515,9 @@ physically based materials and light, restyled group by group.
     - [ ] Signposts at junctions
     - [x] Countryside: pasture fences in stretches beside pasture and fields, round hay bales
       in fields, wayside crosses where lanes join outside towns
-    - [ ] Power lines (poles with wires running from pole to pole) and field gates
+    - [x] Power lines: wooden poles every 50 m along stretches of country road, three wires
+      sagging from pole to pole as geometry
+    - [ ] Field gates
   - [ ] More geometry on buildings where it shows (eaves, window depth); frame rate on an M1
     at Medium checked after the restyle
 - **Exit:** a long hilly course at 60 fps on M1 base at Medium ✅ (#111, 2026-10-08); screenshots

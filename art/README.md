@@ -161,7 +161,8 @@ countryside `fence` (a 3 m span of two split rails between weathered posts), `ha
 galvanised pole: `sign_place` (a blue panel with a white rim) and `sign_place_end` (the same
 with a red bar across), whose names are the app's text on their faces, and the warning
 triangles `sign_bend_left`, `sign_bend_right` (a curving arrow) and `sign_grade` (a slope,
-the grade as text). Each model's +x points away from the road, its length
+the grade as text); and `power_pole` (a tapered wooden pole with a crossarm and three
+insulators). Each model's +x points away from the road, its length
 runs along it, its origin on the ground where it stands; parts reach 0.4 m below it to meet
 sloping ground. The world shears the rails to the road's grade, so their posts stay upright.
 
@@ -182,6 +183,7 @@ scripts/art.sh blender --background --factory-startup --python art/props/build.p
 | `hay`, `wrap` | the bales: straw, or white plastic |
 | `stone` | the wayside cross's foot |
 | `sign_blue`, `sign_white`, `sign_red`, `sign_black` | the signs' faces and symbols |
+| `insulator` | the power poles' insulators |
 
 The app colours each name from the palette's `props` section (`app/scenes/prop_models.gd`).
 The world (`core/torqa-world/src/props.rs`) places them by rules from the road's shape and
@@ -200,7 +202,10 @@ about one in five of the lanes joining the road outside towns. Road signs stand 
 travel: where the road enters a town (by majority over 200 m, so a gap between houses ends
 none) the nearest place's name from the map, and its end sign where it leaves; outside towns
 a bend sign 80 m before a hairpin (more than 100° within 60 m) and a grade sign before 300 m
-climbing or falling at 9 % or more. Every prop is in the [gallery](#props).
+climbing or falling at 9 % or more. Power lines follow about two in five 600 m stretches of
+country road, on one side, 9 m from the centre: a pole every 50 m and three wires sagging
+from pole to pole, built by the world as geometry (`wire` in the palette) since no fixed model
+bends with the road. Every prop is in the [gallery](#props).
 
 ## Riders (`riders/`)
 
@@ -335,6 +340,7 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![fence](../docs/images/models/props/fence.jpg)<br>`fence` | ![hay_bale](../docs/images/models/props/hay_bale.jpg)<br>`hay_bale` | ![hay_bale_wrapped](../docs/images/models/props/hay_bale_wrapped.jpg)<br>`hay_bale_wrapped` |
 | ![wayside_cross](../docs/images/models/props/wayside_cross.jpg)<br>`wayside_cross` | ![sign_place](../docs/images/models/props/sign_place.jpg)<br>`sign_place` | ![sign_place_end](../docs/images/models/props/sign_place_end.jpg)<br>`sign_place_end` |
 | ![sign_bend_left](../docs/images/models/props/sign_bend_left.jpg)<br>`sign_bend_left` | ![sign_bend_right](../docs/images/models/props/sign_bend_right.jpg)<br>`sign_bend_right` | ![sign_grade](../docs/images/models/props/sign_grade.jpg)<br>`sign_grade` |
+| ![power_pole](../docs/images/models/props/power_pole.jpg)<br>`power_pole` | | |
 
 ### Riders
 

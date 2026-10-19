@@ -2658,12 +2658,12 @@ impl TorqaApp {
     }
 
     /// World chunk `index`: `{center, terrain, buildings, modelled, streets, tracks, water,
-    /// plants, props, labels, grass, flowers}`. `terrain`, `buildings`, `streets`, `tracks` and `water`
+    /// plants, props, labels, wires, grass, flowers}`. `terrain`, `buildings`, `streets`, `tracks` and `water`
     /// (lakes, rivers and streams) are mesh arrays (`{vertices, normals, uvs, colors, indices}`);
     /// `plants` maps vegetation model names (trees, bushes, rocks) to `MultiMesh` buffers
     /// (transform and colour), `props` maps roadside model names (guard rails, posts, poles) to
-    /// transform buffers, `labels` lists the signs' text (`{text, transform}`), and `grass`
-    /// and `flowers` are transform buffers.
+    /// transform buffers, `labels` lists the signs' text (`{text, transform}`), `wires` are the
+    /// power lines' wires as mesh arrays, and `grass` and `flowers` are transform buffers.
     /// `modelled` lists cells of buildings drawn as models up close: `{models, shells}`, with
     /// `models` mapping model names to `MultiMesh` buffers (transform, colour, custom data)
     /// and `shells` the mesh arrays to draw in the distance instead. Geometry is relative to
@@ -2724,6 +2724,7 @@ impl TorqaApp {
             "plants" => &plants,
             "props" => &props,
             "labels" => &labels,
+            "wires" => &mesh_arrays(&chunk.props.wires),
             "grass" => &grass,
             "flowers" => &flowers,
         }

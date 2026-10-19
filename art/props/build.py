@@ -1,7 +1,7 @@
 """Builds the props that stand by the road (R92) — guard rails, delineator posts and snow
 poles; in towns street lamps, benches, bins and bus shelters; in the countryside pasture
-fences, hay bales and wayside crosses; road signs — and exports them for Godot (ADR 0009,
-ADR 0020).
+fences, hay bales, wayside crosses and power poles; road signs — and exports them for Godot
+(ADR 0009, ADR 0020). The power lines' wires are the world's own geometry.
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/props/build.py
@@ -13,7 +13,8 @@ it stands. Guard rails are 4 m spans that the world shears to the road's grade, 
 upright; `guard_rail_end` slopes down into the ground ahead (+y), `guard_rail_start` behind.
 Each model is one mesh with named materials (`galvanised`, `post`, `band`, `reflector`,
 `pole_red`, `pole_white`, `metal_dark`, `wood`, `lamp`, `glass`, `wood_weathered`, `hay`,
-`wrap`, `stone`, `sign_blue`, `sign_white`, `sign_red`, `sign_black`) that the app colours
+`wrap`, `stone`, `sign_blue`, `sign_white`, `sign_red`, `sign_black`, `insulator`) that the
+app colours
 (`app/scenes/prop_models.gd`). A street lamp's arm reaches over the road (−x); a bench's and
 a shelter's seats face it. Parts reach
 `BURIED` below the origin, so they meet sloping ground. `models.json` lists each model's height.
@@ -42,7 +43,8 @@ PREVIEW = {"galvanised": (0.62, 0.64, 0.66), "post": (0.9, 0.9, 0.88), "band": (
            "wood_weathered": (0.42, 0.38, 0.32), "hay": (0.75, 0.62, 0.32),
            "wrap": (0.9, 0.9, 0.88), "stone": (0.55, 0.53, 0.5),
            "sign_blue": (0.05, 0.25, 0.6), "sign_white": (0.95, 0.95, 0.95),
-           "sign_red": (0.75, 0.1, 0.1), "sign_black": (0.05, 0.05, 0.05)}
+           "sign_red": (0.75, 0.1, 0.1), "sign_black": (0.05, 0.05, 0.05),
+           "insulator": (0.6, 0.63, 0.6)}
 
 # How far posts and blades reach below the ground's level at the origin.
 BURIED = 0.4
@@ -427,7 +429,29 @@ def sign_grade(spec):
     return mesh, top
 
 
-KINDS = {"sign_place": sign_place, "sign_bend": sign_bend, "sign_grade": sign_grade,
+def power_pole(spec):
+    """A wooden power pole: a tapered trunk, a crossarm across the line (along x: away from the
+    road and toward it) and three insulators where the wires are held (`WIRES` in
+    core/torqa-world/src/props.rs)."""
+    mesh = Mesh()
+    sides = 10
+
+    def ring(x, z, radius):
+        return [(x + radius * math.cos(2 * math.pi * i / sides),
+                 radius * math.sin(2 * math.pi * i / sides), z) for i in range(sides)]
+
+    mesh.strip([ring(0.0, -BURIED, 0.13), ring(0.0, 8.25, 0.09)], "wood_weathered",
+               smooth=True, closed=True)
+    mesh.face(list(reversed(ring(0.0, 8.25, 0.09))), "wood_weathered")
+    mesh.box((-0.85, -0.05, 7.55), (0.85, 0.05, 7.67), "wood_weathered")
+    for x, z in ((-0.7, 7.67), (0.7, 7.67), (0.0, 8.25)):
+        mesh.strip([ring(x, z, 0.04), ring(x, z + 0.1, 0.03)], "insulator", smooth=True,
+                   closed=True)
+        mesh.face(list(reversed(ring(x, z + 0.1, 0.03))), "insulator")
+    return mesh, 8.35
+
+
+KINDS = {"power_pole": power_pole, "sign_place": sign_place, "sign_bend": sign_bend, "sign_grade": sign_grade,
          "fence": fence, "hay_bale": hay_bale, "wayside_cross": wayside_cross,
          "street_lamp": street_lamp, "bench": bench, "bin": litter_bin,
          "bus_shelter": bus_shelter, "guard_rail": guard_rail, "guard_rail_end": guard_rail_end, "delineator": delineator,
@@ -451,6 +475,7 @@ CATALOGUE = [
     {"name": "sign_bend_left", "kind": "sign_bend", "turn": "left"},
     {"name": "sign_bend_right", "kind": "sign_bend", "turn": "right"},
     {"name": "sign_grade", "kind": "sign_grade"},
+    {"name": "power_pole", "kind": "power_pole"},
 ]
 
 

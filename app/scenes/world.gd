@@ -629,6 +629,12 @@ func _build_some_chunks() -> void:
 		for model: String in props:
 			var buffer: PackedFloat32Array = props[model]
 			node.add_child(_props(model, buffer))
+		var wires: Dictionary = chunk.get("wires", {})
+		var wire_vertices: PackedVector3Array = wires.get("vertices", PackedVector3Array())
+		if not wire_vertices.is_empty():
+			var wire_mesh: MeshInstance3D = _mesh_instance(wires, PropModels.wire_material())
+			wire_mesh.visibility_range_end = DETAIL_RANGE * _distance
+			node.add_child(wire_mesh)
 		var labels: Array = chunk.get("labels", [])
 		for entry: Dictionary in labels:
 			var text: Label3D = PropModels.label(entry)

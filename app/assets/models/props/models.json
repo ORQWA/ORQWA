@@ -40,6 +40,10 @@
    "kind": "hay_bale",
    "height": 1.45
   },
+  "power_pole": {
+   "kind": "power_pole",
+   "height": 8.35
+  },
   "sign_bend_left": {
    "kind": "sign_bend",
    "height": 2.23

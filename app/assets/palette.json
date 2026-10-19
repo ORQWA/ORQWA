@@ -139,7 +139,9 @@
     "sign_blue": "#1d4f9c",
     "sign_white": "#f2f2ef",
     "sign_red": "#c0261f",
-    "sign_black": "#141414"
+    "sign_black": "#141414",
+    "insulator": "#9aa29b",
+    "wire": "#2a2b2c"
   },
   "bike": {
     "tyre": "#1b1b1c",

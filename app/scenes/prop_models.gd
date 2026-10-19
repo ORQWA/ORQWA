@@ -2,8 +2,9 @@ class_name PropModels
 extends RefCounted
 ## The props made in Blender that stand by the road (art/props, R92): guard rails, delineator
 ## posts and snow poles, street lamps, benches, bins and bus shelters, pasture fences, hay
-## bales and wayside crosses, road signs. Loads them and gives each
-## material name its look from the palette's `props` section: the shelters' glass see-through,
+## bales and wayside crosses, road signs and power poles; the power lines' wires too. Loads
+## them and gives each material name its look from the palette's `props` section: the shelters'
+## glass see-through,
 ## the lamps' glass faintly lit.
 
 const DIRECTORY: String = "res://assets/models/props/"
@@ -27,6 +28,8 @@ const LOOKS: Dictionary[String, Array] = {
 	"sign_white": [0.55, 0.0, 1.0, 0.0],
 	"sign_red": [0.55, 0.0, 1.0, 0.0],
 	"sign_black": [0.7, 0.0, 1.0, 0.0],
+	"insulator": [0.3, 0.0, 1.0, 0.0],
+	"wire": [0.5, 0.6, 1.0, 0.0],
 }
 
 static var _materials: Dictionary[String, StandardMaterial3D] = {}
@@ -69,6 +72,13 @@ static func material(name: String) -> StandardMaterial3D:
 		created.emission_energy_multiplier = glow
 	_materials[name] = created
 	return created
+
+
+## The power lines' wires: dark, seen from both sides.
+static func wire_material() -> StandardMaterial3D:
+	var wire: StandardMaterial3D = material("wire").duplicate()
+	wire.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return wire
 
 
 ## A sign's text (`world_chunk()["labels"]`): white on the place signs' blue, black on the

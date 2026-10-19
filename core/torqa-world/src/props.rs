@@ -1,7 +1,8 @@
 //! What stands by the road ridden (R92): guard rails where the ground falls away beside it,
 //! delineator posts along country roads and snow poles on mountain roads; in towns street
 //! lamps, benches with bins and bus shelters; in the countryside pasture fences, hay bales and
-//! wayside crosses; road signs with places' names and warnings. Placed by rules from
+//! wayside crosses and power lines; road signs with places' names and warnings. Placed by
+//! rules from
 //! the road's shape, the ground beside it and the land around, as the Blender models of
 //! `art/props` (`app/assets/models/props`).
 
@@ -14,7 +15,7 @@ use crate::landcover::LandIndex;
 use crate::road::{Mouth, RoadIndex, Station};
 use crate::streets::Clearance;
 use crate::vegetation::Footprint;
-use crate::{HeightGrid, ROAD_HALF_WIDTH};
+use crate::{HeightGrid, MeshData, ROAD_HALF_WIDTH};
 
 /// A guard rail's span (`guard_rail`, one post at its middle) and how far its face stands from
 /// the road's centre line.
@@ -91,6 +92,20 @@ const STEEP: f64 = 0.09;
 /// Where the labels sit on the signs' faces (metres above the ground).
 const PLACE_LABEL_HEIGHT: f32 = 1.9;
 const GRADE_LABEL_HEIGHT: f32 = 1.84;
+/// Power lines: about one in `LINE_SHARE` of the `LINE_STRETCH` stretches of country road
+/// has one, on one side, its poles `LINE_POLE_SPACING` apart and `LINE_OFFSET` from the centre
+/// line.
+const LINE_STRETCH: f64 = 600.0;
+const LINE_SHARE: f64 = 0.4;
+const LINE_POLE_SPACING: f64 = 50.0;
+const LINE_OFFSET: f64 = ROAD_HALF_WIDTH + 6.0;
+/// The wires: where they are held on a pole (metres across from it, away from the road, and
+/// up), how far they sag in the middle of a span, how thick they are drawn and in how many
+/// pieces.
+const WIRES: [(f64, f64); 3] = [(-0.7, 7.77), (0.7, 7.77), (0.0, 8.35)];
+const WIRE_SAG: f64 = 0.9;
+const WIRE_WIDTH: f64 = 0.03;
+const WIRE_STEPS: u32 = 8;
 /// The map's own way of the road ridden may lie this far off the drawn road: its points there
 /// are the road, not a side street.
 const ROAD_WAY_SLACK: f64 = 4.0;
@@ -103,6 +118,8 @@ pub struct Props {
     pub models: BTreeMap<String, Vec<f32>>,
     /// Text on the signs: places' names and grades.
     pub labels: Vec<Label>,
+    /// Power lines' wires, relative to the chunk centre.
+    pub wires: MeshData,
 }
 
 /// Text on a sign's face.
@@ -146,7 +163,136 @@ pub(crate) fn place(
     crosses(&mut props, low, high, roadside, chunk_origin);
     bales(&mut props, low, high, roadside, chunk_origin);
     signs(&mut props, low, high, roadside, chunk_origin);
+    power_lines(&mut props, low, high, roadside, chunk_origin);
     props
+}
+
+/// Where a power line's pole stands at a station, if one does: along country roads in about
+/// one in `LINE_SHARE` of the `LINE_STRETCH` stretches, on the side the stretch draws, every
+/// `LINE_POLE_SPACING`, where there is room. Decided from the station alone, so the next pole's
+/// place is known to the chunk drawing the wire to it.
+fn pole_at(station: &Station, roadside: &Roadside) -> Option<(f64, [f64; 3])> {
+    if station.surface != Surface::Ground || built_up(station, roadside) {
+        return None;
+    }
+    #[allow(clippy::cast_possible_truncation)] // stretch numbers along the route
+    let stretch = (station.distance / LINE_STRETCH).floor() as i64;
+    let seed = stretch.wrapping_mul(53) ^ 0x706f_6c65;
+    if crate::hash(seed) >= LINE_SHARE {
+        return None;
+    }
+    let side = if crate::hash(seed ^ 1) < 0.5 {
+        1.0
+    } else {
+        -1.0
+    };
+    room(station, side, LINE_OFFSET, 0.5, roadside).map(|spot| (side, spot))
+}
+
+/// Power lines: wooden poles every `LINE_POLE_SPACING` and three wires sagging from each pole to
+/// the next, built as a mesh (`Props::wires`) since no fixed model bends with the road.
+fn power_lines(
+    props: &mut Props,
+    low: (f64, f64),
+    high: (f64, f64),
+    roadside: &Roadside,
+    chunk_origin: [f64; 3],
+) {
+    let reach = LINE_POLE_SPACING * 1.5;
+    let around = roadside.road.stations(
+        LINE_POLE_SPACING,
+        (low.0 - reach, low.1 - reach),
+        (high.0 + reach, high.1 + reach),
+    );
+    #[allow(clippy::cast_possible_truncation)] // pole numbers along the route
+    let by_step: BTreeMap<i64, &Station> = around
+        .iter()
+        .map(|s| ((s.distance / LINE_POLE_SPACING).round() as i64, s))
+        .collect();
+    for (&step, &station) in &by_step {
+        let (east, north) = station.position;
+        let inside = (low.0..high.0).contains(&east) && (low.1..high.1).contains(&north);
+        if !inside {
+            continue;
+        }
+        let Some((side, spot)) = pole_at(station, roadside) else {
+            continue;
+        };
+        push(props, "power_pole", spot, station, side, 0.0, chunk_origin);
+        let Some(next) = by_step.get(&(step + 1)) else {
+            continue;
+        };
+        let Some((next_side, next_spot)) = pole_at(next, roadside) else {
+            continue;
+        };
+        if (next_side - side).abs() > 0.5 {
+            continue;
+        }
+        for &(across, up) in &WIRES {
+            let from = attach(station, side, spot, across, up);
+            let to = attach(next, side, next_spot, across, up);
+            wire(&mut props.wires, from, to, chunk_origin);
+        }
+    }
+}
+
+/// Where a wire is held on a pole: `across` metres from it away from the road, `up` above its
+/// foot (metres east, height, north).
+fn attach(station: &Station, side: f64, spot: [f64; 3], across: f64, up: f64) -> [f64; 3] {
+    let (de, dn) = station.direction;
+    let (oe, on) = (dn * side, -de * side);
+    [spot[0] + oe * across, spot[1] + up, spot[2] + on * across]
+}
+
+/// A wire hanging from `from` to `to`, sagging `WIRE_SAG` in its middle, as two thin crossed
+/// ribbons so it shows from any side.
+#[allow(clippy::cast_possible_truncation)] // geometry is stored as f32 for the GPU
+fn wire(mesh: &mut MeshData, from: [f64; 3], to: [f64; 3], origin: [f64; 3]) {
+    let point = |t: f64| -> [f64; 3] {
+        let sag = WIRE_SAG * 4.0 * t * (1.0 - t);
+        [
+            from[0] + (to[0] - from[0]) * t,
+            from[1] + (to[1] - from[1]) * t - sag,
+            from[2] + (to[2] - from[2]) * t,
+        ]
+    };
+    let (de, dn) = (to[0] - from[0], to[2] - from[2]);
+    let length = de.hypot(dn).max(1e-6);
+    // Across the wire, level, and straight up: the two ribbons' widths.
+    let across = [
+        -dn / length * WIRE_WIDTH / 2.0,
+        0.0,
+        de / length * WIRE_WIDTH / 2.0,
+    ];
+    let up = [0.0, WIRE_WIDTH / 2.0, 0.0];
+    for (offset, normal) in [
+        (across, [0.0, 1.0, 0.0]),
+        (up, [-dn / length, 0.0, de / length]),
+    ] {
+        for k in 0..WIRE_STEPS {
+            let (a, b) = (
+                point(f64::from(k) / f64::from(WIRE_STEPS)),
+                point(f64::from(k + 1) / f64::from(WIRE_STEPS)),
+            );
+            #[allow(clippy::cast_possible_truncation)] // a few thousand vertices a chunk
+            let base = mesh.vertices.len() as u32;
+            for p in [a, b] {
+                for sign in [-1.0, 1.0] {
+                    // Godot axes: x east, y up, z south.
+                    mesh.vertices.push([
+                        (p[0] + offset[0] * sign - origin[0]) as f32,
+                        (p[1] + offset[1] * sign - origin[1]) as f32,
+                        (-(p[2] + offset[2] * sign) - origin[2]) as f32,
+                    ]);
+                    mesh.normals
+                        .push([normal[0] as f32, normal[1] as f32, -normal[2] as f32]);
+                    mesh.uvs.push([0.0, 0.0]);
+                }
+            }
+            mesh.indices
+                .extend([base, base + 1, base + 3, base, base + 3, base + 2]);
+        }
+    }
 }
 
 /// Road signs on the right of travel: a place's name where the road enters it and its end
@@ -727,7 +873,7 @@ fn push(
 #[cfg(test)]
 mod tests {
     /// Every model the rules place, as `art/props` builds them.
-    const PLACED: [&str; 18] = [
+    const PLACED: [&str; 19] = [
         "guard_rail",
         "guard_rail_end",
         "guard_rail_start",
@@ -746,6 +892,7 @@ mod tests {
         "sign_bend_left",
         "sign_bend_right",
         "sign_grade",
+        "power_pole",
     ];
 
     #[test]
@@ -784,6 +931,8 @@ mod tests {
             "sign_white",
             "sign_red",
             "sign_black",
+            "insulator",
+            "wire",
         ] {
             crate::palette::srgb(&format!("props.{material}"), 1.0);
         }

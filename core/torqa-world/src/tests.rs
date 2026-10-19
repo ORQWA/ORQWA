@@ -4244,3 +4244,47 @@ async fn hairpins_and_steep_stretches_are_warned_of() {
     let labels = labels_of(&world);
     assert!(labels.iter().any(|(text, _)| text == "10 %"), "{labels:?}");
 }
+
+#[tokio::test]
+async fn power_lines_run_on_poles_with_wires_from_pole_to_pole() {
+    // 6 km of country road due north.
+    let points: Vec<(f64, f64, f64)> = (0..=600)
+        .map(|i| (0.0, f64::from(i) * 10.0, 500.0))
+        .collect();
+    let mut map = MapData::default();
+    let route = route_through(&points, &mut map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+
+    let poles = props_of(&world, "power_pole");
+    assert!(
+        poles.len() >= 10,
+        "some stretches have a line: {}",
+        poles.len()
+    );
+    for p in &poles {
+        assert!((8.5..9.5).contains(&p[0].abs()), "beside the road: {p:?}");
+    }
+    // Poles of one line stand 50 m apart on one side.
+    let mut east: Vec<f64> = poles.iter().filter(|p| p[0] > 0.0).map(|p| p[2]).collect();
+    east.sort_by(f64::total_cmp);
+    assert!(
+        east.windows(2)
+            .all(|w| (w[1] - w[0] - 50.0).abs() < 1.0 || w[1] - w[0] > 99.0),
+        "every 50 m: {east:?}"
+    );
+    let wires: usize = world
+        .chunks
+        .iter()
+        .map(|c| c.props.wires.indices.len())
+        .sum();
+    assert!(wires > 0, "wires between the poles");
+    for chunk in &world.chunks {
+        for vertex in &chunk.props.wires.vertices {
+            let height = f64::from(vertex[1]) - 500.0;
+            assert!(
+                (6.5..8.5).contains(&height),
+                "wires up on the poles, sagging a little: {height}"
+            );
+        }
+    }
+}
