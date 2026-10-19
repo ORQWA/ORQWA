@@ -95,6 +95,9 @@ func _on_ride_started(options: Dictionary) -> void:
 
 ## Turns the window into the overlay (R55, R57) or back; the ride goes on either way.
 func _set_overlay(on: bool) -> void:
+	# Android has no window on top of others (ADR 0024); O does nothing there.
+	if on and OS.has_feature("android"):
+		return
 	if on == _overlay.active:
 		return
 	if on:

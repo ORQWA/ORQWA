@@ -104,3 +104,22 @@ Everything Android is in `android/`, `scripts/android.sh`, `scripts/build-androi
 - A second image of 10.6 GB, built only for APKs. The dev image and the checks are unchanged.
 - Android support rests on btleplug's Java part and on godot-rust's community-tested Android path.
   Either can break with an update; phase B's CI job will tell.
+
+## Amendment 2026-10-20: phases B and C
+
+- **B.** The `android` CI job builds the APK on every pull request in its own image. That image is
+  tagged by the dev image it starts from and the Android Dockerfile, cached in GHCR. It first
+  makes room on the runner by removing its own Android SDK, .NET and Haskell.
+- **C:**
+  - **Data.** Android gives no `HOME` or `XDG_*` directories, so data and cache both fell back to
+    the temporary directory, which is the app's cache. Data now goes to the app's `files` folder
+    beside it.
+  - **Graphics.** Low is the default preset on Android.
+  - **Saving.** Saving to a picked `content://` place goes through a file in Torqa's folder, which
+    Godot then copies there.
+  - **HTTPS.** reqwest checks certificates through rustls-platform-verifier, which on Android
+    needs the app's context. The plugin hands it over once (`initTls`). Its Java part
+    (`org.rustls:rustls-platform-verifier`, in the version Cargo.lock names) comes from the
+    project's own Maven archive on GitHub. That is a build-time download only; the app contacts
+    nothing new.
+  - **The overlay** is hidden on Android, which has one window.

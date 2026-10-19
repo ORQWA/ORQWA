@@ -60,6 +60,8 @@ func _init() -> void:
 	)
 	_overlay.pressed.connect(overlay_requested.emit)
 	_tools.add_child(_overlay)
+	# Android has one window, not one on top of others (ADR 0024).
+	_overlay.visible = not OS.has_feature("android")
 	_icon_button(_pause, "pause", tr("Pause the ride: the clock and the trainer wait (P)"))
 	_pause.pressed.connect(pause_requested.emit)
 	_tools.add_child(_pause)

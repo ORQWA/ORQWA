@@ -582,10 +582,16 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   the core's log in Android's log; picked files copied from `content://` addresses
 - [ ] B — an `android` CI job beside the others, building the APK on every pull request (its
   own image cached in GHCR like the dev image); on releases only with D
-- [ ] C — fitting Android: profiles and courses in the data folder (not the cache), saving to
-  picked places, a tablet graphics preset (smooth on the Tab S7; no SSAO in the mobile
-  renderer), touch, HTTPS (rustls-platform-verifier's Android set-up), no music control,
-  overlay window or MSI updater (the update check points to the APK)
+- [ ] C — fitting Android:
+  - [x] profiles, rides and courses in the app's `files` folder, not the cache Android may clear
+  - [x] saving to places picked in Android's save dialog (ride export), as opening already does
+  - [x] Low graphics by default (the mobile renderer has no SSAO or screen-space reflections
+    anyway); **smoothness on the Tab S7 still to judge**
+  - [x] HTTPS through Android's certificate checks (rustls-platform-verifier's Java part from its
+    own archive, set up with the app's context); **a download on the tablet still to try**
+  - [x] no overlay window (one window on Android); music control says it is not supported;
+    the update check offers the release page
+  - [x] touch: Godot turns taps into clicks, enough to ride
 - [ ] D — a release-signed APK as a release asset, the wiki (installing, permissions), the
   internet list
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
