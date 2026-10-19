@@ -3,7 +3,7 @@ resolver = "3"
 members = ["torqa-domain", "torqa-terrain", "torqa-video", "torqa-osm", "torqa-routes", "torqa-physics", "torqa-devices", "torqa-storage", "torqa-workouts", "torqa-session", "torqa-world", "torqa-upload", "torqa-remote", "torqa-app", "torqa-gd", "torqa-cli"]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.99"
 license = "GPL-3.0-only"
