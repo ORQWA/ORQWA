@@ -348,7 +348,9 @@ func _course_gallery() -> void:
 	_check(_chips(active).is_empty() and not active.visible, "nothing listed while nothing is on")
 
 	# However many countries the library spans, the gallery stays where it is and the panel
-	# holds them all.
+	# holds them all. Measured once the gallery has moved up into the emptied list's place.
+	await process_frame
+	await process_frame
 	var gallery: Control = tab.get("_gallery")
 	var gallery_top: float = gallery.get_global_rect().position.y
 	var countries: Array = []
