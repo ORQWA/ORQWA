@@ -159,3 +159,30 @@ shifter chosen, clamped to the screen with a scroll bar inside, and the pen is d
 no shifter is chosen. The other rows keep the pen's column empty, so their Search buttons and
 states line up.
 
+
+## Amendment 2026-10-19: the Click v2 checked on a pair (R96)
+
+A maintainer's pair answered the driver as the community's drivers led us to expect
+(`torqa-cli gear-check --controller "Zwift Click v2"` with `RUST_LOG=torqa_devices=debug`,
+two minutes, each button pressed once):
+
+- **Handshake.** Both pods answer `RideOn` on `…0004`, at once and to every keepalive; the
+  answers after a pod's first go to the trace log only, as they come every 3 s.
+- **Buttons.** Each of the ten buttons cleared the bit BikeControl's code reads for it, so the
+  table from its protobuf enum is the wrong one. + and − shifted once per press.
+- **The left pod relays the right.** Its `0x23` frames carry the right pod's buttons too,
+  within about 30 ms of the right pod's own frames; the right pod's frames carry only its own.
+  Reading each pod's own bits from its own frames is what keeps a press on the right pod from
+  counting twice, now tested with the pair's frames.
+- **Keepalive.** With `RideOn` every 3 s the link held for the whole run, 77 s of it without a
+  press, and nothing complained. Whether the pods would fall asleep without it was not tried.
+- **No lock seen.** The left pod sent its buttons although, as far as its owner remembers, it
+  was never connected to Zwift. It did send one 85-byte `ff 03 …` five seconds after
+  connecting, on `…0002` rather than as the handshake's answer on `…0004`, and went on
+  sending its buttons. Whether this firmware locks at all, or only after a first Zwift
+  session, stays unknown; the `ff 04 00` acknowledgement stays, as it harms nothing.
+- **Other messages on `…0002`**, from the left pod only, none of them buttons: `0x19` every
+  5 s, the battery level in its field 2 (80 % here, as
+  [jat255's Click client](https://github.com/jat255/Zwift_click_handling) reads it), and after
+  each keepalive a `0x2A` status and an `ff 05 …` holding the pod's serial number. So `ff 05`
+  is no stop there; the driver reads it as one only on `…0004`, where it never came.

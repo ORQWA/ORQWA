@@ -31,7 +31,7 @@ core/                      Rust workspace (tokio + tracing)
                            (ADR 0019)
   torqa-app/               application layer: commands + update() per frame for front ends,
                            the analysis across a rider's rides
-  torqa-gd/                gdext bindings (TorqaApp node)
+  torqa-gd/                gdext bindings (TorqaApp node), the sample course (R95)
   torqa-cli/               headless: scan devices, ride with fake trainer, export FIT, sample
                            rides
 app/                       Godot 4 project: scenes/ (screens, 3D world, video view), ui/ (shared
@@ -153,6 +153,8 @@ Built in rideable steps:
 - [x] An import can be cancelled from beside its loading bar, and a job that dies reports an
   error instead of loading forever (#219)
 - [x] Rebuild outdated worlds from stored inputs (format 1 always rebuilds offline)
+- [x] A new library starts with a sample course, Twann – Chasseral, shipped in the
+  GDExtension and ridden offline (R95, ADR 0007 amendment 2026-10-19)
 - Format 2 (a stored pre-built world) dropped: the world is built while the course's page is
   open instead (#237, ADR 0007 amendment 2026-10-15)
 - **Exit:** prepare a course online, ride it offline on another machine from the `.tqc` file ✅
@@ -227,7 +229,8 @@ Built in rideable steps:
   - [x] The Zwift Click v2 (R77): its two pods as one shifter, + and − as buttons 1 and 2;
     what any shifter's buttons do set in a dialog behind a pen beside its row (#271)
     and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
-    written from the community's drivers, **not yet checked on the hardware**
+    written from the community's drivers and checked on a pair (R96): the left pod relays the
+    right pod's buttons, which count once
   - [x] The remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
     that a phone's or tablet's browser opens from a QR code, its ten buttons (two big) doing what the
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the

@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Args;
 use tokio::sync::mpsc;
 use torqa_devices::ble::{Bluetooth, DeviceKind, DiscoveredDevice};
@@ -81,11 +81,16 @@ pub(crate) async fn connect(args: &DeviceArgs) -> Result<Devices> {
             },
             Duration::from_millis(250),
         ),
-        Some((bluetooth, devices)) => bluetooth.connect(pick(
-            devices,
-            DeviceKind::Trainer,
-            args.trainer.as_deref().unwrap_or(""),
-        )?),
+        Some((bluetooth, devices)) => bluetooth.connect(
+            pick(
+                devices,
+                DeviceKind::Trainer,
+                args.trainer.as_deref().unwrap_or(""),
+            )
+            .map_err(|error| {
+                anyhow!("{error:#}; --fake rides without one, e.g. to check a shifter")
+            })?,
+        ),
         None => unreachable!("Bluetooth is opened whenever the trainer is not fake"),
     };
     // Straps only advertise while worn and not connected elsewhere; ride on without one.
@@ -159,10 +164,12 @@ fn pick(devices: &[DiscoveredDevice], kind: DeviceKind, name: &str) -> Result<Di
         .cloned()
         .with_context(|| {
             let found: Vec<_> = devices.iter().map(|d| d.name.as_str()).collect();
-            format!(
-                "no {} matching {name:?} found (found: {found:?})",
-                kind_label(kind)
-            )
+            let kind = kind_label(kind);
+            if name.is_empty() {
+                format!("no {kind} found (found: {found:?})")
+            } else {
+                format!("no {kind} matching {name:?} found (found: {found:?})")
+            }
         })
 }
 

@@ -15,7 +15,7 @@ use futures::StreamExt;
 use tokio::time::{sleep, timeout};
 pub use torqa_domain::shifting::ControllerModel;
 use torqa_domain::telemetry::{Telemetry, TrainerControl};
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 use crate::cycling_power;
 use crate::di2;
@@ -185,6 +185,7 @@ impl Bluetooth {
                 click: zwift_click::Buttons::default(),
                 click_v2: zwift_click_v2::Buttons::default(),
                 keepalive: Vec::new(),
+                answered: Vec::new(),
                 cadence: cycling_power::Cadence::default(),
             }
             .run()
@@ -279,6 +280,9 @@ struct Driver {
     click_v2: zwift_click_v2::Buttons,
     /// Where a Click v2's handshake is written again every [`zwift_click_v2::KEEPALIVE`].
     keepalive: Vec<(Peripheral, Characteristic)>,
+    /// The Click v2's pods that answered the handshake since connecting: later answers are to
+    /// the keepalive, every few seconds, so they go to the trace log only.
+    answered: Vec<Side>,
     /// A power meter's or cadence sensor's cadence, from its crank counter.
     cadence: cycling_power::Cadence,
 }
@@ -381,6 +385,7 @@ impl Driver {
 
         info!(device = %self.device.name, "connecting");
         self.keepalive.clear();
+        self.answered.clear();
         let set_up = timeout(CONNECT_TIMEOUT, self.set_up(&peripheral)).await;
         let (mut notifications, control_point) = match set_up {
             Ok(Ok(set_up)) => set_up,
@@ -721,30 +726,8 @@ impl Driver {
             (!presses.is_empty()).then_some(DeviceEvent::Buttons(presses))
         } else {
             if uuid.to_string() == zwift_click::RESPONSE {
-                if self.device.model == Some(ControllerModel::ZwiftClickV2) {
-                    let pod = side.map_or("pod", Side::name);
-                    match zwift_click_v2::answer(value) {
-                        Answer::Started => debug!(device = %name, pod, "Click v2 session started"),
-                        Answer::Locked => warn!(
-                            device = %name, pod,
-                            "locked by Zwift: it tells of no buttons until it was in a Zwift session again"
-                        ),
-                        Answer::Stopped => {
-                            warn!(device = %name, pod, "stopped telling of its buttons");
-                        }
-                        Answer::Unknown => {
-                            warn!(device = %name, pod, ?value, "unexpected Click v2 answer");
-                        }
-                    }
-                } else if value == zwift_click::HANDSHAKE {
-                    debug!(device = %name, "Click session started");
-                } else {
-                    // An old firmware answers the handshake with its key for an encrypted
-                    // session, which Torqa does not speak (ADR 0003).
-                    warn!(device = %name, ?value, "unexpected Click handshake answer");
-                }
-            }
-            if uuid == uuid_from_u16(ftms::CONTROL_POINT) {
+                self.log_zwift_answer(side, value);
+            } else if uuid == uuid_from_u16(ftms::CONTROL_POINT) {
                 match ftms::parse_control_response(value) {
                     Some(r) if r.result == ControlResult::Success => {
                         debug!(device = %name, request = r.request, "control accepted");
@@ -756,6 +739,37 @@ impl Driver {
                 }
             }
             None
+        }
+    }
+
+    /// Tells in the log what a Zwift Click's or a Click v2 pod's answer to the handshake says.
+    fn log_zwift_answer(&mut self, side: Option<Side>, value: &[u8]) {
+        let name = &self.device.name;
+        if self.device.model == Some(ControllerModel::ZwiftClickV2) {
+            let pod = side.map_or("pod", Side::name);
+            match zwift_click_v2::answer(value) {
+                Answer::Started => match side {
+                    Some(side) if !self.answered.contains(&side) => {
+                        self.answered.push(side);
+                        debug!(device = %name, pod, "Click v2 session started");
+                    }
+                    _ => trace!(device = %name, pod, "Click v2 keepalive answered"),
+                },
+                Answer::Locked => warn!(
+                    device = %name, pod,
+                    "locked by Zwift: it tells of no buttons until it was in a Zwift session again"
+                ),
+                Answer::Stopped => warn!(device = %name, pod, "stopped telling of its buttons"),
+                Answer::Unknown => {
+                    warn!(device = %name, pod, ?value, "unexpected Click v2 answer");
+                }
+            }
+        } else if value == zwift_click::HANDSHAKE {
+            debug!(device = %name, "Click session started");
+        } else {
+            // An old firmware answers the handshake with its key for an encrypted session,
+            // which Torqa does not speak (ADR 0003).
+            warn!(device = %name, ?value, "unexpected Click handshake answer");
         }
     }
 }
