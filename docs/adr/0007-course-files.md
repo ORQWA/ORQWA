@@ -1,6 +1,7 @@
 # ADR 0007 — Course files (`.tqc`)
 
-- Status: accepted; amended 2026-10-03 (format 1 bundles inputs only, see below), 2026-10-15
+- Status: accepted; amended 2026-10-03 (format 1 bundles inputs only, see below), 2026-10-15,
+  2026-10-19 (a sample course)
 - Date: 2026-10-02
 
 ## Context
@@ -97,3 +98,24 @@ format stays 1.
 Format 1 (inputs only) is final: a stored pre-built world (format 2) is no longer planned.
 Rebuilding keeps every course on the current generator; the wait before a ride is to be
 hidden by building the world while the course's page is open (#237).
+
+## Amendment 2026-10-19 — a sample course (R94)
+
+A rider who has just downloaded Torqa has no course to ride before importing one, which needs
+the internet. Torqa now ships one prepared course, **Twann – Chasseral** (20.4 km, 1,190 m of
+climbing, 13.1 MB), kept in `core/torqa-gd/courses/` with how it was made.
+
+- It is an ordinary format 1 course, prepared in the app from its GPX like any import, so it
+  rides offline from its own tiles and is rebuilt by the current generator when opened.
+- The GDExtension embeds it (`include_bytes!`); the core does not, as the command-line tool,
+  which shares the core, has no use for it. Every platform's export carries it with no extra
+  files, and the macOS bundle needs nothing added after it is signed.
+- On start, when the data directory has **no `courses/` yet**, the app writes the library with
+  the sample in it. It is written to `courses.part/` and renamed, so a first start cut short
+  leaves no empty library that would keep the sample out. An existing library is never
+  touched: a rider who deleted the sample does not get it back, and riders updating Torqa keep
+  their library as it is.
+
+Consequences: the repository and every app download grow by the file's 13 MB, and the
+extension takes as much memory. The sample's tiles are those of when it was prepared; it is
+prepared again only when a new course format makes it unreadable.

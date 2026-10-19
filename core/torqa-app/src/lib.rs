@@ -1756,6 +1756,29 @@ impl App {
         self.data_dir.join("courses")
     }
 
+    /// Starts the library with the sample `course`, saved as `file_name`, if there is no library
+    /// yet (R94): a new rider has a course to ride at once, offline. An existing library stays
+    /// as it is, so a deleted sample is not brought back. True if the sample was added.
+    ///
+    /// # Errors
+    /// An I/O error writing the library.
+    pub fn add_sample_course(&self, file_name: &str, course: &[u8]) -> std::io::Result<bool> {
+        let library = self.courses_dir();
+        if library.exists() {
+            return Ok(false);
+        }
+        // The library appears with its course: a first start cut short leaves no empty
+        // library behind, which would keep the sample out for good.
+        let partial = self.data_dir.join("courses.part");
+        if partial.exists() {
+            std::fs::remove_dir_all(&partial)?;
+        }
+        std::fs::create_dir_all(&partial)?;
+        std::fs::write(partial.join(file_name), course)?;
+        std::fs::rename(&partial, &library)?;
+        Ok(true)
+    }
+
     /// Stops preparing the route, video or world being loaded (#219): its results are dropped,
     /// and what it downloaded stays in the cache, so trying again is quick.
     pub fn cancel_loading(&mut self) {
@@ -4871,6 +4894,62 @@ mod tests {
         app.delete_course(course).unwrap();
         assert_eq!(app.courses().len(), 0);
         assert_eq!(app.loaded_course(), None);
+    }
+
+    fn sample_course(dir: &Path) -> Vec<u8> {
+        let manifest = Manifest {
+            format: course::FORMAT_VERSION,
+            generator: "Torqa test".to_owned(),
+            name: "Sample climb".to_owned(),
+            length_m: 20_000.0,
+            elevation_gain_m: 1_150.0,
+            max_grade_percent: 12.0,
+            created_unix_s: 1_790_000_000,
+            attribution: vec!["Map data: © OpenStreetMap contributors (ODbL)".to_owned()],
+            route_key: Some("0123456789abcdef".to_owned()),
+            track: Vec::new(),
+            profile: Vec::new(),
+            video: None,
+            countries: None,
+        };
+        let path = dir.join("sample.tqc");
+        course::write(&path, &manifest, "<gpx/>", dir, &[]).unwrap();
+        std::fs::read(path).unwrap()
+    }
+
+    #[test]
+    fn a_first_start_has_the_sample_course_and_later_ones_leave_the_library_alone() {
+        let dir = temp_dir("sample-course");
+        let sample = sample_course(&dir);
+        // A first start cut short while writing the library.
+        std::fs::create_dir_all(dir.join("data/courses.part")).unwrap();
+        std::fs::write(dir.join("data/courses.part/sample-climb.tqc"), b"half").unwrap();
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+
+        assert!(app.add_sample_course("sample-climb.tqc", &sample).unwrap());
+        let courses = app.courses();
+        assert_eq!(courses.len(), 1);
+        assert_eq!(courses[0].manifest.name, "Sample climb");
+        assert!(!dir.join("data/courses.part").exists());
+
+        assert!(!app.add_sample_course("sample-climb.tqc", &sample).unwrap());
+        assert_eq!(app.courses().len(), 1);
+        app.delete_course(&courses[0].path).unwrap();
+        assert!(!app.add_sample_course("sample-climb.tqc", &sample).unwrap());
+        assert_eq!(app.courses().len(), 0, "the deleted sample came back");
+    }
+
+    #[test]
+    fn riders_with_a_library_get_no_sample_course() {
+        let dir = temp_dir("library-before-sample");
+        std::fs::create_dir_all(dir.join("data/courses")).unwrap();
+        let app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+
+        assert!(
+            !app.add_sample_course("sample-climb.tqc", &sample_course(&dir))
+                .unwrap()
+        );
+        assert_eq!(app.courses().len(), 0);
     }
 
     #[test]
