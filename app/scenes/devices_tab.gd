@@ -33,12 +33,14 @@ const POWER_METER: String = "power_meter"
 const CADENCE: String = "cadence"
 const HEART_RATE: String = "heart_rate"
 const CONTROLLER: String = "controller"
-## The core's kind of device each role's reading is asked for (R80); a shifter reports none.
+## The core's kind of device each role's reading is asked for (R80); a shifter's tells only
+## its battery (R97).
 const READING_KINDS: Dictionary[String, String] = {
 	TRAINER: "trainer",
 	POWER_METER: "power_meter",
 	CADENCE: "cadence_sensor",
 	HEART_RATE: "heart_rate",
+	CONTROLLER: "controller",
 }
 # i18n-begin
 ## How a row's device is doing (R76), by state.
@@ -508,7 +510,8 @@ func _process(delta: float) -> void:
 
 
 ## Shows what the role's device reports: the trainer's and the power meter's power and
-## cadence, a cadence sensor's cadence, a strap's heart rate; nothing while it is quiet.
+## cadence, a cadence sensor's cadence, a strap's heart rate, nothing while it is quiet; and
+## how full its batteries are, where it tells (R97).
 func _show_reading(role: String, reading: Dictionary) -> void:
 	var parts: PackedStringArray = PackedStringArray()
 	if role in [TRAINER, POWER_METER] and reading.get("power") != null:
@@ -520,6 +523,9 @@ func _show_reading(role: String, reading: Dictionary) -> void:
 	if role == HEART_RATE and reading.get("heart_rate") != null:
 		var heart_rate: float = reading["heart_rate"]
 		parts.append(tr("%d bpm") % roundi(heart_rate))
+	var battery: String = _battery_text(reading)
+	if not battery.is_empty():
+		parts.append(battery)
 	var text: String = " · ".join(parts)
 	if _readings.get(role, "") == text:
 		return
@@ -528,6 +534,24 @@ func _show_reading(role: String, reading: Dictionary) -> void:
 	else:
 		_readings[role] = text
 	_render_state(role)
+
+
+## A device's batteries as it told them (R97): its own, or a pair's left and right as far as
+## known (a Zwift Click v2's pods); empty while it told none.
+func _battery_text(reading: Dictionary) -> String:
+	if reading.get("battery") != null:
+		var level: int = reading["battery"]
+		return tr("battery %d %%") % level
+	var sides: PackedStringArray = PackedStringArray()
+	if reading.get("battery_left") != null:
+		var left: int = reading["battery_left"]
+		sides.append(tr("left %d %%") % left)
+	if reading.get("battery_right") != null:
+		var right: int = reading["battery_right"]
+		sides.append(tr("right %d %%") % right)
+	if sides.is_empty():
+		return ""
+	return tr("battery %s") % ", ".join(sides)
 
 
 ## The reconnect at start missed some devices (R41): their rows say so, by name, and

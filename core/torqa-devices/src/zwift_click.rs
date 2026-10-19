@@ -46,8 +46,13 @@ pub const PLUS: u8 = 1;
 /// The − button's number in the shifter's assignments.
 pub const MINUS: u8 = 2;
 
-/// A notification of the buttons' states; others (0x19, the status) say nothing of them.
+/// A notification of the buttons' states; others (0x19, the battery) say nothing of them.
 const BUTTON_STATES: u8 = 0x37;
+/// A notification of the battery, on the buttons' characteristic too (R97); the Click v2's
+/// pods send it as well.
+const BATTERY: u8 = 0x19;
+/// Its field: the level in percent, as jat255's Click client reads it (ADR 0003).
+const LEVEL_FIELD: u64 = 2;
 /// Protocol-buffer fields of a button-state notification: the + and the − button, `0` down.
 const PLUS_FIELD: u64 = 1;
 const MINUS_FIELD: u64 = 2;
@@ -130,6 +135,22 @@ impl Buttons {
         }
         Ok(presses)
     }
+}
+
+/// The level in percent a Zwift Click's or a Click v2 pod's notification tells, if it is a
+/// battery notification (R97).
+#[must_use]
+pub fn battery_level(value: &[u8]) -> Option<u8> {
+    let (&kind, fields) = value.split_first()?;
+    if kind != BATTERY {
+        return None;
+    }
+    varint_fields(fields)
+        .ok()?
+        .into_iter()
+        .find(|&(field, _)| field == LEVEL_FIELD)
+        .and_then(|(_, level)| u8::try_from(level).ok())
+        .filter(|&level| level <= 100)
 }
 
 /// The varint fields of a protocol-buffer message as `(field number, value)`, in order.
@@ -267,6 +288,24 @@ mod tests {
             "held, as the next state tells"
         );
         assert_eq!(buttons.presses(&BOTH_UP, start + HOLD * 2).unwrap(), []);
+    }
+
+    #[test]
+    fn the_battery_notification_tells_the_level_in_percent() {
+        assert_eq!(battery_level(&STATUS), Some(93));
+        assert_eq!(
+            battery_level(&[0x19, 0x10, 0x50]),
+            Some(80),
+            "a Click v2 pod's"
+        );
+        assert_eq!(battery_level(&PLUS_DOWN), None, "the buttons tell none");
+        assert_eq!(battery_level(&[0x19]), None);
+        assert_eq!(
+            battery_level(&[0x19, 0x10, 0xC8, 0x01]),
+            None,
+            "200 % is no level"
+        );
+        assert_eq!(battery_level(&[]), None);
     }
 
     #[test]

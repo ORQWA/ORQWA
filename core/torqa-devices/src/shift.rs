@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, mpsc};
 
+use torqa_domain::battery::Battery;
 use torqa_domain::shifting::{
     ButtonAction, ButtonMap, Control, ControllerModel, Shift, ShiftInput,
 };
@@ -60,6 +61,8 @@ pub struct Controller {
     connected: bool,
     /// Why the last attempt to connect failed, while the driver tries again (R80).
     failure: Option<String>,
+    /// What it told of its batteries while connected (R97).
+    battery: Battery,
     /// Controls pressed for, until [`ShiftInput::controls`] takes them.
     controls: Vec<Control>,
 }
@@ -79,6 +82,7 @@ impl Controller {
             assignments,
             connected: false,
             failure: None,
+            battery: Battery::default(),
             controls: Vec::new(),
         }
     }
@@ -97,8 +101,12 @@ impl ShiftInput for Controller {
                     self.connected = true;
                     self.failure = None;
                 }
-                DeviceEvent::Disconnected => self.connected = false,
+                DeviceEvent::Disconnected => {
+                    self.connected = false;
+                    self.battery = Battery::default();
+                }
                 DeviceEvent::Failed(reason) => self.failure = Some(reason),
+                DeviceEvent::Battery(battery) => self.battery = battery,
                 DeviceEvent::Buttons(presses) => {
                     for action in self.assignments.get(self.model).actions(&presses) {
                         shifts.extend_from_slice(action.shifts());
@@ -123,6 +131,10 @@ impl ShiftInput for Controller {
 
     fn failure(&self) -> Option<&str> {
         self.failure.as_deref()
+    }
+
+    fn battery(&self) -> Battery {
+        self.battery
     }
 }
 

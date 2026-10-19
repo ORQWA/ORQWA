@@ -50,6 +50,7 @@ fn report(name: &str, event: &DeviceEvent, state: &mut Telemetry) {
         DeviceEvent::Failed(reason) => println!("{name}: {reason}, trying again"),
         DeviceEvent::Telemetry(telemetry) => state.merge(telemetry),
         DeviceEvent::Buttons(presses) => println!("{name}: {presses:?}"),
+        DeviceEvent::Battery(battery) => println!("{name}: battery {battery}"),
     }
 }
 

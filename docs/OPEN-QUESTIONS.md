@@ -3,6 +3,17 @@
 Things to review or decide together. Newest first; remove entries once settled. Work that is
 decided but not done goes into a GitHub issue instead.
 
+## Battery levels are unchecked on the devices (R97, 2026-10-19)
+
+The Devices tab tells a battery level wherever a device has Bluetooth's Battery Service or,
+for a Zwift Click and the Click v2's pods, Zwift's `0x19` message. Only the left Click v2
+pod's `0x19` was seen (80 %, #306). Still to see, with `RUST_LOG=torqa_devices=debug`,
+`torqa-cli ride --fake --hr` for the strap and
+`torqa-cli gear-check --fake --controller <name>` for the shifters (both print
+`battery …` as it changes): which of the Polar H9, the Venu 3, the Assioma pedals, the Di2
+and the Clicks offer the Battery Service at all, whether reading it makes any of them ask to
+pair, and whether the right Click v2 pod tells its level at all.
+
 ## Signing the macOS and Windows downloads (2026-10-19)
 
 The macOS app is only signed ad hoc and the Windows `.exe` not at all, so Gatekeeper and

@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use torqa_domain::battery::Battery;
 use torqa_domain::shifting::ButtonPress;
 use torqa_domain::telemetry::{Telemetry, TrainerControl};
 
@@ -23,6 +24,9 @@ pub enum DeviceEvent {
     /// An attempt to connect failed, for this reason (a timeout, the device gone out of
     /// reach, a Bluetooth error); the driver tries again after a pause (R80).
     Failed(String),
+    /// How full the device's batteries are now, told when connected and whenever a level
+    /// changes (R97).
+    Battery(Battery),
 }
 
 /// Errors of device drivers.

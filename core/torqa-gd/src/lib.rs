@@ -374,22 +374,29 @@ impl TorqaApp {
 
     /// What the device of `kind` (as in `devices_found`) reported in the last seconds, also
     /// between rides (R80): `{power, cadence, heart_rate, speed_kmh}`, each null when the
-    /// device does not report it; empty when nothing came or the kind is unknown.
+    /// device does not report it, and how full its batteries are (R97): `battery` in percent
+    /// for most devices, `battery_left` and `battery_right` for a pair such as the Zwift Click
+    /// v2's pods, null while untold. Empty when nothing came or the kind is unknown.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn device_reading(&self, kind: GString) -> VarDictionary {
-        let Some(kind) = kind_of(&kind.to_string()) else {
+        let (Some(kind), Some(app)) = (kind_of(&kind.to_string()), self.app.as_ref()) else {
             return VarDictionary::new();
         };
-        let Some(reading) = self.app.as_ref().and_then(|app| app.device_reading(kind)) else {
-            return VarDictionary::new();
+        let (reading, battery) = match (app.device_reading(kind), app.device_battery(kind)) {
+            (None, None) => return VarDictionary::new(),
+            (reading, battery) => (reading.unwrap_or_default(), battery.unwrap_or_default()),
         };
         let optional = |value: Option<f64>| value.map_or_else(Variant::nil, |v| v.to_variant());
+        let percent = |level: Option<u8>| level.map_or_else(Variant::nil, |l| l.to_variant());
         vdict! {
             "power" => &optional(reading.power.map(|p| p.0)),
             "cadence" => &optional(reading.cadence.map(|c| c.0)),
             "heart_rate" => &optional(reading.heart_rate.map(|h| h.0)),
             "speed_kmh" => &optional(reading.speed.map(MetersPerSecond::as_kilometers_per_hour)),
+            "battery" => &percent(battery.level),
+            "battery_left" => &percent(battery.left),
+            "battery_right" => &percent(battery.right),
         }
     }
 

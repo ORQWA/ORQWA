@@ -1837,6 +1837,12 @@ msgstr "Zonen"
 msgid "and above"
 msgstr "und darüber"
 
+msgid "battery %d %%"
+msgstr "Batterie %d %%"
+
+msgid "battery %s"
+msgstr "Batterie %s"
+
 msgid "best %s"
 msgstr "Bestzeit %s"
 
@@ -1852,11 +1858,17 @@ msgstr "für %d bpm  ·  jetzt %s"
 msgid "kJ"
 msgstr "kJ"
 
+msgid "left %d %%"
+msgstr "links %d %%"
+
 msgid "new record, %s faster!"
 msgstr "neue Bestzeit, %s schneller!"
 
 msgid "points"
 msgstr "Punkte"
+
+msgid "right %d %%"
+msgstr "rechts %d %%"
 
 msgid "tiles"
 msgstr "Kacheln"
