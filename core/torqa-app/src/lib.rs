@@ -4143,6 +4143,35 @@ mod tests {
         app.shutdown();
     }
 
+    /// The reference route's roadside (R92), from the cached tiles as above: a pass road has
+    /// guard rails where it runs along drops, snow poles up high and delineator posts below,
+    /// none of them standing in the villages.
+    #[test]
+    #[ignore = "needs the Oberalp's map and terrain tiles in the cache"]
+    fn the_reference_route_has_rails_poles_and_posts() {
+        let dir = temp_dir("reference-props");
+        let mut app = App::new(dir.join("data"), paths::cache_dir()).unwrap();
+        let fixture = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../fixtures/oberalp.gpx"
+        ));
+        app.load_route(fixture, true);
+        run_until(&mut app, |e| matches!(e, AppEvent::WorldReady { .. }));
+        let world = app.world().expect("the world");
+        let mut counts = std::collections::BTreeMap::<&str, usize>::new();
+        for chunk in &world.chunks {
+            for (name, buffer) in &chunk.props.models {
+                *counts.entry(name.as_str()).or_default() += buffer.len() / 12;
+            }
+        }
+        eprintln!("props on the Oberalp: {counts:?}");
+        let count = |name: &str| counts.get(name).copied().unwrap_or(0);
+        assert!(count("guard_rail") > 100, "{counts:?}");
+        assert!(count("snow_pole") > 100, "{counts:?}");
+        assert!(count("delineator") > 20, "{counts:?}");
+        app.shutdown();
+    }
+
     #[test]
     fn a_paused_ride_waits_and_goes_on_where_it_was() {
         let dir = temp_dir("pause");

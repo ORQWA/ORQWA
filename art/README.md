@@ -145,6 +145,68 @@ sides, lit through from behind; trees sway in the wind, leaves flutter). `models
 each model's `kind` and `height`; the world (`core/torqa-world/src/vegetation.rs`) picks one
 model of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
 
+## Props (`props/`)
+
+`build.py` makes what stands by the road ridden (R92) into `app/assets/models/props/`:
+`guard_rail` (a 4 m span of W-beam on a post, with the spacer block; 88 triangles),
+`guard_rail_end` and `guard_rail_start` (a span twisting down into the ground ahead or behind,
+flaring away from the road, as a run of rail begins and ends), `delineator` (a 1 m white post,
+its sloping top and black band with a reflector facing the traffic) and `snow_pole` (2.5 m,
+red and white in half-metre bands); in towns `street_lamp` (6.5 m, its arm bending over the
+road to a flat luminaire), `bench` (wooden slats on two cast frames), `bin` (a drum on a post)
+and `bus_shelter` (glass back and ends in thin frames, a flat roof, a bench inside); in the
+countryside `fence` (a 3 m span of two split rails between weathered posts), `hay_bale` and
+`hay_bale_wrapped` (round bales lying on their side, straw or white silage wrap) and
+`wayside_cross` (a wooden cross on a stone foot under a little roof); and road signs on a
+galvanised pole: `sign_place` (a blue panel with a white rim) and `sign_place_end` (the same
+with a red bar across), whose names are the app's text on their faces, and the warning
+triangles `sign_bend_left`, `sign_bend_right` (a curving arrow) and `sign_grade` (a slope,
+the grade as text); and `power_pole` (a tapered wooden pole with a crossarm and three
+insulators). Each model's +x points away from the road, its length
+runs along it, its origin on the ground where it stands; parts reach 0.4 m below it to meet
+sloping ground. The world shears the rails to the road's grade, so their posts stay upright.
+
+```sh
+scripts/art.sh blender --background --factory-startup --python art/props/build.py
+```
+
+| Name | Used for |
+|---|---|
+| `galvanised` | the rails' beams, posts and blocks (`props.galvanised`, metallic) |
+| `post`, `band`, `reflector` | the delineator's white post, black band and orange reflector |
+| `pole_red`, `pole_white` | the snow pole's bands |
+| `metal_dark` | lamps, bench frames, bins, the shelter's frame and roof |
+| `wood` | bench and shelter seats |
+| `lamp` | the luminaire's glass, faintly lit |
+| `glass` | the shelter's panes, see-through |
+| `wood_weathered` | fences and wayside crosses |
+| `hay`, `wrap` | the bales: straw, or white plastic |
+| `stone` | the wayside cross's foot |
+| `sign_blue`, `sign_white`, `sign_red`, `sign_black` | the signs' faces and symbols |
+| `insulator` | the power poles' insulators |
+
+The app colours each name from the palette's `props` section (`app/scenes/prop_models.gd`).
+The world (`core/torqa-world/src/props.rs`) places them by rules from the road's shape and
+the ground beside it: guard rails, span by span, on the side where the ground 4.5 m beyond
+the edge lies 2 m or more below the road, with a start and an end span at each run and none
+where a street joins; delineator posts every 50 m on both sides of country roads; snow poles
+every 25 m above 1,300 m, behind the rails where there are any. Bridges and tunnels get
+none. Towns — built-up land on the map, or four buildings within 60 m where it maps none —
+get no posts but street lamps every 60 m on each side, staggered; now and then a bench facing
+the road with a bin beside it; and a bus shelter every 400 m on the right. Each stands only
+where it has room: clear of the buildings' walls, side streets and where streets join. In the
+country, about a third of the 120 m stretches beside pasture or field (or open land the map
+leaves unmarked) are fenced, span by span, except where a rail stands; round bales lie in
+fields 12–90 m from the road, one to three together; and a wayside cross stands just past
+about one in five of the lanes joining the road outside towns. Road signs stand on the right of
+travel: where the road enters a town (by majority over 200 m, so a gap between houses ends
+none) the nearest place's name from the map, and its end sign where it leaves; outside towns
+a bend sign 80 m before a hairpin (more than 100° within 60 m) and a grade sign before 300 m
+climbing or falling at 9 % or more. Power lines follow about two in five 600 m stretches of
+country road, on one side, 9 m from the centre: a pole every 50 m and three wires sagging
+from pole to pole, built by the world as geometry (`wire` in the palette) since no fixed model
+bends with the road. Every prop is in the [gallery](#props).
+
 ## Riders (`riders/`)
 
 `build.py` makes a female and a male rider, each on their own bike, into
@@ -227,8 +289,8 @@ scripts/art.sh blender --background --factory-startup --python art/remote/keep_a
 
 ## Gallery
 
-Every model as the world draws it, in its palette colours and light: buildings and plants in
-three variants side by side (colours vary per building and plant), the riders from the views
+Every model as the world draws it, in its palette colours and light: buildings, plants and
+props in three variants side by side (colours vary per building and plant), the riders from the views
 `scripts/render-riders.sh` takes. After changing a model, render the pictures again in the dev
 container (a run replaces its group's pictures, so a model taken out leaves none behind) and
 update the tables if models were added or removed:
@@ -267,6 +329,18 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![broadleaf_round](../docs/images/models/vegetation/broadleaf_round.jpg)<br>`broadleaf_round` | ![bush](../docs/images/models/vegetation/bush.jpg)<br>`bush` | ![rock_block](../docs/images/models/vegetation/rock_block.jpg)<br>`rock_block` |
 | ![rock_pair](../docs/images/models/vegetation/rock_pair.jpg)<br>`rock_pair` | ![palm_coconut](../docs/images/models/vegetation/palm_coconut.jpg)<br>`palm_coconut` | ![palm_fan](../docs/images/models/vegetation/palm_fan.jpg)<br>`palm_fan` |
 | ![palm_short](../docs/images/models/vegetation/palm_short.jpg)<br>`palm_short` | ![banana](../docs/images/models/vegetation/banana.jpg)<br>`banana` | ![tropical_bush](../docs/images/models/vegetation/tropical_bush.jpg)<br>`tropical_bush` |
+
+### Props
+
+| | | |
+|---|---|---|
+| ![guard_rail](../docs/images/models/props/guard_rail.jpg)<br>`guard_rail` | ![guard_rail_start](../docs/images/models/props/guard_rail_start.jpg)<br>`guard_rail_start` | ![guard_rail_end](../docs/images/models/props/guard_rail_end.jpg)<br>`guard_rail_end` |
+| ![delineator](../docs/images/models/props/delineator.jpg)<br>`delineator` | ![snow_pole](../docs/images/models/props/snow_pole.jpg)<br>`snow_pole` | ![street_lamp](../docs/images/models/props/street_lamp.jpg)<br>`street_lamp` |
+| ![bench](../docs/images/models/props/bench.jpg)<br>`bench` | ![bin](../docs/images/models/props/bin.jpg)<br>`bin` | ![bus_shelter](../docs/images/models/props/bus_shelter.jpg)<br>`bus_shelter` |
+| ![fence](../docs/images/models/props/fence.jpg)<br>`fence` | ![hay_bale](../docs/images/models/props/hay_bale.jpg)<br>`hay_bale` | ![hay_bale_wrapped](../docs/images/models/props/hay_bale_wrapped.jpg)<br>`hay_bale_wrapped` |
+| ![wayside_cross](../docs/images/models/props/wayside_cross.jpg)<br>`wayside_cross` | ![sign_place](../docs/images/models/props/sign_place.jpg)<br>`sign_place` | ![sign_place_end](../docs/images/models/props/sign_place_end.jpg)<br>`sign_place_end` |
+| ![sign_bend_left](../docs/images/models/props/sign_bend_left.jpg)<br>`sign_bend_left` | ![sign_bend_right](../docs/images/models/props/sign_bend_right.jpg)<br>`sign_bend_right` | ![sign_grade](../docs/images/models/props/sign_grade.jpg)<br>`sign_grade` |
+| ![power_pole](../docs/images/models/props/power_pole.jpg)<br>`power_pole` | | |
 
 ### Riders
 
