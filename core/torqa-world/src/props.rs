@@ -1,6 +1,7 @@
 //! What stands by the road ridden (R92): guard rails where the ground falls away beside it,
 //! delineator posts along country roads and snow poles on mountain roads; in towns street
-//! lamps, benches with bins and bus shelters. Placed by rules from
+//! lamps, benches with bins and bus shelters; in the countryside pasture fences, hay bales and
+//! wayside crosses. Placed by rules from
 //! the road's shape, the ground beside it and the land around, as the Blender models of
 //! `art/props` (`app/assets/models/props`).
 
@@ -52,6 +53,22 @@ const TOWN_CLEAR: f64 = 1.0;
 /// within this far of the road's point.
 const VILLAGE_BUILDINGS: usize = 4;
 const VILLAGE_REACH: f64 = 60.0;
+/// Pasture fences: spans this long, this far out, along stretches of meadow or field; a
+/// stretch is `FENCE_STRETCH` long and about one in `FENCE_SHARE` is fenced on each side.
+const FENCE_SPAN: f64 = 3.0;
+const FENCE_OFFSET: f64 = ROAD_HALF_WIDTH + 3.0;
+const FENCE_STRETCH: f64 = 120.0;
+const FENCE_SHARE: f64 = 0.3;
+/// Hay bales lie in fields between these distances from the road, at about one spot in
+/// `BALE_SHARE` of a `BALE_GRID` grid, one to three together.
+const BALE_GRID: f64 = 18.0;
+const BALE_NEAR: f64 = 12.0;
+const BALE_FAR: f64 = 90.0;
+const BALE_SHARE: f64 = 0.06;
+/// A wayside cross stands beside about one in `CROSS_SHARE` of the country lanes joining the
+/// road, just past the lane, this far out.
+const CROSS_SHARE: f64 = 0.2;
+const CROSS_OFFSET: f64 = ROAD_HALF_WIDTH + 2.5;
 /// The map's own way of the road ridden may lie this far off the drawn road: its points there
 /// are the road, not a side street.
 const ROAD_WAY_SLACK: f64 = 4.0;
@@ -90,7 +107,169 @@ pub(crate) fn place(
     rails(&mut props, low, high, roadside, chunk_origin);
     posts(&mut props, low, high, roadside, chunk_origin);
     town(&mut props, low, high, roadside, chunk_origin);
+    fences(&mut props, low, high, roadside, chunk_origin);
+    crosses(&mut props, low, high, roadside, chunk_origin);
+    bales(&mut props, low, high, roadside, chunk_origin);
     props
+}
+
+/// Whether the land at a point is pasture or field: mapped so, or open land the map leaves
+/// unmarked, which in the country is mostly grazed or mown.
+fn pasture(roadside: &Roadside, east: f64, north: f64) -> bool {
+    matches!(
+        roadside.land.cover_at(east, north),
+        Some(LandCover::Meadow | LandCover::Farmland) | None
+    )
+}
+
+/// Pasture fences span by span along stretches where the land beside the road is meadow or
+/// field, outside towns and where no rail stands; whether a stretch is fenced is decided once
+/// for it, so fences run on rather than flicker.
+fn fences(
+    props: &mut Props,
+    low: (f64, f64),
+    high: (f64, f64),
+    roadside: &Roadside,
+    chunk_origin: [f64; 3],
+) {
+    for station in roadside.road.stations(FENCE_SPAN, low, high) {
+        if station.surface != Surface::Ground || built_up(&station, roadside) {
+            continue;
+        }
+        #[allow(clippy::cast_possible_truncation)] // stretch numbers along the route
+        let stretch = (station.distance / FENCE_STRETCH).floor() as i64;
+        for side in [-1.0, 1.0] {
+            #[allow(clippy::cast_possible_truncation)] // ±1
+            let salt = side as i64;
+            let fenced = crate::hash(stretch.wrapping_mul(31) ^ salt ^ 0x6665_6e63) < FENCE_SHARE;
+            let (east, north) = out(&station, side, FENCE_OFFSET);
+            if !fenced
+                || !pasture(roadside, east, north)
+                || falls_away(&station, side, roadside)
+                || room(&station, side, FENCE_OFFSET, 0.2, roadside).is_none()
+            {
+                continue;
+            }
+            let at = beside(&station, side, FENCE_OFFSET, roadside);
+            push(
+                props,
+                "fence",
+                at,
+                &station,
+                side,
+                station.grade,
+                chunk_origin,
+            );
+        }
+    }
+}
+
+/// A wayside cross just past about one in `CROSS_SHARE` of the lanes joining the road outside
+/// towns, facing the road.
+fn crosses(
+    props: &mut Props,
+    low: (f64, f64),
+    high: (f64, f64),
+    roadside: &Roadside,
+    chunk_origin: [f64; 3],
+) {
+    for station in roadside.road.stations(TOWN_STEP, low, high) {
+        if station.surface != Surface::Ground || built_up(&station, roadside) {
+            continue;
+        }
+        for &(along, side, half) in roadside.mouths {
+            let past = station.distance - (along + half + 3.0);
+            #[allow(clippy::cast_possible_truncation)] // whole metres along the route
+            let seed = along.round() as i64;
+            if !(0.0..TOWN_STEP).contains(&past) || crate::hash(seed ^ 0x6372_6f73) >= CROSS_SHARE {
+                continue;
+            }
+            if let Some(at) = room(&station, side, CROSS_OFFSET, 0.4, roadside) {
+                push(
+                    props,
+                    "wayside_cross",
+                    at,
+                    &station,
+                    side,
+                    0.0,
+                    chunk_origin,
+                );
+            }
+        }
+    }
+}
+
+/// Round hay bales, straw or wrapped, lying in fields near the road: one to three together at
+/// a few spots of a grid, each turned its own way.
+#[allow(clippy::cast_possible_truncation)] // grid cells and small counts
+fn bales(
+    props: &mut Props,
+    low: (f64, f64),
+    high: (f64, f64),
+    roadside: &Roadside,
+    chunk_origin: [f64; 3],
+) {
+    let first = (
+        (low.0 / BALE_GRID).ceil() as i64,
+        (low.1 / BALE_GRID).ceil() as i64,
+    );
+    let last = (
+        (high.0 / BALE_GRID).ceil() as i64,
+        (high.1 / BALE_GRID).ceil() as i64,
+    );
+    for i in first.0..last.0 {
+        for j in first.1..last.1 {
+            let seed = i.wrapping_mul(92_821) ^ j.wrapping_mul(68_917) ^ 0x6261_6c65;
+            if crate::hash(seed) >= BALE_SHARE {
+                continue;
+            }
+            #[allow(clippy::cast_precision_loss)] // grid cells
+            let (east, north) = (i as f64 * BALE_GRID, j as f64 * BALE_GRID);
+            let near = roadside
+                .road
+                .nearest(east, north, BALE_FAR)
+                .map(|(d, _, _)| d);
+            if !near.is_some_and(|d| d > BALE_NEAR)
+                || roadside.land.cover_at(east, north) != Some(LandCover::Farmland)
+            {
+                continue;
+            }
+            #[allow(clippy::cast_sign_loss)] // hash is in [0, 1)
+            let count = 1 + (crate::hash(seed ^ 1) * 3.0) as usize;
+            let model = if crate::hash(seed ^ 2) < 0.4 {
+                "hay_bale_wrapped"
+            } else {
+                "hay_bale"
+            };
+            for k in 0..count {
+                #[allow(clippy::cast_possible_wrap)] // small counts
+                let salt = seed ^ (k as i64 + 3).wrapping_mul(7919);
+                let (e, n) = (
+                    east + (crate::hash(salt) - 0.5) * 6.0,
+                    north + (crate::hash(salt ^ 5) - 0.5) * 6.0,
+                );
+                let blocked = roadside.streets.blocked(e, n, 1.5)
+                    || roadside
+                        .buildings
+                        .iter()
+                        .any(|b| b.wall_distance(e, n) < 2.0);
+                if blocked {
+                    continue;
+                }
+                let yaw = crate::hash(salt ^ 9) * std::f64::consts::TAU;
+                let ground = roadside.heights.at(e, n);
+                let lying = Station {
+                    position: (e, n),
+                    elevation: ground,
+                    distance: 0.0,
+                    direction: (yaw.cos(), yaw.sin()),
+                    grade: 0.0,
+                    surface: Surface::Ground,
+                };
+                push(props, model, [e, ground, n], &lying, 1.0, 0.0, chunk_origin);
+            }
+        }
+    }
 }
 
 /// In towns: street lamps staggered along both sides, now and then a bench facing the road with
@@ -377,7 +556,7 @@ fn push(
 #[cfg(test)]
 mod tests {
     /// Every model the rules place, as `art/props` builds them.
-    const PLACED: [&str; 9] = [
+    const PLACED: [&str; 13] = [
         "guard_rail",
         "guard_rail_end",
         "guard_rail_start",
@@ -387,6 +566,10 @@ mod tests {
         "bench",
         "bin",
         "bus_shelter",
+        "fence",
+        "hay_bale",
+        "hay_bale_wrapped",
+        "wayside_cross",
     ];
 
     #[test]
@@ -417,6 +600,10 @@ mod tests {
             "wood",
             "lamp",
             "glass",
+            "wood_weathered",
+            "hay",
+            "wrap",
+            "stone",
         ] {
             crate::palette::srgb(&format!("props.{material}"), 1.0);
         }

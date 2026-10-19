@@ -16,6 +16,10 @@
    "kind": "delineator",
    "height": 1.0
   },
+  "fence": {
+   "kind": "fence",
+   "height": 1.15
+  },
   "guard_rail": {
    "kind": "guard_rail",
    "height": 0.76
@@ -28,6 +32,14 @@
    "kind": "guard_rail_end",
    "height": 0.76
   },
+  "hay_bale": {
+   "kind": "hay_bale",
+   "height": 1.45
+  },
+  "hay_bale_wrapped": {
+   "kind": "hay_bale",
+   "height": 1.45
+  },
   "snow_pole": {
    "kind": "snow_pole",
    "height": 2.5
@@ -35,6 +47,10 @@
   "street_lamp": {
    "kind": "street_lamp",
    "height": 6.55
+  },
+  "wayside_cross": {
+   "kind": "wayside_cross",
+   "height": 2.72
   }
  }
 }

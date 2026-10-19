@@ -131,7 +131,11 @@
     "metal_dark": "#2c2f33",
     "wood": "#8a6143",
     "lamp": "#f4ecd2",
-    "glass": "#b9cbd3"
+    "glass": "#b9cbd3",
+    "wood_weathered": "#7a6e5f",
+    "hay": "#c2a05a",
+    "wrap": "#e6e6e1",
+    "stone": "#8f8a83"
   },
   "bike": {
     "tyre": "#1b1b1c",

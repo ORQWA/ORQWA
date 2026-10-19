@@ -1,7 +1,8 @@
 class_name PropModels
 extends RefCounted
 ## The props made in Blender that stand by the road (art/props, R92): guard rails, delineator
-## posts and snow poles, street lamps, benches, bins and bus shelters. Loads them and gives each
+## posts and snow poles, street lamps, benches, bins and bus shelters, pasture fences, hay
+## bales and wayside crosses. Loads them and gives each
 ## material name its look from the palette's `props` section: the shelters' glass see-through,
 ## the lamps' glass faintly lit.
 
@@ -18,6 +19,10 @@ const LOOKS: Dictionary[String, Array] = {
 	"wood": [0.8, 0.0, 1.0, 0.0],
 	"lamp": [0.3, 0.0, 1.0, 0.6],
 	"glass": [0.05, 0.0, 0.3, 0.0],
+	"wood_weathered": [0.9, 0.0, 1.0, 0.0],
+	"hay": [0.95, 0.0, 1.0, 0.0],
+	"wrap": [0.35, 0.0, 1.0, 0.0],
+	"stone": [0.9, 0.0, 1.0, 0.0],
 }
 
 static var _materials: Dictionary[String, StandardMaterial3D] = {}

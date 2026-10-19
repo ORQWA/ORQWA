@@ -4060,3 +4060,61 @@ async fn towns_get_lamps_benches_and_shelters_with_room_to_stand() {
         "town props, not country posts"
     );
 }
+
+#[tokio::test]
+async fn the_countryside_gets_fences_bales_and_crosses_but_not_towns() {
+    // Fields east of the road, meadow west, a village at the north end, lanes joining.
+    let fields = Area {
+        cover: LandCover::Farmland,
+        outer: vec![rectangle(150.0, 400.0, 145.0, 400.0)],
+        inner: vec![],
+    };
+    let meadow = Area {
+        cover: LandCover::Meadow,
+        outer: vec![rectangle(-150.0, 400.0, 145.0, 400.0)],
+        inner: vec![],
+    };
+    let village = Area {
+        cover: LandCover::Residential,
+        outer: vec![rectangle(0.0, 950.0, 300.0, 150.0)],
+        inner: vec![],
+    };
+    let mut roads = vec![road_north()];
+    roads.extend((1..8).map(|k| torqa_osm::Road {
+        class: torqa_osm::RoadClass::Track,
+        line: vec![
+            at(0.0, 100.0 * f64::from(k)),
+            at(-150.0, 100.0 * f64::from(k)),
+        ],
+        structure: None,
+    }));
+    let map = MapData {
+        roads,
+        areas: vec![fields, meadow, village],
+        ..MapData::default()
+    };
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+
+    let fences = props_of(&world, "fence");
+    assert!(fences.len() > 40, "{} fence spans", fences.len());
+    assert!(
+        fences.iter().all(|p| p[2] < 800.0),
+        "no pasture fences in the village"
+    );
+    for p in &fences {
+        assert!((5.5..6.5).contains(&p[0].abs()), "beside the road: {p:?}");
+    }
+    let bales: Vec<[f64; 3]> = props_of(&world, "hay_bale")
+        .into_iter()
+        .chain(props_of(&world, "hay_bale_wrapped"))
+        .collect();
+    assert!(!bales.is_empty(), "bales in the fields");
+    assert!(
+        bales.iter().all(|p| p[0] > 10.0 && p[2] < 800.0),
+        "only in the fields, off the road: {bales:?}"
+    );
+    let crosses = props_of(&world, "wayside_cross");
+    assert!(crosses.len() <= 7, "{crosses:?}");
+    assert!(crosses.iter().all(|p| p[0] < 0.0), "on the lanes' side");
+}

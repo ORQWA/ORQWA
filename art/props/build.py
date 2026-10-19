@@ -1,6 +1,6 @@
 """Builds the props that stand by the road (R92) — guard rails, delineator posts and snow
-poles; in towns street lamps, benches, bins and bus shelters — and exports them for Godot
-(ADR 0009, ADR 0020).
+poles; in towns street lamps, benches, bins and bus shelters; in the countryside pasture
+fences, hay bales and wayside crosses — and exports them for Godot (ADR 0009, ADR 0020).
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/props/build.py
@@ -11,7 +11,8 @@ back to the road: the model's +x points away from the road, its length runs alon
 it stands. Guard rails are 4 m spans that the world shears to the road's grade, so posts stay
 upright; `guard_rail_end` slopes down into the ground ahead (+y), `guard_rail_start` behind.
 Each model is one mesh with named materials (`galvanised`, `post`, `band`, `reflector`,
-`pole_red`, `pole_white`, `metal_dark`, `wood`, `lamp`, `glass`) that the app colours
+`pole_red`, `pole_white`, `metal_dark`, `wood`, `lamp`, `glass`, `wood_weathered`, `hay`,
+`wrap`, `stone`) that the app colours
 (`app/scenes/prop_models.gd`). A street lamp's arm reaches over the road (−x); a bench's and
 a shelter's seats face it. Parts reach
 `BURIED` below the origin, so they meet sloping ground. `models.json` lists each model's height.
@@ -36,7 +37,9 @@ import preview  # noqa: E402  (needs the path above)
 PREVIEW = {"galvanised": (0.62, 0.64, 0.66), "post": (0.9, 0.9, 0.88), "band": (0.05, 0.05, 0.05),
            "reflector": (0.95, 0.55, 0.1), "pole_red": (0.7, 0.08, 0.06),
            "pole_white": (0.92, 0.92, 0.9), "metal_dark": (0.18, 0.19, 0.2),
-           "wood": (0.45, 0.3, 0.18), "lamp": (0.95, 0.93, 0.85), "glass": (0.7, 0.8, 0.85)}
+           "wood": (0.45, 0.3, 0.18), "lamp": (0.95, 0.93, 0.85), "glass": (0.7, 0.8, 0.85),
+           "wood_weathered": (0.42, 0.38, 0.32), "hay": (0.75, 0.62, 0.32),
+           "wrap": (0.9, 0.9, 0.88), "stone": (0.55, 0.53, 0.5)}
 
 # How far posts and blades reach below the ground's level at the origin.
 BURIED = 0.4
@@ -46,6 +49,8 @@ SPAN = 4.0
 W_BEAM = [(0.0, 0.44), (-0.045, 0.47), (-0.06, 0.52), (-0.035, 0.575), (-0.01, 0.6),
           (-0.035, 0.625), (-0.06, 0.68), (-0.045, 0.73), (0.0, 0.76)]
 SHEET = 0.004
+# A pasture fence's span along the road.
+FENCE_SPAN = 3.0
 # Steps along an end span as it twists down into the ground.
 END_STEPS = 8
 
@@ -282,7 +287,60 @@ def bus_shelter(spec):
     return mesh, height + 0.08
 
 
-KINDS = {"street_lamp": street_lamp, "bench": bench, "bin": litter_bin,
+def fence(spec):
+    """A pasture fence's span: two weathered posts at its ends and two split rails between,
+    `FENCE_SPAN` long along the road."""
+    mesh = Mesh()
+    half = FENCE_SPAN / 2
+    for y in (-half, half):
+        mesh.box((-0.05, y - 0.05, -BURIED), (0.05, y + 0.05, 1.15), "wood_weathered")
+    for z in (0.45, 0.9):
+        mesh.box((-0.09, -half, z), (-0.05, half, z + 0.1), "wood_weathered")
+    return mesh, 1.15
+
+
+def hay_bale(spec):
+    """A round bale of hay lying on its side, its axis along the road: straw, or wrapped in white
+    plastic for silage."""
+    mesh = Mesh()
+    radius, width, sides = 0.75, 1.2, 18
+    material = "wrap" if spec.get("wrapped") else "hay"
+
+    # Sunk a little into the ground, as a heavy bale settles.
+    centre_z = radius - 0.05
+
+    def ring(y):
+        return [(radius * math.cos(2 * math.pi * i / sides), y,
+                 centre_z + radius * math.sin(2 * math.pi * i / sides)) for i in range(sides)]
+
+    rings = [ring(-width / 2), ring(width / 2)]
+    mesh.strip(rings, material, smooth=True, closed=True)
+    # The flat ends as fans round their centres, facing out.
+    for y, ring_points, outward in ((-width / 2, rings[0], -1), (width / 2, rings[1], 1)):
+        centre = (0.0, y, centre_z)
+        for i in range(sides):
+            a, b = ring_points[i], ring_points[(i + 1) % sides]
+            mesh.face([centre, b, a] if outward > 0 else [centre, a, b], material)
+    return mesh, 2 * radius - 0.05
+
+
+def wayside_cross(spec):
+    """A wooden wayside cross on a stone foot, with a small pitched roof over the crossing."""
+    mesh = Mesh()
+    mesh.box((-0.25, -0.25, -BURIED), (0.25, 0.25, 0.3), "stone")
+    mesh.box((-0.06, -0.06, 0.3), (0.06, 0.06, 2.6), "wood_weathered")
+    mesh.box((-0.05, -0.55, 1.85), (0.05, 0.55, 1.97), "wood_weathered")
+    # The roof: two boards meeting over the top, along the arms, seen from both sides.
+    for sign in (-1.0, 1.0):
+        board = [(0.0, -0.65, 2.72), (0.0, 0.65, 2.72), (sign * 0.28, 0.65, 2.5),
+                 (sign * 0.28, -0.65, 2.5)]
+        mesh.face(board, "wood_weathered")
+        mesh.face(list(reversed(board)), "wood_weathered")
+    return mesh, 2.72
+
+
+KINDS = {"fence": fence, "hay_bale": hay_bale, "wayside_cross": wayside_cross,
+         "street_lamp": street_lamp, "bench": bench, "bin": litter_bin,
          "bus_shelter": bus_shelter, "guard_rail": guard_rail, "guard_rail_end": guard_rail_end, "delineator": delineator,
          "snow_pole": snow_pole}
 CATALOGUE = [
@@ -295,6 +353,10 @@ CATALOGUE = [
     {"name": "bench", "kind": "bench"},
     {"name": "bin", "kind": "bin"},
     {"name": "bus_shelter", "kind": "bus_shelter"},
+    {"name": "fence", "kind": "fence"},
+    {"name": "hay_bale", "kind": "hay_bale"},
+    {"name": "hay_bale_wrapped", "kind": "hay_bale", "wrapped": True},
+    {"name": "wayside_cross", "kind": "wayside_cross"},
 ]
 
 

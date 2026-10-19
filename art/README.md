@@ -154,7 +154,10 @@ flaring away from the road, as a run of rail begins and ends), `delineator` (a 1
 its sloping top and black band with a reflector facing the traffic) and `snow_pole` (2.5 m,
 red and white in half-metre bands); in towns `street_lamp` (6.5 m, its arm bending over the
 road to a flat luminaire), `bench` (wooden slats on two cast frames), `bin` (a drum on a post)
-and `bus_shelter` (glass back and ends in thin frames, a flat roof, a bench inside). Each model's +x points away from the road, its length
+and `bus_shelter` (glass back and ends in thin frames, a flat roof, a bench inside); in the
+countryside `fence` (a 3 m span of two split rails between weathered posts), `hay_bale` and
+`hay_bale_wrapped` (round bales lying on their side, straw or white silage wrap) and
+`wayside_cross` (a wooden cross on a stone foot under a little roof). Each model's +x points away from the road, its length
 runs along it, its origin on the ground where it stands; parts reach 0.4 m below it to meet
 sloping ground. The world shears the rails to the road's grade, so their posts stay upright.
 
@@ -171,6 +174,9 @@ scripts/art.sh blender --background --factory-startup --python art/props/build.p
 | `wood` | bench and shelter seats |
 | `lamp` | the luminaire's glass, faintly lit |
 | `glass` | the shelter's panes, see-through |
+| `wood_weathered` | fences and wayside crosses |
+| `hay`, `wrap` | the bales: straw, or white plastic |
+| `stone` | the wayside cross's foot |
 
 The app colours each name from the palette's `props` section (`app/scenes/prop_models.gd`).
 The world (`core/torqa-world/src/props.rs`) places them by rules from the road's shape and
@@ -181,8 +187,12 @@ every 25 m above 1,300 m, behind the rails where there are any. Bridges and tunn
 none. Towns — built-up land on the map, or four buildings within 60 m where it maps none —
 get no posts but street lamps every 60 m on each side, staggered; now and then a bench facing
 the road with a bin beside it; and a bus shelter every 400 m on the right. Each stands only
-where it has room: clear of the buildings' walls, side streets and where streets join. Every
-prop is in the [gallery](#props).
+where it has room: clear of the buildings' walls, side streets and where streets join. In the
+country, about a third of the 120 m stretches beside pasture or field (or open land the map
+leaves unmarked) are fenced, span by span, except where a rail stands; round bales lie in
+fields 12–90 m from the road, one to three together; and a wayside cross stands just past
+about one in five of the lanes joining the road outside towns. Every prop is in the
+[gallery](#props).
 
 ## Riders (`riders/`)
 
@@ -314,6 +324,8 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![guard_rail](../docs/images/models/props/guard_rail.jpg)<br>`guard_rail` | ![guard_rail_start](../docs/images/models/props/guard_rail_start.jpg)<br>`guard_rail_start` | ![guard_rail_end](../docs/images/models/props/guard_rail_end.jpg)<br>`guard_rail_end` |
 | ![delineator](../docs/images/models/props/delineator.jpg)<br>`delineator` | ![snow_pole](../docs/images/models/props/snow_pole.jpg)<br>`snow_pole` | ![street_lamp](../docs/images/models/props/street_lamp.jpg)<br>`street_lamp` |
 | ![bench](../docs/images/models/props/bench.jpg)<br>`bench` | ![bin](../docs/images/models/props/bin.jpg)<br>`bin` | ![bus_shelter](../docs/images/models/props/bus_shelter.jpg)<br>`bus_shelter` |
+| ![fence](../docs/images/models/props/fence.jpg)<br>`fence` | ![hay_bale](../docs/images/models/props/hay_bale.jpg)<br>`hay_bale` | ![hay_bale_wrapped](../docs/images/models/props/hay_bale_wrapped.jpg)<br>`hay_bale_wrapped` |
+| ![wayside_cross](../docs/images/models/props/wayside_cross.jpg)<br>`wayside_cross` | | |
 
 ### Riders
 

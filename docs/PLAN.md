@@ -512,7 +512,9 @@ physically based materials and light, restyled group by group.
     - [ ] Bollards, fountains and the like
     - [ ] Road signs: town names at each place's edge, warnings before hairpins and steep
       grades, signposts at junctions
-    - [ ] Countryside: pasture fences and gates, hay bales, power-line poles, wayside crosses
+    - [x] Countryside: pasture fences in stretches beside pasture and fields, round hay bales
+      in fields, wayside crosses where lanes join outside towns
+    - [ ] Power lines (poles with wires running from pole to pole) and field gates
   - [ ] More geometry on buildings where it shows (eaves, window depth); frame rate on an M1
     at Medium checked after the restyle
 - **Exit:** a long hilly course at 60 fps on M1 base at Medium ✅ (#111, 2026-10-08); screenshots
