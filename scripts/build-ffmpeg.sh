@@ -2,16 +2,17 @@
 # Builds FFmpeg's libraries for torqa-video (ADR 0010): a pinned release, its download verified,
 # static, with only the parts used (demuxing, decoding, scaling), installed under the given
 # prefix for ffmpeg-sys-next to find through FFMPEG_DIR. Native builds, or for Windows from
-# Linux with MinGW (`windows`, for the dev image's Windows extension, ADR 0021); on Windows
-# itself run it from MSYS2's sh with MSVC's cl and link on PATH.
-# Usage: scripts/build-ffmpeg.sh <prefix> [windows]
+# Linux with MinGW (`windows`, for the dev image's Windows extension, ADR 0021), or for 64-bit
+# ARM Android with the NDK in $ANDROID_NDK_ROOT (`android`, for the Android image, ADR 0024); on
+# Windows itself run it from MSYS2's sh with MSVC's cl and link on PATH.
+# Usage: scripts/build-ffmpeg.sh <prefix> [windows|android]
 set -eu
 
 version="9.0.2"
 # Of https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.gz; FFmpeg publishes PGP signatures rather
 # than checksums, so this is the download's own, taken 2026-10-08.
 sha256="84960df915059e8754fef2cd7c9afeb614062b1b5458ec471eecee619ee04e98"
-prefix="${1:?usage: $0 <prefix> [windows]}"
+prefix="${1:?usage: $0 <prefix> [windows|android]}"
 target="${2:-native}"
 
 work="$(mktemp -d)"
@@ -41,6 +42,13 @@ if [ "$target" = windows ]; then
     # Windows' own threads, as the MSVC build uses.
     set -- "$@" --enable-cross-compile --target-os=mingw32 --arch=x86_64 \
         --cross-prefix=x86_64-w64-mingw32- --enable-w32threads
+elif [ "$target" = android ]; then
+    # The NDK's clang for Android 7 (API 24), the oldest Godot's Android build supports.
+    ndk="${ANDROID_NDK_ROOT:?set ANDROID_NDK_ROOT to the NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin"
+    set -- "$@" --enable-cross-compile --target-os=android --arch=aarch64 --cpu=armv8-a \
+        --cc="$ndk/aarch64-linux-android24-clang" --cxx="$ndk/aarch64-linux-android24-clang++" \
+        --ar="$ndk/llvm-ar" --ranlib="$ndk/llvm-ranlib" --nm="$ndk/llvm-nm" \
+        --strip="$ndk/llvm-strip" --enable-pthreads
 else
     case "$(uname -s)" in
         MINGW* | MSYS* | CYGWIN*) set -- "$@" --toolchain=msvc ;;

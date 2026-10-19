@@ -1,0 +1,39 @@
+# Android (ADR 0024)
+
+Torqa as an APK for Android tablets, built in a container of its own so the dev image and the
+checks stay as they are.
+
+```sh
+scripts/android.sh scripts/build-android.sh      # → dist/Torqa-android-arm64.apk (debug-signed)
+```
+
+| Part | What it is |
+|---|---|
+| `Dockerfile` | The Android image: the dev image plus OpenJDK 21, the SDK (platform 36, build tools 36.1.0), the NDK, FFmpeg for Android, Godot's Android templates and a debug keystore |
+| `plugin/` | Torqa's Godot Android plugin: loads Torqa's library early so btleplug finds its Java classes (compiled in from the btleplug crate), asks for Bluetooth |
+| `godot/` | What only the APK build adds to its copy of the project: the export preset and the editor addon that puts the plugin into the export |
+| `stage.py` | Adds those, the extension's Android library and Android's texture formats to the copy |
+
+The project in `app/` is never changed: `scripts/build-android.sh` copies it to a build folder in
+the container first.
+
+## Installing on a tablet
+
+With wireless debugging paired (`adb pair`, then `adb connect <address>`):
+
+```sh
+adb install -r dist/Torqa-android-arm64.apk
+adb logcat -s Torqa godot
+```
+
+## Removing Android support
+
+Everything Android lives here and in a few marked places; to take it out again:
+
+1. Delete `android/`, `scripts/android.sh` and `scripts/build-android.sh`.
+2. In `scripts/build-ffmpeg.sh`, remove the `android` branch.
+3. In `core/`: delete `torqa-devices/src/android.rs` and its `mod` line, the
+   `cfg(target_os = "android")` `jni` dependency in `torqa-devices/Cargo.toml`, `jni` in the
+   workspace `Cargo.toml`, and `JNI_OnLoad` at the end of `torqa-gd/src/lib.rs`.
+4. Remove the Docker volume `torqa-gradle` and the image `torqa-android`.
+5. Mark ADR 0024 superseded and update `docs/PLAN.md`.

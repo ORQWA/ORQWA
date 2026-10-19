@@ -2538,6 +2538,7 @@ version = "0.4.0"
 dependencies = [
  "btleplug",
  "futures",
+ "jni",
  "thiserror",
  "tokio",
  "torqa-domain",

@@ -124,7 +124,8 @@ func _show_video() -> void:
 	_remove_button.visible = not _edited.is_empty() and _edited.get("located", true)
 
 
-func _on_video_chosen(path: String) -> void:
+func _on_video_chosen(picked: String) -> void:
+	var path: String = PickedFile.local_path(picked)
 	var probe: Dictionary = _torqa.video_probe(path)
 	if probe.is_empty():
 		return

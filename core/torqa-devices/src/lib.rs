@@ -4,6 +4,8 @@
 //! the fake trainer — is driven by a background task and exposed through the same
 //! [`DeviceHandle`], so callers never depend on a concrete driver.
 
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod battery;
 pub mod ble;
 mod bytes;

@@ -3691,3 +3691,21 @@ mod sample_course_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+/// Android loads Torqa's library from Java first (ADR 0024: the APK's plugin does, before Godot
+/// opens it as an extension), on a thread with the app's class loader: the one moment Bluetooth
+/// can find btleplug's Java classes.
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)] // the name Android looks for
+#[unsafe(no_mangle)]
+pub extern "system" fn JNI_OnLoad(
+    vm: *mut torqa_devices::android::sys::JavaVM,
+    _reserved: *mut std::ffi::c_void,
+) -> torqa_devices::android::sys::jint {
+    // SAFETY: Android passes its Java VM to JNI_OnLoad.
+    match unsafe { torqa_devices::android::init(vm) } {
+        Ok(()) => torqa_devices::android::log("Bluetooth ready"),
+        Err(error) => torqa_devices::android::log(&format!("Bluetooth not ready: {error}")),
+    }
+    torqa_devices::android::sys::JNI_VERSION_1_6
+}

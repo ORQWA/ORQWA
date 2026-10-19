@@ -8,12 +8,18 @@ use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id, Record};
 use tracing::{Event, Level, Metadata, Subscriber};
 
-/// Writes events at info level and above as `Torqa WARN target: message key=value`.
+/// Writes events at info level and above (debug on Android) as
+/// `Torqa WARN target: message key=value`.
 pub struct StderrLog;
 
 impl Subscriber for StderrLog {
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        *metadata.level() <= Level::INFO && metadata.target().starts_with("torqa")
+        let level = if cfg!(target_os = "android") {
+            Level::DEBUG
+        } else {
+            Level::INFO
+        };
+        *metadata.level() <= level && metadata.target().starts_with("torqa")
     }
 
     fn new_span(&self, _span: &Attributes<'_>) -> Id {
@@ -29,6 +35,9 @@ impl Subscriber for StderrLog {
         let metadata = event.metadata();
         let mut line = format!("Torqa {} {}:", metadata.level(), metadata.target());
         event.record(&mut Line(&mut line));
+        #[cfg(target_os = "android")]
+        torqa_devices::android::log(&line);
+        #[cfg(not(target_os = "android"))]
         eprintln!("{line}");
     }
 

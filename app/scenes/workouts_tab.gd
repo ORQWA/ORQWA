@@ -346,8 +346,8 @@ func _on_saved(id: String) -> void:
 	_status.text = tr("Saved to your workouts.")
 
 
-func _import(path: String) -> void:
-	var id: String = _torqa.import_workout(path)
+func _import(picked: String) -> void:
+	var id: String = _torqa.import_workout(PickedFile.local_path(picked))
 	if id.is_empty():
 		return
 	_options.set_plans(_torqa.workouts(), id)
