@@ -20,3 +20,5 @@ __pycache__/
 
 # Claude Code: personal settings stay local
 .claude/settings.local.json
+# Blender keeps the previous version of a saved file beside it.
+*.blend1

@@ -1,7 +1,8 @@
 shader_type spatial;
-// Building shells (R45, ADR 0011): buildings drawn by the world itself — far away, and up close
-// where no model fits. Flat palette colours, faceted, with clean window rectangles and nothing
-// finer. Each surface's style arrives in the vertex colour's alpha as code / 11 and its colour in
+// Building shells (R89, ADR 0020): buildings drawn by the world itself — far away, and up close
+// where no model fits. Walls of textured plaster or boards, roofs of clay tiles or gravel
+// (textures baked in Blender, tinted by the surface's palette colour), with window rectangles
+// of dark, reflective glass. Each surface's style arrives in the vertex colour's alpha as code / 11 and its colour in
 // RGB (sRGB); the codes are those of `Style` in core/torqa-world/src/buildings/parts.rs. Walls
 // carry metres along the wall and above the ground in UV, roofs metres along the eaves and up
 // the slope, single windows 0–1 across. Windows give way to their average colour where they
@@ -13,6 +14,10 @@ uniform vec3 glass : source_color = vec3(0.384, 0.514, 0.533);
 uniform vec3 frame : source_color = vec3(0.949, 0.922, 0.851);
 uniform vec3 stained_glass : source_color = vec3(0.435, 0.424, 0.62);
 uniform vec3 stone : source_color = vec3(0.765, 0.733, 0.706);
+uniform sampler2D plaster_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D boards_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tiles_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D gravel_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 
 const int PLASTER = 0;
 const int BLANK = 1;
@@ -37,10 +42,20 @@ vec3 to_linear(vec3 srgb) {
 }
 
 void fragment() {
-	NORMAL = normalize(cross(dFdy(VERTEX), dFdx(VERTEX)));
 	int style = int(round(COLOR.a * 11.0));
-	vec3 base = to_linear(COLOR.rgb);
 	vec2 uv = UV;
+	// The surface's texture, light and neutral, tinted by its colour.
+	vec3 surface = vec3(0.8);
+	if (style == TILES) {
+		surface = texture(tiles_texture, uv / 2.0).rgb;
+	} else if (style == FLAT) {
+		surface = texture(gravel_texture, uv / 1.5).rgb * 1.6;
+	} else if (style == BOARDS || style == TIMBER) {
+		surface = texture(boards_texture, uv / 2.0).rgb * 1.8;
+	} else if (style != WINDOW && style != SHEET) {
+		surface = texture(plaster_texture, uv / 2.0).rgb;
+	}
+	vec3 base = to_linear(COLOR.rgb) * surface * 1.25;
 	float soft = max(max(fwidth(uv.x), fwidth(uv.y)) * 0.5, 1e-4);
 	// Where windows would be smaller than a pixel, their average colour shows instead.
 	float detail = 1.0 - smoothstep(0.12, 0.45, soft * 2.0);
@@ -58,8 +73,10 @@ void fragment() {
 		float pane = band(in_row, 1.05, 2.34, soft) * band(in_column, 0.96, 2.24, soft) * lowest;
 		float casing = band(in_row, 0.95, 2.44, soft) * band(in_column, 0.86, 2.34, soft) * lowest;
 		color = mix(color, frame, casing - pane);
-		color = mix(color, glass, pane);
-		average = mix(base, glass, 0.15 * lowest);
+		color = mix(color, glass * 0.55, pane);
+		average = mix(base, glass * 0.55, 0.15 * lowest);
+		roughness = mix(0.9, 0.05, pane * detail);
+		specular = mix(0.3, 0.5, pane);
 	} else if (style == CHURCH) {
 		// Tall windows with round arches and stone surrounds, every 4.5 m.
 		float x = mod(uv.x, 4.5) - 2.25;
@@ -93,7 +110,7 @@ void fragment() {
 		float pane = band(in_column, 0.18, window_spacing - 0.18, soft) * band(uv.y, 0.45, 2.55, soft);
 		color = mix(base, glass, pane);
 		average = mix(base, glass, 0.55);
-		roughness = mix(0.9, 0.35, pane);
+		roughness = mix(0.9, 0.05, pane);
 	} else if (style == RIBBON) {
 		// Offices: a band of glass along every storey from the first floor up, framed above
 		// and below, between plain spandrels.
@@ -102,22 +119,22 @@ void fragment() {
 		float pane = band(in_row, 0.95, 2.35, soft) * upper;
 		float casing = band(in_row, 0.85, 2.45, soft) * upper;
 		color = mix(color, frame, casing - pane);
-		color = mix(color, glass, pane);
-		average = mix(base, glass, 0.45 * upper);
-		roughness = mix(0.9, 0.35, pane);
+		color = mix(color, glass * 0.55, pane);
+		average = mix(base, glass * 0.55, 0.45 * upper);
+		roughness = mix(0.9, 0.05, pane);
 	} else if (style == WINDOW) {
 		// UV spans the window: a frame round the glass.
 		float pane = band(uv.x, 0.12, 0.88, soft) * band(uv.y, 0.1, 0.9, soft);
 		color = mix(base, glass, pane);
 		average = mix(base, glass, 0.6);
-		roughness = mix(0.9, 0.35, pane);
+		roughness = mix(0.9, 0.05, pane);
 	}
-	// Blank walls, boards and roofs (tiles, sheet, flat) are their colour alone.
+	// Blank walls, boards and roofs (tiles, sheet, flat) are their textured colour alone.
 
 	color = mix(average, color, detail);
 	if (wall) {
 		// A soft shade where walls meet the ground.
-		color *= mix(0.85, 1.0, smoothstep(0.0, 1.2, uv.y));
+		color *= mix(0.72, 1.0, smoothstep(0.0, 1.4, uv.y));
 	}
 	ALBEDO = color;
 	ROUGHNESS = roughness;

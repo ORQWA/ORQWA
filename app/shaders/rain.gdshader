@@ -1,15 +1,17 @@
 shader_type spatial;
-// Raindrops (#103, ADR 0011): slim faceted diamonds in a pale sky colour, lit like the world and
-// a little see-through; the particles align them with their fall.
-render_mode cull_disabled, depth_draw_never;
+// Rain (#103, R89, ADR 0020): faint streaks, as falling drops look with the eye's own motion
+// blur — thin, see-through, fading out at both ends, lit by the sky; the particles align them
+// with their fall.
+render_mode cull_disabled, depth_draw_never, shadows_disabled;
 
-uniform vec3 color : source_color = vec3(0.89, 0.929, 0.941);
-uniform float opacity : hint_range(0.0, 1.0) = 0.55;
+uniform vec3 color : source_color = vec3(0.79, 0.824, 0.851);
+uniform float opacity : hint_range(0.0, 1.0) = 0.3;
 
 void fragment() {
-	NORMAL = normalize(cross(dFdy(VERTEX), dFdx(VERTEX)));
+	// UV.y runs along the streak: densest in the middle.
+	float along = 1.0 - abs(UV.y - 0.5) * 2.0;
 	ALBEDO = color;
-	ALPHA = opacity;
-	ROUGHNESS = 0.35;
+	ALPHA = opacity * along * along;
+	ROUGHNESS = 0.2;
 	SPECULAR = 0.5;
 }
