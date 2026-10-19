@@ -26,7 +26,7 @@ func _init() -> void:
 	box.content_margin_top = 12
 	box.content_margin_bottom = 12
 	_panel.add_theme_stylebox_override("panel", box)
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.scroll_down_only(_scroll)
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rows.add_theme_constant_override("separation", 12)
 	_scroll.add_child(_rows)

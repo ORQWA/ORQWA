@@ -60,3 +60,23 @@ never seen narrower than 1600 units, so many had fixed widths that only fit ther
 - On a TV, the text is as large as the system makes it there, and no longer grows with the
   screen. Riders who want it larger raise the system's scale. Under X11 they cannot, until
   Torqa has a size setting of its own.
+
+## Amendment 2026-10-19: scroll bars keep their room
+
+Double-clicking the title bar on macOS crashed the app on the course gallery. While the zoom
+animated the window through every width, it reached one (1666 units, with ten courses) where
+the gallery never settled. The vertical scroll bar took its room from the cards as it came,
+which made them narrow enough to fit two rows without it. Without the bar they were wide
+enough to wrap into three, which brought it back. Each turn queued deferred sorts in the frame
+being flushed, until Godot's message queue overflowed. Godot then empties the queue while still
+flushing it (`CallQueue::statistics` destroys the queued calls), and the flush reads a freed
+callable. Before this ADR, the stretched interface kept the gallery's width nearly constant,
+so no zoom passed through such a width.
+
+Every page that scrolls up and down, but never sideways, now keeps its bar's room whether the
+bar shows or not (`UiTheme.scroll_down_only`, Godot's `SCROLL_MODE_RESERVE`). The width its
+content reflows to no longer depends on whether that content needs to scroll, so no layout
+can feed back through the bar. This also keeps the content from shifting sideways as the bar
+comes and goes (R53). It costs a strip as wide as the bar at the right of pages that don't
+scroll. `window_smoke.gd` checks that the cards keep their width when the gallery scrolls,
+and sweeps the window through every width at the height where the loop was seen.

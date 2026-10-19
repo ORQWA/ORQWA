@@ -121,7 +121,7 @@ func _init() -> void:
 	rows.add_child(note)
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.scroll_down_only(scroll)
 	_grid.columns = 1 + PRESSES.size()
 	_grid.add_theme_constant_override("h_separation", 16)
 	_grid.add_theme_constant_override("v_separation", 10)

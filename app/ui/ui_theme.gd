@@ -328,11 +328,20 @@ static func narrowable(option: OptionButton) -> void:
 ## window (R94).
 static func scrolling(content: Control) -> ScrollContainer:
 	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll_down_only(scroll)
 	scroll.add_theme_constant_override("scrollbar_h_separation", 12)
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
 	return scroll
+
+
+## Lets `scroll` scroll up and down but never sideways, and keeps its bar's room whether the
+## bar shows or not (R53). Content that reflows (R94) is taller when narrower: had the bar
+## taken its room as it came, the narrower content could need it, the wider one not, and the
+## layout would swap between the two without end until the app crashed.
+static func scroll_down_only(scroll: ScrollContainer) -> void:
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_RESERVE
 
 
 static func _box(color: Color, radius: int, horizontal: int, vertical: int) -> StyleBoxFlat:
