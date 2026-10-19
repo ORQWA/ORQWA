@@ -10,8 +10,11 @@ extends GridContainer
 signal changed
 
 ## Captions and the extra third column get these widths, so grids above each other line up.
-const CAPTION_WIDTH: float = 220.0
+const CAPTION_WIDTH: float = 170.0
 const EXTRA_WIDTH: float = 120.0
+## Fields are at least this wide: in a small window their text is cut or wraps (R94) rather
+## than the fields being squeezed away.
+const FIELD_WIDTH: float = 180.0
 
 var _camera: OptionButton = OptionButton.new()
 var _difficulty: HSlider = HSlider.new()
@@ -39,6 +42,8 @@ func _init() -> void:
 	_difficulty.value = 50.0
 	_difficulty.tooltip_text = tr("Share of the road gradient you feel on the trainer")
 	_flat_descents.text = tr("Ride descents like flat roads")
+	# Wrapped rather than widening the options past a small window (R94).
+	_flat_descents.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	for time: String in RideWorld.TIMES.keys():
 		_time.add_item(time)
 	_time.select(1)
@@ -57,6 +62,7 @@ func _init() -> void:
 	_difficulty.value_changed.connect(func(_value: float) -> void: _changed())
 	_flat_descents.toggled.connect(func(_on: bool) -> void: _changed())
 	_video_sound.text = tr("Play the video's sound")
+	_video_sound.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_video_sound.button_pressed = true
 	_video_sound.toggled.connect(func(_on: bool) -> void: _changed())
 	show_option_groups(true, false)
@@ -133,6 +139,9 @@ func _row(
 	label.custom_minimum_size = Vector2(CAPTION_WIDTH, 0)
 	add_child(label)
 	field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	field.custom_minimum_size.x = maxf(field.custom_minimum_size.x, FIELD_WIDTH)
+	if field is OptionButton:
+		UiTheme.narrowable(field as OptionButton)
 	add_child(field)
 	var third: Control = extra if extra != null else Control.new()
 	third.custom_minimum_size.x = EXTRA_WIDTH

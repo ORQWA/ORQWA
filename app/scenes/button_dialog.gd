@@ -104,8 +104,8 @@ func open(model: String, device_name: String) -> void:
 				for i: int in range(option.item_count):
 					if option.get_item_metadata(i) == presses[press]:
 						option.select(i)
-	# Clamped to the screen: a Click v2's ten rows scroll on a small one.
-	popup_centered_clamped(Vector2i(980, 620), 0.85)
+	# As tall as a Click v2's ten rows where the window has room; they scroll in a small one.
+	UiScale.popup(self, Vector2i(980, 780))
 
 
 func _init() -> void:

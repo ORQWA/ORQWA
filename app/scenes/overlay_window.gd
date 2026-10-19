@@ -1,13 +1,14 @@
 class_name OverlayWindow
 extends RefCounted
 ## Turns the app's window into the overlay (R55, R57) and back: borderless, transparent and on
-## top of other windows (not of full-screen apps), with the 3D world not drawn. The content is
-## scaled to the window, so resizing the overlay makes its figures bigger or smaller (#124).
+## top of other windows (not of full-screen apps), with the 3D world not drawn. Unlike the
+## rest of the interface (R94), the content is scaled to the window, so resizing the overlay
+## makes its figures bigger or smaller (#124).
 
 ## Room between a new overlay and the screen's edge, in interface units.
 const MARGIN: float = 24.0
-## Until the rider chooses, the overlay draws as large as the full-screen ride view, and at
-## least this large: it is read from the saddle, farther away than a screen usually is.
+## Until the rider chooses, the overlay draws this much larger than the ride screen: it is
+## read from the saddle, farther away than a screen usually is.
 const DEFAULT_SCALE: float = 1.25
 const MIN_SCALE: float = 0.75
 const MAX_SCALE: float = 4.0
@@ -15,7 +16,8 @@ const MAX_SCALE: float = 4.0
 const SCALE_STEP: float = 1.15
 
 var active: bool = false
-## How large the overlay draws its content: 1 is one interface unit per point (#124).
+## How large the overlay draws its content: 1 is as large as the rest of the interface on its
+## screen (#124, R94).
 var scale: float = DEFAULT_SCALE
 var _window: Window
 ## The content's size in interface units.
@@ -45,8 +47,10 @@ func enter(content_size: Vector2, remembered: Rect2i, remembered_scale: float) -
 		"transparent": _window.transparent,
 		"transparent_bg": _window.transparent_bg,
 		"disable_3d": _window.disable_3d,
+		"scale_mode": _window.content_scale_mode,
 		"scale_size": _window.content_scale_size,
 		"scale_aspect": _window.content_scale_aspect,
+		"scale_factor": _window.content_scale_factor,
 	}
 	_window.mode = Window.MODE_WINDOWED
 	_window.borderless = true
@@ -56,11 +60,13 @@ func enter(content_size: Vector2, remembered: Rect2i, remembered_scale: float) -
 	# The ride goes on in the core; drawing the world and its sky behind the overlay only costs.
 	_window.disable_3d = true
 	_base = Vector2i(content_size.ceil())
+	_window.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	_window.content_scale_size = _base
 	_window.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
-	var screen_scale: float = DisplayServer.screen_get_scale(_window.current_screen)
+	_window.content_scale_factor = 1.0
+	var screen_scale: float = UiScale.of_screen(_window.current_screen)
 	_window.min_size = Vector2i(Vector2(_base) * screen_scale * MIN_SCALE)
-	var chosen: float = remembered_scale if remembered_scale > 0.0 else _default_scale()
+	var chosen: float = remembered_scale if remembered_scale > 0.0 else DEFAULT_SCALE
 	scale = clampf(chosen, MIN_SCALE, _max_scale())
 	var size: Vector2i = _size_at(scale)
 	var rect: Rect2i
@@ -88,7 +94,7 @@ func zoom(steps: int) -> void:
 func window_resized() -> void:
 	if not active or _base.x <= 0 or _base.y <= 0:
 		return
-	var screen_scale: float = DisplayServer.screen_get_scale(_window.current_screen)
+	var screen_scale: float = UiScale.of_screen(_window.current_screen)
 	var fits: Vector2 = Vector2(_window.size) / Vector2(_base) / screen_scale
 	# The content keeps its aspect, so the tighter side sets its size.
 	scale = clampf(minf(fits.x, fits.y), MIN_SCALE, MAX_SCALE)
@@ -102,8 +108,10 @@ func leave() -> Rect2i:
 	# First: restoring the window resizes it, and a resize while still active would make only
 	# the overlay's old outline clickable again in the whole window (#123).
 	active = false
+	_window.content_scale_mode = _saved["scale_mode"]
 	_window.content_scale_size = _saved["scale_size"]
 	_window.content_scale_aspect = _saved["scale_aspect"]
+	_window.content_scale_factor = _saved["scale_factor"]
 	_window.disable_3d = _saved["disable_3d"]
 	_window.transparent_bg = _saved["transparent_bg"]
 	_window.transparent = _saved["transparent"]
@@ -149,22 +157,8 @@ func _new_place(size: Vector2i, screen_scale: float) -> Rect2i:
 
 ## The window's size in screen pixels when its content draws at `at` (as `scale`).
 func _size_at(at: float) -> Vector2i:
-	var screen_scale: float = DisplayServer.screen_get_scale(_window.current_screen)
+	var screen_scale: float = UiScale.of_screen(_window.current_screen)
 	return Vector2i((Vector2(_base) * at * screen_scale).round())
-
-
-## As large as the ride screen draws on the whole screen, for the overlay to look like the HUD
-## the rider knows.
-func _default_scale() -> float:
-	var usable: Rect2i = DisplayServer.screen_get_usable_rect(_window.current_screen)
-	if not usable.has_area():
-		return DEFAULT_SCALE
-	var width: float = ProjectSettings.get_setting("display/window/size/viewport_width")
-	var height: float = ProjectSettings.get_setting("display/window/size/viewport_height")
-	var view: Vector2 = Vector2(width, height)
-	var screen_scale: float = DisplayServer.screen_get_scale(_window.current_screen)
-	var fits: Vector2 = Vector2(usable.size) / view / screen_scale
-	return maxf(minf(fits.x, fits.y), DEFAULT_SCALE)
 
 
 ## The largest size that still fits on the window's screen.
@@ -172,7 +166,7 @@ func _max_scale() -> float:
 	var usable: Rect2i = DisplayServer.screen_get_usable_rect(_window.current_screen)
 	if not usable.has_area() or _base.x <= 0 or _base.y <= 0:
 		return MAX_SCALE
-	var screen_scale: float = DisplayServer.screen_get_scale(_window.current_screen)
+	var screen_scale: float = UiScale.of_screen(_window.current_screen)
 	var fits: Vector2 = Vector2(usable.size) / Vector2(_base) / screen_scale
 	return clampf(minf(fits.x, fits.y), MIN_SCALE, MAX_SCALE)
 

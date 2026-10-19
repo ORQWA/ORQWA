@@ -48,11 +48,16 @@ const METERS_PER_MILE: float = 1609.344
 const CARD_GAP: int = 20
 ## How wide the filter panel's rows of chips are before they wrap: seven countries fit.
 const CHIPS_WIDTH: float = 600.0
+## The toolbar's fields and buttons are this tall, and the title beside them.
+const TOOLBAR_HEIGHT: float = 40.0
 
 var _torqa: TorqaApp
 var _heading: Label = Label.new()
-## Search, filters, sort and group, in one row with the title and Import (R85).
-var _toolbar: HBoxContainer = HBoxContainer.new()
+## Search, filters, sort and group, in one row with the title and Import (R85) where the
+## window is wide enough.
+var _toolbar: HFlowContainer = HFlowContainer.new()
+## Between finding and ordering the courses, drawn only while the two share a line.
+var _toolbar_rule: VSeparator = VSeparator.new()
 var _search: LineEdit = LineEdit.new()
 ## Opens the filter panel; highlighted while chips are on.
 var _filters: Button = Button.new()
@@ -205,12 +210,17 @@ func _init() -> void:
 	header.add_theme_constant_override("separation", 24)
 	_heading.text = tr("Your courses")
 	_heading.add_theme_font_size_override("font_size", 22)
+	# On the toolbar's first line when it wraps.
+	_heading.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_heading.custom_minimum_size.y = TOOLBAR_HEIGHT
+	_heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(_heading)
 	_build_toolbar()
 	header.add_child(_toolbar)
 	_import_button.text = tr("Import")
 	_import_button.tooltip_text = tr("GPX routes, videos with GPS, route videos and course files")
 	_import_button.custom_minimum_size = Vector2(160, 44)
+	_import_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_import_button.pressed.connect(func() -> void: _file_dialog.popup_centered_ratio(0.7))
 	header.add_child(_import_button)
 	add_child(header)
@@ -300,35 +310,57 @@ func _init() -> void:
 	add_child(_no_gps_dialog)
 
 
-## Search, filters, sort and group above the gallery.
+## Search, filters, sort and group above the gallery, which wrap onto a second line in a small
+## window (R94).
 func _build_toolbar() -> void:
-	_toolbar.add_theme_constant_override("separation", 12)
+	_toolbar.add_theme_constant_override("h_separation", 12)
+	_toolbar.add_theme_constant_override("v_separation", 10)
 	_toolbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_toolbar.sort_children.connect(_on_toolbar_sorted)
+	var finding: HBoxContainer = _toolbar_group()
+	finding.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sorting: HBoxContainer = _toolbar_group()
+	var grouping: HBoxContainer = _toolbar_group()
 	_search.placeholder_text = tr("Search courses")
 	_search.clear_button_enabled = true
 	_search.right_icon = UiIcons.texture("search", 18, UiTheme.MUTED)
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_search.custom_minimum_size = Vector2(240, 40)
+	_search.custom_minimum_size = Vector2(240, TOOLBAR_HEIGHT)
 	_search.text_changed.connect(func(_text: String) -> void: refresh())
-	_toolbar.add_child(_search)
+	finding.add_child(_search)
 	_filters.text = tr("Filters")
-	_filters.custom_minimum_size = Vector2(0, 40)
+	_filters.custom_minimum_size = Vector2(0, TOOLBAR_HEIGHT)
 	_filters.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_filters.pressed.connect(_open_filter_panel)
-	_toolbar.add_child(_filters)
-	_toolbar.add_child(VSeparator.new())
-	_toolbar.add_child(_toolbar_label(tr("Sort")))
-	_sort.custom_minimum_size = Vector2(180, 40)
+	finding.add_child(_filters)
+	sorting.add_child(_toolbar_rule)
+	sorting.add_child(_toolbar_label(tr("Sort")))
+	_sort.custom_minimum_size = Vector2(180, TOOLBAR_HEIGHT)
 	_sort.item_selected.connect(_on_sort_selected)
-	_toolbar.add_child(_sort)
-	_direction.custom_minimum_size = Vector2(40, 40)
+	sorting.add_child(_sort)
+	_direction.custom_minimum_size = Vector2(40, TOOLBAR_HEIGHT)
 	_direction.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_direction.pressed.connect(_on_direction_pressed)
-	_toolbar.add_child(_direction)
-	_toolbar.add_child(_toolbar_label(tr("Group")))
-	_group.custom_minimum_size = Vector2(140, 40)
+	sorting.add_child(_direction)
+	grouping.add_child(_toolbar_label(tr("Group")))
+	_group.custom_minimum_size = Vector2(140, TOOLBAR_HEIGHT)
 	_group.item_selected.connect(func(_index: int) -> void: _view_changed())
-	_toolbar.add_child(_group)
+	grouping.add_child(_group)
+
+
+## A part of the toolbar that stays on one line when the toolbar wraps.
+func _toolbar_group() -> HBoxContainer:
+	var group: HBoxContainer = HBoxContainer.new()
+	group.add_theme_constant_override("separation", 12)
+	_toolbar.add_child(group)
+	return group
+
+
+## Sort and group starting a line of their own need no rule before them; hidden by colour, as
+## leaving out its width could bring them back onto the first line.
+func _on_toolbar_sorted() -> void:
+	var sorting: Control = _toolbar_rule.get_parent()
+	_toolbar_rule.modulate.a = 0.0 if is_zero_approx(sorting.position.x) else 1.0
 
 
 ## The panel of chips: a row for each kind, captioned, and a way to turn them all off.

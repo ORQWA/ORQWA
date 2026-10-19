@@ -169,7 +169,9 @@ func _init() -> void:
 		var option: OptionButton = row[2]
 		# Device names are never translated; the fixed entries are, in code.
 		option.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		option.custom_minimum_size = Vector2(420, 0)
+		# Long names are cut rather than widening the page past a small window (R94).
+		option.custom_minimum_size = Vector2(300, 0)
+		UiTheme.narrowable(option)
 		# A reason that wraps makes the row taller; the controls keep their height.
 		option.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		grid.add_child(option)
@@ -201,7 +203,7 @@ func _init() -> void:
 		state.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		# Room for a reading, or a reason: the rest of the row's width, then it wraps rather
 		# than widens the page (a German reason or a Bluetooth stack's message runs long).
-		state.custom_minimum_size = Vector2(260, 0)
+		state.custom_minimum_size = Vector2(180, 0)
 		state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -279,6 +281,7 @@ func _add_remote_row(grid: GridContainer) -> void:
 	grid.add_child(_remote_code)
 	_remote_state.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_remote_state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_remote_state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_remote_state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	grid.add_child(_remote_state)
 
