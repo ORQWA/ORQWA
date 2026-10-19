@@ -81,7 +81,8 @@ Left for the later phases:
 ## Phases
 
 - **A** — the trial above.
-- **B** — an `android` CI job beside the others, building `Torqa-android-arm64.apk` for releases.
+- **B** — an `android` CI job beside the others, building the APK on every pull request in its
+  own image (cached in GHCR like the dev image); it joins the releases only with D.
 - **C** — fitting Android:
   - storage folders and saving files;
   - a tablet graphics preset;

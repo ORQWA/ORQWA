@@ -580,12 +580,14 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   Android plugin that readies btleplug through `JNI_OnLoad`, the project staged so `app/` stays
   untouched; on a Galaxy Tab S7 (Android 16) the KICKR's power and the Click's shifting work;
   the core's log in Android's log; picked files copied from `content://` addresses
-- [ ] B — an `android` CI job beside the others; `Torqa-android-arm64.apk` on releases
+- [ ] B — an `android` CI job beside the others, building the APK on every pull request (its
+  own image cached in GHCR like the dev image); on releases only with D
 - [ ] C — fitting Android: profiles and courses in the data folder (not the cache), saving to
   picked places, a tablet graphics preset (smooth on the Tab S7; no SSAO in the mobile
   renderer), touch, HTTPS (rustls-platform-verifier's Android set-up), no music control,
   overlay window or MSI updater (the update check points to the APK)
-- [ ] D — a release-signed APK, the wiki (installing, permissions), the internet list
+- [ ] D — a release-signed APK as a release asset, the wiki (installing, permissions), the
+  internet list
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ## Risks
