@@ -21,7 +21,8 @@ before that setting may hold CRLF files; `git ls-files --eol | grep w/crlf` list
 
 | Task | Command (inside the container) |
 |---|---|
-| All checks (fmt, clippy, tests, cargo-deny, licence notices, translations, gdlint, gdformat, Godot smoke tests) | `scripts/check.sh` |
+| All checks (fmt, clippy, tests, cargo-deny, licence notices, translations, gdlint, gdformat, Godot smoke tests), as CI runs them | `scripts/check.sh` |
+| Only the checks the branch's changes since main can affect (committed or not), for quick turns while working; the full run before a PR | `scripts/check.sh --quick` |
 | Build the GDExtension into `app/bin/` | `scripts/build-gdext.sh [debug\|release]` |
 | Render screenshots of the start page, a ride, the summary and the analysis (software Vulkan, with 16 weeks of made-up rides) into `screenshots/` | `scripts/screenshots.sh` |
 | Render only the English/German error-details views, without preparing a route | `SCREENSHOT_ERRORS_ONLY=1 scripts/screenshots.sh` |
