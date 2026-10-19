@@ -43,7 +43,7 @@ func _init() -> void:
 	var scroll: _DropArea = _DropArea.new(self)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.custom_minimum_size = Vector2(240, 260)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.scroll_down_only(scroll)
 	_available.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_available.add_theme_constant_override("separation", 6)
 	scroll.add_child(_available)

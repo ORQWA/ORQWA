@@ -152,7 +152,7 @@ func _ready() -> void:
 	left_rows.add_child(header)
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.scroll_down_only(scroll)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 8)
 	scroll.add_child(_list)
@@ -170,7 +170,7 @@ func _ready() -> void:
 	# The ride's rows outgrow smaller windows; the summary's buttons stay in reach below them.
 	var detail_scroll: ScrollContainer = ScrollContainer.new()
 	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.scroll_down_only(detail_scroll)
 	detail_scroll.add_theme_constant_override("scrollbar_h_separation", 12)
 	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_detail.add_theme_constant_override("separation", 16)

@@ -257,7 +257,7 @@ func _init() -> void:
 	add_child(_no_match)
 	var scroll: ScrollContainer = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	UiTheme.scroll_down_only(scroll)
 	# A card the keyboard or the remote reaches comes into view (#228).
 	scroll.follow_focus = true
 	_gallery.size_flags_horizontal = Control.SIZE_EXPAND_FILL

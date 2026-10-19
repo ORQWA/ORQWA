@@ -341,6 +341,8 @@ Built in rideable steps:
   - [x] The interface at the screen's scale rather than stretched to the window (R94): a
     smaller window shows less, not smaller text; the layouts reflow down to 1024 × 640
     (`ReflowGrid`, a wrapping gallery toolbar, scrolling pages) and dialogs fit the window
+  - [x] Pages that scroll keep their scroll bar's room: the gallery no longer reflows without
+    end at some widths, which crashed the app when macOS zoomed its window
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
 ### Phase 9 — Graphics (R43–R47, R89, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md), [ADR 0020](adr/0020-realistic-look.md))

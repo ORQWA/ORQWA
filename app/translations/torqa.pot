@@ -303,7 +303,7 @@ msgstr ""
 msgid "Applies from the next ride."
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Apr"
 msgstr ""
 
@@ -315,7 +315,7 @@ msgstr ""
 msgid "Ascent to go"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Aug"
 msgstr ""
 
@@ -775,7 +775,7 @@ msgstr ""
 msgid "Date added"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Dec"
 msgstr ""
 
@@ -1003,7 +1003,7 @@ msgstr ""
 msgid "Fatigue %d"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Feb"
 msgstr ""
 
@@ -1115,7 +1115,7 @@ msgstr ""
 msgid "Fresh"
 msgstr ""
 
-#: app/ui/ui_theme.gd:381
+#: app/ui/ui_theme.gd:390
 msgid "Fri"
 msgstr ""
 
@@ -1283,15 +1283,15 @@ msgstr ""
 msgid "Its file is deleted; your rides on it are kept."
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Jan"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Jul"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Jun"
 msgstr ""
 
@@ -1387,7 +1387,7 @@ msgstr ""
 msgid "Male rider"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Mar"
 msgstr ""
 
@@ -1403,7 +1403,7 @@ msgstr ""
 msgid "Maximum"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "May"
 msgstr ""
 
@@ -1439,7 +1439,7 @@ msgstr ""
 msgid "Moderate"
 msgstr ""
 
-#: app/ui/ui_theme.gd:381
+#: app/ui/ui_theme.gd:390
 msgid "Mon"
 msgstr ""
 
@@ -1627,7 +1627,7 @@ msgstr ""
 msgid "Nothing recorded."
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Nov"
 msgstr ""
 
@@ -1635,7 +1635,7 @@ msgstr ""
 msgid "OK"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Oct"
 msgstr ""
 
@@ -2023,7 +2023,7 @@ msgstr ""
 msgid "Rust libraries"
 msgstr ""
 
-#: app/ui/ui_theme.gd:381
+#: app/ui/ui_theme.gd:390
 msgid "Sat"
 msgstr ""
 
@@ -2071,7 +2071,7 @@ msgstr ""
 msgid "Searching…"
 msgstr ""
 
-#: app/ui/ui_theme.gd:383
+#: app/ui/ui_theme.gd:392
 msgid "Sep"
 msgstr ""
 
@@ -2203,7 +2203,7 @@ msgstr ""
 msgid "Structured workout"
 msgstr ""
 
-#: app/ui/ui_theme.gd:381
+#: app/ui/ui_theme.gd:390
 msgid "Sun"
 msgstr ""
 
@@ -2327,7 +2327,7 @@ msgstr ""
 msgid "Threshold"
 msgstr ""
 
-#: app/ui/ui_theme.gd:381
+#: app/ui/ui_theme.gd:390
 msgid "Thu"
 msgstr ""
 
@@ -2419,7 +2419,7 @@ msgstr ""
 msgid "Transition"
 msgstr ""
 
-#: app/ui/ui_theme.gd:381
+#: app/ui/ui_theme.gd:390
 msgid "Tue"
 msgstr ""
 
@@ -2571,7 +2571,7 @@ msgstr ""
 msgid "Weather"
 msgstr ""
 
-#: app/ui/ui_theme.gd:381
+#: app/ui/ui_theme.gd:390
 msgid "Wed"
 msgstr ""
 

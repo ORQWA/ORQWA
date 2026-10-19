@@ -16,6 +16,7 @@ func _run() -> void:
 	await _fullscreen()
 	await _fixed_scale()
 	await _reflow_grid()
+	await _gallery_settles()
 	var ride: String = await _record_ride()
 	for locale: String in ["en", "de"]:
 		await _small_window(locale, ride)
@@ -130,6 +131,74 @@ func _reflow_grid() -> void:
 		await process_frame
 	_check(grid.columns == 2, "the map's room counts: %d side by side" % grid.columns)
 	parent.free()
+
+
+## The gallery settles at every width the window passes through, as when macOS animates a
+## zoom (R94, R53). Its scroll bar used to take its room from the cards as it came: narrower,
+## they fit without it, and so on without end, until the message queue overflowed and the app
+## crashed (at 1666 × 1041 with ten courses).
+func _gallery_settles() -> void:
+	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
+	root.add_child(main)
+	await process_frame
+	var start: StartPage = main.get_node("StartPage")
+	var courses: CoursesTab = start.get("_courses")
+	var gallery: VBoxContainer = courses.get("_gallery")
+	var scroll: ScrollContainer = gallery.get_parent()
+	root.size = Vector2i((Vector2(1600, 900) * root.content_scale_factor).round())
+	_show_courses(courses, 1)
+	await _settle()
+	var unscrolled: float = gallery.size.x
+	_show_courses(courses, 10)
+	await _settle()
+	_check(
+		scroll.get_v_scroll_bar().visible and is_equal_approx(gallery.size.x, unscrolled),
+		(
+			"the cards keep their room when the gallery scrolls: %s, not %s"
+			% [gallery.size.x, unscrolled]
+		)
+	)
+	var resizes: Array[int] = [0]
+	var endless: Array[Vector2i] = []
+	# Breaks off a layout that does not settle by keeping the bar, so the check can report
+	# it rather than the queue overflowing.
+	gallery.resized.connect(
+		func() -> void:
+			resizes[0] += 1
+			if resizes[0] == 100:
+				endless.append(root.size)
+				scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+	)
+	var height: int = roundi(1041 * root.content_scale_factor)
+	var widest: int = roundi(1800 * root.content_scale_factor)
+	for width: int in range(roundi(UiScale.MIN_WINDOW_SIZE.x * root.content_scale_factor), widest):
+		resizes[0] = 0
+		root.size = Vector2i(width, height)
+		await process_frame
+		if not endless.is_empty():
+			break
+	_check(endless.is_empty(), "the gallery settles at every width: not at %s" % [endless])
+	main.free()
+
+
+## The gallery showing `count` courses: their cards are as tall as those of the library the
+## endless layout was seen with.
+func _show_courses(courses: CoursesTab, count: int) -> void:
+	var gallery: VBoxContainer = courses.get("_gallery")
+	for child: Node in gallery.get_children():
+		child.free()
+	var library: Array[Dictionary] = []
+	for i: int in range(count):
+		var course: Dictionary = {
+			"path": "",
+			"name": "Col %d" % i,
+			"length_m": 12000.0 + i * 1000.0,
+			"elevation_gain_m": 600.0,
+			"max_grade": 9.5,
+			"estimated_s": 2400.0,
+		}
+		library.append(course)
+	courses.call("_add_group", {"group": "", "courses": library})
 
 
 ## A short ride, so the history, its summary and the analysis have something to lay out.
