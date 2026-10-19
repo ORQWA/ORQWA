@@ -29,6 +29,8 @@ core/                      Rust workspace (tokio + tracing)
   torqa-remote/            the remote for a phone or tablet: a page on the local network,
                            a ShiftInput
                            (ADR 0019)
+  torqa-update/            a newer release on GitHub, its Windows installer downloaded and
+                           started over Torqa (ADR 0023)
   torqa-app/               application layer: commands + update() per frame for front ends,
                            the analysis across a rider's rides
   torqa-gd/                gdext bindings (TorqaApp node), the sample course (R95)
@@ -108,10 +110,13 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   presets, checked to agree on every change and, for a release, to be the tag's (`v<version>`),
   after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
   sets it in all of them and in `core/Cargo.lock`
-- [ ] Windows installer and updates (R99, ADR 0023):
+- [x] Windows installer and updates (R99, ADR 0023):
   - [x] `Torqa-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
     uninstall, upgrade in place; installed and uninstalled once in CI, installed by hand
-  - [ ] Update check at start-up (setting to turn it off), download and install the new MSI
+  - [x] Update check at start-up in released builds (Settings → About turns it off and checks
+    now), offered on the start page or after the ride; Windows downloads and installs the new
+    MSI and restarts, elsewhere the release page opens; the real GitHub check tried by hand,
+    the download and install wait for the first release carrying the MSI
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
