@@ -92,6 +92,32 @@ func _graphics(torqa: TorqaApp, dialog: SettingsDialog) -> void:
 	_check(not FullScreen.is_on(dialog), "not the settings' window")
 	box.button_pressed = false
 	_check(not torqa.fullscreen(), "and back in a window")
+	_details(torqa, graphics)
+
+
+## The details set apart from the preset (R90): one choice per option the core knows, Auto
+## first; a choice is kept for this computer, Auto and the reset follow the preset again.
+func _details(torqa: TorqaApp, graphics: GraphicsSettings) -> void:
+	var details: Dictionary = graphics.get("_details")
+	var options: Dictionary = TorqaApp.graphics_option_values()
+	_check(details.size() == options.size(), "a choice per option: %d" % details.size())
+	var shadows: OptionButton = details["shadows"]
+	var first: String = shadows.get_item_metadata(0)
+	_check(first == "auto", "Auto first")
+	_check(_shadows(torqa) == "auto", "following the preset at first")
+	var last: int = shadows.item_count - 1
+	shadows.select(last)
+	shadows.item_selected.emit(last)
+	_check(_shadows(torqa) == "ultra", "the choice is kept")
+	_check(not torqa.set_graphics_option("shadows", "extreme"), "unknown values refused")
+	graphics.call("_reset_details")
+	_check(_shadows(torqa) == "auto", "the reset follows the preset again")
+	_check(shadows.selected == 0, "and shows it")
+
+
+func _shadows(torqa: TorqaApp) -> String:
+	var options: Dictionary = torqa.graphics_options()
+	return options["shadows"]
 
 
 ## About: the version and the commit, then each part's licence notice with its full text.

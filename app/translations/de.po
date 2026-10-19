@@ -781,14 +781,14 @@ msgstr "Flach"
 msgid "Fold the controls away"
 msgstr "Bedienelemente ausblenden"
 
-msgid "For powerful GPUs: all effects, including global illumination."
-msgstr "Für leistungsstarke Grafikkarten: alle Effekte inklusive globaler Beleuchtung."
+msgid "For powerful GPUs: the sharpest shadows, the most grass and the farthest view."
+msgstr "Für leistungsstarke Grafikkarten: die schärfsten Schatten, am meisten Gras und die weiteste Sicht."
 
-msgid "For stronger GPUs: softer shadows, bounced light, light fog, more distance."
-msgstr "Für stärkere Grafikkarten: weichere Schatten, indirektes Licht, leichter Nebel, mehr Sichtweite."
+msgid "For stronger GPUs: softer shadows, reflections on water, more grass and distance."
+msgstr "Für stärkere Grafikkarten: weichere Schatten, Spiegelungen auf Wasser, mehr Gras und Sichtweite."
 
-msgid "For weaker computers: shorter view, simpler shadows and sky."
-msgstr "Für schwächere Computer: kürzere Sicht, einfachere Schatten und Himmel."
+msgid "For weaker computers: shorter view, simpler shadows, no grass."
+msgstr "Für schwächere Computer: kürzere Sicht, einfachere Schatten, kein Gras."
 
 msgid "Form"
 msgstr "Form"
@@ -1923,6 +1923,74 @@ msgstr "Für heute ist nichts geplant."
 msgid "Could not read the workouts planned on %s: %s"
 msgstr "Die auf %s geplanten Workouts konnten nicht gelesen werden: %s"
 
+msgid "%s %%"
+msgstr "%s %%"
+
+msgid "%s fps"
+msgstr "%s fps"
+
+msgid "All details as the preset"
+msgstr "Alle Details wie die Voreinstellung"
+
+msgid "Ambient occlusion"
+msgstr "Umgebungsverdeckung"
+
+msgid "Anti-aliasing"
+msgstr "Kantenglättung"
+
+msgid "Auto (preset)"
+msgstr "Auto (Voreinstellung)"
+
+msgid "Bloom"
+msgstr "Bloom"
+
+msgid "Details"
+msgstr "Details"
+
+msgid "FXAA"
+msgstr "FXAA"
+
+msgid "Far"
+msgstr "Weit"
+
+msgid "Frame rate limit"
+msgstr "Bildrate begrenzen"
+
+msgid "Grass"
+msgstr "Gras"
+
+msgid "MSAA 2×"
+msgstr "MSAA 2×"
+
+msgid "MSAA 4×"
+msgstr "MSAA 4×"
+
+msgid "Near"
+msgstr "Nah"
+
+msgid "Off"
+msgstr "Aus"
+
+msgid "On"
+msgstr "Ein"
+
+msgid "Reflections on water"
+msgstr "Spiegelungen auf Wasser"
+
+msgid "Render scale"
+msgstr "Renderauflösung"
+
+msgid "Shadows"
+msgstr "Schatten"
+
+msgid "Unlimited"
+msgstr "Unbegrenzt"
+
+msgid "V-Sync"
+msgstr "V-Sync"
+
+msgid "View distance"
+msgstr "Sichtweite"
 msgid "A phone or tablet on the same Wi-Fi shifts and controls the ride"
 msgstr "Ein Smartphone oder Tablet im selben WLAN schaltet und steuert die Fahrt"
 

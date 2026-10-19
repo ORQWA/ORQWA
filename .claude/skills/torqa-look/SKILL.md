@@ -1,107 +1,90 @@
 ---
 name: torqa-look
-description: Torqa's art direction — stylized, faceted low-poly in a soft pastel palette, for the world and the riders alike (replaces the earlier photorealism target). Use for any visual work on the 3D world or riders — shaders in app/shaders, colours and geometry from core/torqa-world, Blender models in art/, lighting, sky, weather, quality presets — and whenever judging a screenshot or render.
+description: Torqa's art direction — as realistic as possible (since 2026-10-18, ADR 0020; replaces the faceted pastel low-poly look) — real proportions, smooth shading, physically based materials and light, textures baked from procedural Blender materials or CC0 scans. Use for any visual work on the 3D world or riders — shaders in app/shaders, colours and geometry from core/torqa-world, Blender models and textures in art/, lighting, sky, weather, quality presets — and whenever judging a screenshot or render.
 ---
 
 # Torqa's look
 
-Torqa's 3D world and riders are **stylized, faceted low-poly** with a **soft pastel palette**:
-a toy-like diorama, not a photograph. The decision (user, 2026-10-05): replace realism
-completely (no realistic option kept), **faceted everywhere** (world *and* riders), riders made
-both from scratch in Blender and from CC0 stylized bases (male and female). Settled with previews
-the same day: riders of natural proportions (not toy-like), the ground's facets as fine as the
-terrain grid (no extra-large facets), weather and time of day kept pastel. The ADR is
-`docs/adr/0011-stylized-look.md`; it wins over this file if they disagree.
+Torqa's 3D world and riders are to look **as realistic as possible**: the real place — its
+terrain, roads and buildings — with real proportions, smooth shading and physically based
+materials and light, like a modern cycling simulator, as far as open, scripted assets reach.
+The decision (user, 2026-10-18) replaces the faceted pastel diorama of ADR 0011 completely; no
+second look is kept. The ADR is
+`docs/adr/0020-realistic-look.md`; it wins over this file if they disagree.
 
-## The references
+**State (2026-10-18).** Ground and roads, vegetation, buildings, light, sky, water and rain are
+restyled; riders are realistic bodies, rigged and posed on the bike, in cycling kit.
+`docs/PLAN.md`, Phase 9, lists what is left. Restyle a group as a whole, never half of it. **Even quality beats local peaks**: the
+first realistic attempt failed because a few good assets stood beside many poor ones, so every
+surface in view on a ride must reach the same level before the next group starts.
 
-Two pictures the user chose (not in the repo; copyrighted):
+## What it means
 
-1. **World** — a lighthouse island diorama: chunky faceted shapes (conifers as stacked faceted
-   cones, a rock as a few big facets), flat colour per facet, no textures, mint sky, warm sand,
-   coral roof, cream tower, sage and olive greens, teal shadows in the water. Soft warm key light
-   from the upper left, soft long shadows, generous ambient occlusion in creases, everything
-   bright and low in contrast.
-2. **Rider** — a stylized character: long legs, saturated pastel clothes (pink, yellow, blue),
-   plum darks, soft rim light. Torqa keeps the colours and natural proportions (no big toy
-   heads) and makes the forms **faceted** like the world.
+- **Real forms.** Natural proportions and silhouettes; detail in geometry where it changes the
+  silhouette at riding distance (eaves, balconies, window depth, crowns, trunks), in textures
+  where it does not (tiles, wood grain, bark, gravel, cracks).
+- **Smooth shading.** Smooth normals with hard edges where the object has them (auto-smooth by
+  angle, or marked sharp edges). No faceted look.
+- **PBR materials.** Albedo, normal and roughness maps. Natural surfaces rough (0.7–0.95);
+  metal only where things are metal; water and glass with real reflections, not mirrors.
+- **Textures.** Baked from procedural Blender materials first (`art/textures/build.py`,
+  skill `torqa-art-pipeline`), tileable, at a scale that reads right (a roof tile ~0.3 m, a
+  brick ~0.25 m). Where a procedural material does not look real (rock, bark and plaster are
+  likely), use a **CC0 scan** (Poly Haven, ambientCG; original under `art/sources/`, credited,
+  ADR 0020). Judge both side by side in the same light before choosing.
+- **Weathering as in nature.** Where water runs and feet and tyres go (darker wall feet,
+  streaks under sills, worn wheel tracks, moss on north faces, dust on verges). Variation from
+  per-instance colours and texture offsets so repeated models differ, and from blending
+  materials (grass into dirt, asphalt into gravel) instead of hard edges.
+- **Natural colours.** Close to real albedos (grass about 0.1–0.2, asphalt 0.05–0.1, fresh
+  snow 0.8); no pure black or white, no oversaturation.
+- **Light.** Physically based sky and sun, soft shadows, ambient occlusion in creases, aerial
+  perspective (distant terrain fading into blue-grey haze); a filmic tone mapping (AgX or
+  Filmic) instead of the linear one the pastels needed, set when light and sky are restyled.
+- **Unchanged from before:** no racing UI or accessories (banners, arches, crowds) (R44/R89).
 
-## Rules
+## Palette
 
-- **Facets, not smoothness.** One normal per face. No smooth shading, no normal maps, no
-  subdivision look. Fewer, bigger facets read better than many small ones.
-- **Colour, not texture.** No photo textures, no grime, weathering, noise or fine patterns
-  (roof tile rows, wood grain, glazing bars, shutter slats). Variation comes from picking
-  palette colours per object or instance and from light, at most a very soft large-scale tint
-  gradient (e.g. darker at the foot of a wall). The one drawn shape allowed: clean window
-  rectangles on building shells (frame and glass), where modelling them would cost too much.
-- **Simple, chunky silhouettes.** Exaggerate what identifies a thing (a chalet's big roof and
-  balcony, a church tower, a conifer's spikiness); leave out what does not show at riding
-  distance (gutters, glazing bars, flower pots smaller than a hand).
-- **Bright and soft.** High values, low contrast, no pure black or white; shadows tinted (teal
-  or plum), never grey. Warm sun, cool sky fill.
-- **No outlines, no cel bands.** Lighting stays smooth across a facet; facets do the stylizing.
-- **Not metallic, not glossy.** Roughness high everywhere; water and windows may get a soft
-  sheen, nothing mirror-like.
+The source of truth for colours picked in code is still `app/assets/palette.json`:
+`core/torqa-world/src/palette.rs` reads it for vertex and instance colours
+(`palette::srgb("ground.meadow", alpha)`), `app/scenes/palette.gd` for shader uniforms
+(`Palette.color("sky.top")`). Add a colour there and use it by name; never scatter hex values
+in code. Its values are the old pastels until their group is restyled: move them to natural
+tones with that group. Textures carry their own colour; instance colours tint them (multiply
+a neutral albedo) for walls, roofs, leaves and kits. To take colours from a reference image,
+cluster them with `scripts/palette.py` beside this file (k-means in the art container's
+Blender Python; its header shows how to run it).
 
-## Palette (sRGB, from the references)
+## Budgets
 
-The source of truth is `app/assets/palette.json`; the tables below summarise it.
-
-World:
-
-| Role | Colours |
-|---|---|
-| Sky, haze | mint `#b5dbce`, horizon `#d6ece4`*, cream clouds `#fbf7ee`* |
-| Water | teal `#628388` deep, mint `#9fcfc4`* shallow, foam `#f2ebd9` |
-| Ground | meadow sage `#b2c178`, farmland `#bfc67f`*, orchard `#a5b56a`*, forest floor `#7b7f44`, town `#c2c49a`*, rock `#c3bbb4`, snow `#f2ebd9` |
-| Road | blue-grey `#8e959b`*, markings `#f2ebd9`, gravel `#d6c5a2`* |
-| Plants | conifer olive `#87895e`, broadleaf `#a5b56a`*, trunk `#7a5755` |
-| Walls | cream `#f2ebd9`, sand `#efcaa8`, peach `#e8a788`, dusty rose `#bf9282` |
-| Roofs, wood | coral `#e2705e`, terracotta `#a57369`, brick `#6b3231`, timber `#7a5755` |
-| Light | sun `#fff1dc`*, evening sun `#ffc49a`*, evening sky lilac `#b9b2d8`* to peach `#f4c9b0`*, overcast `#a9b3c1`* to `#d0d5dc`* |
-
-\* Torqa's own, not in the references.
-
-Riders:
-
-| Role | Colours |
-|---|---|
-| Kit | pink `#efb5cc`, magenta `#ce5aa5`, yellow `#f4c16e`, blue `#5b97c8`, deep blue `#3959a0`, navy `#2e3e7a` |
-| Darks | plum `#614367`, aubergine `#4b2e44` |
-| Skin | `#bd8877`, `#a4665a`, `#834a40` and lighter tones |
-
-The riders' kits are palette sections of their own (`rider_female`, `rider_male`, by material
-name: jersey, sleeve, shorts, …, frame), the rest of the bike is `bike`.
-
-The palette lives in one file, `app/assets/palette.json`: `core/torqa-world/src/palette.rs`
-reads it for vertex colours (`palette::srgb("ground.meadow", alpha)`), `app/scenes/palette.gd`
-for shader uniforms (`Palette.color("sky.top")`). Add a colour there and use it by name; never
-scatter hex values in code. Evening, rain, road and other colours marked * above are Torqa's own
-additions. To take a palette from a new reference image, cluster its colours with
-`scripts/palette.py` beside this file (k-means in the art container's Blender Python; its
-header shows how to run it) and add the ones that fit by name.
+- **Triangles:** tree 1–4k with LODs (leaf cards for crowns), bush 300–1.5k, rock 200–1k,
+  house 1.5–5k, church 4–10k, rider about 37–39k, bike about 10k. Godot generates LODs on
+  import; towns place thousands of buildings and forests thousands of trees, so measure.
+- **Textures:** 1024 px per tileable material, 2048 for the road and the ground near it (lower
+  on Low); colour and roughness as lossy WebP (quality 90), normal maps lossless WebP, about
+  2 MB per material in the repository; VRAM-compressed with mipmaps on import. Share materials
+  between models rather than baking per model. No Git LFS below about 150 MB of textures.
+- **Frame time:** 60 fps on Medium on an M1 (R43). Check `scripts/render-views.sh` timing and a
+  ride on the reference route after every group.
 
 ## How to get it
 
-- **Faceted shading in Godot:** for meshes built in Rust, give every triangle its own vertices
-  and its face normal; or in a spatial shader derive the normal per pixel:
-  `NORMAL = normalize(cross(dFdy(VERTEX), dFdx(VERTEX)));` (view space; check the sign against a
-  lit test face). Imported models: export flat (split normals per face), see `torqa-art-pipeline`.
-- **Colour:** vertex colours or a per-instance colour (MultiMesh `INSTANCE_COLOR` /
-  `INSTANCE_CUSTOM`) picked from the palette, sRGB → linear in the shader.
-- **Light:** one warm `DirectionalLight3D` (`light.sun`), soft shadows, sky light mixed with a
-  warm white (`light.ambient`); **linear tone mapping** with the energies balanced so a sunlit
-  facet shows about its palette colour (`RideWorld.TIMES`: sun ≈ 0.8, sky ≈ 0.55, more sky light
-  for a low sun) — Filmic or AgX bleach the pastels. Sky as a smooth vertical gradient (mint to
-  pale horizon); fog/haze tinted with the horizon colour; SSAO on from Medium up (creases make
-  the diorama look); glow subtle. Global illumination matters little for this look.
-- **Budgets (triangles):** tree 40–300, bush 20–80, rock 20–100, house 300–1200, church
-  800–2000, rider about 3–6k, bike about 1–2k. Fewer is better if the silhouette survives.
+- **Models:** scripted Blender (skill `torqa-art-pipeline`), smooth shading with sharp edges,
+  UVs in metres so tileable textures keep their scale. Iterate with `--preview DIR`.
+- **Ground and roads (Rust-built meshes):** smooth vertex normals, UVs in world metres, land
+  cover blended in the shader from texture layers (grass, dirt, rock, sand, snow) by weights in
+  vertex data; steep slopes to rock, triplanar where UVs stretch.
+- **Shaders:** Godot spatial shaders sampling the baked maps; `NORMAL_MAP` for normal maps;
+  instance colour multiplies a neutral albedo; distance fades fine detail to avoid shimmer.
+- **Light and sky:** one `DirectionalLight3D` (`light.sun`), soft shadows, SSAO from Medium up,
+  a physical sky, fog by time of day and weather.
 
 ## Reviewing a render
 
-Check, in order: silhouettes readable from the road; colours from the palette and harmonious
-side by side; facets visible but not noisy; no texture, grime or fine pattern left; light warm,
-shadows tinted, AO in creases; distant terrain fading into mint haze. Compare against the two
-references described above. Rendering: see the `torqa-render-review` skill.
+Check, in order: would it pass for a photo at a glance; quality even across the frame (no poor
+surface beside a good one); silhouettes and proportions believable from the road; materials read as what
+they are (plaster, wood, stone, asphalt) at riding distance and do not shimmer far away; texture
+scale right next to the rider; colours natural and harmonious side by side; no visible tiling
+repeats over large areas; light warm, shadows soft, AO in creases; distant terrain in haze;
+frame time within budget. Quick model checks: `--preview DIR` in the art container; the world:
+the `torqa-render-review` skill.

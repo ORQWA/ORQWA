@@ -7,7 +7,8 @@ Each model is one mesh with named materials (`plaster`, `tiles`, `glass`, …); 
 them their look (textures, tint per building), so the files carry only shape, texture
 coordinates and material names. `models.json` beside them lists each model's kind, the
 footprint its walls stand on and its heights, for fitting models to map outlines. Pass model
-names after `--` to build only those.
+names after `--` to build only those, and `--preview DIR` to render them there instead of
+exporting (art/preview.py).
 """
 
 import json
@@ -19,8 +20,10 @@ import bpy
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.dirname(HERE))
 
 import kinds  # noqa: E402  (needs the path above)
+import preview  # noqa: E402
 
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "app", "assets", "models", "buildings"))
 
@@ -105,7 +108,7 @@ def export(obj, path):
 
 
 def main():
-    wanted = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    wanted, preview_dir = preview.options()
     with open(os.path.join(HERE, "catalogue.json"), encoding="utf-8") as file:
         catalogue = json.load(file)
     os.makedirs(OUT, exist_ok=True)
@@ -116,6 +119,9 @@ def main():
         bpy.ops.wm.read_factory_settings(use_empty=True)
         mesh, shape = getattr(kinds, spec["kind"])(spec)
         obj = to_object(mesh, spec["name"])
+        if preview_dir:
+            preview.render(obj, preview_dir, spec["name"])
+            continue
         export(obj, os.path.join(OUT, spec["name"] + ".glb"))
         manifest[spec["name"]] = {"kind": spec["kind"], "roof": spec.get("roof", "gable"),
                                   **{k: round(v, 3) if isinstance(v, float) else v
@@ -123,6 +129,8 @@ def main():
         if "pitch" in spec:
             manifest[spec["name"]]["pitch"] = spec["pitch"]
         print(f"built {spec['name']}: {len(mesh.faces)} faces")
+    if preview_dir:
+        return
     path = os.path.join(OUT, "models.json")
     if wanted and os.path.exists(path):
         with open(path, encoding="utf-8") as file:

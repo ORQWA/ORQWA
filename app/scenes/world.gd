@@ -13,35 +13,47 @@ const TIMES: Dictionary[String, Dictionary] = {
 	{
 		"elevation": 14.0,
 		"azimuth": 110.0,
-		"energy": 0.75,
-		"ambient": 0.68,
+		"energy": 1.3,
+		"ambient": 0.85,
 		"sun": "light.morning_sun",
-		"top": "sky.morning_top",
 		"horizon": "sky.morning_horizon",
 	},
 	"Midday":
 	{
 		"elevation": 55.0,
 		"azimuth": 190.0,
-		"energy": 0.8,
-		"ambient": 0.55,
+		"energy": 1.55,
+		"ambient": 0.75,
 		"sun": "light.sun",
-		"top": "sky.top",
 		"horizon": "sky.horizon",
 	},
 	"Evening":
 	{
 		"elevation": 12.0,
 		"azimuth": 265.0,
-		"energy": 0.75,
-		"ambient": 0.72,
+		"energy": 1.3,
+		"ambient": 0.85,
 		"sun": "light.evening_sun",
-		"top": "sky.evening_top",
 		"horizon": "sky.evening_horizon",
 	},
 }
 const WEATHERS: Array[String] = ["Clear", "Cloudy", "Hazy", "Rain"]
 # i18n-end
+
+## Textures baked in Blender (art/textures, ADR 0020) for the ground and roads.
+const TEXTURES: Dictionary[String, Texture2D] = {
+	"grass_albedo": preload("res://assets/textures/grass_albedo.webp"),
+	"grass_normal": preload("res://assets/textures/grass_normal.webp"),
+	"dirt_albedo": preload("res://assets/textures/dirt_albedo.webp"),
+	"dirt_normal": preload("res://assets/textures/dirt_normal.webp"),
+	"gravel_albedo": preload("res://assets/textures/gravel_albedo.webp"),
+	"gravel_normal": preload("res://assets/textures/gravel_normal.webp"),
+	"rock_albedo": preload("res://assets/textures/rock_albedo.webp"),
+	"rock_normal": preload("res://assets/textures/rock_normal.webp"),
+	"asphalt_albedo": preload("res://assets/textures/asphalt_albedo.webp"),
+	"asphalt_normal": preload("res://assets/textures/asphalt_normal.webp"),
+	"asphalt_rough": preload("res://assets/textures/asphalt_rough.webp"),
+}
 
 ## Chunks are turned into meshes gradually, so building the world never stalls a frame.
 const CHUNKS_PER_FRAME: int = 6
@@ -82,6 +94,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 		"shadow_splits": 2,
 		"soft_shadows": 0.0,
 		"ssao": false,
+		"ssr": false,
 		"glow": false,
 		"msaa": Viewport.MSAA_DISABLED,
 		"fxaa": true,
@@ -99,6 +112,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 		"shadow_splits": 2,
 		"soft_shadows": 0.0,
 		"ssao": true,
+		"ssr": false,
 		"glow": true,
 		"msaa": Viewport.MSAA_2X,
 		"fxaa": false,
@@ -116,6 +130,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 		"shadow_splits": 4,
 		"soft_shadows": 0.5,
 		"ssao": true,
+		"ssr": true,
 		"glow": true,
 		"msaa": Viewport.MSAA_2X,
 		"fxaa": false,
@@ -133,6 +148,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 		"shadow_splits": 4,
 		"soft_shadows": 0.7,
 		"ssao": true,
+		"ssr": true,
 		"glow": true,
 		"msaa": Viewport.MSAA_2X,
 		"fxaa": false,
@@ -192,15 +208,13 @@ var _distance: float = 1.0
 var _free: bool = false
 var _free_speed: float = 1.0
 ## How far the rider and the ghost lean into the bend (radians, positive to the right).
-var _lean: float = 0.0
+## How rider and bike move besides pedalling: pitch, lean, standing, rock (R46).
+var _motion: RiderMotion = RiderMotion.new()
 var _ghost_lean: float = 0.0
 var _placed: bool = false
 var _avatar: RiderAvatar = RiderAvatar.new()
 var _ghost: RiderAvatar = RiderAvatar.new()
 var _ghost_distance: float = 0.0
-var _clouds: CloudLayer = CloudLayer.new()
-## Whether the clouds are over the land of the current world yet.
-var _clouds_settled: bool = false
 ## The land beyond the corridor: ground and lakes.
 var _horizon_ground: MeshInstance3D = MeshInstance3D.new()
 var _horizon_water: MeshInstance3D = MeshInstance3D.new()
@@ -210,8 +224,8 @@ var _road_material: ShaderMaterial = ShaderMaterial.new()
 var _water_material: ShaderMaterial = ShaderMaterial.new()
 var _building_material: ShaderMaterial = ShaderMaterial.new()
 var _structure_material: StandardMaterial3D = StandardMaterial3D.new()
-var _grass_mesh: ArrayMesh = _plant_mesh(false)
-var _flower_mesh: ArrayMesh = _plant_mesh(true)
+var _grass_mesh: ArrayMesh = GrassTufts.mesh(false)
+var _flower_mesh: ArrayMesh = GrassTufts.mesh(true)
 var _plant_material: ShaderMaterial = ShaderMaterial.new()
 ## The wind's clock for the grass and tree shaders: stands still while the ride is paused, so
 ## nothing moves in the scene and the swaying grass's shadows stop flickering (#178).
@@ -285,10 +299,8 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 	var azimuth: float = time["azimuth"]
 	# The light shines along its −z axis: from the sun's direction towards the ground.
 	_sun.rotation = Vector3(deg_to_rad(-elevation), deg_to_rad(180.0 - azimuth), 0.0)
-	var top_name: String = time["top"]
 	var horizon_name: String = time["horizon"]
 	var sun_name: String = time["sun"]
-	var top: Color = Palette.color(top_name)
 	var horizon: Color = Palette.color(horizon_name)
 	var sun_color: Color = Palette.color(sun_name)
 	var energy: float = time["energy"]
@@ -312,21 +324,15 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 	var wind_strength: float = wind.get(weather, 0.08)
 	_plant_material.set_shader_parameter("wind_strength", wind_strength)
 	VegetationModels.set_wind(wind_strength)
-	# Grey weather stays pastel (ADR 0011): soft grey-blue instead of dull grey.
-	var sky_top: Color = top.lerp(Palette.color("sky.overcast_top"), overcast)
+	# The sky shader scatters the sun's light itself (ADR 0020); these colours tint the haze and
+	# the puddles, which have no sky of their own.
 	var sky_horizon: Color = horizon.lerp(Palette.color("sky.overcast_horizon"), overcast)
-	_sky.set_shader_parameter("top_color", sky_top)
-	_sky.set_shader_parameter("horizon_color", sky_horizon)
-	# The sky paints a thin high layer; the low-poly clouds below carry the cover.
-	_sky.set_shader_parameter("cloud_cover", cover * 0.3)
+	_sky.set_shader_parameter("cloud_cover", cover)
 	_sky.set_shader_parameter("cloud_darkness", overcast)
-	_clouds.cover = cover
 	_sun.light_color = sun_color.lerp(Color.WHITE, overcast * 0.5)
-	# The light shines along its −z axis: its +z points towards the sun.
-	_clouds.light(_sun.global_transform.basis.z, _sun.light_color, sky_horizon, overcast)
 	_sun.light_energy = energy * lerpf(1.0, 0.25, overcast)
 	_sun.shadow_blur = lerpf(1.0, 4.0, overcast)
-	_environment.ambient_light_energy = lerpf(ambient, 0.85, overcast)
+	_environment.ambient_light_energy = lerpf(ambient, 1.0, overcast)
 	_environment.fog_density = (
 		HAZE.get(weather, HAZE["Clear"]) * HAZE_BY_TIME.get(time_of_day, 1.0)
 	)
@@ -342,9 +348,13 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 		material.set_shader_parameter("puddle_color", sky_horizon)
 
 
-## Applies a graphics preset (`QUALITY` key, as `TorqaApp.graphics_quality()` names it).
-func apply_quality(name: String) -> void:
-	_quality = QUALITY.get(name, QUALITY["medium"])
+## Applies a graphics preset (`QUALITY` key, as `TorqaApp.graphics_quality()` names it) and the
+## options set apart from it (R90, as `TorqaApp.graphics_options()` gives them; "auto" follows
+## the preset).
+func apply_quality(name: String, options: Dictionary = {}) -> void:
+	var preset: Dictionary = QUALITY.get(name, QUALITY["medium"])
+	_quality = preset.duplicate()
+	_apply_options_over_preset(options)
 	var shadow_atlas: int = _quality["shadow_atlas"]
 	RenderingServer.directional_shadow_atlas_set_size(shadow_atlas, true)
 	_sun.directional_shadow_max_distance = _quality["shadow_distance"]
@@ -357,6 +367,8 @@ func apply_quality(name: String) -> void:
 	# A sun of real size casts soft shadows (PCSS): softer further from the caster.
 	_sun.light_angular_distance = _quality["soft_shadows"]
 	_environment.ssao_enabled = _quality["ssao"]
+	# Water mirrors the land, not only the sky (ADR 0020); costly, so only on stronger GPUs.
+	_environment.ssr_enabled = _quality["ssr"]
 	_environment.glow_enabled = _quality["glow"]
 	_rain.amount = _quality["rain"]
 	var viewport: Viewport = get_viewport()
@@ -375,6 +387,52 @@ func apply_quality(name: String) -> void:
 	)
 	var distance: float = _quality["distance"]
 	_set_distance(distance)
+	var fps_limit: String = options.get("fps_limit", "auto")
+	Engine.max_fps = 0 if fps_limit in ["auto", "unlimited"] else int(fps_limit)
+	var vsync: String = options.get("vsync", "auto")
+	DisplayServer.window_set_vsync_mode(
+		DisplayServer.VSYNC_DISABLED if vsync == "off" else DisplayServer.VSYNC_ENABLED
+	)
+
+
+## Overrides the preset's settings in `_quality` with the options set apart from it (R90).
+func _apply_options_over_preset(options: Dictionary) -> void:
+	var levels: Dictionary[String, String] = {
+		"low": "low", "medium": "medium", "high": "high", "ultra": "ultra"
+	}
+	var shadows: String = options.get("shadows", "auto")
+	if levels.has(shadows):
+		for key: String in ["shadow_atlas", "shadow_distance", "shadow_splits", "soft_shadows"]:
+			_quality[key] = QUALITY[shadows][key]
+	var view_distance: String = options.get("view_distance", "auto")
+	if levels.has(view_distance):
+		for key: String in ["distance", "model_range"]:
+			_quality[key] = QUALITY[view_distance][key]
+	# Grass as far as the presets above Low draw it.
+	var grass_presets: Dictionary[String, String] = {
+		"off": "low", "near": "medium", "medium": "high", "far": "ultra"
+	}
+	var grass: String = options.get("grass", "auto")
+	if grass_presets.has(grass):
+		for key: String in ["grass_range", "grass_shadows"]:
+			_quality[key] = QUALITY[grass_presets[grass]][key]
+	var switches: Dictionary[String, String] = {
+		"ambient_occlusion": "ssao", "reflections": "ssr", "bloom": "glow"
+	}
+	for option: String in switches:
+		var value: String = options.get(option, "auto")
+		if value != "auto":
+			_quality[switches[option]] = value == "on"
+	var antialiasing: String = options.get("antialiasing", "auto")
+	if antialiasing != "auto":
+		var multisample: Dictionary[String, int] = {
+			"msaa_2x": Viewport.MSAA_2X, "msaa_4x": Viewport.MSAA_4X
+		}
+		_quality["msaa"] = multisample.get(antialiasing, Viewport.MSAA_DISABLED)
+		_quality["fxaa"] = antialiasing == "fxaa"
+	var render_scale: String = options.get("render_scale", "auto")
+	if render_scale != "auto":
+		_quality["render_scale"] = float(render_scale) / 100.0
 
 
 ## Applies ride options (`RideOptions.options()`): camera, time of day and weather.
@@ -389,17 +447,28 @@ func apply_options(options: Dictionary) -> void:
 ## Snaps rider and camera to the start of a new ride instead of gliding there.
 func reset_view() -> void:
 	_placed = false
+	_motion.reset()
 
 
 func _ready() -> void:
-	# Flat palette colours everywhere (ADR 0011); the shaders facet what they draw.
+	# Ground and roads textured (ADR 0020); the rest keeps the flat palette colours of ADR 0011
+	# until restyled.
 	_terrain_material.shader = preload("res://shaders/terrain.gdshader")
-	_terrain_material.set_shader_parameter("rock_color", Palette.color("ground.rock"))
+	for material: String in ["grass", "dirt", "gravel", "rock"]:
+		_set_textures(_terrain_material, material, material)
+	# The land covers' vertex colours: the shader tells covers apart by them.
+	for cover: String in ["meadow", "farmland", "orchard", "forest", "town", "industrial", "rock"]:
+		var colour: Color = Palette.color("ground." + cover)
+		_terrain_material.set_shader_parameter(
+			"cover_" + cover, Vector3(colour.r, colour.g, colour.b)
+		)
 	_terrain_material.set_shader_parameter("snow_color", Palette.color("ground.snow"))
 	_road_material.shader = preload("res://shaders/road.gdshader")
-	_road_material.set_shader_parameter("asphalt_color", Palette.color("road.asphalt"))
+	_set_textures(_road_material, "asphalt", "asphalt")
+	_set_textures(_road_material, "gravel", "gravel")
+	_set_textures(_road_material, "grass", "grass")
+	_road_material.set_shader_parameter("asphalt_rough", TEXTURES["asphalt_rough"])
 	_road_material.set_shader_parameter("marking_color", Palette.color("road.marking"))
-	_road_material.set_shader_parameter("shoulder_color", Palette.color("road.shoulder"))
 	_water_material.shader = preload("res://shaders/water.gdshader")
 	_water_material.set_shader_parameter("deep_color", Palette.color("water.deep"))
 	_water_material.set_shader_parameter("shallow_color", Palette.color("water.shallow"))
@@ -410,35 +479,50 @@ func _ready() -> void:
 		"stained_glass", Palette.color("buildings.stained_glass")
 	)
 	_building_material.set_shader_parameter("stone", Palette.color("buildings.stone"))
+	var shell_textures: Dictionary[String, String] = {
+		"plaster_texture": "plaster",
+		"boards_texture": "planks",
+		"tiles_texture": "roof_tiles",
+		"gravel_texture": "gravel",
+	}
+	for uniform: String in shell_textures:
+		var path: String = "res://assets/textures/%s_albedo.webp" % shell_textures[uniform]
+		_building_material.set_shader_parameter(uniform, load(path))
 	_structure_material.vertex_color_use_as_albedo = true
 	_structure_material.vertex_color_is_srgb = true
 	_structure_material.roughness = 0.9
 	_sky.shader = preload("res://shaders/sky.gdshader")
-	_sky.set_shader_parameter("ground_color", Palette.color("ground.meadow"))
+	_sky.set_shader_parameter("ground_color", Palette.color("plants.grass_base"))
 	_sky.set_shader_parameter("cloud_color", Palette.color("sky.cloud"))
 	_sky.set_shader_parameter("cloud_shade_color", Palette.color("sky.cloud_shade"))
+	_sky.set_shader_parameter("overcast_top", Palette.color("sky.overcast_top"))
+	_sky.set_shader_parameter("overcast_horizon", Palette.color("sky.overcast_horizon"))
 	_environment.sky.sky_material = _sky
-	# Tone mapping is linear (world.tscn) and the light balanced so a sunlit facet shows about its
-	# palette colour; a warm white mixed into the sky's light keeps shadows bright, lightly tinted.
+	# Filmic tone mapping for physically based light (ADR 0020): a bright sun, the sky lighting the
+	# shadows.
+	_environment.tonemap_mode = Environment.TONE_MAPPER_AGX
 	_environment.ambient_light_color = Palette.color("light.ambient")
+	_environment.ambient_light_sky_contribution = 0.9
 	# Haze towards distant terrain takes the sky's colour (R45).
 	_environment.fog_aerial_perspective = 0.6
 	_plant_material.shader = preload("res://shaders/plants.gdshader")
 	_plant_material.set_shader_parameter("flower_colors", Palette.colors("plants.flowers"))
 	for surface: Array in [
-		[_street_material, "road.asphalt", 0.0], [_track_material, "road.gravel", 1.0]
+		[_street_material, "asphalt", 2.5, 0.85, 0.0], [_track_material, "gravel", 1.5, 0.95, 1.0]
 	]:
 		var material: ShaderMaterial = surface[0]
-		var color: String = surface[1]
+		var texture_name: String = surface[1]
 		material.shader = preload("res://shaders/street.gdshader")
-		material.set_shader_parameter("surface_color", Palette.color(color))
-		material.set_shader_parameter("grass_color", Palette.color("ground.meadow"))
-		material.set_shader_parameter("middle_grass", surface[2])
+		_set_textures(material, texture_name, "surface")
+		material.set_shader_parameter("grass_albedo", TEXTURES["grass_albedo"])
+		material.set_shader_parameter("surface_tile", surface[2])
+		material.set_shader_parameter("surface_roughness", surface[3])
+		material.set_shader_parameter("middle_grass", surface[4])
 	_rail_material.shader = preload("res://shaders/rail.gdshader")
 	_rail_material.set_shader_parameter("ballast_color", Palette.color("road.ballast"))
 	_rail_material.set_shader_parameter("sleeper_color", Palette.color("road.sleeper"))
 	_rail_material.set_shader_parameter("rail_color", Palette.color("road.rail"))
-	add_child(_clouds)
+	_rail_material.set_shader_parameter("gravel_texture", TEXTURES["gravel_albedo"])
 	add_child(_railways)
 	for land: MeshInstance3D in [_horizon_ground, _horizon_water]:
 		# Far away: its shadows would not show.
@@ -483,7 +567,6 @@ func _apply_rider() -> void:
 
 
 func _on_world_ready(_info: Dictionary) -> void:
-	_clouds_settled = false
 	_find_low_ground()
 	_apply_rider()
 	for chunk: Node in _terrain.get_children():
@@ -637,57 +720,6 @@ func _plants(buffer: PackedFloat32Array, flowers: bool, range_m: float) -> Multi
 	return instance
 
 
-## A grass tuft (blades leaning out from the root) or a flower clump (stems with heads),
-## about half a metre high. UV.y runs from root to tip for the wind; normals point up so the
-## plants light like the ground; flower heads have vertex alpha 0 for the shader to colour.
-static func _plant_mesh(flower: bool) -> ArrayMesh:
-	var tool: SurfaceTool = SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	tool.set_normal(Vector3.UP)
-	var blades: int = 3 if flower else 12
-	for i: int in range(blades):
-		var angle: float = TAU * float(i) / float(blades) + fmod(float(i) * 2.39, 1.0)
-		var out: Vector3 = Vector3(cos(angle), 0.0, sin(angle))
-		var side: Vector3 = Vector3(-out.z, 0.0, out.x)
-		var height: float = (0.55 if flower else 0.32) + fmod(float(i) * 0.137, 0.2)
-		var width: float = 0.012 if flower else 0.035
-		var root: Vector3 = out * (0.04 if flower else 0.06 + fmod(float(i) * 0.31, 0.08))
-		var tip: Vector3 = root + out * height * 0.35 + Vector3.UP * height
-		# The meadow's tones, so tufts blend into the ground they grow from.
-		var base_color: Color = Palette.color("plants.grass_base")
-		var tip_color: Color = Palette.color("plants.grass_tip")
-		_add_blade(tool, root, tip, side * width, base_color, tip_color)
-		if flower:
-			# A head: two crossed petals' quads at the tip, marked by alpha 0.
-			var head: Color = Color(1, 1, 1, 0)
-			for axis: Vector3 in [side, out]:
-				_add_quad(tool, tip - axis * 0.045, tip + axis * 0.045, Vector3.UP * 0.05, head)
-	return tool.commit()
-
-
-static func _add_blade(
-	tool: SurfaceTool, root: Vector3, tip: Vector3, half: Vector3, base: Color, top: Color
-) -> void:
-	for vertex: Array in [
-		[root - half, base, 0.0],
-		[root + half, base, 0.0],
-		[tip, top, 1.0],
-	]:
-		var color: Color = vertex[1]
-		var along: float = vertex[2]
-		tool.set_color(color)
-		tool.set_uv(Vector2(0.5, along))
-		var position: Vector3 = vertex[0]
-		tool.add_vertex(position)
-
-
-static func _add_quad(tool: SurfaceTool, a: Vector3, b: Vector3, up: Vector3, color: Color) -> void:
-	for position: Vector3 in [a, b, b + up, a, b + up, a + up]:
-		tool.set_color(color)
-		tool.set_uv(Vector2(0.5, 1.0))
-		tool.add_vertex(position)
-
-
 func _follow_ride(state: Dictionary, delta: float) -> void:
 	var east: float = state["x"]
 	var north: float = state["y"]
@@ -703,26 +735,37 @@ func _follow_ride(state: Dictionary, delta: float) -> void:
 	if _paused:
 		speed_kmh = 0.0
 		cadence_rpm = 0.0
-	_avatar.animate(delta, cadence_rpm, speed_kmh)
+	var effort_value: Variant = state.get("watts_per_kg")
+	var effort: float = effort_value if effort_value != null and not _paused else 0.0
 	var curvature: float = state["curvature"]
-	_lean = _leaning(_lean, TorqaApp.lean_angle(speed_kmh, curvature), delta)
-	# Bike and rider lean about where the tyres touch the road; the camera stays level.
-	_avatar.transform = Transform3D(Basis(Vector3.FORWARD, _lean), Vector3.ZERO)
+	_motion.step(
+		delta,
+		grade,
+		TorqaApp.lean_angle(speed_kmh, curvature),
+		effort,
+		cadence_rpm,
+		_avatar.crank_angle()
+	)
+	_avatar.animate(delta, cadence_rpm, speed_kmh, _motion)
+	# Bike and rider lean, and the bike rocks, about where the tyres touch the road; the camera
+	# stays level.
+	_avatar.transform = Transform3D(
+		Basis(Vector3.FORWARD, _motion.lean + _motion.rock), Vector3.ZERO
+	)
 
 	# Godot looks along −z (north); headings run clockwise from north, rotations anticlockwise.
 	# The heading is the road's own direction, so the rider turns with the bend.
 	var yaw: Basis = Basis(Vector3.UP, -heading)
-	var pitch: Basis = Basis(Vector3.RIGHT, atan(grade / 100.0))
+	# The motion's pitch follows the grade as a bike settles into it, without jolts at steps.
+	var pitch: Basis = Basis(Vector3.RIGHT, _motion.pitch)
 	var position: Vector3 = Vector3(east, elevation, -north)
 	if absf(elevation - _rider_elevation) > 0.5:
 		_rider_elevation = elevation
 		_apply_valley_fog()
-	if not _clouds_settled:
-		_clouds.settle(elevation)
-		_clouds_settled = true
 	# A jump (simulated rides): no gliding across the whole way.
 	if _rider.position.distance_to(position) > JUMP_M:
 		_placed = false
+		_motion.reset()
 	_rider.transform = Transform3D(yaw * pitch, position)
 	_place_ghost(state["ghost"], delta)
 
@@ -788,11 +831,15 @@ static func _held(key: Key) -> float:
 ## Faceted raindrops (#103): slim four-sided diamonds in the pale sky colour; the emitter
 ## stands free of the camera's turn so the rain falls straight down.
 func _make_rain() -> void:
-	var drop: SphereMesh = SphereMesh.new()
-	drop.radius = 0.022
-	drop.height = 0.36
+	# A streak a few millimetres thin: drops blur into lines as they fall past.
+	var drop: CylinderMesh = CylinderMesh.new()
+	drop.top_radius = 0.004
+	drop.bottom_radius = 0.004
+	drop.height = 0.6
 	drop.radial_segments = 4
-	drop.rings = 2
+	drop.rings = 1
+	drop.cap_top = false
+	drop.cap_bottom = false
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = preload("res://shaders/rain.gdshader")
 	material.set_shader_parameter("color", Palette.color("sky.rain"))
@@ -857,7 +904,8 @@ func _place_ghost(ghost: Variant, delta: float) -> void:
 	var curvature: float = info["curvature"]
 	_ghost_lean = _leaning(_ghost_lean, TorqaApp.lean_angle(speed_kmh, curvature), delta)
 	var yaw: Basis = Basis(Vector3.UP, -heading)
-	var pitch: Basis = Basis(Vector3.RIGHT, atan(grade / 100.0))
+	# The motion's pitch follows the grade as a bike settles into it, without jolts at steps.
+	var pitch: Basis = Basis(Vector3.RIGHT, _motion.pitch)
 	var roll: Basis = Basis(Vector3.FORWARD, _ghost_lean)
 	var left: Vector3 = yaw * Vector3.LEFT
 	_ghost.transform = Transform3D(
@@ -892,6 +940,13 @@ func _camera_target(rider: Transform3D) -> Transform3D:
 			eye = origin - flat_forward * 6.5 + Vector3.UP * 2.6
 			look_at = origin + flat_forward * 10.0 + Vector3.UP * 1.0
 	return Transform3D(Basis.IDENTITY, eye).looking_at(look_at, Vector3.UP)
+
+
+## Gives `material` the colour and normal maps of baked texture `texture_name` as its uniforms
+## `<uniform>_albedo` and `<uniform>_normal`.
+static func _set_textures(material: ShaderMaterial, texture_name: String, uniform: String) -> void:
+	material.set_shader_parameter(uniform + "_albedo", TEXTURES[texture_name + "_albedo"])
+	material.set_shader_parameter(uniform + "_normal", TEXTURES[texture_name + "_normal"])
 
 
 func _mesh_from(arrays: Dictionary) -> ArrayMesh:

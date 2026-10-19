@@ -20,10 +20,39 @@ The second form rebuilds only the named models. Then review them as the world dr
 ```sh
 scripts/dev.sh scripts/render-models.sh
 scripts/dev.sh sh -c 'MODELS="chalet_2_m" scripts/render-models.sh'
-scripts/dev.sh sh -c 'GROUPS="vegetation clouds" scripts/render-models.sh'
+scripts/dev.sh sh -c 'GROUPS="vegetation" scripts/render-models.sh'
 ```
 
 After a change to the models, refresh the [gallery](#gallery) below as well.
+
+For quick looks while working, the build scripts of buildings and vegetation render
+Cycles previews of their own materials instead of exporting (`art/preview.py`; four views per
+model, no Godot needed):
+
+```sh
+scripts/art.sh blender --background --factory-startup --python art/buildings/build.py -- --preview screenshots/preview chalet_2_m
+```
+
+## Look
+
+Since 2026-10-18 the target is as realistic as possible ([ADR 0020](../docs/adr/0020-realistic-look.md)):
+smooth shading, real proportions, physically based materials and light. Every group below has
+left the faceted look of ADR 0011; riders are smooth but still stylized figures (`docs/PLAN.md`,
+Phase 9).
+
+## Textures (`textures/`)
+
+`build.py` bakes tileable PBR textures (albedo, normal, roughness; WebP, normal maps lossless)
+from procedural Blender materials into `app/assets/textures/`: for the ground and roads `grass`,
+`dirt`, `gravel`, `rock` and `asphalt` (`sand` too, unused so far), for trees `bark`, for
+buildings `plaster`, `roof_tiles`, `slate`, `planks` and `masonry`. Only the maps the app reads
+are committed (most materials need no roughness map). Pass names after `--` for some, `--size`
+for another resolution (1024 by default) and `--out` to bake elsewhere, such as
+`screenshots/textures` while trying things out.
+
+```sh
+scripts/art.sh blender --background --factory-startup --python art/textures/build.py -- --out screenshots/textures --size 512
+```
 
 ## Buildings (`buildings/`)
 
@@ -54,7 +83,8 @@ the footprint at ground level, and walls reach 3 m below it for slopes. Texture 
 are metres on each surface (walls: along and up; roofs: along the eaves and up the slope).
 
 The files carry no textures: each face has a material **name**, and the app gives every name
-a flat palette colour (`buildings.*` in `app/assets/palette.json`) in
+a texture (from `textures/`) tinted by a palette colour (`buildings.*` in
+`app/assets/palette.json`) in
 `app/scenes/building_models.gd` and `app/shaders/building_model.gdshader`. New names need an
 entry there. Keep the models lean — a house 300–1,200 faces, a chalet or farmhouse up to about
 2,000, the rarer offices, hotels and public buildings up to about 3,000 — since towns place
@@ -82,29 +112,38 @@ Every building is in the [gallery](#buildings).
 
 ## Vegetation (`vegetation/`)
 
-`build.py` holds the catalogue and the kinds in one file: `conifer` (a trunk under stacked
-cones, each turned a little), `broadleaf` (a trunk under one or more chunky 20-facet blobs),
-`bush` and `rock`; for the subtropics (#136) `palm` (coconut palms with a curving trunk under
+`build.py` holds the catalogue and the kinds in one file: `conifer` (a spruce: a trunk under
+whorls of needle sprays drooping out, long at the bottom and short at the top, and a spire),
+`broadleaf` (a trunk forking into limbs that reach into crowns of leaf clusters), `bush` (clumps
+of leaf clusters) and `rock` (subdivided balls pushed in and out and broken along a few planes,
+shaded smooth); for the subtropics (#136) `palm` (coconut palms with a curving trunk under
 drooping fronds and a few coconuts, and a fan palm), `banana` (a stem under big paddle leaves)
-and `tropical_bush` (a clump with long leaves fanning out). Shapes are faceted (one normal per
-face) and lean — 20 to 70 triangles, palms and other plants with leaves seen from both sides up
-to about 300 — since forests place thousands; random shapes use fixed seeds, so rebuilds give
-the same files.
+and `tropical_bush` (leaf clusters with long leaves fanning out). Crowns are foliage cards:
+quads textured with a cluster of leaves or a spray of needles cut out by its alpha, their
+normals pointing out of the crown so it is lit as one soft volume. Trees are 300–550
+triangles, rocks 320–640, palms up to about 1,000; random shapes use fixed seeds, so rebuilds
+give the same files.
+
+`foliage.py` draws the two foliage cards, `leaves_albedo.webp` and `needles_albedo.webp`, in
+grey on transparent ground into `app/assets/textures/` (the app tints them per plant).
 
 ```sh
+scripts/art.sh blender --background --factory-startup --python art/vegetation/foliage.py
 scripts/art.sh blender --background --factory-startup --python art/vegetation/build.py
 ```
 
 | Name | Used for |
 |---|---|
-| `leaves` | crowns, fronds, leaves and bushes; the colour varies per plant (palette `plants.conifers`, `plants.broadleaves`, `plants.bushes`, `plants.palms`, `plants.tropical`) |
-| `trunk` | trunks (palette `plants.trunk`) |
-| `rock` | rocks; the colour varies per rock (palette `plants.rocks`) |
+| `leaves`, `needles` | foliage cards of broadleaf trees and bushes, and of conifers; tinted per plant (palette `plants.conifers`, `plants.broadleaves`, `plants.bushes`, `plants.tropical`) |
+| `frond` | solid leaves of palms and banana plants, tinted per plant (`plants.palms`, `plants.tropical`) |
+| `trunk` | trunks and limbs, the bark texture by coordinates in metres around and up |
+| `rock` | rocks, the rock texture laid on from three sides, tinted per rock (`plants.rocks`) |
 
-The app gives each name its look in `app/scenes/vegetation_models.gd` and
-`app/shaders/vegetation.gdshader` (trees sway a little in the wind). `models.json` lists each
-model's `kind` and `height`; the world (`core/torqa-world/src/vegetation.rs`) picks one model
-of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
+The app gives each name its look in `app/scenes/vegetation_models.gd`,
+`app/shaders/vegetation.gdshader` and `app/shaders/foliage.gdshader` (cards seen from both
+sides, lit through from behind; trees sway in the wind, leaves flutter). `models.json` lists
+each model's `kind` and `height`; the world (`core/torqa-world/src/vegetation.rs`) picks one
+model of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
 
 ## Riders (`riders/`)
 
@@ -116,55 +155,62 @@ scripts/art.sh blender --background --factory-startup --python art/riders/build.
 scripts/dev.sh scripts/render-riders.sh   # side, front, chase and face views in screenshots/riders/
 ```
 
-- **Bodies** come from Blender Studio's CC0 *Human Base Meshes*: the stylized "primitive"
-  bodies, extracted into `sources/human-base-meshes/` (see its `SOURCE.md` and `extract.py`).
-  They are parts with their origins at the joints. The script keeps them at their base level
-  (faceted, no subdivision), drops fingers and toes, thins nose and ears, lengthens arms,
-  hands and feet, makes the heads and shoulder caps smaller (natural proportions, ADR 0011) and
-  dresses the parts: shorts to above the knee, short sleeves, gloves, shoes.
+- **Bodies** are the realistic female and male bodies of Blender Studio's CC0 *Human Base
+  Meshes*, extracted into `sources/human-base-meshes/realistic_bodies.blend` with the bundle's
+  skeleton joints (see its `SOURCE.md` and `extract_realistic.py`). A skeleton is built from
+  those joints, scaled to each body, and the body skinned to it (heat weights on a thinned
+  copy, handed on by nearest surface). He is scaled to 1.76 m; she keeps the body's 1.64 m.
 - **Head:** fitted to the head's own shape. Hair is a shell over the scalp (to the nape and
-  over the ears for her, short for him), the helmet a shell over the hair, drawn out to the
-  back, with vent slots laid on top; sunglasses are two lenses following the face over the
-  eyes, a bridge and arms back to the ears; she has a ponytail with a hair tie.
+  over the ears for her, short for him). The helmet is a smooth shell fitted round the whole
+  skull, its rim just above the sunglasses, over the ears' tops and low over the back of the
+  head, drawn out to a short tail, with vent slots on top and chin straps; sunglasses are two
+  lenses on a shield wrapped round the face in front of the eyes (found from the nose's tip),
+  a bridge and arms back to the ears; she has a ponytail with a hair tie. The headgear moves with the head bone.
 - **Seat:** the hips go on the seat tube's line where the knee bends 30° with the pedal at the
-  bottom (a usual bike fit); the torso bends forward until the hands, elbows a little bent,
-  reach hoods at least 0.5 m ahead of the bottom bracket; the shoulders turn half the way with
-  the arms.
-- **Bike:** built around those contact points (saddle under the pelvis, hoods under the hands):
-  frame of six-sided tubes, fork, stem, drop bar with hoods, saddle, 18-sided wheels with eight
-  spokes, chainring and cranks.
+  bottom (a usual bike fit), the sit bones on the saddle 9 cm below the hip joints; the hoods
+  8 cm below the saddle and 0.57 m ahead of the bottom bracket for a 1.76 m rider (scaled to
+  each), as on a road bike set up for riding fast. The back bends forward, mostly at the
+  pelvis so it stays straight, until the arms, slightly bent, reach the hoods (about 40° above
+  horizontal); neck and head are aimed so the rider looks up the road; the hands rest on the
+  hoods, knuckles over the horns, each finger curled joint by joint round the horn's front and
+  the thumb forward along the hood's inner side; feet on the pedals with the knees forward,
+  the soles on them. The riding pose becomes the skeleton's rest.
+- **Kit:** after thinning the posed body to about 35,000 triangles (the hands spared, so the
+  fingers stay round), the kit's edges are cut into
+  it as planes across the limbs and the neck, so they run straight: shorts to above the knee,
+  a jersey with a collar and sleeves to half way down the upper arm, socks and white shoes;
+  the hands are bare, their fingers curled round the hoods. Each face takes the region of the
+  bone that moves it most. The shoes are the convex hulls of the feet.
+- **Bike:** built around those contact points (saddle under the pelvis, hoods under the hands),
+  see below.
 
-Each file holds `body` (the rider's posed upper body), the legs as `thigh_l`, `shin_l`,
-`foot_l`, `thigh_r`, `shin_r`, `foot_r` (origins at hip, knee and ankle), `frame`,
-`wheel_front`, `wheel_rear`, `crankset` (right crank forward) and `pedal_l`, `pedal_r`.
-`riders.json` holds each rider's fit: hips, thigh and shin lengths, where the ankle sits over
-the pedal, hubs, bottom bracket and cranks. `app/scenes/rider_avatar.gd` turns wheels and cranks
-and aims the legs at the pedals (inverse kinematics).
+Each file holds `skeleton` with `body` skinned to it (bones `pelvis`, `spine`, `chest`, `neck`,
+`head`, `shoulder`/`upper_arm`/`forearm`/`hand`, three a finger (`thumb_1`…`little_3`) and
+`thigh`/`shin`/`foot`/`toe`, each `.L` and `.R`), `frame`, `wheel_front`, `wheel_rear`, `crankset` (right crank forward) and `pedal_l`,
+`pedal_r`. `riders.json` holds each rider's fit: hips, thigh and shin lengths, where the ankle
+and the ball of the foot sit over the pedal, the hands on the hoods, hubs, bottom bracket and
+cranks.
+`app/scenes/rider_avatar.gd` turns wheels and cranks, turns the leg bones to the pedals
+(inverse kinematics) and moves the pelvis bone, and all above it, as the rider sways and stands.
+Exports are deterministic. `PREVIEW=<dir>` also renders Cycles previews of the riders there.
 
 | Name | Used for |
 |---|---|
 | `skin`, `hair` | skin; hair and ponytail |
-| `jersey`, `sleeve`, `shorts`, `gloves`, `shoes` | the kit |
+| `jersey`, `sleeve`, `shorts`, `socks`, `shoes` | the kit |
 | `helmet`, `vents`, `glasses` | helmet and its vent slots, sunglasses |
 | `frame` | the frame and fork |
 | `tyre`, `rim`, `metal`, `saddle`, `bar` | the bike's other parts |
 
 Colours: the rider's own palette section (`rider_female`, `rider_male`; `frame` there too) and
-`bike` for the bike's other parts. A rider about 4,400–5,300 triangles, a bike about 1,400.
+`bike` for the bike's other parts. The bike is a modern race bike: a compact frame of shaped,
+squared-off tubes (a deep down tube, tall head tube, aero seat tube, dropped seat stays), a
+straight tapered fork, a black aero seat post on the seat tube's line and a one-piece bar and
+stem, the stem straight and the flat tops level, round drops, rounded brake hoods and lever blades; a sculpted saddle on rails; 55 mm carbon
+rims with 24 black spokes and disc rotors; an 11-speed cassette, dark toothed chainrings on a
+spider, tapered cranks, a rear derailleur and the chain. A rider about 37,000–39,000 triangles, a
+bike about 9,800.
 Both riders, from every side, are in the [gallery](#riders).
-
-## Clouds (`clouds/`)
-
-`build.py` makes four low-poly clouds into `app/assets/models/clouds/`: small, puffy, long and
-a towering one, each a few rough balls of 20 facets flattened underneath, 60–120 faces, about
-10 m long (the app scales them up). One material, `cloud`; `app/shaders/cloud.gdshader` lights
-them by the sun and the weather and fades them into the horizon, and `app/scenes/cloud_layer.gd`
-spreads them round the camera, more, bigger and lower as the weather clouds over. They are
-in the [gallery](#clouds) too.
-
-```sh
-scripts/art.sh blender --background --factory-startup --python art/clouds/build.py
-```
 
 ## The remote's clip (`remote/`)
 
@@ -222,16 +268,14 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![rock_pair](../docs/images/models/vegetation/rock_pair.jpg)<br>`rock_pair` | ![palm_coconut](../docs/images/models/vegetation/palm_coconut.jpg)<br>`palm_coconut` | ![palm_fan](../docs/images/models/vegetation/palm_fan.jpg)<br>`palm_fan` |
 | ![palm_short](../docs/images/models/vegetation/palm_short.jpg)<br>`palm_short` | ![banana](../docs/images/models/vegetation/banana.jpg)<br>`banana` | ![tropical_bush](../docs/images/models/vegetation/tropical_bush.jpg)<br>`tropical_bush` |
 
-### Clouds
-
-![The four clouds: small, puffy, long and towering](../docs/images/models/clouds/clouds.jpg)
-
 ### Riders
 
 | | Female | Male |
 |---|---|---|
 | side | ![female side](../docs/images/models/riders/female-side.jpg) | ![male side](../docs/images/models/riders/male-side.jpg) |
 | side-down | ![female side-down](../docs/images/models/riders/female-side-down.jpg) | ![male side-down](../docs/images/models/riders/male-side-down.jpg) |
+| standing | ![female standing](../docs/images/models/riders/female-standing.jpg) | ![male standing](../docs/images/models/riders/male-standing.jpg) |
+| standing-chase | ![female standing-chase](../docs/images/models/riders/female-standing-chase.jpg) | ![male standing-chase](../docs/images/models/riders/male-standing-chase.jpg) |
 | front | ![female front](../docs/images/models/riders/female-front.jpg) | ![male front](../docs/images/models/riders/male-front.jpg) |
 | chase | ![female chase](../docs/images/models/riders/female-chase.jpg) | ![male chase](../docs/images/models/riders/male-chase.jpg) |
 | face | ![female face](../docs/images/models/riders/female-face.jpg) | ![male face](../docs/images/models/riders/male-face.jpg) |

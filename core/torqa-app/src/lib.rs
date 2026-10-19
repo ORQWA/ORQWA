@@ -42,6 +42,7 @@ use torqa_session::ghost::Ghost;
 use torqa_session::workout::Workout;
 use torqa_session::{Ride, RideConfig, RideState};
 use torqa_storage::computer;
+pub use torqa_storage::computer::{AUTO as GRAPHICS_AUTO, GRAPHICS_OPTIONS};
 use torqa_storage::course::{self, CourseCountry, Manifest};
 use torqa_storage::index::HistoryIndex;
 use torqa_storage::profiles::{self, DeviceRole, StoredProfile};
@@ -1890,6 +1891,22 @@ impl App {
         quality: profiles::GraphicsQuality,
     ) -> Result<(), AppError> {
         computer::set_graphics_quality(&self.computer, quality)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+    }
+
+    /// The graphics options set apart from the preset on this computer (R90), by name.
+    #[must_use]
+    pub fn graphics_options(&self) -> std::collections::BTreeMap<String, String> {
+        computer::graphics_options(&self.computer)
+    }
+
+    /// Sets a graphics option on this computer (R90); `"auto"` follows the preset again.
+    /// Returns false for an unknown option or value.
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if the choice cannot be saved.
+    pub fn set_graphics_option(&mut self, name: &str, value: &str) -> Result<bool, AppError> {
+        computer::set_graphics_option(&self.computer, name, value)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
