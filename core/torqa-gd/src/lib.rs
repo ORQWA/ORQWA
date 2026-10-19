@@ -85,6 +85,12 @@ impl TorqaCore {
 /// The commit the build script found (see `build.rs`).
 const COMMIT: &str = env!("TORQA_COMMIT");
 
+/// The course a new library starts with (R95), with its terrain and map so that it rides
+/// offline. Here rather than in the core, which the command-line tool shares: only the app
+/// ships it. See `courses/README.md`.
+const SAMPLE_COURSE: &[u8] = include_bytes!("../courses/twann-chasseral.tqc");
+const SAMPLE_COURSE_FILE: &str = "twann-chasseral.tqc";
+
 /// What the running engine reports of its licence and of the components it is built from.
 fn engine_credits() -> torqa_app::about::EngineCredits {
     let engine = Engine::singleton();
@@ -146,6 +152,11 @@ impl INode for TorqaApp {
             // Set once per process; a second node keeps the first one's.
             let _ = tracing::subscriber::set_global_default(log::StderrLog);
             App::new(paths::data_dir(), paths::cache_dir())
+                .inspect(|app| {
+                    if let Err(error) = app.add_sample_course(SAMPLE_COURSE_FILE, SAMPLE_COURSE) {
+                        tracing::warn!(%error, "cannot add the sample course");
+                    }
+                })
                 .inspect_err(|error| {
                     godot_error!("Torqa: {error}");
                     startup_failure = Some(Failure::new(Kind::Runtime, error));
@@ -3591,5 +3602,64 @@ mod failure_tests {
             format_failure("Could not open %s.", &["/Räder/100%/%s.fit".to_owned()]),
             "Could not open /Räder/100%/%s.fit."
         );
+    }
+}
+
+#[cfg(test)]
+mod sample_course_tests {
+    use std::time::{Duration, Instant};
+
+    use torqa_app::{App, AppEvent};
+    use torqa_routes::ElevationSource;
+
+    use super::{SAMPLE_COURSE, SAMPLE_COURSE_FILE};
+
+    /// Runs `app` until `done` accepts an event; panics on an error or after `limit`.
+    fn run_until(app: &mut App, limit: Duration, done: impl Fn(&AppEvent) -> bool) -> AppEvent {
+        let deadline = Instant::now() + limit;
+        while Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(16));
+            for event in app.update(Duration::from_millis(16)) {
+                assert!(!matches!(event, AppEvent::Error(_)), "{event:?}");
+                if done(&event) {
+                    return event;
+                }
+            }
+        }
+        panic!("timed out");
+    }
+
+    #[test]
+    fn the_sample_course_rides_on_its_own_data() {
+        let dir = std::env::temp_dir().join(format!("torqa-gd-sample-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        // An empty cache: the terrain and map must come from the course file.
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+
+        assert!(
+            app.add_sample_course(SAMPLE_COURSE_FILE, SAMPLE_COURSE)
+                .unwrap()
+        );
+        let courses = app.courses();
+        assert_eq!(courses.len(), 1);
+        assert_eq!(courses[0].manifest.name, "Twann – Chasseral");
+
+        app.open_course(courses[0].path.clone());
+        let limit = Duration::from_secs(300);
+        let loaded = run_until(&mut app, limit, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        let AppEvent::RouteLoaded(summary) = loaded else {
+            unreachable!()
+        };
+        assert_eq!(summary.elevation_source, ElevationSource::Terrain);
+        app.build_world();
+        let ready = |e: &AppEvent| matches!(e, AppEvent::WorldReady { .. });
+        let AppEvent::WorldReady {
+            fallback_samples, ..
+        } = run_until(&mut app, limit, ready)
+        else {
+            unreachable!()
+        };
+        assert_eq!(fallback_samples, 0, "terrain missing from the course");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
