@@ -122,4 +122,8 @@ Everything Android is in `android/`, `scripts/android.sh`, `scripts/build-androi
     (`org.rustls:rustls-platform-verifier`, in the version Cargo.lock names) comes from the
     project's own Maven archive on GitHub. That is a build-time download only; the app contacts
     nothing new.
-  - **The overlay** is hidden on Android, which has one window.
+  - **The overlay (R55) is picture-in-picture.** Android has one window per app, and Godot's
+    activity already allows picture-in-picture. The plugin's `enterPictureInPicture` puts it
+    there, shaped like the ride's HUD-only layout (within Android's 1:2.39 to 2.39:1), and the
+    layout is scaled to the small window. Once the rider opens Torqa again, the ride screen
+    comes back.

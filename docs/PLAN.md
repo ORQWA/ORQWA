@@ -589,7 +589,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
     anyway); **smoothness on the Tab S7 still to judge**
   - [x] HTTPS through Android's certificate checks (rustls-platform-verifier's Java part from its
     own archive, set up with the app's context); **a download on the tablet still to try**
-  - [x] no overlay window (one window on Android); music control says it is not supported;
+  - [x] the overlay (R55) as picture-in-picture: the ride's HUD in a small window over other
+    apps, scaled to it; **still to try on the tablet**. Music control says it is not supported;
     the update check offers the release page
   - [x] touch: Godot turns taps into clicks, enough to ride
 - [ ] D — a release-signed APK as a release asset, the wiki (installing, permissions), the
