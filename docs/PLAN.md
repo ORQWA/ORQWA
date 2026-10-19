@@ -101,13 +101,17 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Rust workspace skeleton + lint config (clippy pedantic, missing_docs, cargo-deny)
 - [x] Godot project + gdext hello-world
 - [x] GitHub Actions: container job (fmt, clippy, test, deny) + macOS runner job (GDExtension + app export)
-- [x] Tagged releases (#273): after checks and all native builds, publish the eight app/CLI
+- [x] Tagged releases (#273): after checks and all native builds, publish the app/CLI
   archives for macOS arm64, Windows x86_64 and Linux x86_64/arm64 on GitHub Releases;
   preserve ZIP uploads as archives when downloading them for publication
 - [x] Release versions: the version stays in `core/Cargo.toml` and the macOS and Windows
   presets, checked to agree on every change and, for a release, to be the tag's (`v<version>`),
   after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
   sets it in all of them and in `core/Cargo.lock`
+- [ ] Windows installer and updates (R99, ADR 0023):
+  - [ ] `Torqa-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
+    uninstall, upgrade in place; installed and uninstalled once in CI
+  - [ ] Update check at start-up (setting to turn it off), download and install the new MSI
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices

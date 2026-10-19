@@ -266,9 +266,39 @@ jobs:
             throw "Torqa.exe kept the template's icon and details"
           }
           Compress-Archive dist\Torqa\* dist\Torqa-windows-x86_64.zip
+      # The installer (ADR 0023), from the same export. WiX v7 asks each build to accept its
+      # Open Source Maintenance Fee EULA; the fee applies only to users earning at least
+      # US$10,000 a year, which Torqa does not.
+      - name: Build installer
+        run: |
+          dotnet tool install --global wix --version 7.0.0
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $version = (Get-Item dist\Torqa\Torqa.exe).VersionInfo.ProductVersion
+          wix build -acceptEula wix7 -arch x64 -d "Version=$version" -d "AppDir=dist\Torqa" `
+            scripts\release\Torqa.wxs -o dist\Torqa-windows-x86_64.msi
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      # Installs, checks what a rider gets and uninstalls again: a broken installer fails here,
+      # not on a rider's computer.
+      - name: Check installer
+        run: |
+          $msi = "$PWD\dist\Torqa-windows-x86_64.msi"
+          $installed = "$env:ProgramFiles\Torqa"
+          $shortcut = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Torqa.lnk"
+          $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', 'install.log'
+          if ($run.ExitCode) { Get-Content install.log -Tail 40; throw "install failed: $($run.ExitCode)" }
+          foreach ($path in "$installed\Torqa.exe", "$installed\torqa_gd.dll", $shortcut) {
+            if (-not (Test-Path $path)) { throw "not installed: $path" }
+          }
+          $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/x', "`"$msi`"", '/qn'
+          if ($run.ExitCode) { throw "uninstall failed: $($run.ExitCode)" }
+          if (Test-Path "$installed\Torqa.exe") { throw "uninstall left Torqa.exe" }
       - uses: actions/upload-artifact@v7
         with:
           path: dist/Torqa-windows-x86_64.zip
+          archive: false
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/Torqa-windows-x86_64.msi
           archive: false
       - uses: actions/upload-artifact@v7
         with:

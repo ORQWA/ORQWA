@@ -29,6 +29,7 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 | R2 | Audience: the author + friends. Open source under **GPL-3.0**. **Zero budget**: free/open data only; users bring their own API keys for paid services. |
 | R3 | Offline-first: a prepared ride works without internet. Online extras (DEM correction, world data download, Street View, uploads) are used when connected. |
 | R4 | Extensibility is a core principle: interface-driven plugins for route importers, devices, shift inputs, uploaders, ride modes and workout parsers. |
+| R99 | Extends R1 (2026-10-19): on **Windows** Torqa comes with an **installer** (`.msi`): it installs into Program Files with a Start-menu entry, is removed under Installed apps, and a newer installer updates it in place. Installing, updating and uninstalling keep the rider's data. Torqa will then **look for updates** itself, once at start-up and never during a ride, behind a setting that turns it off, and install a new version when the rider agrees (ADR 0023). |
 
 ## Devices
 
