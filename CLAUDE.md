@@ -103,6 +103,8 @@ Blender references. Use them for any visual or model work.
 ## Working agreement for Claude
 
 - Small PR-sized steps, one roadmap phase at a time; stop for review after each meaningful step.
+- While working, `scripts/check.sh --quick` runs only the checks the changes can affect; never
+  run checks and GPU renders at the same time.
 - Before declaring done, run in the container: `cargo fmt --check`,
   `cargo clippy --all-targets -- -D warnings`, `cargo test`, `cargo deny check`, and `gdlint`
   (`scripts/check.sh` runs them all), run `make wiki-check`, and update the docs and their images

@@ -43,6 +43,8 @@ def unescape(value: str) -> str:
 
 
 def collect() -> dict[tuple[str, str], list[str]]:
+    """Every text with the files it is in. Files, not lines: line numbers would change the
+    template with any edit above a text and make it conflict in nearly every merge."""
     found: dict[tuple[str, str], list[str]] = {}
 
     def add(msgid: str, where: str, context: str = "") -> None:
@@ -60,34 +62,32 @@ def collect() -> dict[tuple[str, str], list[str]]:
         if path.suffix == ".gd":
             # Over the whole file: formatters put long texts on the line after `tr(`.
             for match in TR_CALL.finditer(text):
-                number = text.count("\n", 0, match.start(1)) + 1
-                add(unescape(match.group(1)), f"{rel}:{number}", unescape(match.group(2) or ""))
+                add(unescape(match.group(1)), rel, unescape(match.group(2) or ""))
         in_region = False
-        for number, line in enumerate(text.splitlines(), 1):
+        for line in text.splitlines():
             if "i18n-begin" in line:
                 in_region = True
                 continue
             if "i18n-end" in line:
                 in_region = False
                 continue
-            where = f"{rel}:{number}"
             if in_region and not line.lstrip().startswith(("#", "//")):
                 for match in STRING.finditer(line):
                     value = unescape(match.group(1))
                     if is_text(value):
-                        add(value, where)
+                        add(value, rel)
     for path in sorted(APP.rglob("*.tscn")):
         if ".godot" in path.parts or "tests" in path.parts:
             continue
         rel = path.relative_to(ROOT).as_posix()
-        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        for line in path.read_text(encoding="utf-8").splitlines():
             match = SCENE_PROPERTY.match(line)
             if match and is_text(unescape(match.group(1))):
-                add(unescape(match.group(1)), f"{rel}:{number}")
+                add(unescape(match.group(1)), rel)
     extra = APP / "translations" / "extra-msgids.txt"
-    for number, line in enumerate(extra.read_text(encoding="utf-8").splitlines(), 1):
+    for line in extra.read_text(encoding="utf-8").splitlines():
         if line.strip() and not line.startswith("#"):
-            add(line.strip(), f"app/translations/extra-msgids.txt:{number}")
+            add(line.strip(), "app/translations/extra-msgids.txt")
     return found
 
 

@@ -20,6 +20,12 @@ class CatalogueTests(unittest.TestCase):
             template = extract.template({("ride_action", "Ride"): ["button:1"]})
             self.assertIn('msgctxt "ride_action"\nmsgid "Ride"', template)
 
+    def test_texts_name_their_files_not_lines(self):
+        # Lines move with every edit; the template must change only when texts do.
+        for references in extract.collect().values():
+            for reference in references:
+                self.assertTrue((extract.ROOT / reference).is_file(), reference)
+
     def test_quotes_backslashes_and_unicode_round_trip(self):
         original = 'Das Fahrerprofil "Müller" in C:\\Räder\\%s'
         self.assertEqual(extract.unescape(extract.quote(original)[1:-1]), original)
