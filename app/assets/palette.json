@@ -121,6 +121,28 @@
     "skin": "#a26b55",
     "frame": "#d9d6cf", "socks": "#efefec"
   },
+  "props": {
+    "galvanised": "#a7abae",
+    "post": "#ecebe6",
+    "band": "#17181a",
+    "reflector": "#e0821e",
+    "pole_red": "#b3261e",
+    "pole_white": "#ecebe6",
+    "metal_dark": "#2c2f33",
+    "wood": "#8a6143",
+    "lamp": "#f4ecd2",
+    "glass": "#b9cbd3",
+    "wood_weathered": "#7a6e5f",
+    "hay": "#c2a05a",
+    "wrap": "#e6e6e1",
+    "stone": "#8f8a83",
+    "sign_blue": "#1d4f9c",
+    "sign_white": "#f2f2ef",
+    "sign_red": "#c0261f",
+    "sign_black": "#141414",
+    "insulator": "#9aa29b",
+    "wire": "#2a2b2c"
+  },
   "bike": {
     "tyre": "#1b1b1c",
     "rim": "#232426",

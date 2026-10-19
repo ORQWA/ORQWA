@@ -2099,3 +2099,5 @@ msgstr "OK"
 msgid "Hold to finish"
 msgstr "Zum Beenden gedrückt halten"
 
+msgid "Ready in %s"
+msgstr "Fertig nach %s"

@@ -51,7 +51,7 @@ msgstr ""
 msgid "%s %%"
 msgstr ""
 
-#: app/scenes/course_detail.gd:304
+#: app/scenes/course_detail.gd:307
 msgid "%s %.1f km at %.1f %%"
 msgstr ""
 
@@ -115,7 +115,7 @@ msgstr ""
 msgid "%s was not found. It holds the course's slopes: put it next to the RLV file."
 msgstr ""
 
-#: app/scenes/course_detail.gd:307 app/scenes/ride_screen.gd:577
+#: app/scenes/course_detail.gd:310 app/scenes/ride_screen.gd:577
 msgid "(best %s)"
 msgstr ""
 
@@ -231,7 +231,7 @@ msgstr ""
 msgid "Add video…"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:351
+#: app/scenes/workouts_tab.gd:353
 msgid "Added to your workouts."
 msgstr ""
 
@@ -271,7 +271,7 @@ msgstr ""
 msgid "All time"
 msgstr ""
 
-#: app/scenes/course_detail.gd:208
+#: app/scenes/course_detail.gd:211
 msgid "Along the video"
 msgstr ""
 
@@ -355,7 +355,7 @@ msgstr ""
 msgid "B (right pod)"
 msgstr ""
 
-#: app/scenes/course_detail.gd:127 app/scenes/history_screen.gd:143 app/scenes/remote_dialog.gd:28 app/ui/ride_bar.gd:131
+#: app/scenes/course_detail.gd:129 app/scenes/history_screen.gd:143 app/scenes/remote_dialog.gd:28 app/ui/ride_bar.gd:131
 msgid "Back"
 msgstr ""
 
@@ -383,7 +383,7 @@ msgstr ""
 msgid "Bloom"
 msgstr ""
 
-#: app/scenes/course_detail.gd:112 app/scenes/workouts_tab.gd:374 core/torqa-app/src/import.rs:43
+#: app/scenes/course_detail.gd:114 app/scenes/workouts_tab.gd:377 core/torqa-app/src/import.rs:43
 msgid "Building 3D world"
 msgstr ""
 
@@ -447,7 +447,7 @@ msgstr ""
 msgid "Checking…"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:313
+#: app/scenes/workouts_tab.gd:315
 msgid "Choose"
 msgstr ""
 
@@ -455,7 +455,7 @@ msgstr ""
 msgid "Choose a video of this course"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:175
+#: app/scenes/workouts_tab.gd:176
 msgid "Choose a workout file"
 msgstr ""
 
@@ -783,15 +783,15 @@ msgstr ""
 msgid "Default"
 msgstr ""
 
-#: app/scenes/course_detail.gd:202 app/scenes/history_screen.gd:231 app/scenes/profile_tab.gd:72 app/ui/workout_editor.gd:190 app/ui/workout_editor.gd:197
+#: app/scenes/course_detail.gd:205 app/scenes/history_screen.gd:231 app/scenes/profile_tab.gd:72 app/ui/workout_editor.gd:190 app/ui/workout_editor.gd:197
 msgid "Delete"
 msgstr ""
 
-#: app/scenes/course_detail.gd:133
+#: app/scenes/course_detail.gd:135
 msgid "Delete course"
 msgstr ""
 
-#: app/scenes/course_detail.gd:200
+#: app/scenes/course_detail.gd:203
 msgid "Delete course?"
 msgstr ""
 
@@ -843,7 +843,7 @@ msgstr ""
 msgid "Disconnect"
 msgstr ""
 
-#: app/ui/failure_details.gd:29
+#: app/ui/failure_details.gd:38
 msgid "Dismiss"
 msgstr ""
 
@@ -907,7 +907,7 @@ msgstr ""
 msgid "Easy for 5 minutes before the test"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:258
+#: app/scenes/workouts_tab.gd:260
 msgid "Edit a copy…"
 msgstr ""
 
@@ -919,11 +919,11 @@ msgstr ""
 msgid "Edit the course's name and video"
 msgstr ""
 
-#: app/scenes/profile_tab.gd:141 app/scenes/workouts_tab.gd:258
+#: app/scenes/profile_tab.gd:141 app/scenes/workouts_tab.gd:260
 msgid "Edit…"
 msgstr ""
 
-#: app/scenes/course_detail.gd:153 app/scenes/history_screen.gd:260 core/torqa-app/src/hud.rs:130 app/scenes/ride_screen.tscn:73
+#: app/scenes/course_detail.gd:155 app/scenes/history_screen.gd:260 core/torqa-app/src/hud.rs:130 app/scenes/ride_screen.tscn:73
 msgid "Elevation"
 msgstr ""
 
@@ -1235,7 +1235,7 @@ msgstr ""
 msgid "Hold"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:130
+#: app/scenes/workouts_tab.gd:131
 msgid "Hold a power or a heart rate, or ride a structured workout step by step."
 msgstr ""
 
@@ -1243,7 +1243,7 @@ msgstr ""
 msgid "Hold to finish"
 msgstr ""
 
-#: app/scenes/course_detail.gd:206
+#: app/scenes/course_detail.gd:209
 msgid "How do you want to ride?"
 msgstr ""
 
@@ -1259,7 +1259,7 @@ msgstr ""
 msgid "Import…"
 msgstr ""
 
-#: app/scenes/course_detail.gd:209
+#: app/scenes/course_detail.gd:212
 msgid "In 3D"
 msgstr ""
 
@@ -1279,7 +1279,7 @@ msgstr ""
 msgid "Its file is deleted from your workouts."
 msgstr ""
 
-#: app/scenes/course_detail.gd:201
+#: app/scenes/course_detail.gd:204
 msgid "Its file is deleted; your rides on it are kept."
 msgstr ""
 
@@ -1351,7 +1351,7 @@ msgstr ""
 msgid "Loading %s …"
 msgstr ""
 
-#: app/scenes/course_detail.gd:82 app/scenes/workouts_tab.gd:108
+#: app/scenes/course_detail.gd:83 app/scenes/workouts_tab.gd:109
 msgid "Loading the course"
 msgstr ""
 
@@ -1363,7 +1363,7 @@ msgstr ""
 msgid "Looking for your devices… wake them by pedalling or putting on the strap."
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:282
+#: app/scenes/workouts_tab.gd:284
 msgid "Looking up today's plan…"
 msgstr ""
 
@@ -1503,7 +1503,7 @@ msgstr ""
 msgid "New rider…"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:149
+#: app/scenes/workouts_tab.gd:150
 msgid "New workout…"
 msgstr ""
 
@@ -1619,7 +1619,7 @@ msgstr ""
 msgid "Nothing in your library matches this search and these filters."
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:326
+#: app/scenes/workouts_tab.gd:328
 msgid "Nothing planned for today."
 msgstr ""
 
@@ -1647,7 +1647,7 @@ msgstr ""
 msgid "On"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:195
+#: app/scenes/workouts_tab.gd:196
 msgid "On a course, the trainer holds the workout's power while you ride through its 3D world"
 msgstr ""
 
@@ -1655,7 +1655,7 @@ msgstr ""
 msgid "On a single cog such as the Zwift Cog, Torqa shifts 24 virtual gears: ↑ and ↓ while riding"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:67
+#: app/scenes/workouts_tab.gd:68
 msgid "On its own (HUD only)"
 msgstr ""
 
@@ -1663,7 +1663,7 @@ msgstr ""
 msgid "One minute all out!"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:199
+#: app/scenes/workouts_tab.gd:200
 msgid "Only the HUD, on top of other windows, e.g. over a video"
 msgstr ""
 
@@ -1739,7 +1739,7 @@ msgstr ""
 msgid "Plan"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:160
+#: app/scenes/workouts_tab.gd:161
 msgid "Planned for today"
 msgstr ""
 
@@ -1799,7 +1799,7 @@ msgstr ""
 msgid "Power profile"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:233
+#: app/scenes/workouts_tab.gd:235
 msgid "Power rises each minute until you give way. FTP: 75 % of your best minute."
 msgstr ""
 
@@ -1831,7 +1831,7 @@ msgstr ""
 msgid "Quality"
 msgstr ""
 
-#: app/scenes/course_detail.gd:170
+#: app/scenes/course_detail.gd:172
 msgid "Race against"
 msgstr ""
 
@@ -1857,6 +1857,10 @@ msgstr ""
 
 #: core/torqa-app/src/import.rs:38
 msgid "Reading route"
+msgstr ""
+
+#: app/ui/preparation_log.gd:68
+msgid "Ready in %s"
 msgstr ""
 
 #: app/ui/ride_devices.gd:21
@@ -1927,7 +1931,7 @@ msgstr ""
 msgid "Ride map"
 msgstr ""
 
-#: app/scenes/course_detail.gd:167
+#: app/scenes/course_detail.gd:169
 msgid "Ride options"
 msgstr ""
 
@@ -2035,7 +2039,7 @@ msgstr ""
 msgid "Saved as %s"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:342
+#: app/scenes/workouts_tab.gd:344
 msgid "Saved to your workouts."
 msgstr ""
 
@@ -2159,7 +2163,7 @@ msgstr ""
 msgid "Standard zones"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:212 app/ui/video_align_dialog.gd:258
+#: app/scenes/workouts_tab.gd:214 app/ui/video_align_dialog.gd:258
 msgid "Start"
 msgstr ""
 
@@ -2167,7 +2171,7 @@ msgstr ""
 msgid "Start a ride in Torqa"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:198
+#: app/scenes/workouts_tab.gd:199
 msgid "Start as overlay"
 msgstr ""
 
@@ -2219,7 +2223,7 @@ msgstr ""
 msgid "TSS %d"
 msgstr ""
 
-#: app/ui/failure_details.gd:32 app/ui/failure_details.gd:72
+#: app/ui/failure_details.gd:41 app/ui/failure_details.gd:81
 msgid "Technical details"
 msgstr ""
 
@@ -2303,7 +2307,7 @@ msgstr ""
 msgid "This course already has a video."
 msgstr ""
 
-#: app/scenes/course_detail.gd:207
+#: app/scenes/course_detail.gd:210
 msgid "This course has a video. Ride along it, or in the 3D world?"
 msgstr ""
 
@@ -2331,7 +2335,7 @@ msgstr ""
 msgid "Time"
 msgstr ""
 
-#: app/scenes/course_detail.gd:241
+#: app/scenes/course_detail.gd:244
 msgid "Time at %d %% FTP"
 msgstr ""
 
@@ -2419,7 +2423,7 @@ msgstr ""
 msgid "Tue"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:240
+#: app/scenes/workouts_tab.gd:242
 msgid "Twice 8 minutes all out, 10 easy between. FTP: 90 % of their average."
 msgstr ""
 
@@ -2499,15 +2503,15 @@ msgstr ""
 msgid "Video %s was not found. Put it next to the course file."
 msgstr ""
 
-#: app/scenes/course_detail.gd:386
+#: app/scenes/course_detail.gd:391
 msgid "Video added: this course is ridden along it now."
 msgstr ""
 
-#: app/scenes/course_detail.gd:393
+#: app/scenes/course_detail.gd:398
 msgid "Video aligned with the route."
 msgstr ""
 
-#: app/scenes/course_detail.gd:399
+#: app/scenes/course_detail.gd:404
 msgid "Video removed: this course is ridden in 3D."
 msgstr ""
 
@@ -2555,7 +2559,7 @@ msgstr ""
 msgid "Warm-up  ·  %s left"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:237
+#: app/scenes/workouts_tab.gd:239
 msgid "Warm-up and activation, then 20 minutes all out. FTP: 95 % of their average."
 msgstr ""
 
@@ -2595,7 +2599,7 @@ msgstr ""
 msgid "What the remote's buttons do"
 msgstr ""
 
-#: app/scenes/workouts_tab.gd:190
+#: app/scenes/workouts_tab.gd:191
 msgid "Where"
 msgstr ""
 
@@ -2607,7 +2611,7 @@ msgstr ""
 msgid "Work"
 msgstr ""
 
-#: app/scenes/ride_settings_dialog.gd:27 app/scenes/workouts_tab.gd:126 app/ui/workout_editor.gd:83 app/ui/workout_options.gd:71
+#: app/scenes/ride_settings_dialog.gd:27 app/scenes/workouts_tab.gd:127 app/ui/workout_editor.gd:83 app/ui/workout_options.gd:71
 msgid "Workout"
 msgstr ""
 
@@ -2635,7 +2639,7 @@ msgstr ""
 msgid "Workout: skip step"
 msgstr ""
 
-#: app/scenes/start_page.gd:96 app/scenes/workouts_tab.gd:181
+#: app/scenes/start_page.gd:96 app/scenes/workouts_tab.gd:182
 msgid "Workouts"
 msgstr ""
 
@@ -2663,7 +2667,7 @@ msgstr ""
 msgid "Your best on this route"
 msgstr ""
 
-#: app/scenes/course_detail.gd:299
+#: app/scenes/course_detail.gd:302
 msgid "Your best time on this route: %s"
 msgstr ""
 
@@ -2787,7 +2791,7 @@ msgstr ""
 msgid "★ Personal record"
 msgstr ""
 
-#: app/scenes/course_detail.gd:190 app/scenes/course_detail.gd:275
+#: app/scenes/course_detail.gd:193 app/scenes/course_detail.gd:278
 msgctxt "ride_action"
 msgid "Ride"
 msgstr ""

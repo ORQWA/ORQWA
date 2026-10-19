@@ -381,6 +381,8 @@ physically based materials and light, restyled group by group.
   models, an in-game preview renderer (`scripts/render-models.sh`), agent skills for the look,
   the pipeline and render review (`.claude/skills`)
 - [x] Stylized look, step by step (ADR 0011):
+  - [x] A build log while a course is prepared (R93): each step with its count and time, ticked
+    when done, and how long the whole took
   - [x] Foundation: one palette for core and shaders (`app/assets/palette.json`); standard
     views rendered before and after every visual change (`scripts/render-views.sh`)
   - [x] Ground, water, roads and sky: faceted ground coloured by land cover (rock on steep
@@ -510,6 +512,22 @@ physically based materials and light, restyled group by group.
   - [x] Rider and bike motion (R91, `RiderMotion`): pitch and lean as damped springs, standing
     on the pedals on steep climbs and in sprints with the bike rocking under the rider, sway
     with effort, cranks level when coasting
+  - [ ] Props by the road (R92), group by group:
+    - [x] Roadside safety: guard rails where the ground falls away (start and end spans, gaps
+      at junctions), delineator posts on country roads, snow poles above 1,300 m
+      (`art/props`, `core/torqa-world/src/props.rs`)
+    - [x] Towns: street lamps staggered every 60 m, benches with bins, bus shelters every
+      400 m, where they have room (clear of walls, side streets and junctions); villages the
+      map leaves unmarked found by their buildings
+    - [ ] Bollards, fountains and the like
+    - [x] Road signs: places' names where the road enters and leaves them (text on the sign,
+      from the map), bend warnings before hairpins, grade warnings before steep stretches
+    - [ ] Signposts at junctions
+    - [x] Countryside: pasture fences in stretches beside pasture and fields, round hay bales
+      in fields, wayside crosses where lanes join outside towns
+    - [x] Power lines: wooden poles every 50 m along stretches of country road, three wires
+      sagging from pole to pole as geometry
+    - [ ] Field gates
   - [ ] More geometry on buildings where it shows (eaves, window depth); frame rate on an M1
     at Medium checked after the restyle
 - **Exit:** a long hilly course at 60 fps on M1 base at Medium ✅ (#111, 2026-10-08); screenshots

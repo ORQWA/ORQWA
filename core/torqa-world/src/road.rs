@@ -63,6 +63,22 @@ struct Segment {
     portals: [Option<Plane>; 2],
 }
 
+/// A point of the road ridden, for what stands beside it ([`RoadIndex::stations`]).
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Station {
+    /// Metres east/north.
+    pub(crate) position: (f64, f64),
+    /// Road surface elevation.
+    pub(crate) elevation: f64,
+    /// Distance along the route.
+    pub(crate) distance: f64,
+    /// Unit direction of travel (east, north).
+    pub(crate) direction: (f64, f64),
+    /// Rise over run along the road.
+    pub(crate) grade: f64,
+    pub(crate) surface: Surface,
+}
+
 /// A point of a centre line.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Centre {
@@ -380,6 +396,42 @@ impl RoadIndex {
                 direction(segment),
             )
         })
+    }
+
+    /// Points of the road every `spacing` metres along it (at whole multiples of `spacing`, so
+    /// the same everywhere whichever area asks) that lie within `low`–`high` (metres
+    /// east/north). Stretches ridden a second time are left out: the first pass has them.
+    pub(crate) fn stations(&self, spacing: f64, low: (f64, f64), high: (f64, f64)) -> Vec<Station> {
+        let mut stations = Vec::new();
+        for segment in self.segments.iter().filter(|s| !s.repeat) {
+            let length = segment.distance_b - segment.distance_a;
+            if length <= 1e-9 {
+                continue;
+            }
+            let mut next = (segment.distance_a / spacing).ceil() * spacing;
+            while next < segment.distance_b {
+                let t = (next - segment.distance_a) / length;
+                let position = (
+                    segment.a.0 + (segment.b.0 - segment.a.0) * t,
+                    segment.a.1 + (segment.b.1 - segment.a.1) * t,
+                );
+                let inside =
+                    (low.0..high.0).contains(&position.0) && (low.1..high.1).contains(&position.1);
+                if inside {
+                    stations.push(Station {
+                        position,
+                        elevation: segment.elevation_a
+                            + (segment.elevation_b - segment.elevation_a) * t,
+                        distance: next,
+                        direction: direction(segment),
+                        grade: (segment.elevation_b - segment.elevation_a) / length,
+                        surface: segment.surface,
+                    });
+                }
+                next += spacing;
+            }
+        }
+        stations
     }
 
     /// Points along the road roughly every `spacing` metres, in metres east/north.

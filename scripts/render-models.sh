@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Renders the Blender models (buildings, vegetation) as the world draws them into
+# Renders the Blender models (buildings, vegetation, props) as the world draws them into
 # screenshots/models/ for review (ADR 0009). Runs inside the dev container:
 # scripts/dev.sh scripts/render-models.sh
 # GROUPS="vegetation" or MODELS="house_gable_2_m chalet_2_m" renders only some;
