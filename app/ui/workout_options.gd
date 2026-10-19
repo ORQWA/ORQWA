@@ -232,6 +232,9 @@ func _row(caption: String, field: Control, kinds: Array[Kind], extra: Control = 
 	label.custom_minimum_size = Vector2(RideOptions.CAPTION_WIDTH, 0)
 	add_child(label)
 	field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	field.custom_minimum_size.x = maxf(field.custom_minimum_size.x, RideOptions.FIELD_WIDTH)
+	if field is OptionButton:
+		UiTheme.narrowable(field as OptionButton)
 	add_child(field)
 	var third: Control = extra if extra != null else Control.new()
 	third.custom_minimum_size.x = RideOptions.EXTRA_WIDTH

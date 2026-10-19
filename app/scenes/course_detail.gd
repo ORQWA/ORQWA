@@ -14,6 +14,11 @@ signal ready_to_ride
 ## The course was renamed, deleted or given a new map picture: the gallery is out of date.
 signal course_changed
 
+## The course's side of the page takes this many times the ride options' share of its width.
+const COURSE_SHARE: float = 1.5
+## The map stands beside the figures only where it gets at least this width, else above them.
+const MAP_ROOM: float = 280.0
+
 var _torqa: TorqaApp
 var _course: Dictionary = {}
 var _path: String = ""
@@ -115,7 +120,7 @@ func show_status(message: String) -> void:
 func _init() -> void:
 	add_theme_constant_override("separation", 24)
 	var left: VBoxContainer = VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 14)
 	var back: Button = Button.new()
 	back.icon = UiIcons.texture("back")
@@ -132,10 +137,14 @@ func _init() -> void:
 	# Beside the pencil, as on a ride in the history (#190).
 	_title.add_action(_delete_button)
 	left.add_child(_title)
-	var overview: HBoxContainer = HBoxContainer.new()
-	overview.add_theme_constant_override("separation", 24)
-	_path_card.custom_minimum_size = Vector2(0, 260)
+	# The figures beside the map, or under it in a small window (R94).
+	var overview: ReflowGrid = ReflowGrid.new()
+	overview.expand_room = MAP_ROOM
+	overview.add_theme_constant_override("h_separation", 24)
+	overview.add_theme_constant_override("v_separation", 14)
+	_path_card.custom_minimum_size = Vector2(0, 200)
 	_path_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_path_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	overview.add_child(_path_card)
 	_figures.custom_minimum_size = Vector2(220, 0)
 	overview.add_child(_figures)
@@ -146,10 +155,13 @@ func _init() -> void:
 	left.add_child(_profile)
 	_records.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(_records)
-	add_child(left)
+	var left_scroll: ScrollContainer = UiTheme.scrolling(left)
+	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_scroll.size_flags_stretch_ratio = COURSE_SHARE
+	add_child(left_scroll)
 
 	var panel: PanelContainer = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(520, 0)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var right: VBoxContainer = VBoxContainer.new()
 	right.add_theme_constant_override("separation", 14)
 	right.add_child(UiTheme.caption(tr("Ride options")))

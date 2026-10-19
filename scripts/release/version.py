@@ -2,11 +2,12 @@
 """Checks that every place naming Torqa's version names the same one, or sets a new one.
 
 The version lives in the Cargo workspace (the About tab, the CLI and the User-Agent read it)
-and in the macOS export preset (the bundle's version). A tag changes neither: v0.2.0 was
-built from a version still saying 0.1.0, and its About tab showed 0.1.0.
+and in the macOS and Windows export presets (the bundle's version, the .exe's file and product
+versions). A tag changes none of them: v0.2.0 was built from a version still saying 0.1.0, and
+its About tab showed 0.1.0.
 
 With --tag, the tag must also be `v` followed by that version, so that a release is built only
-from a commit that says what it is. With --set, both places get the given version;
+from a commit that says what it is. With --set, every place gets the given version;
 `core/Cargo.lock` follows with `cargo update --workspace` (`make release-version` runs both).
 """
 
@@ -17,7 +18,15 @@ import sys
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-PRESET_VERSION = re.compile(r'^(application/(?:short_)?version)="([^"]*)"$', re.MULTILINE)
+# Each preset's version settings, and how they write the version: Windows takes four numbers.
+PRESET_VERSIONS = (
+    ("macOS", re.compile(r'^(application/(?:short_)?version)="([^"]*)"$', re.MULTILINE), "{}"),
+    (
+        "Windows",
+        re.compile(r'^(application/(?:file|product)_version)="([^"]*)"$', re.MULTILINE),
+        "{}.0",
+    ),
+)
 # Only the workspace's own version: dependencies and rust-version name versions too.
 WORKSPACE_VERSION = re.compile(
     r'^(\[workspace\.package\]\n(?:(?!\[).*\n)*?version = )"[^"]*"', re.MULTILINE
@@ -34,15 +43,19 @@ def cargo_version(root: pathlib.Path) -> str:
 def problems(root: pathlib.Path, tag: str | None = None) -> list[str]:
     version = cargo_version(root)
     found = []
-    presets = PRESET_VERSION.findall((root / "app" / "export_presets.cfg").read_text())
-    # Without them, Godot would fall back to an unset project version for the macOS bundle.
-    if not presets:
-        found.append("app/export_presets.cfg sets no application version")
-    for setting, value in presets:
-        if value != version:
-            found.append(
-                f"app/export_presets.cfg has {setting}={value}, core/Cargo.toml has {version}"
-            )
+    presets = (root / "app" / "export_presets.cfg").read_text()
+    for system, setting_pattern, form in PRESET_VERSIONS:
+        expected = form.format(version)
+        settings = setting_pattern.findall(presets)
+        # Without them, Godot would fall back to an unset project version (1.0.0 or 1.0.0.0).
+        if not settings:
+            found.append(f"app/export_presets.cfg sets no {system} version")
+        for setting, value in settings:
+            if value != expected:
+                found.append(
+                    f"app/export_presets.cfg has {setting}={value}, not {expected} for "
+                    f"core/Cargo.toml's {version}"
+                )
     if tag is not None and tag != f"v{version}":
         found.append(
             f"tag {tag} does not name version {version}: set the version first, "
@@ -52,7 +65,7 @@ def problems(root: pathlib.Path, tag: str | None = None) -> list[str]:
 
 
 def set_version(root: pathlib.Path, version: str) -> None:
-    """Writes `version` to the Cargo workspace and the macOS preset, or neither."""
+    """Writes `version` to the Cargo workspace and the macOS and Windows presets, or nowhere."""
     if not RELEASE_VERSION.fullmatch(version):
         raise ValueError(f'"{version}" is not a release version such as 0.3.1')
     manifest = root / "core" / "Cargo.toml"
@@ -60,9 +73,11 @@ def set_version(root: pathlib.Path, version: str) -> None:
     if cargo_count != 1:
         raise ValueError("core/Cargo.toml has no [workspace.package] version")
     preset_file = root / "app" / "export_presets.cfg"
-    presets, preset_count = PRESET_VERSION.subn(rf'\1="{version}"', preset_file.read_text())
-    if preset_count == 0:
-        raise ValueError("app/export_presets.cfg sets no application version")
+    presets = preset_file.read_text()
+    for system, setting_pattern, form in PRESET_VERSIONS:
+        presets, preset_count = setting_pattern.subn(rf'\1="{form.format(version)}"', presets)
+        if preset_count == 0:
+            raise ValueError(f"app/export_presets.cfg sets no {system} version")
     manifest.write_text(cargo)
     preset_file.write_text(presets)
 

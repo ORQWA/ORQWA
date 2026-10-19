@@ -5,6 +5,12 @@ description: How to see Torqa's 3D world and models without a GPU — render scr
 
 # Rendering Torqa for review
 
+On a Windows PC with a GPU, render natively instead: `scripts/dev.sh scripts/build-gdext.sh
+release windows` cross-builds the extension into `app/bin/` (ADR 0021), and the portable Godot
+editor on the host runs the same scripts (`app/tools/render_views.gd` with `ROUTE`, `SHOTS`,
+`OUT_DIR`) in seconds — a long route in under a minute. Rebuild the DLL after any Rust change;
+only the editor runs on the host.
+
 Godot renders in the dev container with **lavapipe** (software Vulkan) on a virtual display.
 It is correct but slow: a town scene can take minutes per frame burst, so take few, chosen
 shots, run them in the background, and read the PNGs with the Read tool. Output goes to

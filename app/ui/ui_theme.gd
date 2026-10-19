@@ -317,6 +317,24 @@ static func value(size: int) -> Label:
 	return label
 
 
+## Lets `option` be narrower than its longest item, which it then cuts short, so the row it is
+## in fits a small window (R94); the list still shows the items whole.
+static func narrowable(option: OptionButton) -> void:
+	option.fit_to_longest_item = false
+	option.clip_text = true
+
+
+## `content` scrolling up and down, never sideways, for a page or dialog taller than a small
+## window (R94).
+static func scrolling(content: Control) -> ScrollContainer:
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_theme_constant_override("scrollbar_h_separation", 12)
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(content)
+	return scroll
+
+
 static func _box(color: Color, radius: int, horizontal: int, vertical: int) -> StyleBoxFlat:
 	var box: StyleBoxFlat = StyleBoxFlat.new()
 	box.bg_color = color

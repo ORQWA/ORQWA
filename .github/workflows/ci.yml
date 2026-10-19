@@ -253,6 +253,13 @@ jobs:
             Get-ChildItem dist\Torqa
             throw "export is missing Torqa.exe or torqa_gd.dll"
           }
+          # The icon and these details are written together; without them the .exe keeps the
+          # template's, which Windows shows on the taskbar and in Explorer.
+          $info = (Get-Item dist\Torqa\Torqa.exe).VersionInfo
+          if ($info.ProductName -ne 'Torqa') {
+            $info | Format-List
+            throw "Torqa.exe kept the template's icon and details"
+          }
           Compress-Archive dist\Torqa\* dist\Torqa-windows-x86_64.zip
       - uses: actions/upload-artifact@v7
         with:
