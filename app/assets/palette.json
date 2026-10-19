@@ -135,7 +135,11 @@
     "wood_weathered": "#7a6e5f",
     "hay": "#c2a05a",
     "wrap": "#e6e6e1",
-    "stone": "#8f8a83"
+    "stone": "#8f8a83",
+    "sign_blue": "#1d4f9c",
+    "sign_white": "#f2f2ef",
+    "sign_red": "#c0261f",
+    "sign_black": "#141414"
   },
   "bike": {
     "tyre": "#1b1b1c",

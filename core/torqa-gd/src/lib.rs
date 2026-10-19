@@ -2658,11 +2658,12 @@ impl TorqaApp {
     }
 
     /// World chunk `index`: `{center, terrain, buildings, modelled, streets, tracks, water,
-    /// plants, props, grass, flowers}`. `terrain`, `buildings`, `streets`, `tracks` and `water`
+    /// plants, props, labels, grass, flowers}`. `terrain`, `buildings`, `streets`, `tracks` and `water`
     /// (lakes, rivers and streams) are mesh arrays (`{vertices, normals, uvs, colors, indices}`);
     /// `plants` maps vegetation model names (trees, bushes, rocks) to `MultiMesh` buffers
     /// (transform and colour), `props` maps roadside model names (guard rails, posts, poles) to
-    /// transform buffers, and `grass` and `flowers` are transform buffers.
+    /// transform buffers, `labels` lists the signs' text (`{text, transform}`), and `grass`
+    /// and `flowers` are transform buffers.
     /// `modelled` lists cells of buildings drawn as models up close: `{models, shells}`, with
     /// `models` mapping model names to `MultiMesh` buffers (transform, colour, custom data)
     /// and `shells` the mesh arrays to draw in the distance instead. Geometry is relative to
@@ -2687,6 +2688,18 @@ impl TorqaApp {
         for (name, buffer) in &chunk.props.models {
             props.set(name.as_str(), &PackedFloat32Array::from(buffer.as_slice()));
         }
+        let labels: VarArray = chunk
+            .props
+            .labels
+            .iter()
+            .map(|label| {
+                vdict! {
+                    "text" => &GString::from(label.text.as_str()),
+                    "transform" => &PackedFloat32Array::from(label.transform.as_slice()),
+                }
+                .to_variant()
+            })
+            .collect();
         let grass = PackedFloat32Array::from(chunk.trees.grass.as_slice());
         let flowers = PackedFloat32Array::from(chunk.trees.flowers.as_slice());
         let modelled: VarArray = chunk
@@ -2710,6 +2723,7 @@ impl TorqaApp {
             "water" => &mesh_arrays(&chunk.water),
             "plants" => &plants,
             "props" => &props,
+            "labels" => &labels,
             "grass" => &grass,
             "flowers" => &flowers,
         }

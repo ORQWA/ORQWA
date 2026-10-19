@@ -40,6 +40,26 @@
    "kind": "hay_bale",
    "height": 1.45
   },
+  "sign_bend_left": {
+   "kind": "sign_bend",
+   "height": 2.23
+  },
+  "sign_bend_right": {
+   "kind": "sign_bend",
+   "height": 2.23
+  },
+  "sign_grade": {
+   "kind": "sign_grade",
+   "height": 2.23
+  },
+  "sign_place": {
+   "kind": "sign_place",
+   "height": 2.15
+  },
+  "sign_place_end": {
+   "kind": "sign_place",
+   "height": 2.15
+  },
   "snow_pole": {
    "kind": "snow_pole",
    "height": 2.5

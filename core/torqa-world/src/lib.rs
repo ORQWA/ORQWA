@@ -36,7 +36,7 @@ use tracing::{info, warn};
 pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
 pub use minimap::{FlatMap, MapFeature, minimap};
-pub use props::Props;
+pub use props::{Label, Props};
 use road::RoadIndex;
 pub use vegetation::Trees;
 
@@ -269,6 +269,16 @@ pub async fn generate<M: ElevationModel>(
     let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
     let mut world = whole(&projection, (&shapers, &ways, &below), model).await;
     let mouths = streets::mouths(&ways.streets, &road);
+    let places: Vec<(String, (f64, f64))> = map
+        .places
+        .iter()
+        .map(|p| {
+            (
+                p.name.clone(),
+                projection.project(p.position.0, p.position.1),
+            )
+        })
+        .collect();
     let corridor = Corridor {
         shapers: &shapers,
         land: &land,
@@ -277,6 +287,7 @@ pub async fn generate<M: ElevationModel>(
         buildings: &buildings,
         climate,
         mouths: &mouths,
+        places: &places,
     };
 
     // Chunks go in batches: their elevations one after the other, as the model is not shared,
@@ -420,6 +431,8 @@ struct Corridor<'a> {
     climate: climate::Climate,
     /// Where streets join the road ridden.
     mouths: &'a [road::Mouth],
+    /// Places' names and where they are, for the signs.
+    places: &'a [(String, (f64, f64))],
 }
 
 impl Corridor<'_> {
@@ -474,6 +487,7 @@ impl Corridor<'_> {
             mouths: self.mouths,
             streets: &self.ways.clearance,
             buildings: &footprints,
+            places: self.places,
         };
         let props = props::place(heights.origin, CHUNK_SIZE, &roadside, origin);
         vegetation::place_grass(&mut trees, heights.origin, CHUNK_SIZE, &ground, origin);

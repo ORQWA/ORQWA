@@ -2,7 +2,7 @@ class_name PropModels
 extends RefCounted
 ## The props made in Blender that stand by the road (art/props, R92): guard rails, delineator
 ## posts and snow poles, street lamps, benches, bins and bus shelters, pasture fences, hay
-## bales and wayside crosses. Loads them and gives each
+## bales and wayside crosses, road signs. Loads them and gives each
 ## material name its look from the palette's `props` section: the shelters' glass see-through,
 ## the lamps' glass faintly lit.
 
@@ -23,6 +23,10 @@ const LOOKS: Dictionary[String, Array] = {
 	"hay": [0.95, 0.0, 1.0, 0.0],
 	"wrap": [0.35, 0.0, 1.0, 0.0],
 	"stone": [0.9, 0.0, 1.0, 0.0],
+	"sign_blue": [0.55, 0.0, 1.0, 0.0],
+	"sign_white": [0.55, 0.0, 1.0, 0.0],
+	"sign_red": [0.55, 0.0, 1.0, 0.0],
+	"sign_black": [0.7, 0.0, 1.0, 0.0],
 }
 
 static var _materials: Dictionary[String, StandardMaterial3D] = {}
@@ -65,6 +69,37 @@ static func material(name: String) -> StandardMaterial3D:
 		created.emission_energy_multiplier = glow
 	_materials[name] = created
 	return created
+
+
+## A sign's text (`world_chunk()["labels"]`): white on the place signs' blue, black on the
+## warnings' white, as wide as the sign's face at most.
+static func label(entry: Dictionary) -> Label3D:
+	var text: String = entry["text"]
+	var values: PackedFloat32Array = entry["transform"]
+	var made: Label3D = Label3D.new()
+	made.text = text
+	made.font_size = 72
+	made.outline_size = 0
+	made.double_sided = false
+	made.shaded = true
+	# Place names are words, grades figures.
+	var place: bool = not text.ends_with("%")
+	made.modulate = Color.WHITE if place else Color(0.08, 0.08, 0.08)
+	var face: float = 1.25 if place else 0.32
+	made.pixel_size = 0.0036 if place else 0.003
+	var font: Font = made.font if made.font != null else ThemeDB.fallback_font
+	var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, made.font_size).x
+	if width * made.pixel_size > face:
+		made.pixel_size = face / width
+	made.transform = Transform3D(
+		Basis(
+			Vector3(values[0], values[4], values[8]),
+			Vector3(values[1], values[5], values[9]),
+			Vector3(values[2], values[6], values[10])
+		),
+		Vector3(values[3], values[7], values[11])
+	)
+	return made
 
 
 static func _find_mesh(node: Node) -> MeshInstance3D:

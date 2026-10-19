@@ -157,7 +157,11 @@ road to a flat luminaire), `bench` (wooden slats on two cast frames), `bin` (a d
 and `bus_shelter` (glass back and ends in thin frames, a flat roof, a bench inside); in the
 countryside `fence` (a 3 m span of two split rails between weathered posts), `hay_bale` and
 `hay_bale_wrapped` (round bales lying on their side, straw or white silage wrap) and
-`wayside_cross` (a wooden cross on a stone foot under a little roof). Each model's +x points away from the road, its length
+`wayside_cross` (a wooden cross on a stone foot under a little roof); and road signs on a
+galvanised pole: `sign_place` (a blue panel with a white rim) and `sign_place_end` (the same
+with a red bar across), whose names are the app's text on their faces, and the warning
+triangles `sign_bend_left`, `sign_bend_right` (a curving arrow) and `sign_grade` (a slope,
+the grade as text). Each model's +x points away from the road, its length
 runs along it, its origin on the ground where it stands; parts reach 0.4 m below it to meet
 sloping ground. The world shears the rails to the road's grade, so their posts stay upright.
 
@@ -177,6 +181,7 @@ scripts/art.sh blender --background --factory-startup --python art/props/build.p
 | `wood_weathered` | fences and wayside crosses |
 | `hay`, `wrap` | the bales: straw, or white plastic |
 | `stone` | the wayside cross's foot |
+| `sign_blue`, `sign_white`, `sign_red`, `sign_black` | the signs' faces and symbols |
 
 The app colours each name from the palette's `props` section (`app/scenes/prop_models.gd`).
 The world (`core/torqa-world/src/props.rs`) places them by rules from the road's shape and
@@ -191,8 +196,11 @@ where it has room: clear of the buildings' walls, side streets and where streets
 country, about a third of the 120 m stretches beside pasture or field (or open land the map
 leaves unmarked) are fenced, span by span, except where a rail stands; round bales lie in
 fields 12–90 m from the road, one to three together; and a wayside cross stands just past
-about one in five of the lanes joining the road outside towns. Every prop is in the
-[gallery](#props).
+about one in five of the lanes joining the road outside towns. Road signs stand on the right of
+travel: where the road enters a town (by majority over 200 m, so a gap between houses ends
+none) the nearest place's name from the map, and its end sign where it leaves; outside towns
+a bend sign 80 m before a hairpin (more than 100° within 60 m) and a grade sign before 300 m
+climbing or falling at 9 % or more. Every prop is in the [gallery](#props).
 
 ## Riders (`riders/`)
 
@@ -325,7 +333,8 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![delineator](../docs/images/models/props/delineator.jpg)<br>`delineator` | ![snow_pole](../docs/images/models/props/snow_pole.jpg)<br>`snow_pole` | ![street_lamp](../docs/images/models/props/street_lamp.jpg)<br>`street_lamp` |
 | ![bench](../docs/images/models/props/bench.jpg)<br>`bench` | ![bin](../docs/images/models/props/bin.jpg)<br>`bin` | ![bus_shelter](../docs/images/models/props/bus_shelter.jpg)<br>`bus_shelter` |
 | ![fence](../docs/images/models/props/fence.jpg)<br>`fence` | ![hay_bale](../docs/images/models/props/hay_bale.jpg)<br>`hay_bale` | ![hay_bale_wrapped](../docs/images/models/props/hay_bale_wrapped.jpg)<br>`hay_bale_wrapped` |
-| ![wayside_cross](../docs/images/models/props/wayside_cross.jpg)<br>`wayside_cross` | | |
+| ![wayside_cross](../docs/images/models/props/wayside_cross.jpg)<br>`wayside_cross` | ![sign_place](../docs/images/models/props/sign_place.jpg)<br>`sign_place` | ![sign_place_end](../docs/images/models/props/sign_place_end.jpg)<br>`sign_place_end` |
+| ![sign_bend_left](../docs/images/models/props/sign_bend_left.jpg)<br>`sign_bend_left` | ![sign_bend_right](../docs/images/models/props/sign_bend_right.jpg)<br>`sign_bend_right` | ![sign_grade](../docs/images/models/props/sign_grade.jpg)<br>`sign_grade` |
 
 ### Riders
 

@@ -629,6 +629,11 @@ func _build_some_chunks() -> void:
 		for model: String in props:
 			var buffer: PackedFloat32Array = props[model]
 			node.add_child(_props(model, buffer))
+		var labels: Array = chunk.get("labels", [])
+		for entry: Dictionary in labels:
+			var text: Label3D = PropModels.label(entry)
+			text.visibility_range_end = SMALL_PLANT_RANGE * _distance
+			node.add_child(text)
 		var grass_range: float = _quality["grass_range"]
 		if grass_range > 0.0:
 			for kind: String in ["grass", "flowers"]:

@@ -1,6 +1,7 @@
 """Builds the props that stand by the road (R92) — guard rails, delineator posts and snow
 poles; in towns street lamps, benches, bins and bus shelters; in the countryside pasture
-fences, hay bales and wayside crosses — and exports them for Godot (ADR 0009, ADR 0020).
+fences, hay bales and wayside crosses; road signs — and exports them for Godot (ADR 0009,
+ADR 0020).
 
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/props/build.py
@@ -12,7 +13,7 @@ it stands. Guard rails are 4 m spans that the world shears to the road's grade, 
 upright; `guard_rail_end` slopes down into the ground ahead (+y), `guard_rail_start` behind.
 Each model is one mesh with named materials (`galvanised`, `post`, `band`, `reflector`,
 `pole_red`, `pole_white`, `metal_dark`, `wood`, `lamp`, `glass`, `wood_weathered`, `hay`,
-`wrap`, `stone`) that the app colours
+`wrap`, `stone`, `sign_blue`, `sign_white`, `sign_red`, `sign_black`) that the app colours
 (`app/scenes/prop_models.gd`). A street lamp's arm reaches over the road (−x); a bench's and
 a shelter's seats face it. Parts reach
 `BURIED` below the origin, so they meet sloping ground. `models.json` lists each model's height.
@@ -39,7 +40,9 @@ PREVIEW = {"galvanised": (0.62, 0.64, 0.66), "post": (0.9, 0.9, 0.88), "band": (
            "pole_white": (0.92, 0.92, 0.9), "metal_dark": (0.18, 0.19, 0.2),
            "wood": (0.45, 0.3, 0.18), "lamp": (0.95, 0.93, 0.85), "glass": (0.7, 0.8, 0.85),
            "wood_weathered": (0.42, 0.38, 0.32), "hay": (0.75, 0.62, 0.32),
-           "wrap": (0.9, 0.9, 0.88), "stone": (0.55, 0.53, 0.5)}
+           "wrap": (0.9, 0.9, 0.88), "stone": (0.55, 0.53, 0.5),
+           "sign_blue": (0.05, 0.25, 0.6), "sign_white": (0.95, 0.95, 0.95),
+           "sign_red": (0.75, 0.1, 0.1), "sign_black": (0.05, 0.05, 0.05)}
 
 # How far posts and blades reach below the ground's level at the origin.
 BURIED = 0.4
@@ -339,7 +342,93 @@ def wayside_cross(spec):
     return mesh, 2.72
 
 
-KINDS = {"fence": fence, "hay_bale": hay_bale, "wayside_cross": wayside_cross,
+def sign_pole(mesh, top):
+    """A round galvanised pole behind a sign's face."""
+    mesh.pole(0.0, 0.05, 0.03, [-BURIED, top], lambda k: "galvanised", sides=8)
+
+
+def panel(mesh, corners, material, y):
+    """A flat face in the x–z plane at `y`, seen from −y (the traffic it faces), its back
+    galvanised."""
+    front = [(x, y, z) for x, z in corners]
+    back = [(x, y + 0.01, z) for x, z in corners]
+    # Corners counter-clockwise in x–z face −y as given.
+    mesh.face(front, material)
+    mesh.face(list(reversed(back)), "galvanised")
+
+
+def band(mesh, points, width, material, y):
+    """A flat band of `width` along `points` (x, z) on a sign's face at `y`."""
+    for (ax, az), (bx, bz) in zip(points, points[1:]):
+        dx, dz = bx - ax, bz - az
+        length = math.hypot(dx, dz) or 1.0
+        nx, nz = -dz / length * width / 2, dx / length * width / 2
+        quad = [(ax + nx, az + nz), (bx + nx, bz + nz), (bx - nx, bz - nz), (ax - nx, az - nz)]
+        mesh.face([(x, y, z) for x, z in reversed(quad)], material)
+
+
+def sign_place(spec):
+    """A place-name sign: a blue panel with a white rim on a pole; the name is the app's label
+    on its face. The end sign has a red bar across."""
+    mesh = Mesh()
+    sign_pole(mesh, 2.15)
+    low, high, half = 1.65, 2.15, 0.7
+    panel(mesh, [(-half, low), (half, low), (half, high), (-half, high)], "sign_white", 0.0)
+    inset = 0.03
+    panel(mesh, [(-half + inset, low + inset), (half - inset, low + inset),
+                 (half - inset, high - inset), (-half + inset, high - inset)], "sign_blue",
+          -0.005)
+    if spec.get("end"):
+        band(mesh, [(-half + 0.06, low + 0.06), (half - 0.06, high - 0.06)], 0.07, "sign_red",
+             -0.045)
+    return mesh, high
+
+
+TRIANGLE = (0.9, 1.45)  # side, height of its base above the ground
+
+
+def warning_face(mesh):
+    """A warning triangle, point up: a red border round a white field."""
+    side, base = TRIANGLE
+    top = base + side * math.sqrt(3) / 2
+    sign_pole(mesh, top - 0.1)
+    panel(mesh, [(-side / 2, base), (side / 2, base), (0.0, top)], "sign_red", 0.0)
+    inner = side - 0.2
+    inner_base = base + 0.1 / math.sqrt(3) * 1.7
+    panel(mesh, [(-inner / 2, inner_base), (inner / 2, inner_base),
+                 (0.0, inner_base + inner * math.sqrt(3) / 2)], "sign_white", -0.005)
+    return base, top
+
+
+def sign_bend(spec):
+    """A warning of a bend: a black arrow rising and curving the way the road turns."""
+    mesh = Mesh()
+    base, top = warning_face(mesh)
+    turn = 1.0 if spec["turn"] == "right" else -1.0
+    points = [(0.0, base + 0.15), (0.0, base + 0.3)]
+    for k in range(1, 7):
+        a = math.pi / 2 * k / 6
+        points.append((turn * (0.12 - 0.12 * math.cos(a)), base + 0.3 + 0.12 * math.sin(a)))
+    band(mesh, points, 0.045, "sign_black", -0.01)
+    tip_x, tip_z = points[-1]
+    head = [(tip_x + turn * 0.08, tip_z), (tip_x, tip_z + 0.06), (tip_x, tip_z - 0.06)]
+    if turn > 0:
+        head = [head[0], head[2], head[1]]
+    mesh.face([(x, -0.01, z) for x, z in head], "sign_black")
+    return mesh, top
+
+
+def sign_grade(spec):
+    """A warning of a steep grade: a black slope; the per cent is the app's label above it."""
+    mesh = Mesh()
+    base, top = warning_face(mesh)
+    slope = [(-0.24, base + 0.13), (0.24, base + 0.13), (0.24, base + 0.26)]
+    mesh.face([(x, -0.01, z) for x, z in reversed(slope)], "sign_black")
+    return mesh, top
+
+
+KINDS = {"sign_place": sign_place, "sign_bend": sign_bend, "sign_grade": sign_grade,
+         "fence": fence, "hay_bale": hay_bale, "wayside_cross": wayside_cross,
          "street_lamp": street_lamp, "bench": bench, "bin": litter_bin,
          "bus_shelter": bus_shelter, "guard_rail": guard_rail, "guard_rail_end": guard_rail_end, "delineator": delineator,
          "snow_pole": snow_pole}
@@ -357,6 +446,11 @@ CATALOGUE = [
     {"name": "hay_bale", "kind": "hay_bale"},
     {"name": "hay_bale_wrapped", "kind": "hay_bale", "wrapped": True},
     {"name": "wayside_cross", "kind": "wayside_cross"},
+    {"name": "sign_place", "kind": "sign_place"},
+    {"name": "sign_place_end", "kind": "sign_place", "end": True},
+    {"name": "sign_bend_left", "kind": "sign_bend", "turn": "left"},
+    {"name": "sign_bend_right", "kind": "sign_bend", "turn": "right"},
+    {"name": "sign_grade", "kind": "sign_grade"},
 ]
 
 

@@ -1,7 +1,7 @@
 //! What stands by the road ridden (R92): guard rails where the ground falls away beside it,
 //! delineator posts along country roads and snow poles on mountain roads; in towns street
 //! lamps, benches with bins and bus shelters; in the countryside pasture fences, hay bales and
-//! wayside crosses. Placed by rules from
+//! wayside crosses; road signs with places' names and warnings. Placed by rules from
 //! the road's shape, the ground beside it and the land around, as the Blender models of
 //! `art/props` (`app/assets/models/props`).
 
@@ -69,6 +69,28 @@ const BALE_SHARE: f64 = 0.06;
 /// road, just past the lane, this far out.
 const CROSS_SHARE: f64 = 0.2;
 const CROSS_OFFSET: f64 = ROAD_HALF_WIDTH + 2.5;
+/// Road signs stand this far out on the right; the road is looked along `SIGN_STEP` at a
+/// time, `SIGN_LOOK` around the chunk, and a town is entered or left where `SIGN_STEADY` steps
+/// either side agree.
+const SIGN_OFFSET: f64 = ROAD_HALF_WIDTH + 1.2;
+const SIGN_STEP: f64 = 10.0;
+const SIGN_LOOK: f64 = 400.0;
+const SIGN_STEADY: i64 = 3;
+/// Whether the road is in town is taken by majority over this many steps either side.
+const TOWN_SMOOTH: i64 = 10;
+/// A place's sign carries the name of the nearest place within this distance.
+const PLACE_REACH: f64 = 2500.0;
+/// A hairpin: the road turns more than this (radians, 100°) over `BEND_SPAN` steps starting
+/// `BEND_AHEAD` steps on.
+const HAIRPIN_TURN: f64 = 1.75;
+const BEND_AHEAD: i64 = 8;
+const BEND_SPAN: i64 = 6;
+/// A steep stretch: `GRADE_SPAN` steps climbing or falling at `STEEP` or more on average.
+const GRADE_SPAN: i64 = 30;
+const STEEP: f64 = 0.09;
+/// Where the labels sit on the signs' faces (metres above the ground).
+const PLACE_LABEL_HEIGHT: f32 = 1.9;
+const GRADE_LABEL_HEIGHT: f32 = 1.84;
 /// The map's own way of the road ridden may lie this far off the drawn road: its points there
 /// are the road, not a side street.
 const ROAD_WAY_SLACK: f64 = 4.0;
@@ -79,6 +101,17 @@ pub struct Props {
     /// Instances by model name, as Godot `MultiMesh` buffers of 12 floats each: the transform
     /// relative to the chunk centre (row-major 3×4).
     pub models: BTreeMap<String, Vec<f32>>,
+    /// Text on the signs: places' names and grades.
+    pub labels: Vec<Label>,
+}
+
+/// Text on a sign's face.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Label {
+    /// What it says.
+    pub text: String,
+    /// Where it stands, relative to the chunk centre (row-major 3×4), its text facing +z.
+    pub transform: [f32; 12],
 }
 
 /// What props are placed by: the chunk's ground, the land cover, the road ridden, where streets
@@ -91,6 +124,8 @@ pub(crate) struct Roadside<'a> {
     pub(crate) mouths: &'a [Mouth],
     pub(crate) streets: &'a Clearance,
     pub(crate) buildings: &'a [Footprint],
+    /// Places' names and where they are (metres east/north).
+    pub(crate) places: &'a [(String, (f64, f64))],
 }
 
 /// Places the props whose road point lies in the square `[origin, origin + size]` (metres
@@ -110,7 +145,138 @@ pub(crate) fn place(
     fences(&mut props, low, high, roadside, chunk_origin);
     crosses(&mut props, low, high, roadside, chunk_origin);
     bales(&mut props, low, high, roadside, chunk_origin);
+    signs(&mut props, low, high, roadside, chunk_origin);
     props
+}
+
+/// Road signs on the right of travel: a place's name where the road enters it and its end
+/// sign where it leaves; a bend sign before hairpins and a grade sign before steep stretches.
+/// Each looks along the road from its own point (`SIGN_LOOK` either way), so it stands the
+/// same whichever chunk places it.
+fn signs(
+    props: &mut Props,
+    low: (f64, f64),
+    high: (f64, f64),
+    roadside: &Roadside,
+    chunk_origin: [f64; 3],
+) {
+    let around = roadside.road.stations(
+        SIGN_STEP,
+        (low.0 - SIGN_LOOK, low.1 - SIGN_LOOK),
+        (high.0 + SIGN_LOOK, high.1 + SIGN_LOOK),
+    );
+    #[allow(clippy::cast_possible_truncation)] // step numbers along the route
+    let by_step: BTreeMap<i64, &Station> = around
+        .iter()
+        .map(|s| ((s.distance / SIGN_STEP).round() as i64, s))
+        .collect();
+    let at = |step: i64| by_step.get(&step).copied();
+    let built = |step: i64| at(step).is_some_and(|s| built_up(s, roadside));
+    // Town by majority over `TOWN_SMOOTH` steps either side: a gap between houses or a lone
+    // farm does not end or start a village.
+    let town = |step: i64| {
+        let count = (-TOWN_SMOOTH..=TOWN_SMOOTH)
+            .filter(|&k| built(step + k))
+            .count();
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // a few steps
+        let half = TOWN_SMOOTH as usize;
+        count > half
+    };
+    for (&step, &station) in &by_step {
+        let (east, north) = station.position;
+        let inside = (low.0..high.0).contains(&east) && (low.1..high.1).contains(&north);
+        if !inside || station.surface != Surface::Ground {
+            continue;
+        }
+        // Into a town and out of it, steadily (`SIGN_STEADY` steps either side).
+        let steady = SIGN_STEADY;
+        let entering = (0..steady).all(|k| town(step + k)) && (1..=steady).all(|k| !town(step - k));
+        let leaving = (1..=steady).all(|k| town(step - k)) && (0..steady).all(|k| !town(step + k));
+        if (entering || leaving)
+            && let Some(name) = place_near(roadside, east, north)
+        {
+            let model = if entering {
+                "sign_place"
+            } else {
+                "sign_place_end"
+            };
+            if let Some(spot) = room(station, 1.0, SIGN_OFFSET, 0.4, roadside) {
+                let transform = push(props, model, spot, station, 1.0, 0.0, chunk_origin);
+                props
+                    .labels
+                    .push(label(&transform, name, PLACE_LABEL_HEIGHT));
+            }
+            continue;
+        }
+        if built_up(station, roadside) {
+            continue;
+        }
+        // A hairpin ahead: the road turns more than `HAIRPIN_TURN` between `BEND_AHEAD` and
+        // `BEND_AHEAD + BEND_SPAN` on; the sign stands where that first holds.
+        let turn_ahead = |from: i64| -> Option<f64> {
+            let start = at(from + BEND_AHEAD)?;
+            let end = at(from + BEND_AHEAD + BEND_SPAN)?;
+            let (a, b) = (start.direction, end.direction);
+            let turn = (a.0 * b.1 - a.1 * b.0).atan2(a.0 * b.0 + a.1 * b.1);
+            (turn.abs() > HAIRPIN_TURN).then_some(turn)
+        };
+        if let Some(turn) = turn_ahead(step)
+            && turn_ahead(step - 1).is_none()
+        {
+            // Turning left (counter-clockwise) is a positive turn.
+            let model = if turn > 0.0 {
+                "sign_bend_left"
+            } else {
+                "sign_bend_right"
+            };
+            if let Some(spot) = room(station, 1.0, SIGN_OFFSET, 0.4, roadside) {
+                push(props, model, spot, station, 1.0, 0.0, chunk_origin);
+            }
+            continue;
+        }
+        // A steep stretch ahead: the next `GRADE_SPAN` climb or fall at `STEEP` or more on
+        // average.
+        let grade_ahead = |from: i64| -> Option<f64> {
+            let (start, end) = (at(from)?, at(from + GRADE_SPAN)?);
+            let grade = (end.elevation - start.elevation) / (end.distance - start.distance);
+            (grade.abs() >= STEEP).then_some(grade)
+        };
+        if let Some(grade) = grade_ahead(step)
+            && grade_ahead(step - 1).is_none()
+            && let Some(spot) = room(station, 1.0, SIGN_OFFSET, 0.4, roadside)
+        {
+            let transform = push(props, "sign_grade", spot, station, 1.0, 0.0, chunk_origin);
+            let percent = format!("{:.0} %", grade.abs() * 100.0);
+            props
+                .labels
+                .push(label(&transform, percent, GRADE_LABEL_HEIGHT));
+        }
+    }
+}
+
+/// The name of the place nearest a point, within `PLACE_REACH`.
+fn place_near(roadside: &Roadside, east: f64, north: f64) -> Option<String> {
+    roadside
+        .places
+        .iter()
+        .map(|(name, (e, n))| (name, (e - east).hypot(n - north)))
+        .filter(|(_, d)| *d < PLACE_REACH)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(name, _)| name.clone())
+}
+
+/// A label on a sign's face: the sign's transform, moved up to `height` and just in front of
+/// its face (the model's +z in Godot axes, toward the traffic it faces).
+fn label(transform: &[f32; 12], text: String, height: f32) -> Label {
+    let mut placed = *transform;
+    // Column 1 is up, column 2 the face's normal.
+    for row in 0..3 {
+        placed[row * 4 + 3] += transform[row * 4 + 1] * height + transform[row * 4 + 2] * 0.035;
+    }
+    Label {
+        text,
+        transform: placed,
+    }
 }
 
 /// Whether the land at a point is pasture or field: mapped so, or open land the map leaves
@@ -525,7 +691,8 @@ fn out(station: &Station, side: f64, offset: f64) -> (f64, f64) {
 }
 
 /// Adds an instance of `name` at `at`, its back to the road on `facing` (its +x away from the
-/// road, its length along the road), sheared to follow `grade` so posts stay upright.
+/// road, its length along the road), sheared to follow `grade` so posts stay upright. Returns
+/// its transform.
 #[allow(clippy::cast_possible_truncation)] // geometry is stored as f32 for the GPU
 fn push(
     props: &mut Props,
@@ -535,7 +702,7 @@ fn push(
     facing: f64,
     grade: f64,
     origin: [f64; 3],
-) {
+) -> [f32; 12] {
     let (de, dn) = station.direction;
     // Godot axes: x east, y up, z south. The model's +x points away from the road; its −z runs
     // along the road the way it is ridden on the right side and back on the left, rising with
@@ -543,20 +710,24 @@ fn push(
     let x = [dn * facing, 0.0, de * facing];
     let z = [-de * facing, -grade * facing, dn * facing];
     let (tx, ty, tz) = (east - origin[0], height - origin[1], -north - origin[2]);
-    props.models.entry(name.to_owned()).or_default().extend(
-        [
-            x[0], 0.0, z[0], tx, //
-            x[1], 1.0, z[1], ty, //
-            x[2], 0.0, z[2], tz,
-        ]
-        .map(|v| v as f32),
-    );
+    let transform = [
+        x[0], 0.0, z[0], tx, //
+        x[1], 1.0, z[1], ty, //
+        x[2], 0.0, z[2], tz,
+    ]
+    .map(|v| v as f32);
+    props
+        .models
+        .entry(name.to_owned())
+        .or_default()
+        .extend(transform);
+    transform
 }
 
 #[cfg(test)]
 mod tests {
     /// Every model the rules place, as `art/props` builds them.
-    const PLACED: [&str; 13] = [
+    const PLACED: [&str; 18] = [
         "guard_rail",
         "guard_rail_end",
         "guard_rail_start",
@@ -570,6 +741,11 @@ mod tests {
         "hay_bale",
         "hay_bale_wrapped",
         "wayside_cross",
+        "sign_place",
+        "sign_place_end",
+        "sign_bend_left",
+        "sign_bend_right",
+        "sign_grade",
     ];
 
     #[test]
@@ -604,6 +780,10 @@ mod tests {
             "hay",
             "wrap",
             "stone",
+            "sign_blue",
+            "sign_white",
+            "sign_red",
+            "sign_black",
         ] {
             crate::palette::srgb(&format!("props.{material}"), 1.0);
         }

@@ -510,8 +510,9 @@ physically based materials and light, restyled group by group.
       400 m, where they have room (clear of walls, side streets and junctions); villages the
       map leaves unmarked found by their buildings
     - [ ] Bollards, fountains and the like
-    - [ ] Road signs: town names at each place's edge, warnings before hairpins and steep
-      grades, signposts at junctions
+    - [x] Road signs: places' names where the road enters and leaves them (text on the sign,
+      from the map), bend warnings before hairpins, grade warnings before steep stretches
+    - [ ] Signposts at junctions
     - [x] Countryside: pasture fences in stretches beside pasture and fields, round hay bales
       in fields, wayside crosses where lanes join outside towns
     - [ ] Power lines (poles with wires running from pole to pole) and field gates

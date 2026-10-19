@@ -4118,3 +4118,129 @@ async fn the_countryside_gets_fences_bales_and_crosses_but_not_towns() {
     assert!(crosses.len() <= 7, "{crosses:?}");
     assert!(crosses.iter().all(|p| p[0] < 0.0), "on the lanes' side");
 }
+
+/// A route through `points` (metres east, north, elevation), its own way on the map.
+async fn route_through(points: &[(f64, f64, f64)], map: &mut MapData) -> Route {
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for &(east, north, elevation) in points {
+        let (lat, lon) = at(east, north);
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    map.roads.push(torqa_osm::Road {
+        class: torqa_osm::RoadClass::Street,
+        line: points.iter().map(|&(e, n, _)| at(e, n)).collect(),
+        structure: None,
+    });
+    Route::from_gpx_with::<Level>(&xml, None, map)
+        .await
+        .unwrap()
+}
+
+/// The labels on the signs, with where they stand (absolute, metres east, height, north).
+fn labels_of(world: &World) -> Vec<(String, [f64; 3])> {
+    world
+        .chunks
+        .iter()
+        .flat_map(|c| {
+            c.props.labels.iter().map(move |label| {
+                let t = label.transform;
+                (
+                    label.text.clone(),
+                    [
+                        f64::from(t[3] + c.center[0]),
+                        f64::from(t[7]),
+                        -f64::from(t[11] + c.center[2]),
+                    ],
+                )
+            })
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn a_village_is_signed_with_its_name_where_the_road_enters_and_leaves() {
+    let village = Area {
+        cover: LandCover::Residential,
+        outer: vec![rectangle(0.0, 500.0, 200.0, 150.0)],
+        inner: vec![],
+    };
+    let mut map = MapData {
+        areas: vec![village],
+        places: vec![torqa_osm::Place {
+            name: "Wabern".to_owned(),
+            latin: "Wabern".to_owned(),
+            kind: torqa_osm::PlaceKind::Village,
+            rank: 1,
+            position: at(30.0, 520.0),
+        }],
+        ..MapData::default()
+    };
+    let points: Vec<(f64, f64, f64)> = (0..=100)
+        .map(|i| (0.0, f64::from(i) * 10.0, 500.0))
+        .collect();
+    let route = route_through(&points, &mut map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+
+    let entry = props_of(&world, "sign_place");
+    let end = props_of(&world, "sign_place_end");
+    assert_eq!(entry.len(), 1, "{entry:?}");
+    assert_eq!(end.len(), 1, "{end:?}");
+    assert!(
+        (340.0..370.0).contains(&entry[0][2]),
+        "at the village's edge: {entry:?}"
+    );
+    assert!(
+        (640.0..670.0).contains(&end[0][2]),
+        "where it ends: {end:?}"
+    );
+    assert!(
+        entry[0][0] > 0.0 && end[0][0] > 0.0,
+        "on the right of travel"
+    );
+    let labels = labels_of(&world);
+    assert_eq!(labels.len(), 2, "{labels:?}");
+    assert!(
+        labels.iter().all(|(text, _)| text == "Wabern"),
+        "{labels:?}"
+    );
+    // The ground beside the road lies a little below it (`ROAD_SINK`).
+    assert!(
+        labels
+            .iter()
+            .all(|(_, p)| (1.6..2.0).contains(&(p[1] - 500.0))),
+        "on the signs' faces: {labels:?}"
+    );
+}
+
+#[tokio::test]
+async fn hairpins_and_steep_stretches_are_warned_of() {
+    // North 600 m climbing at 10 %, a hairpin to the left (radius 20 m), back south level.
+    let mut points: Vec<(f64, f64, f64)> = (0..=60)
+        .map(|i| (0.0, f64::from(i) * 10.0, 500.0 + f64::from(i)))
+        .collect();
+    for k in 1..12 {
+        let a = std::f64::consts::PI * f64::from(k) / 12.0;
+        points.push((-20.0 + 20.0 * a.cos(), 600.0 + 20.0 * a.sin(), 560.0));
+    }
+    points.extend((0..=60).map(|i| (-40.0, 600.0 - f64::from(i) * 10.0, 560.0)));
+    let mut map = MapData::default();
+    let route = route_through(&points, &mut map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+
+    let bends = props_of(&world, "sign_bend_left");
+    assert_eq!(bends.len(), 1, "one sign before the hairpin: {bends:?}");
+    assert!(
+        (480.0..560.0).contains(&bends[0][2]) && bends[0][0] > 0.0,
+        "on the right, before the bend: {bends:?}"
+    );
+    let wrong = props_of(&world, "sign_bend_right");
+    assert!(wrong.is_empty(), "no right-hand bend: {wrong:?}");
+    let grades = props_of(&world, "sign_grade");
+    assert_eq!(grades.len(), 1, "one sign before the climb: {grades:?}");
+    let labels = labels_of(&world);
+    assert!(labels.iter().any(|(text, _)| text == "10 %"), "{labels:?}");
+}
