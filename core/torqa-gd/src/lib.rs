@@ -152,6 +152,10 @@ impl INode for TorqaApp {
             // Set once per process; a second node keeps the first one's.
             let _ = tracing::subscriber::set_global_default(log::StderrLog);
             App::new(paths::data_dir(), paths::cache_dir())
+                .map(|mut app| {
+                    app.set_commit(COMMIT);
+                    app
+                })
                 .inspect(|app| {
                     if let Err(error) = app.add_sample_course(SAMPLE_COURSE_FILE, SAMPLE_COURSE) {
                         tracing::warn!(%error, "cannot add the sample course");
@@ -175,6 +179,8 @@ impl INode for TorqaApp {
         // Courses from before Torqa knew countries, or prepared offline, learn them (#230).
         if let Some(app) = self.app.as_mut() {
             app.fill_in_countries(false);
+            // An update leaves the worlds the build before kept (R101).
+            app.tidy_kept_worlds();
         }
     }
 
@@ -1614,6 +1620,28 @@ impl TorqaApp {
     #[func]
     fn set_checks_for_updates(&mut self, on: bool) {
         self.command(|app| app.set_checks_for_updates(on));
+    }
+
+    /// Whether this computer keeps the courses' worlds once built, so that riding one again
+    /// starts at once (R101).
+    #[func]
+    fn keeps_worlds(&self) -> bool {
+        self.app.as_ref().is_some_and(App::keeps_worlds)
+    }
+
+    /// Turns keeping the courses' worlds on (the world loaded is kept at once) or off (every
+    /// kept world is deleted) for this computer.
+    #[func]
+    fn set_keeps_worlds(&mut self, on: bool) {
+        self.command(|app| app.set_keeps_worlds(on));
+    }
+
+    /// How many bytes the kept worlds take on this computer.
+    #[func]
+    fn kept_worlds_size(&self) -> i64 {
+        self.app.as_ref().map_or(0, |app| {
+            i64::try_from(app.kept_worlds_size()).unwrap_or(i64::MAX)
+        })
     }
 
     /// Looks for a newer Torqa in the background (R99): at start-up (`asked` false) only if

@@ -20,6 +20,7 @@ mod props;
 mod railways;
 mod road;
 mod roundabouts;
+pub mod stored;
 mod streets;
 mod structures;
 mod vegetation;

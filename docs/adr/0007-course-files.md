@@ -1,7 +1,7 @@
 # ADR 0007 — Course files (`.tqc`)
 
 - Status: accepted; amended 2026-10-03 (format 1 bundles inputs only, see below), 2026-10-15,
-  2026-10-19 (a sample course)
+  2026-10-19 (a sample course), 2026-10-20 (worlds kept beside, ADR 0025)
 - Date: 2026-10-02
 
 ## Context
@@ -119,3 +119,11 @@ climbing, 13.1 MB), kept in `core/torqa-gd/courses/` with how it was made.
 Consequences: the repository and every app download grow by the file's 13 MB, and the
 extension takes as much memory. The sample's tiles are those of when it was prepared; it is
 prepared again only when a new course format makes it unreadable.
+
+## Amendment 2026-10-20 — worlds kept on the computer (ADR 0025)
+
+Building the world while the course's page is open (amendment of 2026-10-15) is replaced: a
+computer may keep a course's built world in its cache (R101, [ADR 0025](0025-kept-worlds.md)),
+opt-in, as a world is 10–40 times its course file. Format 1 stays final and the course file
+unchanged; a kept world belongs to the build that made it, so every course is still ridden in
+the current generator's world.

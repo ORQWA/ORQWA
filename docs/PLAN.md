@@ -164,8 +164,11 @@ Built in rideable steps:
 - [x] Rebuild outdated worlds from stored inputs (format 1 always rebuilds offline)
 - [x] A new library starts with a sample course, Twann – Chasseral, shipped in the
   GDExtension and ridden offline (R95, ADR 0007 amendment 2026-10-19)
-- Format 2 (a stored pre-built world) dropped: the world is built while the course's page is
-  open instead (#237, ADR 0007 amendment 2026-10-15)
+- Format 2 (a stored pre-built world) dropped (ADR 0007 amendment 2026-10-15)
+- [x] **Keep courses ready to ride**: an opt-in setting keeps a course's built world in the
+  cache, by build, so riding it again starts at once (R101, ADR 0025, #237)
+- [ ] Build a course's world in the background when its file is imported, and after an update
+  (#237, step 2)
 - **Exit:** prepare a course online, ride it offline on another machine from the `.tqc` file ✅
   (2026-10-03, Lake Biel 7 km: 6.2 MB, opened offline with an empty cache)
 

@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless checks of the settings (R83): the cog at the top right of the start page opens
-## them, with this computer's graphics, no longer among the devices, and About: the version,
-## the commit and the licences of everything in the app.
+## them, with this computer's graphics, no longer among the devices, its courses' kept worlds
+## (R101), and About: the version, the commit and the licences of everything in the app.
 ## Run: godot --headless --path app -s res://tests/settings_smoke.gd
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
@@ -23,6 +23,7 @@ func _run() -> void:
 	var dialog: SettingsDialog = start.get("_settings")
 	var torqa: TorqaApp = main.get_node("Torqa")
 	await _graphics(torqa, dialog)
+	_courses(torqa, dialog)
 	_about(dialog)
 	_updates(torqa, dialog, main)
 	await _in_german(dialog)
@@ -65,8 +66,9 @@ func _cog(start: StartPage) -> void:
 		window.encloses(Rect2i(dialog.position, dialog.size)),
 		"within the window: %s in %s" % [Rect2i(dialog.position, dialog.size), window]
 	)
-	_check(tabs.get_tab_count() == 2, "two tabs")
-	_check(tabs.get_tab_title(0) == "Graphics" and tabs.get_tab_title(1) == "About", "titled")
+	_check(tabs.get_tab_count() == 3, "three tabs")
+	var titles: Array = range(tabs.get_tab_count()).map(tabs.get_tab_title)
+	_check(titles == ["Graphics", "Courses", "About"], "titled: %s" % [titles])
 	_check(tabs.current_tab == 0, "opening on Graphics")
 
 
@@ -158,6 +160,25 @@ func _about(dialog: SettingsDialog) -> void:
 		_check(notice.text.contains(text), "%s: %s" % [titles[index], text])
 
 
+## Keeping the courses' worlds (R101): off until this computer turns it on, which tells the
+## room they take; off again, they are deleted.
+func _courses(torqa: TorqaApp, dialog: SettingsDialog) -> void:
+	var courses: CourseSettings = dialog.get("_courses")
+	var keep: CheckBox = courses.get("_keep")
+	var note: Label = courses.get("_note")
+	torqa.set_keeps_worlds(false)
+	courses.refresh()
+	_check(not keep.button_pressed, "worlds are not kept until asked")
+	_check(keep.text == "Keep courses ready to ride", "the switch: %s" % keep.text)
+	_check(note.text.contains("10 MB per kilometre"), "telling the room they take: %s" % note.text)
+	keep.button_pressed = true
+	_check(torqa.keeps_worlds(), "kept on this computer")
+	_check(note.text.contains("The kept worlds take"), "and how much they take now: %s" % note.text)
+	keep.button_pressed = false
+	_check(not torqa.keeps_worlds(), "and off again")
+	_check(not note.text.contains("The kept worlds take"), "they are deleted: %s" % note.text)
+
+
 ## Looking for updates (R99): on at start-up until this computer turns it off; a newer
 ## version is offered on the start page, or once a ride is over, never during it.
 func _updates(torqa: TorqaApp, dialog: SettingsDialog, main: Control) -> void:
@@ -195,8 +216,10 @@ func _in_german(dialog: SettingsDialog) -> void:
 	var tabs: TabContainer = dialog.get("_tabs")
 	# The tab bar translates its titles as it draws them.
 	var graphics: String = tabs.get_tab_bar().atr(tabs.get_tab_title(0))
-	var about_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(1))
+	var courses_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(1))
+	var about_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(2))
 	_check(graphics == "Grafik", "Graphics in German: %s" % graphics)
+	_check(courses_title == "Routen", "Courses in German: %s" % courses_title)
 	_check(about_title == "Über Torqa", "About in German: %s" % about_title)
 	_check(dialog.atr(dialog.title) == "Einstellungen", "titled: %s" % dialog.atr(dialog.title))
 	var about: AboutPage = dialog.get("_about")

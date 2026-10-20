@@ -44,6 +44,11 @@ The 3D models are Blender scripts in `art/` (see [art/README.md](../art/README.m
 gallery of every model); Blender runs in its own container on the host:
 `scripts/art.sh blender --background --factory-startup --python art/<group>/build.py`.
 
+With **Keep courses ready to ride** on (R101, [ADR 0025](adr/0025-kept-worlds.md)), a library
+course rides the world its commit built, also after uncommitted changes to the world generator:
+turn it off while working on `core/torqa-world`. Renders and screenshots prepare GPX routes,
+which always build.
+
 ## Builds
 
 Tagged builds of the app and CLI are available on the

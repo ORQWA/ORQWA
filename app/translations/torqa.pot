@@ -175,6 +175,10 @@ msgstr ""
 msgid "A recorded activity…"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "A world takes about 10 MB per kilometre of route."
+msgstr ""
+
 #: core/torqa-upload/src/intervals.rs
 msgid "API key"
 msgstr ""
@@ -763,7 +767,7 @@ msgstr ""
 msgid "Course preparation stopped unexpectedly."
 msgstr ""
 
-#: app/scenes/start_page.gd
+#: app/scenes/settings_dialog.gd app/scenes/start_page.gd
 msgid "Courses"
 msgstr ""
 
@@ -917,6 +921,10 @@ msgstr ""
 
 #: app/ui/workout_editor.gd
 msgid "Duration"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Each course's 3D world is kept on this computer once built: the next ride starts at once."
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -1325,6 +1333,10 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "Keep both"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Keep courses ready to ride"
 msgstr ""
 
 #: app/scenes/remote_dialog.gd
@@ -2297,6 +2309,10 @@ msgstr ""
 
 #: app/scenes/devices_tab.gd
 msgid "The devices used last connect by themselves. Search beside a row to find one of that kind."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "The kept worlds take %s."
 msgstr ""
 
 #: app/scenes/profile_tab.gd core/torqa-app/src/failure.rs

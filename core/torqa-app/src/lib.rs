@@ -8,6 +8,7 @@ pub mod failure;
 use failure::{Failure, Kind};
 pub mod hud;
 mod import;
+mod kept;
 pub mod library;
 pub mod media;
 pub mod paths;
@@ -450,7 +451,8 @@ enum JobResult {
     // Loading results carry the load they belong to; those of an abandoned load are dropped.
     Route(u64, Result<Box<Imported>, Failure>),
     Video(u64, Result<Box<(Imported, video::VideoSource)>, Failure>),
-    World(u64, Box<World>),
+    /// A world, and the fingerprint to keep it under once built for a library course (R101).
+    World(u64, Arc<World>, Option<String>),
     Progress(u64, LoadStage, usize, usize),
     CourseAdded(Result<PathBuf, Failure>),
     /// The loaded route was saved as this course.
@@ -688,6 +690,8 @@ pub struct App {
     cache_dir: PathBuf,
     /// This computer's own settings (R78), next to the cache: never synced with the data.
     computer: PathBuf,
+    /// The build of Torqa running, which keeps worlds of its own (R101): version and commit.
+    build: String,
     /// The rides' metadata read once and kept (R79); `None` if the cache cannot hold it, when
     /// the history reads every ride's file as before.
     index: Mutex<Option<HistoryIndex>>,
@@ -774,6 +778,7 @@ impl App {
             data_dir,
             cache_dir,
             computer,
+            build: torqa_domain::version().to_owned(),
             index: Mutex::new(index),
         })
     }
@@ -1367,6 +1372,12 @@ impl App {
         let cache = self.cache_dir.clone();
         let library = self.courses_dir();
         let tx = self.jobs_tx.clone();
+        // The world just built is that of the new course (R101).
+        let keep = self
+            .world
+            .clone()
+            .filter(|_| self.keeps_worlds())
+            .map(|world| (world, self.keeper()));
         self.runtime.spawn_blocking(move || {
             let result = std::fs::create_dir_all(&library)
                 .map_err(course::CourseError::from)
@@ -1391,7 +1402,11 @@ impl App {
                     Ok(path)
                 })
                 .map_err(|e| Failure::new(Kind::SaveCourse, e));
+            let saved = result.as_ref().ok().cloned();
             let _ = tx.send(JobResult::CourseSaved(result));
+            if let (Some(course), Some((world, keeper))) = (saved, keep) {
+                keeper.keep(&course, &world, None);
+            }
         });
         Ok(())
     }
@@ -1461,6 +1476,8 @@ impl App {
         if self.course.as_deref() == Some(path) {
             self.course = None;
         }
+        // Its kept world goes too (R101).
+        self.tidy_kept_worlds();
         if let Some(video) = video {
             let shared = self.courses().into_iter().any(|c| {
                 c.manifest
@@ -1882,19 +1899,38 @@ impl App {
         let mut detailed = terrain(TileSource::defaults());
         // The land beyond the corridor needs only coarse tiles, a few for the whole view.
         let mut distant = terrain(TileSource::distant());
+        // A library course's world may be kept, and is kept once built (R101).
+        let kept = self
+            .course
+            .clone()
+            .filter(|_| self.keeps_worlds())
+            .map(|course| (course, self.keeper()));
         self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
                 last: None,
             };
+            let mut keep_as = None;
+            if let Some((course, keeper)) = kept {
+                reporter.report(LoadStage::World, 0, 1);
+                let found = tokio::task::spawn_blocking(move || keeper.find(&course)).await;
+                match found {
+                    Ok(kept::Found::World(world)) => {
+                        let _ = tx.send(JobResult::World(load, Arc::from(world), None));
+                        return;
+                    }
+                    Ok(kept::Found::Missing(fingerprint)) => keep_as = Some(fingerprint),
+                    Ok(kept::Found::Unknown) | Err(_) => {}
+                }
+            }
             let mut world =
                 torqa_world::generate(&route, &mut detailed, &map, &mut |done, total| {
                     reporter.report(LoadStage::World, done, total);
                 })
                 .await;
             world.horizon = torqa_world::horizon(&route, &mut distant).await;
-            let _ = tx.send(JobResult::World(load, Box::new(world)));
+            let _ = tx.send(JobResult::World(load, Arc::new(world), keep_as));
         });
     }
 
@@ -3518,7 +3554,7 @@ impl App {
                 }
                 JobResult::Route(load, _)
                 | JobResult::Video(load, _)
-                | JobResult::World(load, _)
+                | JobResult::World(load, ..)
                 | JobResult::Progress(load, ..)
                     if load != self.load => {}
                 JobResult::Route(_, Ok(imported)) => {
@@ -3552,12 +3588,17 @@ impl App {
                 JobResult::Progress(_, stage, done, total) => {
                     events.push(AppEvent::LoadProgress { stage, done, total });
                 }
-                JobResult::World(_, world) => {
+                JobResult::World(_, world, keep_as) => {
                     events.push(AppEvent::WorldReady {
                         chunks: world.chunks.len(),
                         fallback_samples: world.fallback_samples,
                     });
-                    self.world = Some(Arc::from(world));
+                    if let (Some(fingerprint), Some(course)) = (keep_as, &self.course)
+                        && self.keeps_worlds()
+                    {
+                        self.keep_world(course.clone(), Arc::clone(&world), Some(fingerprint));
+                    }
+                    self.world = Some(world);
                     // A prepared GPX goes into the course library (R39).
                     if !self.from_course
                         && let Err(error) = self.save_course()
