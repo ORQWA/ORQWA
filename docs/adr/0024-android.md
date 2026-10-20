@@ -134,5 +134,7 @@ Everything Android is in `android/`, `scripts/android.sh`, `scripts/build-androi
 On the Tab S7, with the KICKR CORE and the Zwift Click: a GPX imported on the tablet fetched its
 map and terrain tiles over HTTPS, a ride at Low ran smoothly, and picture-in-picture showed the
 HUD over other apps. Behind the HUD the window would still draw the world, so picture-in-picture
-switches 3D off as the overlay window does. The debug key moved out of the image into the Gradle
+switches 3D off as the overlay window does, and fills the window in the panels' colour. Android
+sizes the window and takes taps on it for its own buttons, so the overlay's bar (sizes, pause,
+full view) and resize grip are left out: only the figures show. The debug key moved out of the image into the Gradle
 volume: a key made with each image would refuse every update after a rebuild.
