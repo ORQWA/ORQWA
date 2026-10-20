@@ -1,7 +1,10 @@
 """Adds what only the Android build needs to its copy of the project (ADR 0024): the extension's
 Android library, Android's texture formats, Torqa's Android plugin and the Android preset.
-And the version of rustls-platform-verifier's Java part that matches the crate in Cargo.lock.
-Usage: stage.py <copied app folder> <android/godot/export_preset.cfg> <core/Cargo.lock>"""
+And the version of rustls-platform-verifier's Java part that matches the crate in Cargo.lock,
+and Torqa's version from Cargo.toml as the APK's: Android installs an update only over a lower
+version code.
+Usage: stage.py <copied app folder> <android/godot/export_preset.cfg> <core/Cargo.lock>
+    <core/Cargo.toml>"""
 
 import re
 import sys
@@ -10,6 +13,7 @@ from pathlib import Path
 app = Path(sys.argv[1])
 preset = Path(sys.argv[2]).read_text()
 lock = Path(sys.argv[3]).read_text()
+manifest = Path(sys.argv[4]).read_text()
 
 verifier = re.search(
     r'name = "rustls-platform-verifier-android"\nversion = "([^"]+)"', lock
@@ -54,4 +58,15 @@ existing = presets.read_text() if presets.exists() else ""
 numbers = [int(n) for n in re.findall(r"^\[preset\.(\d+)\]", existing, re.M)]
 number = str(max(numbers, default=-1) + 1)
 body = "\n".join(line for line in preset.splitlines() if not line.startswith(";"))
+# 0.5.0 is code 500 and 1.2.3 is 10203: each release's code above the last one's.
+version = re.search(r'^\[workspace\.package\]\n(?:.*\n)*?version = "(\d+)\.(\d+)\.(\d+)"', manifest, re.M)
+if version is None:
+    sys.exit("core/Cargo.toml names no workspace version")
+major, minor, patch = (int(n) for n in version.groups())
+body = body.replace(
+    "[preset.PRESET.options]\n",
+    "[preset.PRESET.options]\n\n"
+    f"version/code={major * 10000 + minor * 100 + patch}\n"
+    f'version/name="{major}.{minor}.{patch}"\n',
+)
 presets.write_text(existing.rstrip("\n") + "\n\n" + body.replace("PRESET", number).strip() + "\n")

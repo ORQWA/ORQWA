@@ -26,6 +26,14 @@ adb install -r dist/Torqa-android-arm64.apk
 adb logcat -s Torqa godot
 ```
 
+## Release signing
+
+Tagged releases are signed in CI with the release key from the secrets `ANDROID_KEYSTORE` and
+`ANDROID_KEYSTORE_PASSWORD` (alias `torqa`). Android installs an update only over an APK with the
+same key, so losing it would make every rider uninstall, and lose their rides, to update. Its
+owner keeps a copy and the password outside GitHub. Locally, `TORQA_RELEASE_KEYSTORE` and
+`TORQA_RELEASE_KEYSTORE_PASSWORD` sign the same way.
+
 ## Removing Android support
 
 Everything Android lives here and in a few marked places; to take it out again:
@@ -35,5 +43,7 @@ Everything Android lives here and in a few marked places; to take it out again:
 3. In `core/`: delete `torqa-devices/src/android.rs` and its `mod` line, the
    `cfg(target_os = "android")` `jni` dependency in `torqa-devices/Cargo.toml`, `jni` in the
    workspace `Cargo.toml`, and `JNI_OnLoad` at the end of `torqa-gd/src/lib.rs`.
-4. Remove the Docker volume `torqa-gradle` and the image `torqa-android`.
+4. Remove the Docker volume `torqa-gradle` and the image `torqa-android`; in CI, the `android`
+   job, `android` in the release's `needs`, the APK in `scripts/release/publish.sh` and its
+   test, and the two `ANDROID_KEYSTORE` secrets.
 5. Mark ADR 0024 superseded and update `docs/PLAN.md`.

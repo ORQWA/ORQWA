@@ -452,11 +452,32 @@ jobs:
           docker pull "$IMAGE" || docker build -f .devcontainer/Dockerfile -t "$IMAGE" .
           docker build -f android/Dockerfile --build-arg "BASE=$IMAGE" -t "$tag" .
           if [ "$PUSH" = true ]; then docker push "$tag"; fi
+      # Only a tagged release is signed with the release key (ADR 0024); every other build gets a
+      # debug key of its own. The key exists on the runner only for this step.
       - name: Build the APK
+        env:
+          RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           mkdir -p ~/.cargo/registry ~/.gradle core/target
+          signing=""
+          if [ "$RELEASE" = true ]; then
+            if [ -z "$KEYSTORE" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+              echo "A release needs the ANDROID_KEYSTORE and ANDROID_KEYSTORE_PASSWORD secrets" >&2
+              exit 1
+            fi
+            keys="$(mktemp -d)"
+            trap 'rm -rf "$keys"' EXIT
+            printf '%s' "$KEYSTORE" | base64 -d > "$keys/release.keystore"
+            signing="-v $keys:/keys:ro -e TORQA_RELEASE_KEYSTORE=/keys/release.keystore"
+            signing="$signing -e TORQA_RELEASE_KEYSTORE_PASSWORD"
+          fi
+          export TORQA_RELEASE_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD"
+          # shellcheck disable=SC2086 # signing is a list of docker options, or empty
           docker run --rm \
             -e CARGO_INCREMENTAL=0 \
+            $signing \
             -v "$PWD:/workspaces/torqa" \
             -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \
             -v "$HOME/.gradle:/root/.gradle" \
@@ -484,7 +505,7 @@ jobs:
   release:
     name: Publish tagged release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [version, checks, macos, windows, linux]
+    needs: [version, checks, macos, windows, linux, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

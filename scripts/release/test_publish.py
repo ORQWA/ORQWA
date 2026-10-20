@@ -19,6 +19,7 @@ ASSETS = (
     "torqa-cli-linux-x86_64.tar.gz",
     "Torqa-linux-arm64.tar.gz",
     "torqa-cli-linux-arm64.tar.gz",
+    "Torqa-android-arm64.apk",
 )
 
 

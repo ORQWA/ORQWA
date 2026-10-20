@@ -115,10 +115,15 @@ Then push the tag `v<version>` on the merged commit, for example `git tag v0.2.1
 released: the `version` job fails any other, such as `v0.2.0` on a commit saying 0.2.1, and
 the release needs it. Branch and PR builds only produce workflow artifacts.
 The tag's commit must contain this workflow. A tag push runs the container checks and the
-native macOS, Windows and both Linux builds. After all succeed, the `release` job verifies
-all eight nonempty app/CLI archives, creates a draft with generated release notes, uploads
-the archives and publishes it. Only that job has `contents: write`, using the automatic
-`GITHUB_TOKEN`; no release secret is needed.
+native macOS, Windows and both Linux builds, and the Android build. After all succeed, the
+`release` job verifies every nonempty app/CLI archive (the Android APK among them), creates a
+draft with generated release notes, uploads the archives and publishes it. Only that job has
+`contents: write`, using the automatic `GITHUB_TOKEN`.
+
+The APK of a tag is signed with Torqa's release key, from the repository secrets
+`ANDROID_KEYSTORE` (the keystore, base64) and `ANDROID_KEYSTORE_PASSWORD` (alias `torqa`); the
+build fails without them. Every Android update must carry the same key, so its owner keeps a
+copy outside GitHub. Other builds are signed with a debug key.
 
 Build jobs upload each archive as a single file (`archive: false`). The release download
 uses `skip-decompress: true` to keep those files intact: without it the download action
@@ -144,7 +149,10 @@ scripts/android.sh scripts/build-android.sh release   # → dist/Torqa-android-a
 ```
 
 Install it on a tablet with adb over USB or wireless debugging (`adb install -r …`) and read
-Torqa's log with `adb logcat -s Torqa godot`. [android/README.md](../android/README.md) lists
+Torqa's log with `adb logcat -s Torqa godot`. Local builds are signed with a debug key made once
+in the `torqa-gradle` volume; `TORQA_RELEASE_KEYSTORE` and `TORQA_RELEASE_KEYSTORE_PASSWORD`
+sign with a release key instead, as CI does for releases. The APK's version is Torqa's
+(`version/code` 500 for 0.5.0). [android/README.md](../android/README.md) lists
 the parts and how to remove Android support again.
 
 ## More

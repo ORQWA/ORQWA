@@ -43,7 +43,7 @@ cp "$root/app/bin/libtorqa_gd.so" "$stage/app/bin/"
     "$root/core/target/$triple/$profile/libtorqa_gd.so"
 cp -r "$root/android/godot/addons" "$stage/app/"
 python3 "$root/android/stage.py" "$stage/app" "$root/android/godot/export_preset.cfg" \
-    "$root/core/Cargo.lock"
+    "$root/core/Cargo.lock" "$root/core/Cargo.toml"
 
 # Godot's Android build, then Torqa's plugin built with its Gradle, btleplug's Java sources
 # taken from the crate cargo built.
@@ -69,15 +69,24 @@ godot --headless --path "$stage/app" --import >/dev/null 2>&1 || true
 mkdir -p "$root/dist"
 apk="$root/dist/Torqa-android-arm64.apk"
 rm -f "$apk"
-# The debug key, as Android Studio keeps one per developer: in the Gradle volume, not the image,
-# so a rebuilt image still signs alike and an update installs over the APK already on a device.
-keystore=/root/.gradle/torqa-debug.keystore
-test -s "$keystore" || keytool -genkeypair -keystore "$keystore" -storepass android \
-    -alias androiddebugkey -keypass android -keyalg RSA -validity 10000 \
-    -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
-GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$keystore" \
-    GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey \
-    GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android \
-    godot --headless --path "$stage/app" --export-debug "Android" "$apk"
+# With the release key (CI, for tagged releases: ADR 0024), the APK riders install. Without it the
+# debug key, as Android Studio keeps one per developer: in the Gradle volume, not the image, so a
+# rebuilt image still signs alike and an update installs over the APK already on a device.
+if [ -n "${TORQA_RELEASE_KEYSTORE:-}" ]; then
+    : "${TORQA_RELEASE_KEYSTORE_PASSWORD:?Set it with TORQA_RELEASE_KEYSTORE}"
+    GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$TORQA_RELEASE_KEYSTORE" \
+        GODOT_ANDROID_KEYSTORE_RELEASE_USER=torqa \
+        GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$TORQA_RELEASE_KEYSTORE_PASSWORD" \
+        godot --headless --path "$stage/app" --export-release "Android" "$apk"
+else
+    keystore=/root/.gradle/torqa-debug.keystore
+    test -s "$keystore" || keytool -genkeypair -keystore "$keystore" -storepass android \
+        -alias androiddebugkey -keypass android -keyalg RSA -validity 10000 \
+        -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
+    GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$keystore" \
+        GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey \
+        GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android \
+        godot --headless --path "$stage/app" --export-debug "Android" "$apk"
+fi
 test -s "$apk" || { echo "no APK exported" >&2; exit 1; }
 echo "Built $apk"

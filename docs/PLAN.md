@@ -605,8 +605,9 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
     apps, scaled to it, the world not drawn behind it. Music control says it is not supported;
     the update check offers the release page
   - [x] touch: Godot turns taps into clicks, enough to ride
-- [ ] D — a release-signed APK as a release asset, the wiki (installing, permissions), the
-  internet list
+- [x] D — a release-signed APK as a release asset (tags only, the key from the repository
+  secrets; version code from Torqa's version), the wiki (installing, permissions, updates,
+  picture-in-picture); the internet list is unchanged
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ## Risks

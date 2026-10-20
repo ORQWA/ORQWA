@@ -1,6 +1,6 @@
 # ADR 0024 — Torqa on Android tablets
 
-- Status: accepted for a trial (phases A–C passed; D to follow, removable as below)
+- Status: accepted (phases A–D done; removable as below)
 - Date: 2026-10-19
 
 ## Context
@@ -138,3 +138,17 @@ switches 3D off as the overlay window does, and fills the window in the panels' 
 sizes the window and takes taps on it for its own buttons, so the overlay's bar (sizes, pause,
 full view) and resize grip are left out: only the figures show. The debug key moved out of the image into the Gradle
 volume: a key made with each image would refuse every update after a rebuild.
+
+## Amendment 2026-10-20: phase D
+
+- **Release signing.** A tagged release's APK is signed with Torqa's release key (alias `torqa`),
+  kept in the repository secrets `ANDROID_KEYSTORE` and `ANDROID_KEYSTORE_PASSWORD` and written to
+  the runner only for that step. Every other build, in CI or locally, is signed with a debug key:
+  switching between the two needs an uninstall, and so would a lost release key for every rider.
+  The key's owner keeps a copy outside GitHub.
+- **Version.** The APK carries Torqa's version: name `0.5.0`, code `500` (major × 10000 +
+  minor × 100 + patch), so each release installs over the last.
+- **Release asset.** `Torqa-android-arm64.apk` is published with the others; the release waits
+  for the Android build.
+- **Updates.** The update check offers the release page, as on macOS and Linux; the rider
+  installs the newer APK over the old one.
