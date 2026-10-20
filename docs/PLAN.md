@@ -29,6 +29,8 @@ core/                      Rust workspace (tokio + tracing)
   torqa-remote/            the remote for a phone or tablet: a page on the local network,
                            a ShiftInput
                            (ADR 0019)
+  torqa-update/            a newer release on GitHub, its Windows installer downloaded and
+                           started over Torqa (ADR 0023)
   torqa-app/               application layer: commands + update() per frame for front ends,
                            the analysis across a rider's rides
   torqa-gd/                gdext bindings (TorqaApp node), the sample course (R95)
@@ -109,10 +111,13 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   presets, checked to agree on every change and, for a release, to be the tag's (`v<version>`),
   after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
   sets it in all of them and in `core/Cargo.lock`
-- [ ] Windows installer and updates (R99, ADR 0023):
+- [x] Windows installer and updates (R99, ADR 0023):
   - [x] `Torqa-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
     uninstall, upgrade in place; installed and uninstalled once in CI, installed by hand
-  - [ ] Update check at start-up (setting to turn it off), download and install the new MSI
+  - [x] Update check at start-up in released builds (Settings → About turns it off and checks
+    now), offered on the start page or after the ride; Windows downloads and installs the new
+    MSI and restarts, elsewhere the release page opens; the real GitHub check tried by hand,
+    the download and install wait for the first release carrying the MSI
 - **Exit:** macOS CI artifact runs on M1 and calls into Rust
 
 ### Phase 1 — Devices
@@ -160,8 +165,10 @@ Built in rideable steps:
 - [x] Rebuild outdated worlds from stored inputs (format 1 always rebuilds offline)
 - [x] A new library starts with a sample course, Twann – Chasseral, shipped in the
   GDExtension and ridden offline (R95, ADR 0007 amendment 2026-10-19)
-- Format 2 (a stored pre-built world) dropped: the world is built while the course's page is
-  open instead (#237, ADR 0007 amendment 2026-10-15)
+- Format 2 (a stored pre-built world) dropped (ADR 0007 amendment 2026-10-15)
+- [x] **Keep courses ready to ride**: an opt-in setting keeps a course's built world in the
+  cache, so riding it again starts at once; kept worlds stay across updates, and a course
+  offers to regenerate one an older generator built (R101, ADR 0025, #237)
 - **Exit:** prepare a course online, ride it offline on another machine from the `.tqc` file ✅
   (2026-10-03, Lake Biel 7 km: 6.2 MB, opened offline with an empty cache)
 
@@ -236,6 +243,11 @@ Built in rideable steps:
     and the other eight as 3–10, kept awake and the left pod's Zwift lock told in the log;
     written from the community's drivers and checked on a pair (R96): the left pod relays the
     right pod's buttons, which count once
+  - [x] Virtual gears by default (R98): a new rider starts on a single cog (50 × 14), so a
+    connected Click shifts from the first ride; the whole profile also changes during a ride
+    (ride settings → Profile), kept in the profile and followed by the ride at once: weight,
+    drivetrain, FTP of a structured workout, zones, units, map, language; pausing opens the
+    ride settings
   - [x] The remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
     that a phone's or tablet's browser opens from a QR code, its ten buttons (two big) doing what the
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the

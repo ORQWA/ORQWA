@@ -8,10 +8,12 @@ pub mod failure;
 use failure::{Failure, Kind};
 pub mod hud;
 mod import;
+mod kept;
 pub mod library;
 pub mod media;
 pub mod paths;
 pub mod remote;
+pub mod updates;
 pub mod uploads;
 pub mod video;
 pub mod view;
@@ -390,6 +392,21 @@ pub enum AppEvent {
     },
     /// A page to show the rider in their browser, e.g. a platform's login.
     OpenUrl(String),
+    /// A newer Torqa was released (R99).
+    UpdateAvailable {
+        /// Its version, e.g. `0.5.0`.
+        version: String,
+        /// Its release page, with what changed.
+        page: String,
+        /// Whether Torqa can download and install it itself; else the rider gets the page.
+        installable: bool,
+    },
+    /// The rider asked, and Torqa is the newest version.
+    UpToDate,
+    /// The update's installer is downloaded, ready to install.
+    UpdateDownloaded,
+    /// Looking for, or downloading, an update failed.
+    UpdateFailed(Failure),
     /// Uploading a ride failed.
     UploadFailed {
         /// The ride's FIT file.
@@ -434,7 +451,9 @@ enum JobResult {
     // Loading results carry the load they belong to; those of an abandoned load are dropped.
     Route(u64, Result<Box<Imported>, Failure>),
     Video(u64, Result<Box<(Imported, video::VideoSource)>, Failure>),
-    World(u64, Box<World>),
+    /// A world, the version of the generator that built it, and the fingerprint to keep it
+    /// under once built for a library course (R101).
+    World(u64, Arc<World>, u32, Option<String>),
     Progress(u64, LoadStage, usize, usize),
     CourseAdded(Result<PathBuf, Failure>),
     /// The loaded route was saved as this course.
@@ -442,6 +461,7 @@ enum JobResult {
     /// The course at the first path has its own copy of its video at the second (#165).
     VideoKept(PathBuf, PathBuf),
     Upload(Box<uploads::Done>),
+    Update(updates::Done),
     /// The countries of the course at the path, prepared at the given time, were found
     /// (#230); `None` once the lookup is over.
     Countries(Option<(PathBuf, u64, Vec<CourseCountry>)>),
@@ -666,10 +686,14 @@ pub struct App {
     profile: StoredProfile,
     /// The training platforms rides can be uploaded to and the uploads under way (R29).
     uploads: uploads::UploadState,
+    updates: updates::UpdateState,
     data_dir: PathBuf,
     cache_dir: PathBuf,
     /// This computer's own settings (R78), next to the cache: never synced with the data.
     computer: PathBuf,
+    /// The version of the generator that built the loaded world: an older one when it was
+    /// kept from before (R101).
+    world_generator: u32,
     /// The rides' metadata read once and kept (R79); `None` if the cache cannot hold it, when
     /// the history reads every ride's file as before.
     index: Mutex<Option<HistoryIndex>>,
@@ -752,9 +776,11 @@ impl App {
             })),
             profile,
             uploads: uploads::UploadState::new(uploads::platforms()),
+            updates: updates::UpdateState::default(),
             data_dir,
             cache_dir,
             computer,
+            world_generator: torqa_world::GENERATOR,
             index: Mutex::new(index),
         })
     }
@@ -798,10 +824,11 @@ impl App {
 
     /// Saves a profile (a new one if `id` is `None`) and makes it the active one; returns its id.
     /// A new rider starts with the devices of the rider before (R82), so nothing connected is
-    /// let go.
+    /// let go. The ride under way follows the riding rider's changes at once (R98): their
+    /// weight, drivetrain and FTP.
     ///
     /// # Errors
-    /// [`AppError::Reported`] if it cannot be written.
+    /// [`AppError::Reported`] if it cannot be written; nothing changes then.
     pub fn save_profile(&mut self, id: Option<&str>, profile: Profile) -> Result<String, AppError> {
         let new = id.is_none();
         let id = id.map_or_else(
@@ -823,6 +850,13 @@ impl App {
         };
         if switched {
             self.take_riders_devices();
+        } else {
+            let (setup, profile) = (self.rider_setup(), &self.profile.profile);
+            if let Some(active) = &mut self.ride {
+                active
+                    .ride
+                    .change_rider(setup, virtual_gears(profile.drivetrain), profile.ftp);
+            }
         }
         Ok(id)
     }
@@ -1348,6 +1382,12 @@ impl App {
         let cache = self.cache_dir.clone();
         let library = self.courses_dir();
         let tx = self.jobs_tx.clone();
+        // The world just built is that of the new course (R101).
+        let keep = self
+            .world
+            .clone()
+            .filter(|_| self.keeps_worlds())
+            .map(|world| (world, self.world_generator, self.keeper()));
         self.runtime.spawn_blocking(move || {
             let result = std::fs::create_dir_all(&library)
                 .map_err(course::CourseError::from)
@@ -1372,7 +1412,11 @@ impl App {
                     Ok(path)
                 })
                 .map_err(|e| Failure::new(Kind::SaveCourse, e));
+            let saved = result.as_ref().ok().cloned();
             let _ = tx.send(JobResult::CourseSaved(result));
+            if let (Some(course), Some((world, generator, keeper))) = (saved, keep) {
+                keeper.keep(&course, &world, generator, None);
+            }
         });
         Ok(())
     }
@@ -1442,6 +1486,8 @@ impl App {
         if self.course.as_deref() == Some(path) {
             self.course = None;
         }
+        // Its kept world goes too (R101).
+        self.tidy_kept_worlds();
         if let Some(video) = video {
             let shared = self.courses().into_iter().any(|c| {
                 c.manifest
@@ -1863,19 +1909,39 @@ impl App {
         let mut detailed = terrain(TileSource::defaults());
         // The land beyond the corridor needs only coarse tiles, a few for the whole view.
         let mut distant = terrain(TileSource::distant());
+        // A library course's world may be kept, and is kept once built (R101).
+        let kept = self
+            .course
+            .clone()
+            .filter(|_| self.keeps_worlds())
+            .map(|course| (course, self.keeper()));
         self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
                 load,
                 last: None,
             };
+            let mut keep_as = None;
+            if let Some((course, keeper)) = kept {
+                reporter.report(LoadStage::World, 0, 1);
+                let found = tokio::task::spawn_blocking(move || keeper.find(&course)).await;
+                match found {
+                    Ok(kept::Found::World(world, generator)) => {
+                        let _ = tx.send(JobResult::World(load, Arc::from(world), generator, None));
+                        return;
+                    }
+                    Ok(kept::Found::Missing(fingerprint)) => keep_as = Some(fingerprint),
+                    Ok(kept::Found::Unknown) | Err(_) => {}
+                }
+            }
             let mut world =
                 torqa_world::generate(&route, &mut detailed, &map, &mut |done, total| {
                     reporter.report(LoadStage::World, done, total);
                 })
                 .await;
             world.horizon = torqa_world::horizon(&route, &mut distant).await;
-            let _ = tx.send(JobResult::World(load, Box::new(world)));
+            let generator = torqa_world::GENERATOR;
+            let _ = tx.send(JobResult::World(load, Arc::new(world), generator, keep_as));
         });
     }
 
@@ -2709,10 +2775,7 @@ impl App {
             setup: self.rider_setup(),
             difficulty,
             descent,
-            gears: match self.profile.profile.drivetrain {
-                Drivetrain::SingleCog { chainring, cog } => Some(VirtualGears::new(chainring, cog)),
-                Drivetrain::Cassette => None,
-            },
+            gears: virtual_gears(self.profile.profile.drivetrain),
             cadence: self.cadence_source(),
         }
     }
@@ -3499,7 +3562,7 @@ impl App {
                 }
                 JobResult::Route(load, _)
                 | JobResult::Video(load, _)
-                | JobResult::World(load, _)
+                | JobResult::World(load, ..)
                 | JobResult::Progress(load, ..)
                     if load != self.load => {}
                 JobResult::Route(_, Ok(imported)) => {
@@ -3533,12 +3596,18 @@ impl App {
                 JobResult::Progress(_, stage, done, total) => {
                     events.push(AppEvent::LoadProgress { stage, done, total });
                 }
-                JobResult::World(_, world) => {
+                JobResult::World(_, world, generator, keep_as) => {
                     events.push(AppEvent::WorldReady {
                         chunks: world.chunks.len(),
                         fallback_samples: world.fallback_samples,
                     });
-                    self.world = Some(Arc::from(world));
+                    self.world_generator = generator;
+                    if let (Some(fingerprint), Some(course)) = (keep_as, &self.course)
+                        && self.keeps_worlds()
+                    {
+                        self.keep_world(course.clone(), Arc::clone(&world), Some(fingerprint));
+                    }
+                    self.world = Some(world);
                     // A prepared GPX goes into the course library (R39).
                     if !self.from_course
                         && let Err(error) = self.save_course()
@@ -3562,6 +3631,7 @@ impl App {
                     }
                 }
                 JobResult::Upload(done) => events.push(self.upload_work_done(*done)),
+                JobResult::Update(done) => events.extend(self.update_done(done)),
                 JobResult::Countries(found) => self.countries_found(found, events),
                 JobResult::Scan(Err(message)) => self.scan_failed(message, events),
                 JobResult::Route(_, Err(message))
@@ -4024,6 +4094,14 @@ fn unique_course_path(library: &Path, name: &str) -> PathBuf {
         path = library.join(format!("{slug}-{n}.{}", course::EXTENSION));
     }
     path
+}
+
+/// The virtual gears a drivetrain shifts (R9): none with a cassette.
+fn virtual_gears(drivetrain: Drivetrain) -> Option<VirtualGears> {
+    match drivetrain {
+        Drivetrain::SingleCog { chainring, cog } => Some(VirtualGears::new(chainring, cog)),
+        Drivetrain::Cassette => None,
+    }
 }
 
 #[cfg(test)]
@@ -4557,6 +4635,51 @@ mod tests {
 
         assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
         app.shutdown();
+    }
+
+    #[test]
+    fn the_ride_follows_the_profile_changed_during_it_and_the_profile_keeps_it() {
+        let dir = temp_dir("ride-profile");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let change = |app: &mut App, drivetrain: Drivetrain| {
+            let mut profile = app.profile().profile.clone();
+            profile.drivetrain = drivetrain;
+            let id = app.profile().id.clone();
+            app.save_profile(Some(&id), profile).unwrap();
+        };
+        change(&mut app, Drivetrain::Cassette);
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(200.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+        app.start_ride(Percent(50.0), DescentMode::Coast, &GhostChoice::None)
+            .unwrap();
+        assert_eq!(app.ride_state().unwrap().gear, None, "a cassette");
+
+        let single_cog = Drivetrain::SingleCog {
+            chainring: 50,
+            cog: 14,
+        };
+        change(&mut app, single_cog);
+        let before = app.ride_state().unwrap().gear.unwrap().number;
+        app.shift(Shift::Up);
+        app.update(Duration::from_millis(16));
+
+        assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
+        let id = app.profile().id.clone();
+        app.shutdown();
+        let mut reopened = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        assert_eq!(reopened.profile().id, id);
+        assert_eq!(
+            reopened.profile().profile.drivetrain,
+            single_cog,
+            "the profile keeps it"
+        );
+        reopened.shutdown();
     }
 
     /// A shifter that shifts and asks for controls as told, and is connected or not.

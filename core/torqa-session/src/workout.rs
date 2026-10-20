@@ -410,6 +410,14 @@ impl WorkoutControl {
         }
     }
 
+    /// The rider's FTP changed during the workout: a structured workout's powers follow it,
+    /// from where it is. An FTP test keeps the FTP it started from, as its protocol asks.
+    pub(crate) fn change_ftp(&mut self, ftp: Watts) {
+        if let Workout::Structured { ftp: planned, .. } = &mut self.workout {
+            *planned = ftp;
+        }
+    }
+
     /// The power for the trainer now; `None` lets it simulate the road.
     pub(crate) fn power(&self) -> Option<Watts> {
         match &self.workout {

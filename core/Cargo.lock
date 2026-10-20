@@ -2504,6 +2504,7 @@ dependencies = [
  "torqa-session",
  "torqa-storage",
  "torqa-terrain",
+ "torqa-update",
  "torqa-upload",
  "torqa-video",
  "torqa-workouts",
@@ -2636,6 +2637,7 @@ dependencies = [
  "thiserror",
  "toml",
  "torqa-domain",
+ "torqa-world",
  "zip",
 ]
 
@@ -2649,6 +2651,17 @@ dependencies = [
  "thiserror",
  "tokio",
  "torqa-domain",
+ "tracing",
+]
+
+[[package]]
+name = "torqa-update"
+version = "0.4.0"
+dependencies = [
+ "reqwest",
+ "serde_json",
+ "thiserror",
+ "tokio",
  "tracing",
 ]
 

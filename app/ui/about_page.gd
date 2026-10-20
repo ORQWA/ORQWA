@@ -1,14 +1,19 @@
 class_name AboutPage
 extends VBoxContainer
 ## What Torqa is, on the settings' About tab (R83): its version and the commit it is built
-## from, its licence and where its source code is, and the licence notices of everything built
-## into the app, each with its full text.
+## from, whether a newer one is out (R99), its licence and where its source code is, and the
+## licence notices of everything built into the app, each with its full text.
 
 const LOGO: Texture2D = preload("res://assets/brand/torqa-logo-dark.svg")
 const WORDMARK: Texture2D = preload("res://assets/brand/torqa-wordmark-dark.svg")
 
 var _version: Label = Label.new()
 var _copy: Button = Button.new()
+var _torqa: TorqaApp
+## Looking for a newer Torqa at start-up, on this computer (R99), and right now.
+var _check_at_start: CheckBox = CheckBox.new()
+var _check_now: Button = Button.new()
+var _update_status: Label = Label.new()
 var _engine: Label = Label.new()
 var _free: Label = Label.new()
 ## The parts of the app with a notice, and the selected part's notice.
@@ -37,6 +42,20 @@ func _init() -> void:
 	_copy.pressed.connect(func() -> void: DisplayServer.clipboard_set(_version_report()))
 	version_row.add_child(_copy)
 	add_child(version_row)
+	var updates: HFlowContainer = HFlowContainer.new()
+	updates.add_theme_constant_override("h_separation", 16)
+	_check_at_start.toggled.connect(
+		func(on: bool) -> void:
+			if _torqa != null:
+				_torqa.set_checks_for_updates(on)
+	)
+	updates.add_child(_check_at_start)
+	_check_now.focus_mode = Control.FOCUS_NONE
+	_check_now.pressed.connect(_on_check_now)
+	updates.add_child(_check_now)
+	_update_status.add_theme_color_override("font_color", UiTheme.MUTED)
+	updates.add_child(_update_status)
+	add_child(updates)
 	_engine.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_engine.text = "Godot Engine %s" % Engine.get_version_info()["string"]
 	_engine.add_theme_color_override("font_color", UiTheme.MUTED)
@@ -73,6 +92,23 @@ func _init() -> void:
 	_show_notice(0)
 
 
+## Shows and changes this computer's update setting, and tells what a check found.
+func bind(torqa: TorqaApp) -> void:
+	_torqa = torqa
+	_check_at_start.set_pressed_no_signal(torqa.checks_for_updates())
+	torqa.up_to_date.connect(func() -> void: _update_status.text = tr("Torqa is up to date."))
+	torqa.update_failed.connect(func(message: String) -> void: _update_status.text = message)
+	torqa.update_available.connect(
+		func(version: String, _page: String, _installable: bool) -> void:
+			_update_status.text = tr("Torqa %s is available.") % version
+	)
+
+
+func _on_check_now() -> void:
+	if _torqa != null and _torqa.check_for_updates(true):
+		_update_status.text = tr("Looking for updates…")
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
 		_translate()
@@ -86,6 +122,8 @@ func _translate() -> void:
 		_version.text = tr("Version %s, commit %s") % [TorqaCore.version(), commit]
 	_copy.text = tr("Copy")
 	_copy.tooltip_text = tr("Copy the version, e.g. for a bug report")
+	_check_at_start.text = tr("Look for updates when Torqa starts")
+	_check_now.text = tr("Check for updates")
 	_free.text = tr("Torqa is free software under the GNU General Public License, version 3:")
 	var selected: PackedInt32Array = _parts.get_selected_items()
 	_parts.clear()

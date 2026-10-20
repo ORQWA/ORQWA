@@ -17,6 +17,7 @@ torqa-session.workspace = true
 torqa-storage.workspace = true
 torqa-terrain.workspace = true
 torqa-upload.workspace = true
+torqa-update.workspace = true
 torqa-remote.workspace = true
 torqa-workouts.workspace = true
 torqa-video.workspace = true

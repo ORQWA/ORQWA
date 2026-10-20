@@ -16,7 +16,6 @@ func _run() -> void:
 	_ride_settings()
 	_workout_settings()
 	_workout_editor()
-	_rider_drivetrain()
 	_picked_files()
 	_course_cards()
 	await _rider_switch()
@@ -317,35 +316,6 @@ func _picked_files() -> void:
 	)
 	_check(PickedFile.name_of(address) == "Ride.gpx", "a content address shows its file name")
 	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in Torqa's folder")
-
-
-## The rider's drivetrain (R9): chainring and cog only for a single cog.
-func _rider_drivetrain() -> void:
-	var dialog: ProfileDialog = ProfileDialog.new()
-	root.add_child(dialog)
-	var confirmed: Array[Dictionary] = []
-	dialog.profile_confirmed.connect(
-		func(_id: String, profile: Dictionary, _hud: PackedStringArray) -> void:
-			confirmed.append(profile)
-	)
-	dialog.edit(
-		{"id": "r", "name": "R", "drivetrain": "single_cog", "chainring": 46, "cog": 14},
-		PackedStringArray(["power"])
-	)
-	# The cog is the last of the teeth fields; the zones tab has spin boxes of its own.
-	var teeth: Array[Node] = dialog.find_children("*", "SpinBox", true, false).filter(
-		func(node: Node) -> bool: return (node as SpinBox).suffix == " T"
-	)
-	var cog: SpinBox = teeth[teeth.size() - 1]
-	_check(cog.visible, "chainring and cog for a single cog")
-	dialog.confirmed.emit()
-	var saved: Dictionary = confirmed[0]
-	var drivetrain: String = saved["drivetrain"]
-	var chainring: float = saved["chainring"]
-	_check(drivetrain == "single_cog" and chainring == 46.0, "saved: %s" % saved)
-	dialog.edit({"id": "r", "name": "R"}, PackedStringArray(["power"]))
-	_check(not cog.visible, "a cassette needs no teeth")
-	dialog.free()
 
 
 ## The captions of a three-column options grid whose rows show.

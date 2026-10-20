@@ -40,7 +40,12 @@ static var _meshes: Dictionary[String, Mesh] = {}
 static func mesh(name: String) -> Mesh:
 	if _meshes.has(name):
 		return _meshes[name]
-	var scene: PackedScene = load(DIRECTORY + name + ".glb")
+	var path: String = DIRECTORY + name + ".glb"
+	# A world kept from an older Torqa may name a model this one no longer has (R101): it is
+	# left out rather than breaking its chunk.
+	if not ResourceLoader.exists(path):
+		return null
+	var scene: PackedScene = load(path)
 	var root: Node = scene.instantiate()
 	var found: ArrayMesh = _find_mesh(root).mesh
 	root.free()

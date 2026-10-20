@@ -175,6 +175,10 @@ msgstr ""
 msgid "A recorded activity…"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "A world takes about 10 MB per kilometre of route."
+msgstr ""
+
 #: core/torqa-upload/src/intervals.rs
 msgid "API key"
 msgstr ""
@@ -233,6 +237,10 @@ msgstr ""
 
 #: app/scenes/workouts_tab.gd
 msgid "Added to your workouts."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "After an update that changes how worlds look, a course's page offers to regenerate it."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -375,7 +383,7 @@ msgstr ""
 msgid "Big button 2"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Bike weight"
 msgstr ""
 
@@ -411,7 +419,7 @@ msgstr ""
 msgid "Cannot connect."
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Cassette: shift on the bike"
 msgstr ""
 
@@ -431,7 +439,7 @@ msgstr ""
 msgid "Cat 4"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd
+#: app/ui/profile_form.gd
 msgid "Chainring"
 msgstr ""
 
@@ -441,6 +449,10 @@ msgstr ""
 
 #: app/translations/extra-msgids.txt
 msgid "Chase"
+msgstr ""
+
+#: app/ui/about_page.gd
+msgid "Check for updates"
 msgstr ""
 
 #: app/scenes/account_dialog.gd
@@ -527,7 +539,7 @@ msgstr ""
 msgid "Code and address for the phone or tablet"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd
+#: app/ui/profile_form.gd
 msgid "Cog"
 msgstr ""
 
@@ -535,7 +547,7 @@ msgstr ""
 msgid "Coggan's power zones and the usual heart-rate zones"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Colored"
 msgstr ""
 
@@ -624,6 +636,10 @@ msgid "Could not delete the workout."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs
+msgid "Could not download the update."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs
 msgid "Could not export to %s."
 msgstr ""
 
@@ -645,6 +661,10 @@ msgstr ""
 
 #: core/torqa-app/src/failure.rs
 msgid "Could not load the workout."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs
+msgid "Could not look for a newer version of Torqa."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs
@@ -724,6 +744,10 @@ msgid "Could not start the remote on port %s. Another program may use it: choose
 msgstr ""
 
 #: core/torqa-app/src/failure.rs
+msgid "Could not start the update's installer."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs
 msgid "Could not update the course."
 msgstr ""
 
@@ -747,7 +771,7 @@ msgstr ""
 msgid "Course preparation stopped unexpectedly."
 msgstr ""
 
-#: app/scenes/start_page.gd
+#: app/scenes/settings_dialog.gd app/scenes/start_page.gd
 msgid "Courses"
 msgstr ""
 
@@ -767,7 +791,7 @@ msgstr ""
 msgid "Dark"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd
+#: app/ui/profile_form.gd
 msgid "Dark, like the course cards"
 msgstr ""
 
@@ -867,6 +891,14 @@ msgstr ""
 msgid "Down (left pod)"
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "Download it from its release page."
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Downloading Torqa %s…"
+msgstr ""
+
 #: core/torqa-app/src/import.rs
 msgid "Downloading map data"
 msgstr ""
@@ -883,7 +915,7 @@ msgstr ""
 msgid "Drag to resize the overlay"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Drivetrain"
 msgstr ""
 
@@ -893,6 +925,10 @@ msgstr ""
 
 #: app/ui/workout_editor.gd
 msgid "Duration"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Each course's 3D world is kept on this computer once built: the next ride starts at once."
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -959,7 +995,7 @@ msgstr ""
 msgid "FIT activities"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/analysis_tab.gd app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "FTP"
 msgstr ""
 
@@ -1007,7 +1043,7 @@ msgstr ""
 msgid "Feb"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Female rider"
 msgstr ""
 
@@ -1247,7 +1283,7 @@ msgstr ""
 msgid "How do you want to ride?"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Imperial (mi, lb)"
 msgstr ""
 
@@ -1267,12 +1303,20 @@ msgstr ""
 msgid "In between, the video follows your distance evenly."
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "Installing Torqa %s…"
+msgstr ""
+
 #: app/scenes/history_screen.gd core/torqa-app/src/hud.rs
 msgid "Intensity"
 msgstr ""
 
 #: app/ui/workout_editor.gd
 msgid "Intervals"
+msgstr ""
+
+#: app/scenes/course_detail.gd
+msgid "Its 3D world was kept from an older Torqa: build it with this one"
 msgstr ""
 
 #: app/ui/workout_editor.gd
@@ -1299,6 +1343,10 @@ msgstr ""
 msgid "Keep both"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Keep courses ready to ride"
+msgstr ""
+
 #: app/scenes/remote_dialog.gd
 msgid "Keep its screen on while you ride."
 msgstr ""
@@ -1307,7 +1355,7 @@ msgstr ""
 msgid "Keep this screen on while you ride: turn off its auto-lock."
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Language"
 msgstr ""
 
@@ -1329,6 +1377,10 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "Last ridden"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Later"
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -1359,6 +1411,14 @@ msgstr ""
 msgid "Log in to %s in your browser and let Torqa upload your rides. Then come back here."
 msgstr ""
 
+#: app/ui/about_page.gd
+msgid "Look for updates when Torqa starts"
+msgstr ""
+
+#: app/ui/about_page.gd
+msgid "Looking for updates…"
+msgstr ""
+
 #: app/ui/ride_devices.gd
 msgid "Looking for your devices… wake them by pedalling or putting on the strap."
 msgstr ""
@@ -1383,7 +1443,7 @@ msgstr ""
 msgid "MSAA 4×"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Male rider"
 msgstr ""
 
@@ -1391,7 +1451,7 @@ msgstr ""
 msgid "Mar"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Max heart rate"
 msgstr ""
 
@@ -1419,7 +1479,7 @@ msgstr ""
 msgid "Message at the start of the step"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Metric (km, kg)"
 msgstr ""
 
@@ -1651,7 +1711,7 @@ msgstr ""
 msgid "On a course, the trainer holds the workout's power while you ride through its 3D world"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd
+#: app/ui/profile_form.gd
 msgid "On a single cog such as the Zwift Cog, Torqa shifts 24 virtual gears: ↑ and ↓ while riding"
 msgstr ""
 
@@ -1681,6 +1741,10 @@ msgstr ""
 
 #: app/scenes/account_dialog.gd
 msgid "Open the login again"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Open the release page"
 msgstr ""
 
 #: app/ui/fitness_chart.gd
@@ -1819,7 +1883,7 @@ msgstr ""
 msgid "Press"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/start_page.gd
+#: app/scenes/profile_dialog.gd app/scenes/ride_settings_dialog.gd app/scenes/start_page.gd
 msgid "Profile"
 msgstr ""
 
@@ -1887,6 +1951,10 @@ msgstr ""
 msgid "Reflections on water"
 msgstr ""
 
+#: app/scenes/course_detail.gd
+msgid "Regenerate world"
+msgstr ""
+
 #: app/scenes/remote_dialog.gd core/torqa-remote/src/lib.rs
 msgid "Remote"
 msgstr ""
@@ -1927,7 +1995,7 @@ msgstr ""
 msgid "Ride descents like flat roads"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Ride map"
 msgstr ""
 
@@ -1951,7 +2019,7 @@ msgstr ""
 msgid "Rider"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Rider on the bike"
 msgstr ""
 
@@ -2139,7 +2207,7 @@ msgstr ""
 msgid "Simulation: %d×"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Single cog: virtual gears"
 msgstr ""
 
@@ -2255,6 +2323,10 @@ msgstr ""
 msgid "The devices used last connect by themselves. Search beside a row to find one of that kind."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "The kept worlds take %s."
+msgstr ""
+
 #: app/scenes/profile_tab.gd core/torqa-app/src/failure.rs
 msgid "The only rider cannot be deleted"
 msgstr ""
@@ -2367,6 +2439,14 @@ msgstr ""
 msgid "To go"
 msgstr ""
 
+#: app/ui/about_page.gd
+msgid "Torqa %s is available."
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Torqa %s is available; you have %s."
+msgstr ""
+
 #: app/scenes/account_dialog.gd
 msgid "Torqa could not connect. Go back to Torqa to try again."
 msgstr ""
@@ -2379,12 +2459,20 @@ msgstr ""
 msgid "Torqa courses"
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "Torqa downloads it, closes and installs it, then starts again."
+msgstr ""
+
 #: app/scenes/account_dialog.gd
 msgid "Torqa is connected. You can close this page."
 msgstr ""
 
 #: app/ui/about_page.gd
 msgid "Torqa is free software under the GNU General Public License, version 3:"
+msgstr ""
+
+#: app/ui/about_page.gd
+msgid "Torqa is up to date."
 msgstr ""
 
 #: app/scenes/remote_dialog.gd
@@ -2395,7 +2483,7 @@ msgstr ""
 msgid "Trainer"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/ui/ride_options.gd
+#: app/ui/profile_form.gd app/ui/ride_options.gd
 msgid "Trainer difficulty"
 msgstr ""
 
@@ -2435,7 +2523,7 @@ msgstr ""
 msgid "Ultra"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Units"
 msgstr ""
 
@@ -2445,6 +2533,14 @@ msgstr ""
 
 #: app/scenes/button_dialog.gd
 msgid "Up (left pod)"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Update available"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Update now"
 msgstr ""
 
 #: app/scenes/history_screen.gd
@@ -2583,7 +2679,7 @@ msgstr ""
 msgid "Weekly"
 msgstr ""
 
-#: app/scenes/profile_dialog.gd app/scenes/profile_tab.gd
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Weight"
 msgstr ""
 
@@ -2597,6 +2693,10 @@ msgstr ""
 
 #: app/scenes/button_dialog.gd
 msgid "What the remote's buttons do"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "What's new"
 msgstr ""
 
 #: app/scenes/workouts_tab.gd
@@ -2681,6 +2781,10 @@ msgstr ""
 
 #: app/scenes/history_screen.gd
 msgid "Your rides"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Your rides and settings stay as they are."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd

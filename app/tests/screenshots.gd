@@ -151,6 +151,12 @@ func _run() -> void:
 			await create_timer(0.5).timeout
 			root.get_texture().get_image().save_png(out_dir.path_join("ride-devices.png"))
 			print("saved ride devices")
+			# The rider's profile, changed during the ride (R98).
+			var profile: Node = settings_dialog.find_children("*", "RideProfile", true, false)[0]
+			tabs.current_tab = profile.get_parent().get_index()
+			await create_timer(0.5).timeout
+			root.get_texture().get_image().save_png(out_dir.path_join("ride-profile.png"))
+			print("saved ride profile")
 			settings_dialog.hide()
 
 	# The ride's summary (R42), then the history.
@@ -259,12 +265,12 @@ func _run() -> void:
 			root.get_texture().get_image().save_png(buttons_shot)
 			buttons_dialog.hide()
 			remote.button_pressed = false
-	# The settings from the cog at the top right (R83): Graphics, then About.
+	# The settings from the cog at the top right (R83): Graphics, Courses, then About.
 	var settings: SettingsDialog = start.get("_settings")
 	var settings_button: Button = start.get("_settings_button")
 	settings_button.pressed.emit()
 	var settings_tabs: TabContainer = settings.get("_tabs")
-	for page: Array in [[0, "settings-graphics"], [1, "settings-about"]]:
+	for page: Array in [[0, "settings-graphics"], [1, "settings-courses"], [2, "settings-about"]]:
 		var index: int = page[0]
 		var file: String = page[1]
 		settings_tabs.current_tab = index

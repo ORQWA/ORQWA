@@ -1,8 +1,9 @@
 //! Settings of this computer (R78, #257): how detailed the 3D world is drawn (R43), the
-//! graphics options set apart from that preset (R90), whether the app fills the screen (#218)
-//! and the phone remote (#228) depend on the machine in front of the rider, so they live in
-//! `computer.toml` next to the cache, never in the data directory, which a rider may share
-//! between computers (R30): there the last one to save would win.
+//! graphics options set apart from that preset (R90), whether the app fills the screen (#218),
+//! the phone remote (#228) and whether courses' worlds are kept (R101) depend on the machine in
+//! front of the rider, so they live in `computer.toml` next to the cache, never in the data
+//! directory, which a rider may share between computers (R30): there the last one to save
+//! would win.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -27,6 +28,10 @@ struct ComputerFile {
     graphics: BTreeMap<String, String>,
     /// The phone remote (#228).
     remote: PhoneRemote,
+    /// Whether Torqa looks for a newer version at start-up (R99); on unless turned off.
+    check_updates: Option<bool>,
+    /// Whether the courses' built worlds are kept (R101); off unless turned on.
+    keep_worlds: Option<bool>,
 }
 
 /// The phone remote on this computer (#228): a phone pairs with the computer it rides beside.
@@ -141,6 +146,39 @@ pub fn set_fullscreen(file: &Path, fullscreen: bool) -> Result<(), ProfileError>
     save(file, &computer)
 }
 
+/// Whether this computer looks for a newer Torqa at start-up (R99): yes until turned off.
+#[must_use]
+pub fn check_updates(file: &Path) -> bool {
+    read(file).check_updates.unwrap_or(true)
+}
+
+/// Turns looking for a newer Torqa at start-up on or off.
+///
+/// # Errors
+/// [`ProfileError`] if the file cannot be written.
+pub fn set_check_updates(file: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.check_updates = Some(on);
+    save(file, &computer)
+}
+
+/// Whether this computer keeps the worlds of its courses once built (R101): no until turned
+/// on, as they take a lot of room.
+#[must_use]
+pub fn keep_worlds(file: &Path) -> bool {
+    read(file).keep_worlds.unwrap_or(false)
+}
+
+/// Turns keeping the courses' worlds on or off.
+///
+/// # Errors
+/// [`ProfileError`] if the file cannot be written.
+pub fn set_keep_worlds(file: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.keep_worlds = Some(on);
+    save(file, &computer)
+}
+
 /// The phone remote as set on this computer.
 #[must_use]
 pub fn phone_remote(file: &Path) -> PhoneRemote {
@@ -214,6 +252,32 @@ mod tests {
             GraphicsQuality::Ultra,
             "kept with it"
         );
+    }
+
+    #[test]
+    fn updates_are_looked_for_until_turned_off() {
+        let file = temp_file("updates");
+        assert!(check_updates(&file), "on for a new computer (R99)");
+
+        set_check_updates(&file, false).unwrap();
+        set_fullscreen(&file, true).unwrap();
+
+        assert!(!check_updates(&file), "kept beside other settings");
+        set_check_updates(&file, true).unwrap();
+        assert!(check_updates(&file));
+    }
+
+    #[test]
+    fn worlds_are_kept_once_turned_on() {
+        let file = temp_file("keep-worlds");
+        assert!(!keep_worlds(&file), "off for a new computer (R101)");
+
+        set_keep_worlds(&file, true).unwrap();
+        set_check_updates(&file, false).unwrap();
+
+        assert!(keep_worlds(&file), "kept beside other settings");
+        set_keep_worlds(&file, false).unwrap();
+        assert!(!keep_worlds(&file));
     }
 
     #[test]

@@ -108,6 +108,11 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
   data (e.g. roof colour, variant 0–1). Keep it within the palette.
 - **`models.json`** fields are read by `core/torqa-world` (e.g. `buildings/models.rs`); a test
   there checks every listed model has its `.glb`.
+- **Kept worlds** (R101) name models and fill instance buffers as the build that kept them did,
+  and the app draws them with today's `.glb`: a model that only looks different needs nothing.
+  Renaming or removing a model, or changing what an instance buffer holds, raises
+  `torqa_world::stored::FORMAT`; a `models.json` change that places models differently raises
+  `torqa_world::GENERATOR`, so courses offer to regenerate their worlds.
 
 ## Shading and budgets
 

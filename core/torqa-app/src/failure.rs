@@ -136,6 +136,12 @@ pub enum Kind {
     PlannedWorkouts,
     /// Could not start the remote on port %s.
     StartRemote,
+    /// Could not look for a newer version of Torqa.
+    CheckUpdate,
+    /// Could not download the update.
+    DownloadUpdate,
+    /// Could not start the update's installer.
+    InstallUpdate,
 }
 impl Kind {
     /// Unformatted English gettext key; translate before substituting arguments.
@@ -221,6 +227,9 @@ impl Kind {
             Self::StartRemote => {
                 "Could not start the remote on port %s. Another program may use it: choose another port."
             }
+            Self::CheckUpdate => "Could not look for a newer version of Torqa.",
+            Self::DownloadUpdate => "Could not download the update.",
+            Self::InstallUpdate => "Could not start the update's installer.",
         }
         // i18n-end
     }

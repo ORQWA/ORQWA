@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["torqa-domain", "torqa-terrain", "torqa-video", "torqa-osm", "torqa-routes", "torqa-physics", "torqa-devices", "torqa-storage", "torqa-workouts", "torqa-session", "torqa-world", "torqa-upload", "torqa-remote", "torqa-app", "torqa-gd", "torqa-cli"]
+members = ["torqa-domain", "torqa-terrain", "torqa-video", "torqa-osm", "torqa-routes", "torqa-physics", "torqa-devices", "torqa-storage", "torqa-workouts", "torqa-session", "torqa-world", "torqa-upload", "torqa-remote", "torqa-update", "torqa-app", "torqa-gd", "torqa-cli"]
 
 [workspace.package]
 version = "0.4.0"
@@ -20,6 +20,7 @@ torqa-session = { path = "torqa-session" }
 torqa-storage = { path = "torqa-storage" }
 torqa-terrain = { path = "torqa-terrain" }
 torqa-upload = { path = "torqa-upload" }
+torqa-update = { path = "torqa-update" }
 torqa-remote = { path = "torqa-remote" }
 torqa-video = { path = "torqa-video" }
 torqa-workouts = { path = "torqa-workouts" }

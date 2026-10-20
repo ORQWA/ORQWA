@@ -13,6 +13,9 @@ var _overlay: OverlayWindow
 ## on Windows (#220, see opaque.gdshader).
 var _opaque: ColorRect = ColorRect.new()
 var _failures: FailureDetails = FailureDetails.new()
+var _update: UpdateDialog = UpdateDialog.new()
+## A newer Torqa found during a ride, offered once back on the start page (R99).
+var _pending_update: Array = []
 ## On Android: the ride's HUD shows in a small window on top of other apps.
 var _picture_in_picture: bool = false
 
@@ -74,6 +77,13 @@ func _ready() -> void:
 	# As the rider left it (#218).
 	if _torqa.fullscreen():
 		get_window().mode = Window.MODE_FULLSCREEN
+	add_child(_update)
+	_update.bind(_torqa)
+	_torqa.update_available.connect(_on_update_available)
+	# Released builds look for a newer one unless this computer turned it off (R99); builds
+	# from the editor and the checks never contact GitHub on their own.
+	if not OS.is_debug_build():
+		_torqa.check_for_updates(false)
 
 
 func _on_ride_started(options: Dictionary) -> void:
@@ -221,3 +231,18 @@ func _back_home() -> void:
 	_summary.hide()
 	_start.refresh()
 	_start.show()
+	if not _pending_update.is_empty():
+		_offer_update.callv(_pending_update)
+		_pending_update = []
+
+
+## A newer Torqa: offered on the start page, or after the ride (R99).
+func _on_update_available(version: String, page: String, installable: bool) -> void:
+	if _start.visible:
+		_offer_update(version, page, installable)
+	else:
+		_pending_update = [version, page, installable]
+
+
+func _offer_update(version: String, page: String, installable: bool) -> void:
+	_update.offer(version, page, installable)
