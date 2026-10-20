@@ -10,6 +10,6 @@ static func is_on(window: Window) -> bool:
 
 
 ## Fills the screen with `window`, or puts it back in a window, and remembers the choice.
-static func set_on(window: Window, torqa: TorqaApp, on: bool) -> void:
+static func set_on(window: Window, orqwa: OrqwaApp, on: bool) -> void:
 	window.mode = Window.MODE_FULLSCREEN if on else Window.MODE_WINDOWED
-	torqa.set_fullscreen(on)
+	orqwa.set_fullscreen(on)

@@ -19,7 +19,7 @@ var embedded: bool = false:
 		if is_node_ready():
 			_apply_embedded()
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _rides: Array = []
 var _imperial: bool = false
 var _list: VBoxContainer = VBoxContainer.new()
@@ -49,7 +49,7 @@ var _legend: Dictionary[String, Button] = {}
 var _power_zones: ZoneBars = ZoneBars.new()
 var _heart_rate_zones: ZoneBars = ZoneBars.new()
 var _power_curve: PowerCurveChart = PowerCurveChart.new()
-## The rider's best power over each duration among all rides, as `TorqaApp.power_curves()`
+## The rider's best power over each duration among all rides, as `OrqwaApp.power_curves()`
 ## gives it; read with the rides.
 var _best_efforts: Array = []
 var _delete_button: Button = Button.new()
@@ -61,7 +61,7 @@ var _exporting: bool = false
 ## Uploading the ride to the rider's training platforms (R29), each a menu entry.
 var _upload_button: MenuButton = MenuButton.new()
 var _account_dialog: AccountDialog = AccountDialog.new()
-## The platforms with the active rider's accounts, as `TorqaApp.accounts()` gives them.
+## The platforms with the active rider's accounts, as `OrqwaApp.accounts()` gives them.
 var _accounts: Array = []
 ## Uploads the rider started here and not finished yet, by `_upload_key()`: only these
 ## ask to connect again when the platform refuses the account.
@@ -71,12 +71,12 @@ var _upload_after_connect: String = ""
 var _starting_upload: bool = false
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.failed.connect(_on_failed)
-	_torqa.upload_finished.connect(_on_upload_finished)
-	_torqa.upload_failed.connect(_on_upload_failed)
-	_account_dialog.bind(torqa)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.failed.connect(_on_failed)
+	_orqwa.upload_finished.connect(_on_upload_finished)
+	_orqwa.upload_failed.connect(_on_upload_failed)
+	_account_dialog.bind(orqwa)
 
 
 ## The summary of the ride just saved in `path` (R42): only that ride, to name, keep or
@@ -101,9 +101,9 @@ func _load() -> void:
 	_summary_caption.visible = _summary
 	_actions.visible = _summary
 	_delete_button.visible = not _summary
-	_imperial = _torqa.profile().get("units", "metric") == "imperial"
-	_rides = _torqa.history()
-	var curves: Dictionary = _torqa.power_curves(0, false, false)
+	_imperial = _orqwa.profile().get("units", "metric") == "imperial"
+	_rides = _orqwa.history()
+	var curves: Dictionary = _orqwa.power_curves(0, false, false)
 	_best_efforts = curves.get("period", [])
 	for child: Node in _list.get_children():
 		child.queue_free()
@@ -370,7 +370,7 @@ func _show_ride(index: int) -> void:
 	_fill_power_records(ride)
 	_show_power_curve(ride)
 	_show_ftp(ride)
-	var detail: Dictionary = _torqa.ride_detail(path, CHART_POINTS)
+	var detail: Dictionary = _orqwa.ride_detail(path, CHART_POINTS)
 	if detail.is_empty():
 		return
 	var elevation: PackedVector2Array = detail["elevation_m"]
@@ -447,7 +447,7 @@ func _show_ftp(ride: Dictionary) -> void:
 	if estimate == null:
 		return
 	var estimate_w: float = estimate
-	var current_w: float = _torqa.profile().get("ftp_w", 0.0)
+	var current_w: float = _orqwa.profile().get("ftp_w", 0.0)
 	_ftp_text.text = (
 		tr("FTP test: your FTP is about %d W (now %d W).") % [roundi(estimate_w), roundi(current_w)]
 	)
@@ -458,7 +458,7 @@ func _show_ftp(ride: Dictionary) -> void:
 
 func _use_ftp() -> void:
 	var watts: float = _ftp_button.get_meta("watts", 0.0)
-	if watts > 0.0 and _torqa.use_ftp(watts):
+	if watts > 0.0 and _orqwa.use_ftp(watts):
 		_ftp_text.text = tr("Your FTP is now %d W: zones and workouts follow it.") % roundi(watts)
 		_ftp_button.hide()
 
@@ -546,7 +546,7 @@ func _on_delete_confirmed() -> void:
 		return
 	var ride: Dictionary = _rides[_selected]
 	var path: String = ride["path"]
-	if _torqa.delete_ride(path):
+	if _orqwa.delete_ride(path):
 		if _summary:
 			_close()
 		else:
@@ -562,7 +562,7 @@ func _choose_export() -> void:
 	var ride: Dictionary = _rides[_selected]
 	var ride_name: String = ride["name"]
 	var title: String = ride_name if not ride_name.is_empty() else _default_name(ride)
-	_export_dialog.current_file = TorqaApp.ride_export_file_name(title)
+	_export_dialog.current_file = OrqwaApp.ride_export_file_name(title)
 	_export_dialog.popup_centered_ratio(0.7)
 
 
@@ -573,7 +573,7 @@ func _export(to: String) -> void:
 	var path: String = ride["path"]
 	_exporting = true
 	var written: String = PickedFile.save_path(to)
-	if _torqa.export_ride(path, written) and PickedFile.save(written, to):
+	if _orqwa.export_ride(path, written) and PickedFile.save(written, to):
 		_show_status(tr("Saved as %s") % PickedFile.name_of(to))
 	_exporting = false
 
@@ -593,7 +593,7 @@ func _fill_upload_menu() -> void:
 	var ride: Dictionary = _rides[_selected]
 	var path: String = ride["path"]
 	var uploads: Dictionary = ride.get("uploads", {})
-	_accounts = _torqa.accounts(_rider())
+	_accounts = _orqwa.accounts(_rider())
 	for i: int in range(_accounts.size()):
 		var account: Dictionary = _accounts[i]
 		var platform: String = account["platform"]
@@ -601,7 +601,7 @@ func _fill_upload_menu() -> void:
 		var label: String = account["label"]
 		if uploads.has(platform):
 			menu.add_item(tr("View on %s") % platform_name, i)
-		elif _torqa.uploading(path).has(platform):
+		elif _orqwa.uploading(path).has(platform):
 			menu.add_item(tr("Uploading to %s…") % platform_name, i)
 			menu.set_item_disabled(menu.get_item_index(i), true)
 		elif label.is_empty():
@@ -636,7 +636,7 @@ func _upload(platform: String) -> void:
 	_rename()
 	var path: String = _shown_path()
 	_starting_upload = true
-	var started: bool = _torqa.upload_ride(path, platform, _shown_title())
+	var started: bool = _orqwa.upload_ride(path, platform, _shown_title())
 	_starting_upload = false
 	if started:
 		_started[_upload_key(path, platform)] = true
@@ -673,7 +673,7 @@ func _on_upload_failed(path: String, platform: String, message: String, reconnec
 		tr("%s no longer accepts the account: connect it again.") % _platform_name(platform),
 		UiTheme.DANGER
 	)
-	# The platform no longer lets Torqa in: connect again, then upload. Not for automatic
+	# The platform no longer lets ORQWA in: connect again, then upload. Not for automatic
 	# uploads, which may end while the rider is elsewhere.
 	if not started_here or not is_visible_in_tree():
 		return
@@ -692,7 +692,7 @@ func _platform_name(platform: String) -> String:
 
 
 func _rider() -> String:
-	var id: String = _torqa.profile().get("id", "")
+	var id: String = _orqwa.profile().get("id", "")
 	return id
 
 
@@ -730,7 +730,7 @@ func _rename() -> void:
 	var path: String = ride["path"]
 	var old_name: String = ride["name"]
 	var new_name: String = _title.text.strip_edges()
-	if new_name == old_name or not _torqa.rename_ride(path, new_name):
+	if new_name == old_name or not _orqwa.rename_ride(path, new_name):
 		return
 	ride["name"] = new_name
 	if _selected < _list.get_child_count():
@@ -743,7 +743,7 @@ func _keep() -> void:
 	_rename()
 	var path: String = _shown_path()
 	if not path.is_empty():
-		_torqa.keep_ride(path, _shown_title())
+		_orqwa.keep_ride(path, _shown_title())
 	_close()
 
 

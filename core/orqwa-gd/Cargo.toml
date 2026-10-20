@@ -1,0 +1,29 @@
+[package]
+name = "orqwa-gd"
+description = "Godot GDExtension bindings exposing the ORQWA core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+orqwa-app.workspace = true
+orqwa-devices.workspace = true
+orqwa-domain.workspace = true
+orqwa-physics.workspace = true
+orqwa-routes.workspace = true
+orqwa-session.workspace = true
+orqwa-workouts.workspace = true
+orqwa-world.workspace = true
+godot.workspace = true
+tracing.workspace = true
+
+[target.'cfg(target_os = "android")'.dependencies]
+rustls-platform-verifier.workspace = true
+
+[lints]
+workspace = true

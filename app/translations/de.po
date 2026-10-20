@@ -68,7 +68,7 @@ msgid "%s not found"
 msgstr "%s nicht gefunden"
 
 msgid "About"
-msgstr "Über Torqa"
+msgstr "Über ORQWA"
 
 msgid "Below 60 fps: a lower graphics quality (Settings → Graphics) runs smoother."
 msgstr "Unter 60 fps: Eine niedrigere Grafikqualität (Einstellungen → Grafik) läuft flüssiger."
@@ -247,8 +247,8 @@ msgstr "Rust-Bibliotheken"
 msgid "Settings"
 msgstr "Einstellungen"
 
-msgid "Torqa is free software under the GNU General Public License, version 3:"
-msgstr "Torqa ist freie Software unter der GNU General Public License, Version 3:"
+msgid "ORQWA is free software under the GNU General Public License, version 3:"
+msgstr "ORQWA ist freie Software unter der GNU General Public License, Version 3:"
 
 msgid "Version %s"
 msgstr "Version %s"
@@ -937,8 +937,8 @@ msgstr "Intensitätsfaktor"
 msgid "Intervals"
 msgstr "Intervalle"
 
-msgid "Its 3D world was kept from an older Torqa: build it with this one"
-msgstr "Die 3D-Welt stammt von einer älteren Torqa-Version: Erstelle sie mit dieser neu"
+msgid "Its 3D world was kept from an older ORQWA: build it with this one"
+msgstr "Die 3D-Welt stammt von einer älteren ORQWA-Version: Erstelle sie mit dieser neu"
 
 msgid "Its file is deleted from your workouts."
 msgstr "Die Trainingsdatei wird aus deiner Bibliothek gelöscht."
@@ -991,8 +991,8 @@ msgstr "%s wird geladen …"
 msgid "Loading the course"
 msgstr "Route wird geladen"
 
-msgid "Log in to %s in your browser and let Torqa upload your rides. Then come back here."
-msgstr "Melde dich im Browser bei %s an und erlaube Torqa, deine Aktivitäten hochzuladen. Komm dann hierher zurück."
+msgid "Log in to %s in your browser and let ORQWA upload your rides. Then come back here."
+msgstr "Melde dich im Browser bei %s an und erlaube ORQWA, deine Aktivitäten hochzuladen. Komm dann hierher zurück."
 
 msgid "Looking for your devices… wake them by pedalling or putting on the strap."
 msgstr "Deine Geräte werden gesucht … aktiviere sie durch Treten oder Anlegen des Brustgurts."
@@ -1168,8 +1168,8 @@ msgstr "Okt."
 msgid "On a course, the trainer holds the workout's power while you ride through its 3D world"
 msgstr "Auf einer Route hält der Trainer die Trainingsleistung, während du durch ihre 3D-Welt fährst"
 
-msgid "On a single cog such as the Zwift Cog, Torqa shifts 24 virtual gears: ↑ and ↓ while riding"
-msgstr "Mit einem einzelnen Ritzel wie dem Zwift Cog schaltest du in Torqa 24 virtuelle Gänge: ↑ und ↓ während der Fahrt"
+msgid "On a single cog such as the Zwift Cog, ORQWA shifts 24 virtual gears: ↑ and ↓ while riding"
+msgstr "Mit einem einzelnen Ritzel wie dem Zwift Cog schaltest du in ORQWA 24 virtuelle Gänge: ↑ und ↓ während der Fahrt"
 
 msgid "On its own (HUD only)"
 msgstr "Ohne Route (nur HUD)"
@@ -1183,8 +1183,8 @@ msgstr "Nur das HUD, über anderen Fenstern, z. B. über einem Video"
 msgid "Only the HUD, on top of other windows, e.g. over a video (O)"
 msgstr "Nur das HUD, über anderen Fenstern, z. B. über einem Video (O)"
 
-msgid "Open a GPX route, video or Torqa course"
-msgstr "GPX-Datei, Video oder Torqa-Strecke öffnen"
+msgid "Open a GPX route, video or ORQWA course"
+msgstr "GPX-Datei, Video oder ORQWA-Strecke öffnen"
 
 msgid "Open a course first."
 msgstr "Wähle zuerst eine Route aus."
@@ -1385,7 +1385,7 @@ msgid "Route"
 msgstr "Strecke"
 
 msgid "Routes, videos and courses"
-msgstr "GPX-Routen, Videos und Torqa-Routen"
+msgstr "GPX-Routen, Videos und ORQWA-Routen"
 
 msgid "Sat"
 msgstr "Sa"
@@ -1642,17 +1642,17 @@ msgstr "Zeiten"
 msgid "To go"
 msgstr "Distanz übrig"
 
-msgid "Torqa could not connect. Go back to Torqa to try again."
-msgstr "Die Verbindung mit Torqa ist fehlgeschlagen. Kehre zu Torqa zurück und versuche es erneut."
+msgid "ORQWA could not connect. Go back to ORQWA to try again."
+msgstr "Die Verbindung mit ORQWA ist fehlgeschlagen. Kehre zu ORQWA zurück und versuche es erneut."
 
-msgid "Torqa could not start."
-msgstr "Beim Starten von Torqa ist ein Fehler aufgetreten."
+msgid "ORQWA could not start."
+msgstr "Beim Starten von ORQWA ist ein Fehler aufgetreten."
 
-msgid "Torqa courses"
-msgstr "Torqa-Routen"
+msgid "ORQWA courses"
+msgstr "ORQWA-Routen"
 
-msgid "Torqa is connected. You can close this page."
-msgstr "Torqa ist verbunden. Du kannst diese Seite schliessen."
+msgid "ORQWA is connected. You can close this page."
+msgstr "ORQWA ist verbunden. Du kannst diese Seite schliessen."
 
 msgid "Trainer"
 msgstr "Trainer"
@@ -2051,8 +2051,8 @@ msgstr "Smartphones und Tablets mit der alten Adresse können die Fahrt nicht me
 msgid "Port"
 msgstr "Port"
 
-msgid "Reconnecting to Torqa…"
-msgstr "Verbinde erneut mit Torqa…"
+msgid "Reconnecting to ORQWA…"
+msgstr "Verbinde erneut mit ORQWA…"
 
 msgid "Scan the code with a phone or tablet on the same Wi-Fi, or open the address in its browser."
 msgstr "Scanne den Code mit einem Smartphone oder Tablet im selben WLAN oder öffne die Adresse in seinem Browser."
@@ -2063,17 +2063,17 @@ msgstr "Lass seinen Bildschirm während der Fahrt an."
 msgid "Shift from a phone or tablet"
 msgstr "Mit Smartphone oder Tablet schalten"
 
-msgid "Start a ride in Torqa"
-msgstr "Starte eine Fahrt in Torqa"
+msgid "Start a ride in ORQWA"
+msgstr "Starte eine Fahrt in ORQWA"
 
-msgid "This address no longer works: scan the new code in Torqa."
-msgstr "Diese Adresse gilt nicht mehr: Scanne den neuen Code in Torqa."
+msgid "This address no longer works: scan the new code in ORQWA."
+msgstr "Diese Adresse gilt nicht mehr: Scanne den neuen Code in ORQWA."
 
 msgid "This computer has no network: connect it to the same Wi-Fi as the phone or tablet."
 msgstr "Dieser Computer hat kein Netzwerk: Verbinde ihn mit demselben WLAN wie Smartphone oder Tablet."
 
-msgid "Torqa remote"
-msgstr "Torqa-Fernbedienung"
+msgid "ORQWA remote"
+msgstr "ORQWA-Fernbedienung"
 
 msgid "Waiting for a phone or tablet…"
 msgstr "Warte auf ein Smartphone oder Tablet…"
@@ -2129,8 +2129,8 @@ msgstr "Nach Updates suchen"
 msgid "Could not download the update."
 msgstr "Das Update konnte nicht heruntergeladen werden."
 
-msgid "Could not look for a newer version of Torqa."
-msgstr "Es konnte nicht nach einer neueren Version von Torqa gesucht werden."
+msgid "Could not look for a newer version of ORQWA."
+msgstr "Es konnte nicht nach einer neueren Version von ORQWA gesucht werden."
 
 msgid "Could not start the update's installer."
 msgstr "Das Installationsprogramm des Updates konnte nicht gestartet werden."
@@ -2138,17 +2138,17 @@ msgstr "Das Installationsprogramm des Updates konnte nicht gestartet werden."
 msgid "Download it from its release page."
 msgstr "Lade sie von ihrer Release-Seite herunter."
 
-msgid "Downloading Torqa %s…"
-msgstr "Torqa %s wird heruntergeladen …"
+msgid "Downloading ORQWA %s…"
+msgstr "ORQWA %s wird heruntergeladen …"
 
-msgid "Installing Torqa %s…"
-msgstr "Torqa %s wird installiert …"
+msgid "Installing ORQWA %s…"
+msgstr "ORQWA %s wird installiert …"
 
 msgid "Later"
 msgstr "Später"
 
-msgid "Look for updates when Torqa starts"
-msgstr "Beim Start von Torqa nach Updates suchen"
+msgid "Look for updates when ORQWA starts"
+msgstr "Beim Start von ORQWA nach Updates suchen"
 
 msgid "Looking for updates…"
 msgstr "Suche nach Updates …"
@@ -2156,20 +2156,20 @@ msgstr "Suche nach Updates …"
 msgid "Open the release page"
 msgstr "Release-Seite öffnen"
 
-msgid "Torqa %s is available."
-msgstr "Torqa %s ist verfügbar."
+msgid "ORQWA %s is available."
+msgstr "ORQWA %s ist verfügbar."
 
-msgid "Torqa %s is available; you have %s."
-msgstr "Torqa %s ist verfügbar; du hast %s."
+msgid "ORQWA %s is available; you have %s."
+msgstr "ORQWA %s ist verfügbar; du hast %s."
 
-msgid "Torqa downloads it, closes and installs it, then starts again."
-msgstr "Torqa lädt sie herunter, schliesst sich, installiert sie und startet dann neu."
+msgid "ORQWA downloads it, closes and installs it, then starts again."
+msgstr "ORQWA lädt sie herunter, schliesst sich, installiert sie und startet dann neu."
 
 msgid "Your rides and settings stay as they are."
 msgstr "Deine Fahrten und Einstellungen bleiben, wie sie sind."
 
-msgid "Torqa is up to date."
-msgstr "Torqa ist auf dem neuesten Stand."
+msgid "ORQWA is up to date."
+msgstr "ORQWA ist auf dem neuesten Stand."
 
 msgid "Update available"
 msgstr "Update verfügbar"

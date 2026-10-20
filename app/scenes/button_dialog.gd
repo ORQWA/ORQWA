@@ -71,7 +71,7 @@ const ZWIFT_CLICK: String = "zwift_click"
 const ZWIFT_CLICK_V2: String = "zwift_click_v2"
 const PHONE_REMOTE: String = "phone_remote"
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _grid: GridContainer = GridContainer.new()
 var _press_headings: Array[Label] = []
 var _channel_captions: Array[Label] = []
@@ -80,23 +80,23 @@ var _assignments: Array[OptionButton] = []
 var _model: String = DI2
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
 
 
 ## Opens the dialog for the shifter `model` (the core's name) called `device_name`, with the
 ## assignments as the core has them.
 func open(model: String, device_name: String) -> void:
 	_model = model
-	# A shifter by its own name; the remote is Torqa's.
+	# A shifter by its own name; the remote is ORQWA's.
 	title = (
 		tr("What the remote's buttons do")
 		if model == PHONE_REMOTE
 		else tr("What the buttons of %s do") % device_name
 	)
 	_layout()
-	if _torqa != null:
-		var assigned: Array = _torqa.button_map(_model)
+	if _orqwa != null:
+		var assigned: Array = _orqwa.button_map(_model)
 		for channel: int in range(assigned.size()):
 			var presses: PackedStringArray = assigned[channel]
 			for press: int in range(presses.size()):
@@ -144,13 +144,13 @@ func _init() -> void:
 			option.custom_minimum_size = Vector2(240, 0)
 			option.add_item("")
 			option.set_item_metadata(0, "")
-			for action: String in TorqaApp.button_actions():
+			for action: String in OrqwaApp.button_actions():
 				option.add_item("")
 				option.set_item_metadata(option.item_count - 1, action)
 			option.item_selected.connect(
 				func(index: int) -> void:
 					var action: String = option.get_item_metadata(index)
-					_torqa.assign_button(_model, channel, press, action)
+					_orqwa.assign_button(_model, channel, press, action)
 			)
 			_assignments.append(option)
 			_grid.add_child(option)

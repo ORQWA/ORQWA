@@ -1,6 +1,6 @@
 class_name Spinner
 extends Control
-## An arc turning round a faint ring: Torqa is working something out and cannot say how far
+## An arc turning round a faint ring: ORQWA is working something out and cannot say how far
 ## it has got, e.g. a course's route being prepared. It only turns while it is on screen.
 
 ## Seconds for one turn.

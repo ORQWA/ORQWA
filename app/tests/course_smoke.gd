@@ -189,13 +189,13 @@ func _estimates() -> void:
 ## course that cannot be opened stops it with the reason; opening it again tries again. The
 ## build log of the course opened before does not stay on the page (R93).
 func _course_loading() -> void:
-	var torqa: TorqaApp = TorqaApp.new()
-	root.add_child(torqa)
+	var orqwa: OrqwaApp = OrqwaApp.new()
+	root.add_child(orqwa)
 	var failures: PackedStringArray = PackedStringArray()
-	torqa.failed.connect(func(message: String) -> void: failures.append(message))
+	orqwa.failed.connect(func(message: String) -> void: failures.append(message))
 	var page: CourseDetail = CourseDetail.new()
 	root.add_child(page)
-	page.bind(torqa)
+	page.bind(orqwa)
 	var spinner: Spinner = page.get("_spinner")
 	var ride: Button = page.get("_ride_button")
 	var status: Label = page.get("_status")
@@ -229,11 +229,11 @@ func _course_loading() -> void:
 			not spinner.visible and ride.disabled and status.text == failures[-1],
 			"attempt %d: the spinner stops, the reason shows: %s" % [attempt, status.text]
 		)
-	# Only a world kept from an older Torqa offers to be built again (R101).
+	# Only a world kept from an older ORQWA offers to be built again (R101).
 	var regenerate: Button = page.get("_regenerate")
 	_check(not regenerate.visible, "no Regenerate world without a kept world")
 	page.free()
-	torqa.free()
+	orqwa.free()
 
 
 ## While a course's world is built, its page lists each step the core reports as a build log
@@ -283,16 +283,16 @@ func _preparation_log() -> void:
 ## share one row, the chips waiting in a panel under the Filters button, so that a library
 ## spanning many countries takes no more room on the page (R85).
 func _course_gallery() -> void:
-	var torqa: TorqaApp = TorqaApp.new()
-	root.add_child(torqa)
-	torqa.set_courses_view("name", false, "none")
+	var orqwa: OrqwaApp = OrqwaApp.new()
+	root.add_child(orqwa)
+	orqwa.set_courses_view("name", false, "none")
 	var tab: CoursesTab = CoursesTab.new()
 	root.add_child(tab)
 	tab.theme = UiTheme.build()
 	tab.size = Vector2(1600, 900)
 	# The window as large, for the clicks to land in it: headless, it is otherwise tiny.
 	root.size = Vector2i(tab.size)
-	tab.bind(torqa)
+	tab.bind(orqwa)
 	var asked: Dictionary = tab.query()
 	var asked_sort: String = asked["sort"]
 	var asked_descending: bool = asked["descending"]
@@ -403,7 +403,7 @@ func _course_gallery() -> void:
 	direction.pressed.emit()
 	var turned: bool = tab.query()["descending"]
 	_check(not turned, "the arrow turns the order round")
-	var remembered: Dictionary = torqa.courses_view()
+	var remembered: Dictionary = orqwa.courses_view()
 	var remembered_sort: String = remembered["sort"]
 	_check(remembered_sort == "added", "the order is remembered: %s" % remembered)
 	search.text = "gurten"
@@ -419,9 +419,9 @@ func _course_gallery() -> void:
 		"filters cleared, the order kept: %s" % cleared
 	)
 	_check(not _chip(tab, "Hilly").button_pressed, "the chip is off again")
-	torqa.set_courses_view("name", false, "none")
+	orqwa.set_courses_view("name", false, "none")
 	tab.free()
-	torqa.free()
+	orqwa.free()
 
 
 ## The toolbar as a library with courses shows it, whatever the test's library holds.

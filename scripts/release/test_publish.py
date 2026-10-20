@@ -10,16 +10,16 @@ import unittest
 
 SCRIPT = Path(__file__).with_name("publish.sh").resolve()
 ASSETS = (
-    "Torqa-macos-arm64.zip",
-    "torqa-cli-macos-arm64.tar.gz",
-    "Torqa-windows-x86_64.zip",
-    "Torqa-windows-x86_64.msi",
-    "torqa-cli-windows-x86_64.zip",
-    "Torqa-linux-x86_64.tar.gz",
-    "torqa-cli-linux-x86_64.tar.gz",
-    "Torqa-linux-arm64.tar.gz",
-    "torqa-cli-linux-arm64.tar.gz",
-    "Torqa-android-arm64.apk",
+    "ORQWA-macos-arm64.zip",
+    "orqwa-cli-macos-arm64.tar.gz",
+    "ORQWA-windows-x86_64.zip",
+    "ORQWA-windows-x86_64.msi",
+    "orqwa-cli-windows-x86_64.zip",
+    "ORQWA-linux-x86_64.tar.gz",
+    "orqwa-cli-linux-x86_64.tar.gz",
+    "ORQWA-linux-arm64.tar.gz",
+    "orqwa-cli-linux-arm64.tar.gz",
+    "ORQWA-android-arm64.apk",
 )
 
 
@@ -36,7 +36,7 @@ class PublishTests(unittest.TestCase):
             **os.environ,
             "PATH": f"{self.root}:{os.environ['PATH']}",
             "RELEASE_TAG": "releases/v0.1.0",
-            "GH_REPO": "example/Torqa",
+            "GH_REPO": "example/ORQWA",
             "GH_TEST_LOG": str(self.log),
             "GH_TEST_STATE": "missing",
             "GH_TEST_FAIL": "",
@@ -79,11 +79,21 @@ if args[1] == "view":
         self.assertIn("--verify-tag", calls[1])
         self.assertIn("--generate-notes", calls[1])
         self.assertIn("--draft", calls[1])
-        self.assertEqual(calls[2][3:-1], [f"dist/{name}" for name in ASSETS])
+        self.assertEqual(
+            calls[2][3:-1],
+            [f"dist/{name}" for name in ASSETS] + ["dist/Torqa-windows-x86_64.msi"],
+        )
         self.assertEqual(calls[2][-1], "--clobber")
         self.assertEqual(calls[3][-1], "--draft=false")
         for call in calls:
             self.assertEqual(call[2], self.env["RELEASE_TAG"])
+
+    def test_torqa_0_5_0_finds_the_installer_under_its_old_name(self):
+        (self.root / "dist" / "ORQWA-windows-x86_64.msi").write_bytes(b"installer")
+        self.assertEqual(self.publish().returncode, 0)
+        old = self.root / "dist" / "Torqa-windows-x86_64.msi"
+        self.assertEqual(old.read_bytes(), b"installer")
+        self.assertIn("dist/Torqa-windows-x86_64.msi", self.calls()[2])
 
     def test_each_missing_or_empty_archive_blocks_all_github_changes(self):
         for name in ASSETS:

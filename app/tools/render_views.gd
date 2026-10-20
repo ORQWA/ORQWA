@@ -1,5 +1,5 @@
 extends SceneTree
-## Renders Torqa's standard views — fixed shots on the fixture routes — into $OUT_DIR/<view>.png,
+## Renders ORQWA's standard views — fixed shots on the fixture routes — into $OUT_DIR/<view>.png,
 ## so every visual change can be compared before and after against the same pictures (ADR 0011).
 ## One run covers the views of route $ROUTE; scripts/render-views.sh runs all routes, and $VIEWS
 ## (space-separated names) limits it to some. A $ROUTE ending in .gpx is any route's file, shot
@@ -76,20 +76,20 @@ func _run() -> void:
 	if views.is_empty():
 		quit(0)
 		return
-	var torqa: TorqaApp = _main.get_node("Torqa")
+	var orqwa: OrqwaApp = _main.get_node("Orqwa")
 	var start: StartPage = _main.get_node("StartPage")
 	var world: RideWorld = _main.get_node("World")
 	var quality: String = OS.get_environment("QUALITY")
-	torqa.set_graphics_quality(quality if not quality.is_empty() else "medium")
-	torqa.load_route(gpx, true)
+	orqwa.set_graphics_quality(quality if not quality.is_empty() else "medium")
+	orqwa.load_route(gpx, true)
 	var built: Array[bool] = [false]
-	torqa.world_ready.connect(
+	orqwa.world_ready.connect(
 		func(_info: Variant = null) -> void: built[0] = true, CONNECT_ONE_SHOT
 	)
 	while not built[0]:
 		await process_frame
-	torqa.connect_fake_trainer(150.0, 85.0)
-	torqa.start_ride(50.0, false, {"kind": "none"})
+	orqwa.connect_fake_trainer(150.0, 85.0)
+	orqwa.start_ride(50.0, false, {"kind": "none"})
 	start.ride_started.emit(start.ride_options())
 	for view: String in views:
 		var spec: Array = specs[view]
@@ -97,7 +97,7 @@ func _run() -> void:
 		var camera: int = spec[2]
 		var time: String = spec[3]
 		var weather: String = spec[4]
-		torqa.jump_to_distance(distance)
+		orqwa.jump_to_distance(distance)
 		world.set_camera(camera)
 		world.apply_conditions(time, weather)
 		if spec.size() > 5:

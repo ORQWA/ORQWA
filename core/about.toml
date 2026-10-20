@@ -15,14 +15,14 @@ accepted = [
     "WTFPL",
     "CC0-1.0",
 ]
-# The platforms Torqa is released for (ci.yml), so platform-only crates are credited too.
+# The platforms ORQWA is released for (ci.yml), so platform-only crates are credited too.
 targets = [
     "x86_64-unknown-linux-gnu",
     "aarch64-unknown-linux-gnu",
     "aarch64-apple-darwin",
     "x86_64-pc-windows-msvc",
 ]
-# Only what ships in the app: not the tools that build it, nor Torqa's own crates.
+# Only what ships in the app: not the tools that build it, nor ORQWA's own crates.
 ignore-build-dependencies = true
 ignore-dev-dependencies = true
 private = { ignore = true }

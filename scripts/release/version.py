@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks that every place naming Torqa's version names the same one, or sets a new one.
+"""Checks that every place naming ORQWA's version names the same one, or sets a new one.
 
 The version lives in the Cargo workspace (the About tab, the CLI and the User-Agent read it)
 and in the macOS and Windows export presets (the bundle's version, the .exe's file and product

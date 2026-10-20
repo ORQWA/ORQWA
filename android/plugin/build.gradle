@@ -1,4 +1,4 @@
-// Torqa's Godot Android plugin (ADR 0024): loads Torqa's library early so Bluetooth can find
+// ORQWA's Godot Android plugin (ADR 0024): loads ORQWA's library early so Bluetooth can find
 // btleplug's Java classes, which are compiled in from the btleplug crate's own sources
 // (`-Pbtleplug=<their directory>`, set by scripts/build-android.sh), and asks for Bluetooth.
 // Godot's own Android build uses the same Android Gradle Plugin, so one download serves both.
@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace 'org.torqa.android'
+    namespace 'org.orqwa.android'
     compileSdk 36
 
     defaultConfig {

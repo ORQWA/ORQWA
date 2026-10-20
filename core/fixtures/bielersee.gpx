@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Main road (route 5) along the north shore of Lake Biel, Vingelz - Twann. Road geometry from
      OpenStreetMap, (c) OpenStreetMap contributors, ODbL 1.0. -->
-<gpx version="1.1" creator="Torqa test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="ORQWA test fixture" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata><name>Bielersee</name></metadata>
   <trk><trkseg>
     <trkpt lat="47.1346321" lon="7.2295229"/>

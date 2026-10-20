@@ -6,7 +6,7 @@
 
 ## Context
 
-Torqa's world aimed at MyWhoosh-level realism (R44): photo textures, PBR ground, realistic
+ORQWA's world aimed at MyWhoosh-level realism (R44): photo textures, PBR ground, realistic
 trees, a MakeHuman/MPFB2 rider. Realism in an open, zero-budget project needs a lot of assets of
 high quality, and every gap shows; the user's verdict after the first realistic buildings and
 textures was to change direction. They chose two references:
@@ -29,7 +29,7 @@ Decisions (user, 2026-10-05):
   colour instead of texture, chunky silhouettes, warm sun with tinted shadows, ambient
   occlusion, a pastel gradient sky and haze. No outlines, no cel bands, nothing glossy or
   metallic. The working guide, with the palette taken from the references, is the
-  `torqa-look` skill (`.claude/skills/torqa-look/SKILL.md`).
+  `orqwa-look` skill (`.claude/skills/orqwa-look/SKILL.md`).
 - **One palette** for the whole world, kept in one file that both the Rust core (vertex and
   instance colours) and the shaders read, so colours change in one place.
 - **Retired:** the ambientCG photo textures, normal maps, triplanar rock, textured asphalt and
@@ -37,12 +37,12 @@ Decisions (user, 2026-10-05):
   app gives them flat palette colours.
 - **Pipeline unchanged otherwise** (ADR 0009): Blender scripts are the source, `.glb` files are
   committed, Blender runs headless in the art container. MPFB2 is dropped: its humans are
-  realistic. Riders come from Torqa's own scripts and from CC0 stylized bases kept untouched
+  realistic. Riders come from ORQWA's own scripts and from CC0 stylized bases kept untouched
   under `art/sources/`, with the scripts deriving the faceted riders from them.
 - **Performance.** Flat shading and few, simple shaders free GPU time. Quality presets keep
   their names; they mostly vary shadows, ambient occlusion, view distance and the amount of
   vegetation. Global illumination is no longer a goal.
-- **Review.** Every visual step is checked in renders (`torqa-render-review`) against the
+- **Review.** Every visual step is checked in renders (`orqwa-render-review`) against the
   references, starting with a small look-dev scene.
 
 ### Settled with previews (2026-10-05)
@@ -56,7 +56,7 @@ with the user:
   out); no extra-large facets, so the real terrain still reads.
 - **Weather and time of day** stay pastel: a lilac-to-peach evening with plum shadows, rain as soft
   grey-blue light and closer haze.
-- The palette is `app/assets/palette.json`, read by `core/torqa-world` (`palette.rs`) and by the app
+- The palette is `app/assets/palette.json`, read by `core/orqwa-world` (`palette.rs`) and by the app
   (`app/scenes/palette.gd`).
 - **Riders' bodies** come from Blender Studio's CC0 *Human Base Meshes* (the stylized
   "primitive" bodies, faceted at their base level, arms lengthened and heads made smaller for

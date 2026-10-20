@@ -12,10 +12,10 @@ enum Tab { COURSES, WORKOUTS, HISTORY, ANALYSIS, PROFILE, DEVICES }
 
 ## Where the wordmark's letters sit in its drawing (its viewBox): their baseline is this share
 ## of its height above the bottom, the middle of their capitals this share above the baseline.
-const WORDMARK_DESCENT: float = 58.0 / 184.0
-const WORDMARK_CAP_MIDDLE: float = 53.0 / 184.0
+const WORDMARK_DESCENT: float = 21.0 / 141.0
+const WORDMARK_CAP_MIDDLE: float = 50.0 / 141.0
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _tabs: TabContainer = TabContainer.new()
 ## The tabs' captions, in the header beside the logo so the two share one row.
 var _tab_bar: TabBar = TabBar.new()
@@ -39,16 +39,16 @@ var _pending_workout: Dictionary = {}
 var _workout_on_course: bool = false
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_courses.bind(torqa)
-	_detail.bind(torqa)
-	_workouts.bind(torqa)
-	_history.bind(torqa)
-	_analysis.bind(torqa)
-	_profile.bind(torqa)
-	_devices.bind(torqa)
-	_settings.bind(torqa)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_courses.bind(orqwa)
+	_detail.bind(orqwa)
+	_workouts.bind(orqwa)
+	_history.bind(orqwa)
+	_analysis.bind(orqwa)
+	_profile.bind(orqwa)
+	_devices.bind(orqwa)
+	_settings.bind(orqwa)
 
 
 ## Back from a ride: records, history, courses and the rider's profile (R98) may have changed.
@@ -219,7 +219,7 @@ func _start_workout() -> void:
 	# On a course, its world looks as last chosen on the course page.
 	var options: Dictionary = _detail.ride_options()
 	var flat_descents: bool = options["flat_descents"]
-	if _torqa.start_workout(workout, _workout_on_course, flat_descents):
+	if _orqwa.start_workout(workout, _workout_on_course, flat_descents):
 		options["workout"] = workout
 		options["on_course"] = _workout_on_course
 		options["overlay"] = _workouts.start_as_overlay()
@@ -234,5 +234,5 @@ func _start_ride() -> void:
 	_pending_ride = []
 	var difficulty: float = options["difficulty"]
 	var flat_descents: bool = options["flat_descents"]
-	if _torqa.start_ride(difficulty, flat_descents, ghost):
+	if _orqwa.start_ride(difficulty, flat_descents, ghost):
 		ride_started.emit(options)

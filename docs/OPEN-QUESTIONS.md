@@ -7,9 +7,9 @@ decided but not done goes into a GitHub issue instead.
 
 The Devices tab tells a battery level wherever a device has Bluetooth's Battery Service or,
 for a Zwift Click and the Click v2's pods, Zwift's `0x19` message. Only the left Click v2
-pod's `0x19` was seen (80 %, #306). Still to see, with `RUST_LOG=torqa_devices=debug`,
-`torqa-cli ride --fake --hr` for the strap and
-`torqa-cli gear-check --fake --controller <name>` for the shifters (both print
+pod's `0x19` was seen (80 %, #306). Still to see, with `RUST_LOG=orqwa_devices=debug`,
+`orqwa-cli ride --fake --hr` for the strap and
+`orqwa-cli gear-check --fake --controller <name>` for the shifters (both print
 `battery …` as it changes): which of the Polar H9, the Venu 3, the Assioma pedals, the Di2
 and the Clicks offer the Battery Service at all, whether reading it makes any of them ask to
 pair, and whether the right Click v2 pod tells its level at all.
@@ -18,7 +18,7 @@ pair, and whether the right Click v2 pod tells its level at all.
 
 The macOS app is only signed ad hoc and the Windows `.exe` not at all, so Gatekeeper and
 SmartScreen stop riders on the first start of every download (the wiki's Getting started says
-how to get past them), and Windows' Smart App Control blocks Torqa outright. To decide:
+how to get past them), and Windows' Smart App Control blocks ORQWA outright. To decide:
 
 - **macOS:** only a Developer ID with notarization avoids it, and that needs the Apple
   Developer Program (US$99 a year). Apple waives it for nonprofits, schools and governments, not

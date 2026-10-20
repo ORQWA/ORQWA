@@ -47,7 +47,7 @@ func set_track(track: PackedVector2Array) -> void:
 	queue_redraw()
 
 
-## Takes the maps from `TorqaApp.minimap_mesh()`.
+## Takes the maps from `OrqwaApp.minimap_mesh()`.
 func set_map(map: Dictionary) -> void:
 	_land = null
 	_lines.clear()

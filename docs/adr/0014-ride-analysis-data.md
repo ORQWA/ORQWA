@@ -11,10 +11,10 @@ more per ride (time in zones, #217). Computing it from the FIT files every time 
 every ride whenever the tab opens, which is too slow for a season of rides.
 
 Each ride already has a JSON summary beside its FIT file (ADR 0002). That summary has a
-`format` number, and a Torqa that finds a newer number treats the summary as missing and
+`format` number, and a ORQWA that finds a newer number treats the summary as missing and
 rebuilds it from the FIT file. A rebuild loses what only the summary knows: the ride's name,
 its course and its climb times. In a data directory synced between two machines with
-different Torqa versions, bumping the format would make the older version erase them.
+different ORQWA versions, bumping the format would make the older version erase them.
 
 Options considered:
 
@@ -48,9 +48,9 @@ Options considered:
 - The Analysis tab and the records read the summaries only, as the history does.
 - After an update, the first read of the history goes through every older ride's FIT file
   once; the summaries then carry the analysis to other machines through the sync.
-- An older Torqa that saves a summary (e.g. renaming a ride) drops fields it does not know; a
+- An older ORQWA that saves a summary (e.g. renaming a ride) drops fields it does not know; a
   newer one computes them again on its next read.
-- Rides saved before Torqa kept the rider's weight use today's weight for W/kg.
+- Rides saved before ORQWA kept the rider's weight use today's weight for W/kg.
 
 ## Amendment — 2026-10-12: histograms and days (R64)
 

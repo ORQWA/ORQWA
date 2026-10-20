@@ -19,13 +19,13 @@ const COURSE_SHARE: float = 1.5
 ## The map stands beside the figures only where it gets at least this width, else above them.
 const MAP_ROOM: float = 280.0
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _course: Dictionary = {}
 var _path: String = ""
 ## Waiting for this course's route, or for its world after Ride.
 var _loading_route: bool = false
 var _building: bool = false
-## Building the world again in place of one kept from an older Torqa (R101), not to ride yet.
+## Building the world again in place of one kept from an older ORQWA (R101), not to ride yet.
 var _regenerating: bool = false
 var _regenerate: Button = Button.new()
 var _title: EditableTitle = EditableTitle.new(tr("Edit the course's name and video"), false)
@@ -52,15 +52,15 @@ var _along_video: bool = false
 var _estimated_flat_descents: bool = false
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.route_loaded.connect(_on_route_loaded)
-	_torqa.loading_progress.connect(_on_loading_progress)
-	_torqa.world_ready.connect(_on_world_ready)
-	_torqa.failed.connect(_on_failed)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.route_loaded.connect(_on_route_loaded)
+	_orqwa.loading_progress.connect(_on_loading_progress)
+	_orqwa.world_ready.connect(_on_world_ready)
+	_orqwa.failed.connect(_on_failed)
 
 
-## Shows `course` (from `TorqaApp.courses()`), loading its route unless it is loaded already.
+## Shows `course` (from `OrqwaApp.courses()`), loading its route unless it is loaded already.
 func open(course: Dictionary) -> void:
 	_course = course
 	_path = course["path"]
@@ -72,13 +72,13 @@ func open(course: Dictionary) -> void:
 	var track: PackedVector2Array = course.get("track", PackedVector2Array())
 	var profile: PackedVector2Array = course.get("profile", PackedVector2Array())
 	_path_card.set_track(track)
-	_path_card.set_map(_torqa.course_preview(_path))
+	_path_card.set_map(_orqwa.course_preview(_path))
 	_profile.set_profile(profile)
 	_profile.set_climbs([])
 	_records.text = ""
 	_status.text = ""
 	# The rider's own default difficulty (#175); the ride's settings may change it later.
-	var rider: Dictionary = _torqa.profile()
+	var rider: Dictionary = _orqwa.profile()
 	var difficulty: float = rider.get("default_difficulty_pct", 50.0)
 	_options.set_difficulty(difficulty)
 	_loading_bar.hide()
@@ -87,17 +87,17 @@ func open(course: Dictionary) -> void:
 	_loading_route = true
 	_spinner.show()
 	_status.text = tr("Loading the course") + " …"
-	if _torqa.loaded_course() == _path and _torqa.has_route():
+	if _orqwa.loaded_course() == _path and _orqwa.has_route():
 		_show_route()
 	else:
 		# Also when it is the loaded course but has no route: it failed to open, perhaps for a
 		# missing video the rider has put back since.
-		_torqa.open_course(_path)
+		_orqwa.open_course(_path)
 
 
 ## After a ride on it: the rider's records may have changed.
 func refresh_records() -> void:
-	if not _path.is_empty() and _torqa.loaded_course() == _path and _torqa.has_route():
+	if not _path.is_empty() and _orqwa.loaded_course() == _path and _orqwa.has_route():
 		_show_route()
 
 
@@ -108,17 +108,17 @@ func ride_options() -> Dictionary:
 
 ## Builds the course's 3D world for riding; `ready_to_ride` follows, at once if it is built.
 func build() -> void:
-	_torqa.ride_along_video(_along_video)
-	if _along_video or _torqa.build_world():
+	_orqwa.ride_along_video(_along_video)
+	if _along_video or _orqwa.build_world():
 		ready_to_ride.emit()
 		return
 	_building = true
 	_show_building()
 
 
-## Builds the world kept from an older Torqa again with this one (R101); the rider rides after.
+## Builds the world kept from an older ORQWA again with this one (R101); the rider rides after.
 func _regenerate_world() -> void:
-	if not _torqa.regenerate_world():
+	if not _orqwa.regenerate_world():
 		return
 	_regenerating = true
 	_regenerate.hide()
@@ -196,10 +196,10 @@ func _init() -> void:
 	_loading_bar.max_value = 1.0
 	_loading_bar.show_percentage = false
 	_loading_bar.custom_minimum_size = Vector2(0, 8)
-	# A world kept from an older Torqa is ridden as it is until the rider has it built again.
+	# A world kept from an older ORQWA is ridden as it is until the rider has it built again.
 	_regenerate.text = tr("Regenerate world")
 	_regenerate.tooltip_text = tr(
-		"Its 3D world was kept from an older Torqa: build it with this one"
+		"Its 3D world was kept from an older ORQWA: build it with this one"
 	)
 	_regenerate.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_regenerate.pressed.connect(_regenerate_world)
@@ -252,7 +252,7 @@ func _show_figures() -> void:
 	for child: Node in _figures.get_children():
 		_figures.remove_child(child)
 		child.queue_free()
-	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
+	var imperial: bool = _orqwa.profile().get("units", "metric") == "imperial"
 	var grid: GridContainer = CourseCard.figure_rows(_course, imperial)
 	_add_estimate(grid)
 	_figures.add_child(grid)
@@ -261,10 +261,10 @@ func _show_figures() -> void:
 ## The time the rider would take at the planned share of their FTP (R66), once the route is
 ## loaded.
 func _add_estimate(grid: GridContainer) -> void:
-	if _loading_route or _torqa.loaded_course() != _path or not _torqa.has_route():
+	if _loading_route or _orqwa.loaded_course() != _path or not _orqwa.has_route():
 		return
 	_estimated_flat_descents = _options.options()["flat_descents"]
-	var estimate: Dictionary = _torqa.estimated_time(_estimated_flat_descents)
+	var estimate: Dictionary = _orqwa.estimated_time(_estimated_flat_descents)
 	if estimate["time_s"] == null:
 		return
 	var seconds: float = estimate["time_s"]
@@ -280,14 +280,14 @@ func _on_options_changed() -> void:
 
 ## The video is known once the route is loaded; until then only the name can change.
 func _open_editor() -> void:
-	var loaded: bool = not _loading_route and _torqa.loaded_course() == _path and _torqa.has_route()
-	var video: Dictionary = _torqa.video() if loaded else {}
+	var loaded: bool = not _loading_route and _orqwa.loaded_course() == _path and _orqwa.has_route()
+	var video: Dictionary = _orqwa.video() if loaded else {}
 	var course_name: String = _course.get("name", "")
-	_edit_dialog.edit(_torqa, course_name, video, loaded)
+	_edit_dialog.edit(_orqwa, course_name, video, loaded)
 
 
 func _rename(new_name: String) -> void:
-	if not _torqa.rename_course(_path, new_name):
+	if not _orqwa.rename_course(_path, new_name):
 		return
 	_course["name"] = new_name
 	_title.text = new_name
@@ -295,7 +295,7 @@ func _rename(new_name: String) -> void:
 
 
 func _delete() -> void:
-	if _torqa.delete_course(_path):
+	if _orqwa.delete_course(_path):
 		_path = ""
 		course_changed.emit()
 		back_requested.emit()
@@ -307,7 +307,7 @@ func _notification(what: int) -> void:
 
 
 func _on_route_loaded(_route: Dictionary) -> void:
-	if _loading_route and _torqa.loaded_course() == _path:
+	if _loading_route and _orqwa.loaded_course() == _path:
 		_show_route()
 
 
@@ -318,13 +318,13 @@ func _show_route() -> void:
 	_loading_route = false
 	_spinner.hide()
 	_ride_button.disabled = _regenerating
-	_regenerate.visible = not _regenerating and _torqa.kept_world_outdated(_path)
+	_regenerate.visible = not _regenerating and _orqwa.kept_world_outdated(_path)
 	_show_option_groups()
 	_show_figures()
-	var climbs: Dictionary = _torqa.climbs()
+	var climbs: Dictionary = _orqwa.climbs()
 	var climb_list: Array = climbs.get("climbs", [])
 	_profile.set_climbs(climb_list)
-	_profile.set_profile(_torqa.elevation_profile(600))
+	_profile.set_profile(_orqwa.elevation_profile(600))
 	var lines: PackedStringArray = PackedStringArray()
 	if climbs.get("route_best_s") != null:
 		var best: float = climbs["route_best_s"]
@@ -339,8 +339,8 @@ func _show_route() -> void:
 			line += " " + tr("(best %s)") % UiTheme.duration(climb_best)
 		lines.append(line)
 	_records.text = "\n".join(lines)
-	var ftp: float = _torqa.profile().get("ftp_w", 200.0)
-	_ghost.configure(_torqa.has_personal_best(), ftp)
+	var ftp: float = _orqwa.profile().get("ftp_w", 200.0)
+	_ghost.configure(_orqwa.has_personal_best(), ftp)
 	_keep_preview()
 
 
@@ -369,13 +369,13 @@ func _on_world_ready(_info: Dictionary) -> void:
 ## A course without a map of its whole land, from before #203, gets one from the map loaded
 ## with it.
 func _keep_preview() -> void:
-	if _path.is_empty() or not _torqa.course_preview_outdated(_path):
+	if _path.is_empty() or not _orqwa.course_preview_outdated(_path):
 		return
 	var png: PackedByteArray = await MapPreview.capture(
-		get_tree(), _torqa.course_map(_path), _torqa.track(2000)
+		get_tree(), _orqwa.course_map(_path), _orqwa.track(2000)
 	)
 	if not png.is_empty():
-		_torqa.set_course_preview(_path, png)
+		_orqwa.set_course_preview(_path, png)
 		_path_card.set_map(png)
 		course_changed.emit()
 
@@ -391,7 +391,7 @@ func _on_failed(message: String) -> void:
 
 
 func _show_option_groups() -> void:
-	var video: Dictionary = _torqa.video()
+	var video: Dictionary = _orqwa.video()
 	# A video course is ridden either way, unless it has no place (Tacx RLV): then only along
 	# its video.
 	var located: bool = video.get("located", true)
@@ -399,7 +399,7 @@ func _show_option_groups() -> void:
 
 
 func _on_ride_pressed() -> void:
-	var video: Dictionary = _torqa.video()
+	var video: Dictionary = _orqwa.video()
 	if video.is_empty():
 		_ride(false)
 	elif not video.get("located", true):
@@ -420,20 +420,20 @@ func _ride(along_video: bool) -> void:
 
 
 func _add_video(video: String, marks: PackedVector2Array) -> void:
-	if _torqa.add_video(video, marks):
+	if _orqwa.add_video(video, marks):
 		_status.text = tr("Video added: this course is ridden along it now.")
 		_show_option_groups()
 		course_changed.emit()
 
 
 func _align_video(marks: PackedVector2Array) -> void:
-	if _torqa.align_video(marks):
+	if _orqwa.align_video(marks):
 		_status.text = tr("Video aligned with the route.")
 
 
 ## Back to riding the course in 3D only.
 func _remove_video() -> void:
-	if _torqa.remove_video():
+	if _orqwa.remove_video():
 		_status.text = tr("Video removed: this course is ridden in 3D.")
 		_show_option_groups()
 		course_changed.emit()

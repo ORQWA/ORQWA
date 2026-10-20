@@ -35,7 +35,7 @@ func _init() -> void:
 	add_child(_canvas)
 
 
-## Draws `map` (as `TorqaApp.course_map()` gives it) under `track` and returns the picture
+## Draws `map` (as `OrqwaApp.course_map()` gives it) under `track` and returns the picture
 ## as PNG; empty when there is nothing to draw, or no renderer to draw with.
 static func capture(tree: SceneTree, map: Dictionary, track: PackedVector2Array) -> PackedByteArray:
 	if map.is_empty() or track.size() < 2:

@@ -1,7 +1,7 @@
 # The Android build image (ADR 0024): the dev image plus what an APK needs, kept apart so the
 # dev image, its pulls and the checks stay as small and fast as before. Built by
 # scripts/android.sh on top of the local dev image, or in CI on top of the published one.
-ARG BASE=torqa-dev
+ARG BASE=orqwa-dev
 FROM ${BASE}
 
 ARG GODOT_VERSION=4.7.2

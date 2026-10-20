@@ -1,0 +1,22 @@
+[package]
+name = "orqwa-routes"
+description = "Route import, elevation correction and gradient lookup for ORQWA"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+orqwa-domain.workspace = true
+orqwa-terrain.workspace = true
+orqwa-osm.workspace = true
+quick-xml.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[lints]
+workspace = true

@@ -16,7 +16,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_main")
 
-[node name="Torqa" type="TorqaApp" parent="."]
+[node name="Orqwa" type="OrqwaApp" parent="."]
 
 [node name="World" parent="." instance=ExtResource("4_world")]
 visible = false

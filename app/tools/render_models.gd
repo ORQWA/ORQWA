@@ -13,7 +13,7 @@ const GROUPS: PackedStringArray = ["buildings", "vegetation", "props"]
 ## and variant (shutters below 0.25, flowers above 0.65 hidden).
 const VARIANTS: Array = [[0, 0, 0.5], [2, 1, 0.3], [1, 2, 0.9]]
 ## The palette colours of walls and roofs (accents for modern buildings, bands for
-## lighthouses) by kind, as the world paints them (core/torqa-world/src/buildings/mod.rs);
+## lighthouses) by kind, as the world paints them (core/orqwa-world/src/buildings/mod.rs);
 ## other kinds take plaster and tiles.
 const BUILDING_COLOURS: Dictionary[String, Array] = {
 	"church": ["buildings.light_walls", "buildings.tiles"],
@@ -26,7 +26,7 @@ const BUILDING_COLOURS: Dictionary[String, Array] = {
 	"public_flat": ["buildings.modern_walls", "buildings.accents"],
 }
 ## The palette list each kind of plant takes its colour from, as the world picks it
-## (core/torqa-world/src/vegetation.rs).
+## (core/orqwa-world/src/vegetation.rs).
 const PLANT_COLOURS: Dictionary[String, String] = {
 	"conifer": "plants.conifers",
 	"broadleaf": "plants.broadleaves",

@@ -21,11 +21,11 @@ func _run() -> void:
 	var start: StartPage = main.get_node("StartPage")
 	await _cog(start)
 	var dialog: SettingsDialog = start.get("_settings")
-	var torqa: TorqaApp = main.get_node("Torqa")
-	await _graphics(torqa, dialog)
-	_courses(torqa, dialog)
+	var orqwa: OrqwaApp = main.get_node("Orqwa")
+	await _graphics(orqwa, dialog)
+	_courses(orqwa, dialog)
 	_about(dialog)
-	_updates(torqa, dialog, main)
+	_updates(orqwa, dialog, main)
 	await _in_german(dialog)
 	dialog.hide()
 	main.free()
@@ -74,52 +74,52 @@ func _cog(start: StartPage) -> void:
 
 ## The quality is kept for this computer (R43, R78); full screen fills the app's window, not
 ## the settings' own (#218).
-func _graphics(torqa: TorqaApp, dialog: SettingsDialog) -> void:
+func _graphics(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var graphics: GraphicsSettings = dialog.get("_graphics")
 	var quality: OptionButton = graphics.get("_quality")
-	var before: String = torqa.graphics_quality()
+	var before: String = orqwa.graphics_quality()
 	for i: int in range(quality.item_count):
 		quality.select(i)
 		quality.item_selected.emit(i)
 		var key: String = quality.get_item_metadata(i)
-		_check(torqa.graphics_quality() == key, "choosing %s keeps it" % key)
-	torqa.set_graphics_quality(before)
+		_check(orqwa.graphics_quality() == key, "choosing %s keeps it" % key)
+	orqwa.set_graphics_quality(before)
 	var box: CheckBox = graphics.get("_fullscreen")
 	# Headless, the app's window has no mode of its own: it is checked on a real display.
 	var headless: bool = DisplayServer.get_name() == "headless"
-	torqa.set_fullscreen(false)
+	orqwa.set_fullscreen(false)
 	box.button_pressed = true
 	await process_frame
-	_check(torqa.fullscreen(), "full screen, also next time")
+	_check(orqwa.fullscreen(), "full screen, also next time")
 	_check(headless or FullScreen.is_on(root), "the app's window fills the screen")
 	_check(not FullScreen.is_on(dialog), "not the settings' window")
 	box.button_pressed = false
-	_check(not torqa.fullscreen(), "and back in a window")
-	_details(torqa, graphics)
+	_check(not orqwa.fullscreen(), "and back in a window")
+	_details(orqwa, graphics)
 
 
 ## The details set apart from the preset (R90): one choice per option the core knows, Auto
 ## first; a choice is kept for this computer, Auto and the reset follow the preset again.
-func _details(torqa: TorqaApp, graphics: GraphicsSettings) -> void:
+func _details(orqwa: OrqwaApp, graphics: GraphicsSettings) -> void:
 	var details: Dictionary = graphics.get("_details")
-	var options: Dictionary = TorqaApp.graphics_option_values()
+	var options: Dictionary = OrqwaApp.graphics_option_values()
 	_check(details.size() == options.size(), "a choice per option: %d" % details.size())
 	var shadows: OptionButton = details["shadows"]
 	var first: String = shadows.get_item_metadata(0)
 	_check(first == "auto", "Auto first")
-	_check(_shadows(torqa) == "auto", "following the preset at first")
+	_check(_shadows(orqwa) == "auto", "following the preset at first")
 	var last: int = shadows.item_count - 1
 	shadows.select(last)
 	shadows.item_selected.emit(last)
-	_check(_shadows(torqa) == "ultra", "the choice is kept")
-	_check(not torqa.set_graphics_option("shadows", "extreme"), "unknown values refused")
+	_check(_shadows(orqwa) == "ultra", "the choice is kept")
+	_check(not orqwa.set_graphics_option("shadows", "extreme"), "unknown values refused")
 	graphics.call("_reset_details")
-	_check(_shadows(torqa) == "auto", "the reset follows the preset again")
+	_check(_shadows(orqwa) == "auto", "the reset follows the preset again")
 	_check(shadows.selected == 0, "and shows it")
 
 
-func _shadows(torqa: TorqaApp) -> String:
-	var options: Dictionary = torqa.graphics_options()
+func _shadows(orqwa: OrqwaApp) -> String:
+	var options: Dictionary = orqwa.graphics_options()
 	return options["shadows"]
 
 
@@ -127,11 +127,11 @@ func _shadows(torqa: TorqaApp) -> String:
 func _about(dialog: SettingsDialog) -> void:
 	var about: AboutPage = dialog.get("_about")
 	var version: Label = about.get("_version")
-	var commit: String = TorqaCore.commit()
-	_check(version.text.contains(TorqaCore.version()), "the version: %s" % version.text)
+	var commit: String = OrqwaCore.commit()
+	_check(version.text.contains(OrqwaCore.version()), "the version: %s" % version.text)
 	_check(commit.is_empty() or version.text.contains(commit), "and the commit: %s" % commit)
 	var report: String = about.call("_version_report")
-	_check(report.begins_with("Torqa " + TorqaCore.version()), "copied for a bug report")
+	_check(report.begins_with("ORQWA " + OrqwaCore.version()), "copied for a bug report")
 	var godot: String = Engine.get_version_info()["string"]
 	_check(report.contains(godot), "with Godot's version")
 	var parts: ItemList = about.get("_parts")
@@ -139,12 +139,12 @@ func _about(dialog: SettingsDialog) -> void:
 	for i: int in range(parts.item_count):
 		titles.append(parts.get_item_text(i))
 	var listed: PackedStringArray = [
-		"Torqa", "Godot Engine", "FFmpeg", "Rust libraries", "Models and data"
+		"ORQWA", "Godot Engine", "FFmpeg", "Rust libraries", "Models and data"
 	]
-	_check(titles == listed, "Torqa, then what it is built from: %s" % titles)
+	_check(titles == listed, "ORQWA, then what it is built from: %s" % titles)
 	var notice: TextEdit = about.get("_notice")
-	_check(notice.text.contains("GNU GENERAL PUBLIC LICENSE"), "Torqa's licence shows first")
-	_check(notice.text.contains(TorqaCore.source_url()), "with where its source code is")
+	_check(notice.text.contains("GNU GENERAL PUBLIC LICENSE"), "ORQWA's licence shows first")
+	_check(notice.text.contains(OrqwaCore.source_url()), "with where its source code is")
 	var expected: Array = [
 		[1, Engine.get_license_text().left(60)],
 		[1, "FreeType"],
@@ -162,47 +162,47 @@ func _about(dialog: SettingsDialog) -> void:
 
 ## Keeping the courses' worlds (R101): off until this computer turns it on, which tells the
 ## room they take; off again, they are deleted.
-func _courses(torqa: TorqaApp, dialog: SettingsDialog) -> void:
+func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var courses: CourseSettings = dialog.get("_courses")
 	var keep: CheckBox = courses.get("_keep")
 	var note: Label = courses.get("_note")
-	torqa.set_keeps_worlds(false)
+	orqwa.set_keeps_worlds(false)
 	courses.refresh()
 	_check(not keep.button_pressed, "worlds are not kept until asked")
 	_check(keep.text == "Keep courses ready to ride", "the switch: %s" % keep.text)
 	_check(note.text.contains("10 MB per kilometre"), "telling the room they take: %s" % note.text)
 	keep.button_pressed = true
-	_check(torqa.keeps_worlds(), "kept on this computer")
+	_check(orqwa.keeps_worlds(), "kept on this computer")
 	_check(note.text.contains("The kept worlds take"), "and how much they take now: %s" % note.text)
 	keep.button_pressed = false
-	_check(not torqa.keeps_worlds(), "and off again")
+	_check(not orqwa.keeps_worlds(), "and off again")
 	_check(not note.text.contains("The kept worlds take"), "they are deleted: %s" % note.text)
 
 
 ## Looking for updates (R99): on at start-up until this computer turns it off; a newer
 ## version is offered on the start page, or once a ride is over, never during it.
-func _updates(torqa: TorqaApp, dialog: SettingsDialog, main: Control) -> void:
+func _updates(orqwa: OrqwaApp, dialog: SettingsDialog, main: Control) -> void:
 	var about: AboutPage = dialog.get("_about")
 	var at_start: CheckBox = about.get("_check_at_start")
-	_check(at_start.button_pressed and torqa.checks_for_updates(), "looks for updates at start")
+	_check(at_start.button_pressed and orqwa.checks_for_updates(), "looks for updates at start")
 	at_start.button_pressed = false
-	_check(not torqa.checks_for_updates(), "turned off for this computer")
+	_check(not orqwa.checks_for_updates(), "turned off for this computer")
 	at_start.button_pressed = true
-	_check(torqa.checks_for_updates(), "and on again")
+	_check(orqwa.checks_for_updates(), "and on again")
 	var offer: UpdateDialog = main.get("_update")
-	torqa.update_available.emit("99.0.0", "https://example.org/v99.0.0", false)
+	orqwa.update_available.emit("99.0.0", "https://example.org/v99.0.0", false)
 	var status: Label = about.get("_update_status")
 	_check(status.text.contains("99.0.0"), "the About tab tells: %s" % status.text)
 	_check(offer.visible and offer.dialog_text.contains("99.0.0"), "offered on the start page")
-	_check(offer.dialog_text.contains(TorqaCore.version()), "beside the running version")
+	_check(offer.dialog_text.contains(OrqwaCore.version()), "beside the running version")
 	_check(offer.ok_button_text == "Open the release page", "elsewhere, its page")
 	offer.hide()
 	offer.offer("99.0.0", "https://example.org/v99.0.0", true)
-	_check(offer.ok_button_text == "Update now", "on Windows, installed by Torqa")
+	_check(offer.ok_button_text == "Update now", "on Windows, installed by ORQWA")
 	offer.hide()
 	var start: StartPage = main.get_node("StartPage")
 	start.hide()
-	torqa.update_available.emit("99.0.0", "https://example.org/v99.0.0", false)
+	orqwa.update_available.emit("99.0.0", "https://example.org/v99.0.0", false)
 	_check(not offer.visible, "not during a ride")
 	main.call("_back_home")
 	_check(offer.visible, "once the ride is over")
@@ -220,7 +220,7 @@ func _in_german(dialog: SettingsDialog) -> void:
 	var about_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(2))
 	_check(graphics == "Grafik", "Graphics in German: %s" % graphics)
 	_check(courses_title == "Routen", "Courses in German: %s" % courses_title)
-	_check(about_title == "Über Torqa", "About in German: %s" % about_title)
+	_check(about_title == "Über ORQWA", "About in German: %s" % about_title)
 	_check(dialog.atr(dialog.title) == "Einstellungen", "titled: %s" % dialog.atr(dialog.title))
 	var about: AboutPage = dialog.get("_about")
 	var parts: ItemList = about.get("_parts")

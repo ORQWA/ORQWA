@@ -77,7 +77,7 @@ func show_state(workout: Variant, heart_rate: Variant) -> float:
 
 
 ## A structured workout's step, what comes next and its message, from `progress` (see
-## `TorqaApp.ride_state()`), or nothing.
+## `OrqwaApp.ride_state()`), or nothing.
 func _show_progress(progress: Variant) -> void:
 	if progress == null:
 		_step.hide()
@@ -113,6 +113,6 @@ func _show_progress(progress: Variant) -> void:
 	_step.text = line
 	_step.show()
 	var cue: String = info["cue"]
-	# The FTP tests' messages are Torqa's own; a workout file's stay as their author wrote them.
+	# The FTP tests' messages are ORQWA's own; a workout file's stay as their author wrote them.
 	_cue.text = tr(cue) if not cue.is_empty() else ""
 	_cue.visible = not cue.is_empty()

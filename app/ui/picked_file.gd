@@ -1,8 +1,8 @@
 class_name PickedFile
 extends RefCounted
-## A file the rider picked, as Torqa's core can open or write it. On Android the file pickers
+## A file the rider picked, as ORQWA's core can open or write it. On Android the file pickers
 ## hand over a content address (`content://…`) that only Android's own file access reads and
-## writes (ADR 0024): a picked file is copied into Torqa's folder first, and one to save is
+## writes (ADR 0024): a picked file is copied into ORQWA's folder first, and one to save is
 ## written there by the core, then copied to the address. Elsewhere paths stay as they are.
 
 const COPIES: String = "user://picked"

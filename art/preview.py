@@ -4,7 +4,7 @@ A preview shows a model straight from its build script, with the script's own ma
 any baked textures under Cycles, without exporting it, building the extension or changing the
 app: the place to try shapes and materials before they exist in the app's shaders. How the
 world draws a model is still checked with `scripts/render-models.sh` (skill
-torqa-render-review); colours and textures in the app may differ. Adapted from the author's earlier game project (choppa, tools/blender).
+orqwa-render-review); colours and textures in the app may differ. Adapted from the author's earlier game project (choppa, tools/blender).
 
 A build script calls `options()` for the model names and the preview directory, and
 `render()` instead of exporting when a directory was given:

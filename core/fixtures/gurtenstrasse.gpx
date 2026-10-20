@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Gurtenstrasse, Koeniz/Bern: road geometry from OpenStreetMap, (c) OpenStreetMap contributors,
      ODbL 1.0 (https://www.openstreetmap.org/copyright). No elevations: the terrain model adds them. -->
-<gpx version="1.1" creator="Torqa test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="ORQWA test fixture" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata><name>Gurtenstrasse</name></metadata>
   <trk><trkseg>
     <trkpt lat="46.9099932" lon="7.4631113"/>

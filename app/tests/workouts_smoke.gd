@@ -59,7 +59,7 @@ func _planned() -> void:
 	tab.free()
 
 
-## A `TorqaApp.workouts()` entry, planned on `platform` or from the library when empty.
+## A `OrqwaApp.workouts()` entry, planned on `platform` or from the library when empty.
 static func _plan(id: String, workout_name: String, platform: String) -> Dictionary:
 	return {
 		"id": id,

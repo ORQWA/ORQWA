@@ -8,7 +8,7 @@ extends ConfirmationDialog
 ## The rider's account on `platform` is connected.
 signal account_connected(platform: String)
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _rider: String = ""
 var _platform: String = ""
 var _platform_name: String = ""
@@ -25,15 +25,15 @@ var _login_link: LinkButton = LinkButton.new()
 var _connecting: bool = false
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.account_connected.connect(_on_connected)
-	_torqa.account_failed.connect(_on_failed)
-	_torqa.open_url.connect(_on_open_url)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.account_connected.connect(_on_connected)
+	_orqwa.account_failed.connect(_on_failed)
+	_orqwa.open_url.connect(_on_open_url)
 
 
 ## Opens the dialog for rider `rider`'s account on the platform `account` describes (an entry
-## of `TorqaApp.accounts()`); `why` says why it has to be connected again, if it does.
+## of `OrqwaApp.accounts()`); `why` says why it has to be connected again, if it does.
 func open(rider: String, account: Dictionary, why: String = "") -> void:
 	_rider = rider
 	_platform = account.get("platform", "")
@@ -65,7 +65,7 @@ func open(rider: String, account: Dictionary, why: String = "") -> void:
 	_status.hide()
 	_failure_details.clear()
 	if not why.is_empty():
-		# Already in the rider's language: TorqaApp translates failures before formatting them.
+		# Already in the rider's language: OrqwaApp translates failures before formatting them.
 		_show_status(why, UiTheme.DANGER)
 	_login_link.hide()
 	_set_connecting(false)
@@ -124,9 +124,9 @@ func _on_confirmed() -> void:
 	_set_connecting(true)
 	_show_status(tr("Checking…"), UiTheme.MUTED)
 	# What the browser shows after a login.
-	var connected_page: String = tr("Torqa is connected. You can close this page.")
-	var failed_page: String = tr("Torqa could not connect. Go back to Torqa to try again.")
-	if not _torqa.connect_account(_rider, _platform, entered, connected_page, failed_page):
+	var connected_page: String = tr("ORQWA is connected. You can close this page.")
+	var failed_page: String = tr("ORQWA could not connect. Go back to ORQWA to try again.")
+	if not _orqwa.connect_account(_rider, _platform, entered, connected_page, failed_page):
 		_set_connecting(false)
 		_show_status(tr("Cannot connect."), UiTheme.DANGER)
 
@@ -138,7 +138,7 @@ func _on_open_url(url: String) -> void:
 	OS.shell_open(url)
 	_show_status(
 		(
-			tr("Log in to %s in your browser and let Torqa upload your rides. Then come back here.")
+			tr("Log in to %s in your browser and let ORQWA upload your rides. Then come back here.")
 			% _platform_name
 		),
 		UiTheme.MUTED
@@ -149,7 +149,7 @@ func _on_open_url(url: String) -> void:
 
 func _on_canceled() -> void:
 	if _connecting:
-		_torqa.cancel_connect()
+		_orqwa.cancel_connect()
 	_set_connecting(false)
 
 
@@ -168,7 +168,7 @@ func _on_failed(rider: String, platform: String, message: String) -> void:
 	_set_connecting(false)
 	_login_link.hide()
 	_show_status(message, UiTheme.DANGER)
-	_failure_details.report(_torqa.last_failure())
+	_failure_details.report(_orqwa.last_failure())
 
 
 func _set_connecting(on: bool) -> void:

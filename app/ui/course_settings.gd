@@ -7,7 +7,7 @@ extends VBoxContainer
 ## Keeping the courses' worlds, on this computer.
 var _keep: CheckBox = CheckBox.new()
 var _note: Label = Label.new()
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 
 
 func _init() -> void:
@@ -22,15 +22,15 @@ func _init() -> void:
 	_translate()
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
 	refresh()
 
 
 ## Shows the setting and the room the kept worlds take now: they grow with every course ridden.
 func refresh() -> void:
-	if _torqa != null:
-		_keep.set_pressed_no_signal(_torqa.keeps_worlds())
+	if _orqwa != null:
+		_keep.set_pressed_no_signal(_orqwa.keeps_worlds())
 	_translate()
 
 
@@ -40,8 +40,8 @@ func _notification(what: int) -> void:
 
 
 func _on_keep_toggled(on: bool) -> void:
-	if _torqa != null:
-		_torqa.set_keeps_worlds(on)
+	if _orqwa != null:
+		_orqwa.set_keeps_worlds(on)
 	_translate()
 
 
@@ -59,7 +59,7 @@ func _translate() -> void:
 		)
 	)
 	# Turned off, they are being deleted.
-	if _torqa != null and _keep.button_pressed:
-		var size: String = String.humanize_size(_torqa.kept_worlds_size())
+	if _orqwa != null and _keep.button_pressed:
+		var size: String = String.humanize_size(_orqwa.kept_worlds_size())
 		note += " " + tr("The kept worlds take %s.") % size
 	_note.text = note

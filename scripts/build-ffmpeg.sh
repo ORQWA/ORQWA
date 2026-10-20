@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Builds FFmpeg's libraries for torqa-video (ADR 0010): a pinned release, its download verified,
+# Builds FFmpeg's libraries for orqwa-video (ADR 0010): a pinned release, its download verified,
 # static, with only the parts used (demuxing, decoding, scaling), installed under the given
 # prefix for ffmpeg-sys-next to find through FFMPEG_DIR. Native builds, or for Windows from
 # Linux with MinGW (`windows`, for the dev image's Windows extension, ADR 0021), or for 64-bit

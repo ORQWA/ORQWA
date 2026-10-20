@@ -20,7 +20,7 @@ MACOS = (
 WINDOWS = (
     '\n[preset.1]\n\nname="Windows Desktop"\n\n[preset.1.options]\n\n'
     'application/modify_resources=true\napplication/file_version="{file}"\n'
-    'application/product_version="{product}"\napplication/product_name="Torqa"\n'
+    'application/product_version="{product}"\napplication/product_name="ORQWA"\n'
 )
 SETTINGS = {
     "short": "application/short_version",

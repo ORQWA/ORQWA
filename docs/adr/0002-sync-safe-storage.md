@@ -31,7 +31,7 @@ directory synced, by all computers: the last to save won, so one machine's graph
 overwrote another's. Now:
 
 - **The computer's own** settings — graphics quality (R43) and full screen (#218) — live in
-  `computer.toml` in the cache directory (`torqa_storage::computer`), which is this computer's
+  `computer.toml` in the cache directory (`orqwa_storage::computer`), which is this computer's
   and never synced. Clearing the cache loses them, which costs one choice; the alternative, a
   platform configuration directory, would be a third location to explain.
 - **The rider's own** overlay place and size (R55) live with the rider, in
@@ -46,7 +46,7 @@ so a second computer sharing the data starts from its own defaults rather than t
 
 ## Amendment 2026-10-16: the index as built (#262, R79)
 
-The index is `history.sqlite` in the platform's cache directory (`torqa_storage::index`,
+The index is `history.sqlite` in the platform's cache directory (`orqwa_storage::index`,
 through `rusqlite` with SQLite compiled in, so no platform needs a system library). It holds
 one row per ride: the FIT file's path, the metadata file's size and modification time, and
 the metadata as its JSON. The history asks the index for the rider's rides; a metadata file
@@ -56,7 +56,7 @@ it then is), and rows of files that are gone are dropped. What a session has rea
 in memory too, so the history, the records and the analysis, which all go through the same
 list, cost one `stat` per ride after the first look.
 
-Staleness is by size and modification time, not content hashes: every write Torqa makes to a
+Staleness is by size and modification time, not content hashes: every write ORQWA makes to a
 metadata file (a name, an upload, a rebuild) changes at least the time, and a sync client
 that replaces a file sets a new one. An index of another layout (`PRAGMA user_version`) or
 missing is built afresh; a rider may delete it at any time. Without a usable index the

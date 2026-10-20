@@ -10,7 +10,7 @@ signal layout_changed(layout: PackedStringArray)
 const DRAG_KEY: String = HudPanel.DRAG_KEY
 
 var _layout: PackedStringArray = PackedStringArray()
-var _max: int = TorqaApp.hud_max_metrics()
+var _max: int = OrqwaApp.hud_max_metrics()
 var _available: VBoxContainer = VBoxContainer.new()
 var _preview: HudPanel = HudPanel.new()
 var _hint: Label = Label.new()

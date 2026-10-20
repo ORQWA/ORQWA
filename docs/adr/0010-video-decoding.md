@@ -23,7 +23,7 @@ Options considered:
 
 ## Decision
 
-- New crate **`torqa-video`** on **`ffmpeg-next` 9.0.0** (WTFPL). It hands out the frame for
+- New crate **`orqwa-video`** on **`ffmpeg-next` 9.0.0** (WTFPL). It hands out the frame for
   any moment (`Video::frame_at`), decoding forward when the next request is close and seeking
   to a keyframe otherwise, scaled to at most 1920 px wide (1080p); Godot only displays the
   frames.
@@ -42,7 +42,7 @@ Options considered:
 
 - Building FFmpeg takes several minutes: once per dev image, once per platform in CI (cached
   by the script's hash). The container needs `libclang-dev` (bindgen) and `nasm`; the CI
-  runners need `nasm` (never on developer machines). On Windows `torqa-video`'s build script
+  runners need `nasm` (never on developer machines). On Windows `orqwa-video`'s build script
   links the system libraries FFmpeg's static libraries need.
 - H.264 and HEVC are patent-encumbered in some countries; FFmpeg's decoders are used as is,
   as by most open-source players.
@@ -56,7 +56,7 @@ Route-video libraries such as Van Gestel's are AV1. FFmpeg's own AV1 decoder onl
 hardware decoders, which M1/M2 Macs lack, so those videos showed nothing.
 
 - AV1 is decoded with **rav1d**, the Rust port of dav1d (BSD-2-Clause); FFmpeg still reads the
-  file and converts the pictures. rav1d publishes only dav1d's C interface, so `torqa-video`'s
+  file and converts the pictures. rav1d publishes only dav1d's C interface, so `orqwa-video`'s
   `av1` module is its one place with `unsafe` code: small FFI wrappers with documented safety.
 - The crate is the official **`rav1d` 1.1.0**, **without its assembly**: the package leaves out
   the headers its ARM assembly needs, and the pure Rust decoder is fast enough — ~145 fps at
@@ -72,12 +72,12 @@ The ~145 fps above does not hold everywhere. On an Intel i7-9750H laptop (6 core
 720p, 30 fps AV1 route video decoded at **21 fps**: slower than it plays, so rides on it
 stuttered while ordinary players, using dav1d with its assembly, played it smoothly.
 
-- **x86_64 builds turn on rav1d's `asm` feature** (in `torqa-video`, for that architecture
+- **x86_64 builds turn on rav1d's `asm` feature** (in `orqwa-video`, for that architecture
   only): the 1.1.0 package does ship its x86 assembly, it is only the ARM headers that are
   missing. It is assembled with **nasm**, which every x86_64 build already has for FFmpeg (dev
   container, Linux and Windows CI). rav1d's build script runs it through `nasm-rs`, a build
   dependency it always had: no crate is added. ARM builds stay as they are.
-- On Linux the GDExtension links with **`-Bsymbolic`** (`torqa-gd/build.rs`): the assembly
+- On Linux the GDExtension links with **`-Bsymbolic`** (`orqwa-gd/build.rs`): the assembly
   addresses rav1d's tables PC-relative, which the linker refuses against symbols a shared
   library exports unless the library binds its references to its own definitions.
 - **The decoder works on several frames at once**: dav1d's default frame delay instead of one

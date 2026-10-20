@@ -2,8 +2,8 @@ extends SceneTree
 ## Renders the boot splash PNG from the brand lockup SVG, because Godot's boot splash only accepts
 ## PNG. Run via scripts/render-splash.sh after changing the logo.
 
-const SOURCE: String = "../docs/brand/torqa-lockup-dark.svg"
-const TARGET: String = "res://assets/brand/torqa-splash.png"
+const SOURCE: String = "../docs/brand/orqwa-lockup-dark.svg"
+const TARGET: String = "res://assets/brand/orqwa-splash.png"
 ## 16:9 like the default window; large enough to stay sharp on Retina and 1440p screens.
 const SIZE: Vector2i = Vector2i(2560, 1440)
 ## The splash is scaled to fit the window, so this keeps the lockup the same share of any screen.

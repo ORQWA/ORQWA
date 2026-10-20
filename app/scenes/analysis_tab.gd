@@ -34,7 +34,7 @@ const KEY_DURATIONS: Array[int] = [5, 60, 300, 1200, 3600]
 ## How much wider than its figures the curve must be to stand beside the profile (R94).
 const CURVE_ROOM: float = 200.0
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _period: OptionButton = OptionButton.new()
 var _compare: OptionButton = OptionButton.new()
 var _per_kg: CheckBox = CheckBox.new()
@@ -52,7 +52,7 @@ var _today: GridContainer = GridContainer.new()
 var _weekly_metric: OptionButton = OptionButton.new()
 var _weekly: WeeklyBars = WeeklyBars.new()
 var _zone_legend: HFlowContainer = HFlowContainer.new()
-## The period's weeks as `TorqaApp.weekly()` gives them, kept to switch what the bars show.
+## The period's weeks as `OrqwaApp.weekly()` gives them, kept to switch what the bars show.
 var _weeks: Array = []
 var _imperial: bool = false
 var _trend: TrendChart = TrendChart.new()
@@ -62,19 +62,19 @@ var _estimate_text: Label = Label.new()
 var _estimate_button: Button = Button.new()
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
 
 
 ## Reads the active rider's rides again, e.g. when the tab is shown or after a ride.
 func refresh() -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
 	var period: Array = PERIODS[_period.selected]
 	var days: int = period[1]
 	var previous: bool = _compare.selected == 1
 	var per_kg: bool = _per_kg.button_pressed
-	var curves: Dictionary = _torqa.power_curves(days, previous, per_kg)
+	var curves: Dictionary = _orqwa.power_curves(days, previous, per_kg)
 	var current: Array = curves.get("period", [])
 	var compared: Array = curves.get("compare", [])
 	# All rides against all rides would draw the same curve twice.
@@ -91,16 +91,16 @@ func refresh() -> void:
 	var compare_name: String = "" if compared.is_empty() else comparison[1]
 	_fill_legend(period_name, compare_name)
 	_fill_figures(current, compared, per_kg)
-	_fill_radar(_torqa.power_profile(days, per_kg), per_kg)
+	_fill_radar(_orqwa.power_profile(days, per_kg), per_kg)
 	var bias_minutes: int = Time.get_time_zone_from_system().get("bias", 0)
-	var loads: Dictionary = _torqa.fitness(days, bias_minutes)
+	var loads: Dictionary = _orqwa.fitness(days, bias_minutes)
 	_fitness.set_days(loads)
 	_fill_today(loads)
-	_imperial = _torqa.profile().get("units", "metric") == "imperial"
-	_weeks = _torqa.weekly(days, bias_minutes)
+	_imperial = _orqwa.profile().get("units", "metric") == "imperial"
+	_weeks = _orqwa.weekly(days, bias_minutes)
 	_fill_weekly()
-	_fill_progress(_torqa.progress(days, bias_minutes, per_kg), per_kg)
-	_show_estimate(_torqa.ftp_estimate())
+	_fill_progress(_orqwa.progress(days, bias_minutes, per_kg), per_kg)
+	_show_estimate(_orqwa.ftp_estimate())
 
 
 func _init() -> void:
@@ -302,7 +302,7 @@ func _progress_card() -> PanelContainer:
 	return _card(rows)
 
 
-## The progress chart's series: the key of `TorqaApp.progress()`, the name and the colour.
+## The progress chart's series: the key of `OrqwaApp.progress()`, the name and the colour.
 static func _trend_series() -> Array[Array]:
 	return [
 		["one_minute", PowerCurveChart.duration_label(60), UiTheme.POWER_ZONES[5][1]],
@@ -354,7 +354,7 @@ func _fill_figures(current: Array, compared: Array, per_kg: bool) -> void:
 		_figures.add_child(cell)
 
 
-## Each spoke's share of the rider's best and the period's value, as `TorqaApp.power_profile()`
+## Each spoke's share of the rider's best and the period's value, as `OrqwaApp.power_profile()`
 ## gives them.
 func _fill_radar(axes: Array, per_kg: bool) -> void:
 	var labels: PackedStringArray = PackedStringArray()
@@ -370,7 +370,7 @@ func _fill_radar(axes: Array, per_kg: bool) -> void:
 	_radar.set_spokes(labels, shares, values)
 
 
-## Today's fitness, fatigue and form, the last of `loads` (`TorqaApp.fitness()`).
+## Today's fitness, fatigue and form, the last of `loads` (`OrqwaApp.fitness()`).
 func _fill_today(loads: Dictionary) -> void:
 	for child: Node in _today.get_children():
 		child.queue_free()
@@ -492,7 +492,7 @@ static func _hours(hours: float) -> String:
 	return "%d:%02d h" % [minutes / 60, minutes % 60]
 
 
-## The weeks or months of `progress` (`TorqaApp.progress()`): the best efforts and the FTP as
+## The weeks or months of `progress` (`OrqwaApp.progress()`): the best efforts and the FTP as
 ## lines, FTP tests as dots.
 func _fill_progress(progress: Dictionary, per_kg: bool) -> void:
 	_trend.unit = "W/kg" if per_kg else "W"
@@ -507,14 +507,14 @@ func _fill_progress(progress: Dictionary, per_kg: bool) -> void:
 		_trend.add_series(values, color, series_name, key == "ftp", key == "test")
 
 
-## The FTP the best efforts of the last 90 days show (`TorqaApp.ftp_estimate()`), next to the
+## The FTP the best efforts of the last 90 days show (`OrqwaApp.ftp_estimate()`), next to the
 ## rider's, with a button to take it; never applied without asking (R65).
 func _show_estimate(estimate: Dictionary) -> void:
 	_estimate_row.visible = not estimate.is_empty()
 	if estimate.is_empty():
 		return
 	var ftp_w: float = estimate["ftp_w"]
-	var current_w: float = _torqa.profile().get("ftp_w", 0.0)
+	var current_w: float = _orqwa.profile().get("ftp_w", 0.0)
 	var method: String = estimate["method"]
 	if method == "critical_power":
 		var w_prime_kj: float = estimate["w_prime_kj"]
@@ -534,7 +534,7 @@ func _show_estimate(estimate: Dictionary) -> void:
 
 func _use_estimate() -> void:
 	var watts: float = _estimate_button.get_meta("watts", 0.0)
-	if watts > 0.0 and _torqa.use_ftp(watts):
+	if watts > 0.0 and _orqwa.use_ftp(watts):
 		_estimate_text.text = (
 			tr("Your FTP is now %d W: zones and workouts follow it.") % roundi(watts)
 		)

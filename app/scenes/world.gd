@@ -1,6 +1,6 @@
 class_name RideWorld
 extends Node3D
-## The 3D world: terrain and road from Torqa, a rider following the ride state and cameras.
+## The 3D world: terrain and road from ORQWA, a rider following the ride state and cameras.
 
 enum CameraMode { CHASE, FIRST_PERSON, DRONE }
 
@@ -59,7 +59,7 @@ const TEXTURES: Dictionary[String, Texture2D] = {
 const CHUNKS_PER_FRAME: int = 6
 ## Chunks further than this are hidden; fog hides the edge.
 const VISIBILITY_RANGE: float = 4500.0
-## The land beyond the corridor reaches 12 km from the route (`torqa_world::HORIZON`); the
+## The land beyond the corridor reaches 12 km from the route (`orqwa_world::HORIZON`); the
 ## camera sees that far, the haze hides its end.
 const HORIZON_RANGE: float = 14000.0
 ## Buildings switch between their models and their shells over this distance.
@@ -189,7 +189,7 @@ const CLOUD_DRIFT: Vector2 = Vector2(0.004, 0.0015)
 const FREE_CAMERA: String = "Free"
 # i18n-end
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _chunk_count: int = 0
 var _next_chunk: int = 0
 var _camera_mode: CameraMode = CameraMode.CHASE
@@ -248,11 +248,11 @@ var _railways: MeshInstance3D = MeshInstance3D.new()
 @onready var _rain: GPUParticles3D = $Camera/Rain
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.world_ready.connect(_on_world_ready)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.world_ready.connect(_on_world_ready)
 	# A switch of riders changes the avatar on the bike at once, in a world built already.
-	_torqa.profile_changed.connect(_apply_rider)
+	_orqwa.profile_changed.connect(_apply_rider)
 
 
 ## Whether the free camera flies (its arrows move it).
@@ -263,7 +263,7 @@ func is_free_camera() -> bool:
 ## Cycles chase → first person → drone (→ free in simulated rides) and returns the new
 ## mode's name.
 func cycle_camera() -> String:
-	if not _free and _camera_mode == CameraMode.DRONE and _torqa != null and _torqa.simulating():
+	if not _free and _camera_mode == CameraMode.DRONE and _orqwa != null and _orqwa.simulating():
 		_free = true
 		_avatar.show_rider(true)
 		return FREE_CAMERA
@@ -348,8 +348,8 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 		material.set_shader_parameter("puddle_color", sky_horizon)
 
 
-## Applies a graphics preset (`QUALITY` key, as `TorqaApp.graphics_quality()` names it) and the
-## options set apart from it (R90, as `TorqaApp.graphics_options()` gives them; "auto" follows
+## Applies a graphics preset (`QUALITY` key, as `OrqwaApp.graphics_quality()` names it) and the
+## options set apart from it (R90, as `OrqwaApp.graphics_options()` gives them; "auto" follows
 ## the preset).
 func apply_quality(name: String, options: Dictionary = {}) -> void:
 	var preset: Dictionary = QUALITY.get(name, QUALITY["medium"])
@@ -550,9 +550,9 @@ func _process(delta: float) -> void:
 		_sky.set_shader_parameter("cloud_offset", _cloud_offset)
 	if _free and visible:
 		_fly(delta)
-	if not visible or _torqa == null:
+	if not visible or _orqwa == null:
 		return
-	var state: Dictionary = _torqa.ride_state()
+	var state: Dictionary = _orqwa.ride_state()
 	if state.is_empty():
 		return
 	_follow_ride(state, delta)
@@ -561,7 +561,7 @@ func _process(delta: float) -> void:
 ## The rider's own avatar (R46), on a new world and whenever the active rider changes; the
 ## ghost rides the same one.
 func _apply_rider() -> void:
-	var avatar: String = _torqa.profile().get("avatar", RiderAvatar.RIDERS[0])
+	var avatar: String = _orqwa.profile().get("avatar", RiderAvatar.RIDERS[0])
 	_avatar.rider = avatar
 	_ghost.rider = avatar
 
@@ -571,27 +571,27 @@ func _on_world_ready(_info: Dictionary) -> void:
 	_apply_rider()
 	for chunk: Node in _terrain.get_children():
 		chunk.queue_free()
-	_chunk_count = _torqa.world_chunk_count()
+	_chunk_count = _orqwa.world_chunk_count()
 	_next_chunk = 0
-	_road.mesh = _mesh_from(_torqa.road_mesh())
+	_road.mesh = _mesh_from(_orqwa.road_mesh())
 	_road.material_override = _road_material
-	var land: Dictionary = _torqa.horizon_meshes()
+	var land: Dictionary = _orqwa.horizon_meshes()
 	var ground: Dictionary = land["ground"]
 	var lakes: Dictionary = land["water"]
 	_horizon_ground.mesh = _mesh_from(ground)
 	_horizon_ground.material_override = _terrain_material
 	_horizon_water.mesh = _mesh_from(lakes)
 	_horizon_water.material_override = _water_material
-	_railways.mesh = _mesh_from(_torqa.railways_mesh())
+	_railways.mesh = _mesh_from(_orqwa.railways_mesh())
 	_railways.material_override = _rail_material
-	_structures.mesh = _mesh_from(_torqa.structures_mesh())
+	_structures.mesh = _mesh_from(_orqwa.structures_mesh())
 	_structures.material_override = _structure_material
 
 
 func _build_some_chunks() -> void:
 	var built: int = 0
 	while _next_chunk < _chunk_count and built < CHUNKS_PER_FRAME:
-		var chunk: Dictionary = _torqa.world_chunk(_next_chunk)
+		var chunk: Dictionary = _orqwa.world_chunk(_next_chunk)
 		# Another course was opened meanwhile: its world replaces this one when ready.
 		if chunk.is_empty():
 			_chunk_count = 0
@@ -772,7 +772,7 @@ func _follow_ride(state: Dictionary, delta: float) -> void:
 	_motion.step(
 		delta,
 		grade,
-		TorqaApp.lean_angle(speed_kmh, curvature),
+		OrqwaApp.lean_angle(speed_kmh, curvature),
 		effort,
 		cadence_rpm,
 		_avatar.crank_angle()
@@ -893,7 +893,7 @@ func _apply_valley_fog() -> void:
 
 ## The route's lowest ground, from its elevation profile.
 func _find_low_ground() -> void:
-	var profile: PackedVector2Array = _torqa.elevation_profile(256)
+	var profile: PackedVector2Array = _orqwa.elevation_profile(256)
 	if profile.is_empty():
 		return
 	_low_ground = INF
@@ -933,7 +933,7 @@ func _place_ghost(ghost: Variant, delta: float) -> void:
 	)
 	_ghost_distance = distance_m
 	var curvature: float = info["curvature"]
-	_ghost_lean = _leaning(_ghost_lean, TorqaApp.lean_angle(speed_kmh, curvature), delta)
+	_ghost_lean = _leaning(_ghost_lean, OrqwaApp.lean_angle(speed_kmh, curvature), delta)
 	var yaw: Basis = Basis(Vector3.UP, -heading)
 	# The motion's pitch follows the grade as a bike settles into it, without jolts at steps.
 	var pitch: Basis = Basis(Vector3.RIGHT, _motion.pitch)

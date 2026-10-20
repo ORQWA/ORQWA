@@ -24,7 +24,7 @@ var _ftp_w: float = 200.0
 var _duration: float = 1.0
 
 
-## Shows `steps` (`TorqaApp.workouts()[i]["steps"]`) for a rider with `ftp_w`.
+## Shows `steps` (`OrqwaApp.workouts()[i]["steps"]`) for a rider with `ftp_w`.
 func set_steps(steps: Array, ftp_w: float) -> void:
 	_steps = steps
 	_ftp_w = maxf(ftp_w, 1.0)

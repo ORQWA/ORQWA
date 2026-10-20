@@ -14,9 +14,9 @@ signal video_added(video: String, marks: PackedVector2Array)
 ## The course's video, placed on the route by hand, is to follow `marks` instead.
 signal video_aligned(marks: PackedVector2Array)
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _course_name: String = ""
-## The course's video as `TorqaApp.video()` gives it, and as it is to be on Save; empty for
+## The course's video as `OrqwaApp.video()` gives it, and as it is to be on Save; empty for
 ## none.
 var _video: Dictionary = {}
 var _edited: Dictionary = {}
@@ -35,10 +35,10 @@ var _file_dialog: FileDialog = FileDialog.new()
 var _align_dialog: VideoAlignDialog = VideoAlignDialog.new()
 
 
-## Opens the dialog for the course `course_name` with its `video` (`TorqaApp.video()`, of the
+## Opens the dialog for the course `course_name` with its `video` (`OrqwaApp.video()`, of the
 ## loaded course); `with_video` false leaves the video out, e.g. while the route still loads.
-func edit(torqa: TorqaApp, course_name: String, video: Dictionary, with_video: bool = true) -> void:
-	_torqa = torqa
+func edit(orqwa: OrqwaApp, course_name: String, video: Dictionary, with_video: bool = true) -> void:
+	_orqwa = orqwa
 	_course_name = course_name
 	_name_edit.text = course_name
 	_video = video.duplicate(true)
@@ -97,7 +97,7 @@ func _init() -> void:
 	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	var videos: PackedStringArray = PackedStringArray()
-	for extension: String in TorqaApp.video_extensions():
+	for extension: String in OrqwaApp.video_extensions():
 		if not extension in ["xml", "rlv"]:
 			videos.append("*." + extension)
 	_file_dialog.filters = PackedStringArray([", ".join(videos) + " ; " + tr("Videos")])
@@ -126,7 +126,7 @@ func _show_video() -> void:
 
 func _on_video_chosen(picked: String) -> void:
 	var path: String = PickedFile.local_path(picked)
-	var probe: Dictionary = _torqa.video_probe(path)
+	var probe: Dictionary = _orqwa.video_probe(path)
 	if probe.is_empty():
 		return
 	_choosing = path
@@ -143,10 +143,10 @@ func _align() -> void:
 
 
 func _edit_alignment(path: String, duration_s: float, marks: PackedVector2Array) -> void:
-	var profile: PackedVector2Array = _torqa.elevation_profile(600)
+	var profile: PackedVector2Array = _orqwa.elevation_profile(600)
 	var length_m: float = profile[profile.size() - 1].x if not profile.is_empty() else 0.0
-	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
-	_align_dialog.edit(_torqa, path, duration_s, length_m, profile, marks, imperial)
+	var imperial: bool = _orqwa.profile().get("units", "metric") == "imperial"
+	_align_dialog.edit(_orqwa, path, duration_s, length_m, profile, marks, imperial)
 
 
 func _on_aligned(marks: PackedVector2Array) -> void:

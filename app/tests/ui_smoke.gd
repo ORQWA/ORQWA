@@ -315,7 +315,7 @@ func _picked_files() -> void:
 		+ "primary%3ADownload%2FRide.gpx"
 	)
 	_check(PickedFile.name_of(address) == "Ride.gpx", "a content address shows its file name")
-	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in Torqa's folder")
+	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in ORQWA's folder")
 
 
 ## The captions of a three-column options grid whose rows show.
@@ -496,19 +496,19 @@ func _rider_switch() -> void:
 	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
-	var torqa: TorqaApp = main.get_node("Torqa")
+	var orqwa: OrqwaApp = main.get_node("Orqwa")
 	var world: RideWorld = main.get_node("World")
 	var avatar: RiderAvatar = world.get("_avatar")
-	var profile: Dictionary = torqa.profile()
+	var profile: Dictionary = orqwa.profile()
 	var profile_id: String = profile["id"]
 	var before: String = profile.get("avatar", "female")
 	var other: String = "male" if before != "male" else "female"
 	profile["avatar"] = other
-	var id: String = torqa.save_profile(profile_id, profile)
+	var id: String = orqwa.save_profile(profile_id, profile)
 	_check(not id.is_empty(), "the rider is saved")
 	_check(avatar.rider == other, "the rider on the bike follows the rider: %s" % avatar.rider)
 	profile["avatar"] = before
-	torqa.save_profile(profile_id, profile)
+	orqwa.save_profile(profile_id, profile)
 	main.queue_free()
 
 
@@ -876,9 +876,9 @@ func _overlay() -> void:
 	_check(opaque.visible, "and opaque again (#220)")
 	# Leaving resizes the window; that must not bring the overlay's outline back (#123).
 	_check(window.mouse_passthrough_polygon.is_empty(), "every click is the app's again")
-	var torqa: TorqaApp = main.get_node("Torqa")
-	_check(torqa.overlay_window().size != Vector2i.ZERO, "the overlay's place is remembered")
-	_check(is_equal_approx(torqa.overlay_scale(), chosen), "and the size the rider chose")
+	var orqwa: OrqwaApp = main.get_node("Orqwa")
+	_check(orqwa.overlay_window().size != Vector2i.ZERO, "the overlay's place is remembered")
+	_check(is_equal_approx(orqwa.overlay_scale(), chosen), "and the size the rider chose")
 	main.free()
 
 

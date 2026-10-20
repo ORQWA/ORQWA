@@ -27,10 +27,10 @@ func _ready() -> void:
 	add_child(_tabs)
 
 
-func bind(torqa: TorqaApp) -> void:
-	_graphics.bind(torqa)
-	_courses.bind(torqa)
-	_about.bind(torqa)
+func bind(orqwa: OrqwaApp) -> void:
+	_graphics.bind(orqwa)
+	_courses.bind(orqwa)
+	_about.bind(orqwa)
 
 
 ## Opens the settings on their first tab.

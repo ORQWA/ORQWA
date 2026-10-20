@@ -34,7 +34,7 @@ const CHART_EVERY_S: float = 1.0
 ## The workout chart spans at least this long at first, so its start is not stretched.
 const CHART_MIN_S: float = 600.0
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _world: RideWorld
 var _settings_dialog: RideSettingsDialog = RideSettingsDialog.new()
 ## The pause opened the ride settings: going on closes them again.
@@ -86,20 +86,20 @@ var _budget_noted: bool = false
 @onready var _toast_label: Label = %ToastLabel
 
 
-func bind(torqa: TorqaApp, world: RideWorld) -> void:
-	_torqa = torqa
+func bind(orqwa: OrqwaApp, world: RideWorld) -> void:
+	_orqwa = orqwa
 	_world = world
-	_torqa.device_connected.connect(_on_device_connected)
-	_torqa.device_disconnected.connect(_on_device_disconnected)
-	_torqa.remembered_missing.connect(_on_remembered_missing)
-	_settings_dialog.bind(_torqa)
-	# Deferred: the handler calls back into Torqa, which is still busy emitting the signal.
-	_torqa.ride_finished.connect(_on_ride_finished, CONNECT_DEFERRED)
-	_torqa.ride_saved.connect(_on_ride_saved)
-	_torqa.climb_completed.connect(_on_climb_completed)
-	_torqa.route_completed.connect(_on_route_completed)
-	_torqa.failed.connect(_on_failed)
-	_torqa.control_requested.connect(_on_control_requested)
+	_orqwa.device_connected.connect(_on_device_connected)
+	_orqwa.device_disconnected.connect(_on_device_disconnected)
+	_orqwa.remembered_missing.connect(_on_remembered_missing)
+	_settings_dialog.bind(_orqwa)
+	# Deferred: the handler calls back into ORQWA, which is still busy emitting the signal.
+	_orqwa.ride_finished.connect(_on_ride_finished, CONNECT_DEFERRED)
+	_orqwa.ride_saved.connect(_on_ride_saved)
+	_orqwa.climb_completed.connect(_on_climb_completed)
+	_orqwa.route_completed.connect(_on_route_completed)
+	_orqwa.failed.connect(_on_failed)
+	_orqwa.control_requested.connect(_on_control_requested)
 
 
 ## Prepares the screen for a new ride on the loaded route with `options` in effect.
@@ -113,7 +113,7 @@ func begin(options: Dictionary) -> void:
 	_bar.show_finish("")
 	_bar.show_pause(true)
 	_show_paused(false)
-	_bar.folded = _torqa.ride_bar_folded()
+	_bar.folded = _orqwa.ride_bar_folded()
 	_workout = options.get("workout", {})
 	var on_its_own: bool = not _workout.is_empty() and not options.get("on_course", false)
 	_backdrop.visible = on_its_own
@@ -121,32 +121,32 @@ func begin(options: Dictionary) -> void:
 	_chart.set_series(PackedVector2Array(), PackedVector2Array(), PackedVector2Array())
 	_chart_left = 0.0
 	# Heart-rate zones span half the maximum to the maximum: the chart shows all of them.
-	var max_heart_rate: float = _torqa.profile().get("max_heart_rate_bpm", 185.0)
+	var max_heart_rate: float = _orqwa.profile().get("max_heart_rate_bpm", 185.0)
 	_chart.heart_rate_range = Vector2(max_heart_rate * 0.5, max_heart_rate)
 	(get_node("Attribution") as Control).visible = not on_its_own
 	for panel: Control in [$RightColumn/MapPanel, $RightColumn/ProfilePanel]:
 		panel.visible = not on_its_own
 	_workout_panel.visible = not _workout.is_empty()
 	_workout_panel.show_workout(_workout)
-	var rider: Dictionary = _torqa.profile()
+	var rider: Dictionary = _orqwa.profile()
 	var ftp: float = rider.get("ftp_w", 200.0)
-	_settings_dialog.configure_workout(_torqa.heart_rate_zones(), ftp, _torqa.workouts())
+	_settings_dialog.configure_workout(_orqwa.heart_rate_zones(), ftp, _orqwa.workouts())
 	_show_plan(ftp)
-	_minimap.set_track(_torqa.track(2000))
-	_minimap.set_map(_torqa.minimap_mesh())
-	_profile.set_profile(_torqa.elevation_profile(600))
-	var climb_info: Dictionary = _torqa.climbs()
+	_minimap.set_track(_orqwa.track(2000))
+	_minimap.set_map(_orqwa.minimap_mesh())
+	_profile.set_profile(_orqwa.elevation_profile(600))
+	var climb_info: Dictionary = _orqwa.climbs()
 	var climbs: Array = climb_info.get("climbs", [])
 	_profile.set_climbs(climbs)
 	_climb_panel.hide()
-	var profile: Dictionary = _torqa.profile()
+	var profile: Dictionary = _orqwa.profile()
 	_imperial = profile.get("units", "metric") == "imperial"
 	_hud.imperial = _imperial
-	_hud.show_layout(_torqa.hud_layout())
-	if not _torqa.trainer_connected():
+	_hud.show_layout(_orqwa.hud_layout())
+	if not _orqwa.trainer_connected():
 		_show_toast(tr("Waiting for the trainer…"))
 	# Workouts are not sped up: a simulated heart beats in real time.
-	var simulating: bool = _torqa.simulating() and _workout.is_empty()
+	var simulating: bool = _orqwa.simulating() and _workout.is_empty()
 	_simulating = simulating
 	_bar.set_simulating(simulating)
 	_minimap.jumpable = simulating
@@ -169,10 +169,10 @@ func _ready() -> void:
 	_build_climb_panel()
 	_build_ghost_panel()
 	_minimap.jump_requested.connect(
-		func(position_m: Vector2) -> void: _torqa.jump_near(position_m.x, position_m.y)
+		func(position_m: Vector2) -> void: _orqwa.jump_near(position_m.x, position_m.y)
 	)
 	_profile.jump_requested.connect(
-		func(distance_m: float) -> void: _torqa.jump_to_distance(distance_m)
+		func(distance_m: float) -> void: _orqwa.jump_to_distance(distance_m)
 	)
 	add_child(_settings_dialog)
 	_settings_dialog.options_changed.connect(_on_options_changed)
@@ -189,7 +189,7 @@ func _ready() -> void:
 	_bar.overlay_requested.connect(func() -> void: overlay_requested.emit(true))
 	_bar.finish_requested.connect(_on_finish_pressed)
 	_bar.speed_chosen.connect(_set_time_scale)
-	_bar.folded_changed.connect(func(folded: bool) -> void: _torqa.set_ride_bar_folded(folded))
+	_bar.folded_changed.connect(func(folded: bool) -> void: _orqwa.set_ride_bar_folded(folded))
 	add_child(_bar)
 	_overlay_hud.hide()
 	_overlay_hud.leave_requested.connect(func() -> void: overlay_requested.emit(false))
@@ -219,7 +219,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if key.keycode in [KEY_UP, KEY_DOWN] and not _world.is_free_camera():
 		# Virtual gears (R9); with a cassette the rider shifts on the bike.
-		_torqa.shift(1 if key.keycode == KEY_UP else -1)
+		_orqwa.shift(1 if key.keycode == KEY_UP else -1)
 	elif key.keycode == KEY_O and not _finished:
 		overlay_requested.emit(true)
 	elif key.keycode in [KEY_P, KEY_SPACE] and not _finished:
@@ -253,7 +253,7 @@ func _process(delta: float) -> void:
 	if not visible or _finished:
 		return
 	_watch_frame_time(delta)
-	var state: Dictionary = _torqa.ride_state()
+	var state: Dictionary = _orqwa.ride_state()
 	if state.is_empty():
 		return
 	if is_overlay():
@@ -267,7 +267,7 @@ func _process(delta: float) -> void:
 		if _chart_left <= 0.0:
 			_chart_left = CHART_EVERY_S
 			_plan_chart.progress_s = _workout_elapsed(state)
-			var chart: Dictionary = _torqa.ride_chart(600)
+			var chart: Dictionary = _orqwa.ride_chart(600)
 			var power: PackedVector2Array = chart["power"]
 			var heart_rate: PackedVector2Array = chart["heart_rate"]
 			_chart.set_series(PackedVector2Array(), power, heart_rate)
@@ -299,7 +299,7 @@ func set_overlay(on: bool) -> void:
 	if on == is_overlay():
 		return
 	if on:
-		_overlay_hud.begin(_torqa.hud_layout(), _imperial, _workout)
+		_overlay_hud.begin(_orqwa.hud_layout(), _imperial, _workout)
 		_hidden_by_overlay.clear()
 		for child: Node in get_children():
 			var control: Control = child as Control
@@ -340,8 +340,8 @@ func _show_gear(gear: Variant) -> void:
 
 func _open_settings() -> void:
 	_options["camera"] = _world.camera()
-	var world: bool = not _torqa.riding_along_video()
-	_settings_dialog.edit(_options, _torqa.hud_layout(), _imperial, world)
+	var world: bool = not _orqwa.riding_along_video()
+	_settings_dialog.edit(_options, _orqwa.hud_layout(), _imperial, world)
 
 
 ## Applies changed ride options at once: camera, conditions and sound in the world, difficulty
@@ -354,9 +354,9 @@ func _on_options_changed(options: Dictionary) -> void:
 	_world.apply_options(options)
 	var difficulty: float = options["difficulty"]
 	var flat_descents: bool = options["flat_descents"]
-	_torqa.adjust_ride(difficulty, flat_descents)
+	_orqwa.adjust_ride(difficulty, flat_descents)
 	var video_sound: bool = options.get("video_sound", true)
-	_torqa.set_video_sound(video_sound)
+	_orqwa.set_video_sound(video_sound)
 
 
 ## A changed workout reaches the trainer at once; the ride keeps the name it started with.
@@ -364,9 +364,9 @@ func _on_workout_changed(workout: Dictionary) -> void:
 	workout["name"] = _workout.get("name", "")
 	_workout = workout
 	_options["workout"] = workout
-	_torqa.change_workout(workout)
+	_orqwa.change_workout(workout)
 	_workout_panel.show_workout(workout)
-	var ftp: float = _torqa.profile().get("ftp_w", 200.0)
+	var ftp: float = _orqwa.profile().get("ftp_w", 200.0)
 	_show_plan(ftp)
 
 
@@ -396,7 +396,7 @@ func _workout_elapsed(state: Dictionary) -> float:
 
 
 func _on_hud_changed(layout: PackedStringArray) -> void:
-	var saved: PackedStringArray = _torqa.set_hud_layout(layout)
+	var saved: PackedStringArray = _orqwa.set_hud_layout(layout)
 	if not saved.is_empty():
 		_hud.show_layout(saved)
 
@@ -405,24 +405,24 @@ func _on_hud_changed(layout: PackedStringArray) -> void:
 ## follows the weight, drivetrain and FTP, and the screen the rest. A heart-rate zone held
 ## follows the new zones; a structured workout's chart, the new FTP.
 func _on_profile_changed(profile: Dictionary) -> void:
-	var before: Dictionary = _torqa.profile()
+	var before: Dictionary = _orqwa.profile()
 	var id: String = before.get("id", "")
-	if _torqa.save_profile(id, profile).is_empty():
+	if _orqwa.save_profile(id, profile).is_empty():
 		return
 	var language: String = profile.get("language", "")
 	ProfileTab.apply_language(language)
 	_imperial = profile.get("units", "metric") == "imperial"
 	_hud.imperial = _imperial
-	_hud.show_layout(_torqa.hud_layout())
+	_hud.show_layout(_orqwa.hud_layout())
 	if profile.get("map_style") != before.get("map_style"):
-		_minimap.set_map(_torqa.minimap_mesh())
+		_minimap.set_map(_orqwa.minimap_mesh())
 	var max_heart_rate: float = profile.get("max_heart_rate_bpm", 185.0)
 	_chart.heart_rate_range = Vector2(max_heart_rate * 0.5, max_heart_rate)
 	var ftp: float = profile.get("ftp_w", 200.0)
-	var plans: Array = _torqa.workouts()
-	_settings_dialog.configure_workout(_torqa.heart_rate_zones(), ftp, plans)
+	var plans: Array = _orqwa.workouts()
+	_settings_dialog.configure_workout(_orqwa.heart_rate_zones(), ftp, plans)
 	if _workout.get("kind", "") == "zone":
-		_torqa.change_workout(_workout)
+		_orqwa.change_workout(_workout)
 	elif _workout.get("kind", "") == "plan":
 		for plan: Dictionary in plans:
 			if plan["id"] == _workout.get("id", ""):
@@ -436,7 +436,7 @@ func _on_finish_requested() -> void:
 
 
 func _on_abort_requested() -> void:
-	_torqa.abort_ride()
+	_orqwa.abort_ride()
 	_finished = true
 	_bar.show_pause(false)
 	closed.emit()
@@ -612,11 +612,11 @@ static func _record_text(elapsed_s: float, previous_best_s: float) -> String:
 ## Suggests a lower graphics preset when the ride stays below 60 fps (R43). Simulated rides
 ## are left alone: they are for trying courses out.
 func _watch_frame_time(delta: float) -> void:
-	if _budget_noted or _simulating or _torqa.riding_along_video() or _backdrop.visible:
+	if _budget_noted or _simulating or _orqwa.riding_along_video() or _backdrop.visible:
 		return
 	_frame_time = lerpf(_frame_time if _frame_time > 0.0 else delta, delta, 0.05)
 	_slow_for = _slow_for + delta if _frame_time > FRAME_BUDGET_S else 0.0
-	if _slow_for > SLOW_FOR_S and _torqa.graphics_quality() != "low":
+	if _slow_for > SLOW_FOR_S and _orqwa.graphics_quality() != "low":
 		_budget_noted = true
 		_show_toast(
 			tr("Below 60 fps: a lower graphics quality (Settings → Graphics) runs smoother.")
@@ -624,7 +624,7 @@ func _watch_frame_time(delta: float) -> void:
 
 
 func _set_time_scale(scale: float) -> void:
-	_time_scale = _torqa.set_time_scale(scale) if _torqa != null else 1.0
+	_time_scale = _orqwa.set_time_scale(scale) if _orqwa != null else 1.0
 	_bar.show_speed(_time_scale)
 
 
@@ -668,7 +668,7 @@ func _on_control_requested(control: String) -> void:
 func _step_difficulty(step: int) -> void:
 	if _finished:
 		return
-	var difficulty: float = _torqa.step_difficulty(step)
+	var difficulty: float = _orqwa.step_difficulty(step)
 	if difficulty < 0.0:
 		return
 	_options["difficulty"] = difficulty
@@ -679,14 +679,14 @@ func _step_difficulty(step: int) -> void:
 func _step_intensity(step: int) -> void:
 	if _finished:
 		return
-	var intensity: float = _torqa.step_intensity(step)
+	var intensity: float = _orqwa.step_intensity(step)
 	if intensity >= 0.0:
 		_show_toast(tr("Workout intensity: %d %%") % roundi(intensity))
 
 
 ## On with the next step of a structured workout (#139, N).
 func _skip_step() -> void:
-	if _torqa.skip_step():
+	if _orqwa.skip_step():
 		_show_toast(tr("Workout: next step"))
 
 
@@ -694,12 +694,12 @@ func _skip_step() -> void:
 func _control_music(music: Array) -> void:
 	var command: String = music[0]
 	var message: String = music[1]
-	_torqa.control_music(command)
+	_orqwa.control_music(command)
 	_show_toast(tr(message))
 
 
 func _cycle_camera() -> void:
-	if _torqa.riding_along_video() or _backdrop.visible:
+	if _orqwa.riding_along_video() or _backdrop.visible:
 		return
 	_show_toast(tr("Camera: %s") % tr(_world.cycle_camera()))
 
@@ -708,7 +708,7 @@ func _cycle_camera() -> void:
 func _toggle_pause() -> void:
 	if _finished:
 		return
-	_show_paused(_torqa.set_paused(not _torqa.is_paused()))
+	_show_paused(_orqwa.set_paused(not _orqwa.is_paused()))
 
 
 ## Paused, the ride settings open, to change what the pause was for (R98); the overlay has no
@@ -757,7 +757,7 @@ func _on_remembered_missing(names: PackedStringArray) -> void:
 func _on_ride_finished() -> void:
 	# The finish toast with the time comes from `route_completed`; the whole screen shows it.
 	overlay_requested.emit(false)
-	_torqa.finish_ride()
+	_orqwa.finish_ride()
 
 
 ## After the finish: to the summary, or back if nothing was recorded.
@@ -772,7 +772,7 @@ func _finish_ride() -> void:
 	_finished = true
 	_bar.show_pause(false)
 	_bar.show_settings(false)
-	_torqa.finish_ride()
+	_orqwa.finish_ride()
 	if not _saved:
 		# Nothing to save (e.g. the trainer never connected): offer the way back.
 		_show_toast(tr("Nothing recorded."))

@@ -8,6 +8,6 @@
 give_back_files() {
     [ "$(id -u)" -ne 0 ] || return 0
     [ -n "$(find "$root" -uid 0 -print -quit 2>/dev/null)" ] || return 0
-    docker run --rm -v "$root:/workspaces/torqa" --entrypoint find "$@" \
-        /workspaces/torqa -uid 0 -exec chown "$(id -u):$(id -g)" {} +
+    docker run --rm -v "$root:/workspaces/orqwa" --entrypoint find "$@" \
+        /workspaces/orqwa -uid 0 -exec chown "$(id -u):$(id -g)" {} +
 }

@@ -1,6 +1,6 @@
 class_name RemoteNavigation
 extends RefCounted
-## The remote's pad (#228) works Torqa as the keyboard does: its arrows move the focus, OK
+## The remote's pad (#228) works ORQWA as the keyboard does: its arrows move the focus, OK
 ## presses what has it, back closes a dialog or goes back a screen (Escape's `ui_cancel`). A
 ## dialog open over the window takes the steps first. The first arrow on a screen gives the
 ## focus to its main control, one in the group [constant FIRST], else to its first.

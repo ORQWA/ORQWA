@@ -1,16 +1,16 @@
 class_name AboutPage
 extends VBoxContainer
-## What Torqa is, on the settings' About tab (R83): its version and the commit it is built
+## What ORQWA is, on the settings' About tab (R83): its version and the commit it is built
 ## from, whether a newer one is out (R99), its licence and where its source code is, and the
 ## licence notices of everything built into the app, each with its full text.
 
-const LOGO: Texture2D = preload("res://assets/brand/torqa-logo-dark.svg")
-const WORDMARK: Texture2D = preload("res://assets/brand/torqa-wordmark-dark.svg")
+const LOGO: Texture2D = preload("res://assets/brand/orqwa-logo-dark.svg")
+const WORDMARK: Texture2D = preload("res://assets/brand/orqwa-wordmark-dark.svg")
 
 var _version: Label = Label.new()
 var _copy: Button = Button.new()
-var _torqa: TorqaApp
-## Looking for a newer Torqa at start-up, on this computer (R99), and right now.
+var _orqwa: OrqwaApp
+## Looking for a newer ORQWA at start-up, on this computer (R99), and right now.
 var _check_at_start: CheckBox = CheckBox.new()
 var _check_now: Button = Button.new()
 var _update_status: Label = Label.new()
@@ -19,15 +19,15 @@ var _free: Label = Label.new()
 ## The parts of the app with a notice, and the selected part's notice.
 var _parts: ItemList = ItemList.new()
 var _notice: TextEdit = TextEdit.new()
-## `TorqaCore.notices()`: `[{part, text}]`.
-var _notices: Array = TorqaCore.notices()
+## `OrqwaCore.notices()`: `[{part, text}]`.
+var _notices: Array = OrqwaCore.notices()
 
 
 func _init() -> void:
 	add_theme_constant_override("separation", 12)
 	var brand: HBoxContainer = HBoxContainer.new()
 	brand.add_theme_constant_override("separation", 12)
-	for image: Array in [[LOGO, Vector2(40, 40)], [WORDMARK, Vector2(84, 32)]]:
+	for image: Array in [[LOGO, Vector2(40, 40)], [WORDMARK, Vector2(140, 32)]]:
 		var texture: TextureRect = TextureRect.new()
 		texture.texture = image[0]
 		texture.custom_minimum_size = image[1]
@@ -46,8 +46,8 @@ func _init() -> void:
 	updates.add_theme_constant_override("h_separation", 16)
 	_check_at_start.toggled.connect(
 		func(on: bool) -> void:
-			if _torqa != null:
-				_torqa.set_checks_for_updates(on)
+			if _orqwa != null:
+				_orqwa.set_checks_for_updates(on)
 	)
 	updates.add_child(_check_at_start)
 	_check_now.focus_mode = Control.FOCUS_NONE
@@ -66,7 +66,7 @@ func _init() -> void:
 	source.add_child(_free)
 	var link: LinkButton = LinkButton.new()
 	link.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	link.text = TorqaCore.source_url()
+	link.text = OrqwaCore.source_url()
 	link.uri = link.text
 	link.focus_mode = Control.FOCUS_NONE
 	link.add_theme_color_override("font_color", UiTheme.ACCENT)
@@ -93,19 +93,19 @@ func _init() -> void:
 
 
 ## Shows and changes this computer's update setting, and tells what a check found.
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_check_at_start.set_pressed_no_signal(torqa.checks_for_updates())
-	torqa.up_to_date.connect(func() -> void: _update_status.text = tr("Torqa is up to date."))
-	torqa.update_failed.connect(func(message: String) -> void: _update_status.text = message)
-	torqa.update_available.connect(
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_check_at_start.set_pressed_no_signal(orqwa.checks_for_updates())
+	orqwa.up_to_date.connect(func() -> void: _update_status.text = tr("ORQWA is up to date."))
+	orqwa.update_failed.connect(func(message: String) -> void: _update_status.text = message)
+	orqwa.update_available.connect(
 		func(version: String, _page: String, _installable: bool) -> void:
-			_update_status.text = tr("Torqa %s is available.") % version
+			_update_status.text = tr("ORQWA %s is available.") % version
 	)
 
 
 func _on_check_now() -> void:
-	if _torqa != null and _torqa.check_for_updates(true):
+	if _orqwa != null and _orqwa.check_for_updates(true):
 		_update_status.text = tr("Looking for updates…")
 
 
@@ -115,16 +115,16 @@ func _notification(what: int) -> void:
 
 
 func _translate() -> void:
-	var commit: String = TorqaCore.commit()
+	var commit: String = OrqwaCore.commit()
 	if commit.is_empty():
-		_version.text = tr("Version %s") % TorqaCore.version()
+		_version.text = tr("Version %s") % OrqwaCore.version()
 	else:
-		_version.text = tr("Version %s, commit %s") % [TorqaCore.version(), commit]
+		_version.text = tr("Version %s, commit %s") % [OrqwaCore.version(), commit]
 	_copy.text = tr("Copy")
 	_copy.tooltip_text = tr("Copy the version, e.g. for a bug report")
-	_check_at_start.text = tr("Look for updates when Torqa starts")
+	_check_at_start.text = tr("Look for updates when ORQWA starts")
 	_check_now.text = tr("Check for updates")
-	_free.text = tr("Torqa is free software under the GNU General Public License, version 3:")
+	_free.text = tr("ORQWA is free software under the GNU General Public License, version 3:")
 	var selected: PackedInt32Array = _parts.get_selected_items()
 	_parts.clear()
 	for notice: Dictionary in _notices:
@@ -136,8 +136,8 @@ func _translate() -> void:
 ## The parts' titles, by the core's names for them; names stay as they are.
 func _title(part: String) -> String:
 	match part:
-		"torqa":
-			return "Torqa"
+		"orqwa":
+			return "ORQWA"
 		"godot":
 			return "Godot Engine"
 		"ffmpeg":
@@ -156,12 +156,12 @@ func _show_notice(index: int) -> void:
 	_notice.scroll_vertical = 0
 
 
-## What the Copy button puts on the clipboard: Torqa's version and commit, Godot's and the
+## What the Copy button puts on the clipboard: ORQWA's version and commit, Godot's and the
 ## system's, as a bug report asks for them.
 func _version_report() -> String:
-	var commit: String = TorqaCore.commit()
-	var torqa: String = TorqaCore.version() + ("" if commit.is_empty() else " (%s)" % commit)
+	var commit: String = OrqwaCore.commit()
+	var orqwa: String = OrqwaCore.version() + ("" if commit.is_empty() else " (%s)" % commit)
 	return (
-		"Torqa %s, Godot %s, %s %s"
-		% [torqa, Engine.get_version_info()["string"], OS.get_name(), OS.get_version()]
+		"ORQWA %s, Godot %s, %s %s"
+		% [orqwa, Engine.get_version_info()["string"], OS.get_name(), OS.get_version()]
 	)

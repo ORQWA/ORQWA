@@ -8,7 +8,7 @@ mkdir -p "$root/screenshots"
 "$root/scripts/build-gdext.sh" debug >/dev/null
 # Weeks of made-up rides, so the history and the Analysis tab (R61) have something to show.
 if [ "${SCREENSHOT_ERRORS_ONLY:-}" != 1 ]; then
-    cargo run -q --manifest-path "$root/core/Cargo.toml" -p torqa-cli -- sample-rides --weeks 16
+    cargo run -q --manifest-path "$root/core/Cargo.toml" -p orqwa-cli -- sample-rides --weeks 16
 fi
 godot --headless --path "$root/app" --import >/dev/null 2>&1 || true
 # Another window size, e.g. SCREENSHOT_SIZE=1024x640, to check that the layouts reflow (R94).

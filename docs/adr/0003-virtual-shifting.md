@@ -30,7 +30,7 @@ reverse-engineered implementations; BikeControl also defines the open OpenBikeCo
 
 ## Amendment 2026-10-06: how the gears feel
 
-Implemented in `torqa_physics::VirtualGears`:
+Implemented in `orqwa_physics::VirtualGears`:
 
 - **Gears:** 24, from 0.75 to 5.5 (chainring over cog), each about 9 % above the last. A ride
   starts in the gear nearest to the real one (chainring / cog of the rider's drivetrain,
@@ -40,9 +40,9 @@ Implemented in `torqa_physics::VirtualGears`:
   same cadence is `r` times the speed, and the pedals feel the road's force at that speed times
   the leverage `r`. With the trainer's force `m·g·(grade + Crr) + Cw·v²`, sending `r·grade`,
   `r·Crr` and `r³·Cw` gives exactly `r·F_road(r·v)` — so gears change how hard the road feels
-  at a cadence, while Torqa's virtual speed still comes from the measured power. Crr and Cw
+  at a cadence, while ORQWA's virtual speed still comes from the measured power. Crr and Cw
   are capped at what FTMS can carry (0.0255, 2.55 kg/m); the trainer limits the grade.
-- **Inputs:** behind `ShiftInput` (`torqa_domain::shifting`): the keyboard (↑ / ↓ in the
+- **Inputs:** behind `ShiftInput` (`orqwa_domain::shifting`): the keyboard (↑ / ↓ in the
   app, `u` / `d` in the CLI) and **Shimano Di2** (R59): the 12-speed Di2 or the EW-WU111
   wireless unit indicates presses of the buttons assigned to D-Fly channels (service
   `0x18EF`, characteristic `0x2AC2` in Shimano's own UUID base; `[counter, ch1…ch4]`, flags
@@ -83,7 +83,7 @@ unlock, no keepalive:
   Every few seconds `19 10 5D`: a status whose field is the battery (93 %); the standard
   Battery Service is there too.
 
-The unit only says whether a button is down. `torqa_devices::zwift_click` makes the presses
+The unit only says whether a button is down. `orqwa_devices::zwift_click` makes the presses
 of a Di2 out of that, so the assignments of #139 apply unchanged: a **hold** once the button
 has been down for 500 ms (told then, not when let go, so a long hold is one press however
 long), a **press** when it comes up before that. There is no double press: waiting for a
@@ -101,7 +101,7 @@ route (DC Rainmaker, 2025-02).
 
 ## Amendment 2026-10-16: the Zwift Click v2 (R77)
 
-The Click v2 followed after all, as a driver of its own (`torqa_devices::zwift_click_v2`)
+The Click v2 followed after all, as a driver of its own (`orqwa_devices::zwift_click_v2`)
 written from the community's drivers, with **no pod at hand**: it is marked unchecked until a
 Click v2 owner confirms it (OPEN-QUESTIONS). What those drivers agree on:
 
@@ -112,11 +112,11 @@ Click v2 owner confirms it (OPEN-QUESTIONS). What those drivers agree on:
   first attempt with `device lacks service 00000001-19ca…` (#271, 2026-10-16), and BikeControl
   looks for the Ride's service first and the Click's second, so the driver takes either. Zwift's own app
   takes one connection, the left pod relaying the right and the trainer; third-party apps
-  connect each pod. Torqa joins the two found in a scan into one device, "Zwift Click v2", the
+  connect each pod. ORQWA joins the two found in a scan into one device, "Zwift Click v2", the
   right pod first and the left as its partner, driven over one handle: one row in the Devices
   tab, one remembered device, both pods dropped and reconnected together. A pod alone is the
   device by itself. Without manufacturer data a pod cannot be told from an original Click and
-  is taken for one; that pod would answer the handshake and then say nothing Torqa decodes.
+  is taken for one; that pod would answer the handshake and then say nothing ORQWA decodes.
 - **The Ride's plain protocol**, not the Play's encryption: write `RideOn` to `…0003`; the
   pod indicates `RideOn 02 03 …` on `…0004`. Buttons on `…0002` as message `0x23`, field 1 a
   varint of a 32-bit map, a bit **clear while its button is down** (`23 08 FF FF FF FF 0F` is
@@ -130,14 +130,14 @@ Click v2 owner confirms it (OPEN-QUESTIONS). What those drivers agree on:
   unless it was in a Zwift session within about 24 hours, it answers the handshake with a
   vendor challenge `ff 03 …` instead of `RideOn` and tells of no buttons. Unlocking is logging
   in to Zwift (no subscription needed), connecting the Click, closing Zwift; BikeControl can
-  also relay Zwift's unlock, which Torqa does not. After the handshake Torqa writes `ff 04 00`
+  also relay Zwift's unlock, which ORQWA does not. After the handshake ORQWA writes `ff 04 00`
   to a left pod, as QZ does unconditionally: it keeps an unlocked pod unlocked across
   connections and does nothing to a locked one. A challenge is logged as the pod being
   locked. The right pod is never locked, so + and a lettered button given "shift down" shift
   without Zwift at all, as BikeControl's "right side only" mode does.
 - **Pods fall asleep** after roughly a minute without traffic and drop the link
   (QZ, [#4743](https://github.com/cagnulein/qdomyos-zwift/pull/4743): HCI supervision
-  timeout after ~56 s). QZ writes `RideOn` again every 3 s to both pods; Torqa does the same.
+  timeout after ~56 s). QZ writes `RideOn` again every 3 s to both pods; ORQWA does the same.
   MaximumTrainer tried 3, 6 and 20 s and none, suspecting the re-sends of causing drops, so
   this is the point to check first on hardware.
 
@@ -163,7 +163,7 @@ states line up.
 ## Amendment 2026-10-19: the Click v2 checked on a pair (R96)
 
 A maintainer's pair answered the driver as the community's drivers led us to expect
-(`torqa-cli gear-check --controller "Zwift Click v2"` with `RUST_LOG=torqa_devices=debug`,
+(`orqwa-cli gear-check --controller "Zwift Click v2"` with `RUST_LOG=orqwa_devices=debug`,
 two minutes, each button pressed once):
 
 - **Handshake.** Both pods answer `RideOn` on `…0004`, at once and to every keepalive; the
@@ -209,7 +209,7 @@ the ride takes the new gears at once. Switched from a cassette to virtual gears,
 from the gear nearest the real one. Other teeth keep the gear ridden: the 24 virtual ratios do
 not depend on the real gear, only how much the trainer scales the road for them does.
 
-Checked on a KICKR CORE the same day (`torqa-cli gear-check`, Zwift Click v1 shifting): the
+Checked on a KICKR CORE the same day (`orqwa-cli gear-check`, Zwift Click v1 shifting): the
 trainer follows the scaled Crr and Cw as well as the grade. On the flat, gear 24 held 18.5 km/h
 at about 100 W and gear 5 24 km/h at about 40 W, where the road alone would take about 44 and
 79 W. The easiest gears cannot go below what the trainer brakes at the least.

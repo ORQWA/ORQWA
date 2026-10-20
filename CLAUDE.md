@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Torqa — offline-first, open-source (GPL-3.0) indoor cycling app. Read before working:
+ORQWA — offline-first, open-source (GPL-3.0) indoor cycling app. Read before working:
 [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), [docs/PLAN.md](docs/PLAN.md), [docs/adr/](docs/adr/).
 
 ## Environment — containers only
@@ -10,7 +10,7 @@ Torqa — offline-first, open-source (GPL-3.0) indoor cycling app. Read before w
   `.devcontainer/`. Run commands through `docker` / the devcontainer, never on the host.
 - Only exception (Docker on macOS has no Bluetooth or Metal): the macOS app and GDExtension are built
   by GitHub Actions macOS runners. Locally, only the portable Godot editor `.app` and downloaded
-  Torqa builds run natively, for 3D and real-trainer testing.
+  ORQWA builds run natively, for 3D and real-trainer testing.
 - Same for Windows (a Windows DLL with Windows' Bluetooth behind it): the Windows `.exe` and
   GDExtension are built by the `windows` job on GitHub Actions Windows runners. For native GPU
   renders during development, `scripts/build-gdext.sh release windows` cross-builds the DLL in
@@ -21,8 +21,8 @@ Torqa — offline-first, open-source (GPL-3.0) indoor cycling app. Read before w
 
 ## Skills
 
-Project skills live in `.claude/skills/` (see its README): the art direction (`torqa-look`),
-the Blender pipeline (`torqa-art-pipeline`), render review (`torqa-render-review`) and imported
+Project skills live in `.claude/skills/` (see its README): the art direction (`orqwa-look`),
+the Blender pipeline (`orqwa-art-pipeline`), render review (`orqwa-render-review`) and imported
 Blender references. Use them for any visual or model work.
 
 ## Architecture boundary
@@ -32,13 +32,13 @@ Blender references. Use them for any visual or model work.
 - New capabilities go behind the plugin traits (`RouteImporter`, `TrainerDriver`, `SensorDriver`,
   `ShiftInput`, `ActivityUploader`, `WorkoutParser`) so implementations stay swappable.
 - Riders may keep built worlds across updates (R101, ADR 0025). A change that makes courses come
-  out differently raises `torqa_world::GENERATOR`; one that changes the stored world's layout or
+  out differently raises `orqwa_world::GENERATOR`; one that changes the stored world's layout or
   what the app makes of it (fields, instance buffers, model names) raises
-  `torqa_world::stored::FORMAT`.
+  `orqwa_world::stored::FORMAT`.
 
 ## Rust conventions
 
-- Errors: `thiserror` in library crates, `anyhow` only in binaries (`torqa-cli`, gdext glue).
+- Errors: `thiserror` in library crates, `anyhow` only in binaries (`orqwa-cli`, gdext glue).
 - Async: `tokio`. Logging: `tracing`.
 - Physical quantities as custom newtypes (`Watts`, `Meters`, `MetersPerSecond`, `Kilograms`, …),
   SI units internally; convert to imperial only at the presentation edge.
@@ -88,8 +88,8 @@ Blender references. Use them for any visual or model work.
   `docs/PLAN.md`, `docs/REQUIREMENTS.md` (append-only), ADR amendments, `docs/CREDITS.md`,
   `docs/OPEN-QUESTIONS.md` (remove what is settled), `art/README.md` and the skills in
   `.claude/skills/`.
-- **Every server Torqa contacts is listed** in the wiki's
-  [When Torqa needs the internet](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Getting-started#when-torqa-needs-the-internet)
+- **Every server ORQWA contacts is listed** in the wiki's
+  [When ORQWA needs the internet](https://github.com/ORQWA/ORQWA/wiki/Getting-started#when-orqwa-needs-the-internet)
   section, which riders use for privacy and firewall rules. Adding, changing or removing a
   network call updates that list in the same PR.
 - **Images in docs stay current too.** Re-render those a change affects: app screenshots with
@@ -97,7 +97,7 @@ Blender references. Use them for any visual or model work.
   `scripts/render-models.sh` / `scripts/render-riders.sh`. Check wiki links as well as repository
   docs before deleting unused images. Wiki screenshots use absolute raw URLs to this repository.
   PR review images are committed under `docs/images/` and linked from the PR by commit
-  (`raw.githubusercontent.com/<owner>/Torqa/<commit>/…`), so pruning them breaks no PR.
+  (`raw.githubusercontent.com/<owner>/ORQWA/<commit>/…`), so pruning them breaks no PR.
 
 ## Git
 

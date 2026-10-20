@@ -8,7 +8,7 @@ extends AcceptDialog
 signal options_changed(options: Dictionary)
 signal workout_changed(workout: Dictionary)
 signal hud_changed(layout: PackedStringArray)
-## The rider changed their profile (R98): all of it, shaped like `TorqaApp.profile()`.
+## The rider changed their profile (R98): all of it, shaped like `OrqwaApp.profile()`.
 signal profile_changed(profile: Dictionary)
 signal finish_requested
 signal abort_requested
@@ -19,7 +19,7 @@ var _options: RideOptions = RideOptions.new()
 var _hud: HudEditor = HudEditor.new()
 var _profile: RideProfile = RideProfile.new()
 var _devices: RideDevices = RideDevices.new()
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 ## The units the HUD editor shows its figures in, to follow the rider's.
 var _imperial: bool = false
 var _confirm_abort: ConfirmationDialog = ConfirmationDialog.new()
@@ -68,10 +68,10 @@ func _translate_ride_tab() -> void:
 		_tabs.set_tab_title(_options.get_index(), tr("Ride", "ride_tab"))
 
 
-## Shows the devices of `torqa` and reconnects them (R69), and shows its rider's profile.
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_devices.bind(torqa)
+## Shows the devices of `orqwa` and reconnects them (R69), and shows its rider's profile.
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_devices.bind(orqwa)
 
 
 ## The rider's heart-rate zones, FTP and structured workouts, for changing a workout (see
@@ -104,8 +104,8 @@ func edit(
 	_options.show_option_groups(world_options, not world_options, workout.is_empty())
 	_imperial = imperial
 	_hud.edit(layout, imperial)
-	if _torqa != null:
-		_profile.edit(_torqa.profile())
+	if _orqwa != null:
+		_profile.edit(_orqwa.profile())
 	_devices.refresh()
 	UiScale.popup(self, Vector2i(960, 600))
 

@@ -33,7 +33,7 @@ const HEART_RATE_ZONES: Array[Array] = [
 	["Hard", Color(0.98, 0.55, 0.2)],
 	["Maximum", Color(0.95, 0.3, 0.3)],
 ]
-## Climb categories as labelled by Torqa, easiest first.
+## Climb categories as labelled by ORQWA, easiest first.
 const CLIMB_COLORS: Dictionary[String, Color] = {
 	"Climb": Color(0.6, 0.62, 0.66),
 	"Cat 4": Color(0.3, 0.8, 0.45),

@@ -1,6 +1,6 @@
 class_name ProfileForm
 extends GridContainer
-## A rider's figures and choices, the fields as `TorqaApp.profile()` has them: weights, FTP,
+## A rider's figures and choices, the fields as `OrqwaApp.profile()` has them: weights, FTP,
 ## maximum heart rate, trainer difficulty, units, language, the rider on the bike, the ride map
 ## and the drivetrain (R9). The rider settings and the ride settings' Profile tab (R98) both
 ## show it, so a rider is set up the same way before and during a ride.
@@ -48,7 +48,7 @@ func _init() -> void:
 	_drivetrain.add_item(tr("Cassette: shift on the bike"))
 	_drivetrain.add_item(tr("Single cog: virtual gears"))
 	_drivetrain.tooltip_text = tr(
-		"On a single cog such as the Zwift Cog, Torqa shifts 24 virtual gears: ↑ and ↓ while riding"
+		"On a single cog such as the Zwift Cog, ORQWA shifts 24 virtual gears: ↑ and ↓ while riding"
 	)
 	_drivetrain.item_selected.connect(func(_index: int) -> void: _show_teeth())
 	# Language names stay in their own language; only "System language" is translated.
@@ -90,7 +90,7 @@ func _init() -> void:
 			(field as OptionButton).item_selected.connect(func(_index: int) -> void: changed.emit())
 
 
-## Shows `profile` (shaped like `TorqaApp.profile()`; a new rider's if it has no fields)
+## Shows `profile` (shaped like `OrqwaApp.profile()`; a new rider's if it has no fields)
 ## without emitting `changed`.
 func edit(profile: Dictionary) -> void:
 	for field: Array in [
@@ -118,7 +118,7 @@ func edit(profile: Dictionary) -> void:
 	_show_teeth()
 
 
-## The fields as `TorqaApp.profile()` has them.
+## The fields as `OrqwaApp.profile()` has them.
 func profile() -> Dictionary:
 	return {
 		"rider_mass_kg": _rider_mass.value,

@@ -634,7 +634,7 @@ def public(spec):
 
 # Castles and lighthouses stand on hills and rocks: their walls reach this far below the
 # ground, and the world lets them stand on plots falling nearly as much (`DEEP_BASEMENT` in
-# core/torqa-world/src/buildings/mod.rs).
+# core/orqwa-world/src/buildings/mod.rs).
 DEEP = 8.0
 
 

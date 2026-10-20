@@ -20,8 +20,8 @@ Service too, next to FTMS. Cadence sensors talk the **Cycling Speed and Cadence 
 
 ## Decision
 
-- **Standard drivers only**: `torqa_devices::cycling_power` for every meter that offers the
-  Cycling Power Service, `torqa_devices::speed_cadence` for cadence sensors, with no vendor
+- **Standard drivers only**: `orqwa_devices::cycling_power` for every meter that offers the
+  Cycling Power Service, `orqwa_devices::speed_cadence` for cadence sensors, with no vendor
   code. A device that offers FTMS stays a trainer, even if it also offers the Cycling Power
   Service.
 - **Cadence from the crank counter**: revolutions over time between two measurements. If the

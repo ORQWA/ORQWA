@@ -34,15 +34,15 @@ if $quick; then
         case "$path" in
             core/Cargo.lock | core/Cargo.toml | core/deny.toml | core/about.*)
                 rust=true; deps=true; release=true ;;
-            core/torqa-*/*)
+            core/orqwa-*/*)
                 rust=true; crates="$crates $(echo "$path" | cut -d/ -f2)" ;;
             core/*) rust=true ;;
         esac
         # Files the crates embed (include_str!/include_bytes!): a change is one to the crate.
         case "$path" in
             app/assets/palette.json | app/assets/models/*/models.json)
-                rust=true; crates="$crates torqa-world" ;;
-            app/assets/brand/*) rust=true; crates="$crates torqa-remote" ;;
+                rust=true; crates="$crates orqwa-world" ;;
+            app/assets/brand/*) rust=true; crates="$crates orqwa-remote" ;;
             LICENSE) rust=true ;;
         esac
         case "$path" in
@@ -128,7 +128,7 @@ if ! $godot; then
 fi
 
 # Godot checks: the extension loads, all scripts compile (warnings are errors) and the
-# Torqa node API works end to end.
+# ORQWA node API works end to end.
 "$root/scripts/build-gdext.sh" debug
 godot --headless --path "$root/app" --import >/dev/null 2>&1 || true
 
@@ -145,7 +145,7 @@ run_godot() {
 }
 # Capture first: in a pipeline, sh would only see grep's exit status.
 main_output="$(run_godot --quit-after 10)"
-echo "$main_output" | grep -q "^Torqa "
+echo "$main_output" | grep -q "^ORQWA "
 echo "Main scene smoke test passed"
 ride_output="$(run_godot -s res://tests/ride_smoke.gd)"
 echo "$ride_output" | grep "RIDE SMOKE TEST PASSED"

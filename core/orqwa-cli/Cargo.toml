@@ -1,0 +1,32 @@
+[package]
+name = "orqwa-cli"
+description = "Headless command-line interface to the ORQWA core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "orqwa-cli"
+path = "src/main.rs"
+
+[dependencies]
+orqwa-app.workspace = true
+orqwa-domain.workspace = true
+orqwa-devices.workspace = true
+orqwa-physics.workspace = true
+orqwa-routes.workspace = true
+orqwa-session.workspace = true
+orqwa-storage.workspace = true
+orqwa-terrain.workspace = true
+orqwa-video.workspace = true
+orqwa-workouts.workspace = true
+orqwa-world.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

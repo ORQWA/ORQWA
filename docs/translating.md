@@ -1,20 +1,20 @@
-# Translating Torqa
+# Translating ORQWA
 
-Torqa is written in English and translated with gettext files in `app/translations/`
+ORQWA is written in English and translated with gettext files in `app/translations/`
 (R24). German (`de.po`, Swiss spelling) is the first translation.
 The German catalogue uses informal **du**, Swiss **ss** spelling, and the wording reviewed
-individually in [issue #261](https://github.com/Torqa-Indoor-Cycling/Torqa/issues/261).
+individually in [issue #261](https://github.com/ORQWA/ORQWA/issues/261).
 The approved wording is maintained directly in `de.po`, including retained wording, contexts
 and subsequent corrections. German quotation marks are straight double quotes. Preserve
 explicitly approved exceptions to the general terminology.
 
-Rider language selection is described in the [wiki](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Riders#profile).
+Rider language selection is described in the [wiki](https://github.com/ORQWA/ORQWA/wiki/Riders#profile).
 
 ## Adding or updating a language
 
 1. In the dev container, refresh the template after code changes:
-   `python3 scripts/i18n/extract.py` → `app/translations/torqa.pot`.
-2. Copy `torqa.pot` to `<code>.po` (e.g. `fr.po`), set `"Language: fr\n"` in the header and
+   `python3 scripts/i18n/extract.py` → `app/translations/orqwa.pot`.
+2. Copy `orqwa.pot` to `<code>.po` (e.g. `fr.po`), set `"Language: fr\n"` in the header and
    fill in every `msgstr`. Keep placeholders like `%s`, `%d`, `%.1f` and `%%` — the check fails
    if they differ.
 3. Add the file to `internationalization/locale/translations` in `app/project.godot` and the

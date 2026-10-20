@@ -5,7 +5,7 @@
 
 ## Context
 
-Torqa needs semi-realistic 3D at 60 fps on an M1 integrated GPU (R16), Bluetooth LE trainer control
+ORQWA needs semi-realistic 3D at 60 fps on an M1 integrated GPU (R16), Bluetooth LE trainer control
 (R5), macOS first with Windows/Linux later (R1), and a GPL-3.0 license (R2).
 
 ## Decision

@@ -1,4 +1,4 @@
-# Torqa — Architecture & Plan
+# ORQWA — Architecture & Plan
 
 See [REQUIREMENTS.md](REQUIREMENTS.md) for requirement IDs and [adr/](adr/) for decisions.
 
@@ -10,31 +10,31 @@ renders and presents. Rationale in [ADR 0001](adr/0001-stack-godot-rust.md).
 
 ```
 core/                      Rust workspace (tokio + tracing)
-  torqa-domain/            newtype units (SI internally), profiles, plugin traits
-  torqa-physics/           speed integration, grade scaling, descent modes, virtual gears
-  torqa-devices/           btleplug FTMS + HRM + Shimano Di2 (D-Fly), fake trainer
-  torqa-routes/            GPX import, snapping to the map's roads, smoothing, DEM correction,
+  orqwa-domain/            newtype units (SI internally), profiles, plugin traits
+  orqwa-physics/           speed integration, grade scaling, descent modes, virtual gears
+  orqwa-devices/           btleplug FTMS + HRM + Shimano Di2 (D-Fly), fake trainer
+  orqwa-routes/            GPX import, snapping to the map's roads, smoothing, DEM correction,
                            climb detection
-  torqa-terrain/           elevation tiles (Mapterhorn, AWS fallback), disk cache, height lookup
-  torqa-osm/               OpenStreetMap features from OpenFreeMap vector tiles, tile cache
-  torqa-world/             terrain chunks, land cover, road mesh, streets, railways, bridges and
+  orqwa-terrain/           elevation tiles (Mapterhorn, AWS fallback), disk cache, height lookup
+  orqwa-osm/               OpenStreetMap features from OpenFreeMap vector tiles, tile cache
+  orqwa-world/             terrain chunks, land cover, road mesh, streets, railways, bridges and
                            tunnels, water, buildings, vegetation, the minimap
-  torqa-session/           ride loop (10–20 Hz), metrics (NP/TSS/zones, power curve), ghosts,
+  orqwa-session/           ride loop (10–20 Hz), metrics (NP/TSS/zones, power curve), ghosts,
                            workouts (ERG, heart-rate hold, structured), recording
-  torqa-workouts/          workout files (ZWO, ERG/MRC, FIT), built-in workouts, the library
-  torqa-video/             FFmpeg decoding, GoPro GPMF GPS, Incyclist and Tacx RLV (ADR 0010)
-  torqa-storage/           FIT files, ride summaries, profiles and accounts, course files (.tqc)
-  torqa-upload/            uploads to training platforms (intervals.icu, Strava) behind
+  orqwa-workouts/          workout files (ZWO, ERG/MRC, FIT), built-in workouts, the library
+  orqwa-video/             FFmpeg decoding, GoPro GPMF GPS, Incyclist and Tacx RLV (ADR 0010)
+  orqwa-storage/           FIT files, ride summaries, profiles and accounts, course files (.tqc)
+  orqwa-upload/            uploads to training platforms (intervals.icu, Strava) behind
                            ActivityUploader, the OAuth login in the browser
-  torqa-remote/            the remote for a phone or tablet: a page on the local network,
+  orqwa-remote/            the remote for a phone or tablet: a page on the local network,
                            a ShiftInput
                            (ADR 0019)
-  torqa-update/            a newer release on GitHub, its Windows installer downloaded and
-                           started over Torqa (ADR 0023)
-  torqa-app/               application layer: commands + update() per frame for front ends,
+  orqwa-update/            a newer release on GitHub, its Windows installer downloaded and
+                           started over ORQWA (ADR 0023)
+  orqwa-app/               application layer: commands + update() per frame for front ends,
                            the analysis across a rider's rides
-  torqa-gd/                gdext bindings (TorqaApp node), the sample course (R95)
-  torqa-cli/               headless: scan devices, ride with fake trainer, export FIT, sample
+  orqwa-gd/                gdext bindings (OrqwaApp node), the sample course (R95)
+  orqwa-cli/               headless: scan devices, ride with fake trainer, export FIT, sample
                            rides
 app/                       Godot 4 project: scenes/ (screens, 3D world, video view), ui/ (shared
                            controls and theme), shaders/, translations/, tests/ (smoke tests)
@@ -94,7 +94,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   GPX course by its start and end marks.
 - **Development environment**: everything runs in Docker / devcontainer. Docker on macOS has no
   Bluetooth or Metal, so macOS builds come from GitHub Actions macOS runners and only the
-  portable Godot editor and built Torqa app run natively.
+  portable Godot editor and built ORQWA app run natively.
 
 ## Roadmap
 
@@ -112,7 +112,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
   sets it in all of them and in `core/Cargo.lock`
 - [x] Windows installer and updates (R99, ADR 0023):
-  - [x] `Torqa-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
+  - [x] `ORQWA-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
     uninstall, upgrade in place; installed and uninstalled once in CI, installed by hand
   - [x] Update check at start-up in released builds (Settings → About turns it off and checks
     now), offered on the start page or after the ride; Windows downloads and installs the new
@@ -123,7 +123,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 ### Phase 1 — Devices
 - [x] FTMS driver (SIM / ERG / resistance), heart-rate sensor
 - [x] Fake trainer
-- [x] `torqa-cli scan` / `torqa-cli ride`
+- [x] `orqwa-cli scan` / `orqwa-cli ride`
 - [x] macOS CLI artifact from CI
 - [x] Power meter (R71, [ADR 0016](adr/0016-power-meters.md)): Cycling Power Service, cadence
   from crank revolutions; its power and cadence win over the trainer's, each falling back to
@@ -143,7 +143,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 ### Phase 3 — 3D world (MVP)
 Built in rideable steps:
 - [x] Step 1 — ride view in the app: route picker, device scan, settings, HUD, elevation
-  profile, track minimap; `torqa-app` application layer behind the `TorqaApp` Godot node
+  profile, track minimap; `orqwa-app` application layer behind the `OrqwaApp` Godot node
 - [x] Step 2 — 3D terrain from cached elevation tiles, road mesh along the route, sky, cameras
 - [x] Step 3a — OpenStreetMap: land cover, forests with trees, buildings, rivers; bridges and
   tunnels in the elevation profile ([ADR 0008](adr/0008-vector-tiles.md))
@@ -248,12 +248,12 @@ Built in rideable steps:
     (ride settings → Profile), kept in the profile and followed by the ride at once: weight,
     drivetrain, FTP of a structured workout, zones, units, map, language; pausing opens the
     ride settings
-  - [x] The remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
+  - [x] The remote (R86, #228, ADR 0019): a page on the local network (`orqwa-remote`)
     that a phone's or tablet's browser opens from a QR code, its ten buttons (two big) doing what the
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the
-    Torqa logo; off until turned on under Devices, a secret token in its address, a new
+    ORQWA logo; off until turned on under Devices, a secret token in its address, a new
     address to lock out those paired before; **not yet tried on a real phone or tablet**
-  - [x] A TV remote between rides (R87): a pad of arrows, OK and Back goes through Torqa's
+  - [x] A TV remote between rides (R87): a pad of arrows, OK and Back goes through ORQWA's
     screens to start a course or workout, a held Finish & save ends a ride, and a focus ring
     shows where keyboard and remote are (Escape goes back too)
   - [x] The remote keeps the screen on (R88): an unseen silent clip, muted for Chrome and
@@ -261,7 +261,7 @@ Built in rideable steps:
     Firefox on Android, **not yet tried in Chrome or on an iPhone or iPad**
 - [x] ERG workouts (ZWO/ERG/MRC/FIT + editor), FTP test:
   - [x] Structured workouts (R21): ZWO, ERG/MRC and FIT workout files behind `WorkoutParser`
-    (`torqa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their
+    (`orqwa-workouts`), a library in `workouts/` with five built-in workouts, ridden on their
     own or on a course; steps, ramps, free steps, cadence targets and messages
   - [x] FTP test (R22): a ramp test from the rider's FTP, over when the cadence gives way;
     75 % of the best minute, kept with the ride and taken into the profile from the summary;
@@ -269,7 +269,7 @@ Built in rideable steps:
   - [x] Workout editor: steps (steady, ramp, free) with duration, % of FTP, cadence and a
     message, intervals added at once, a live chart; saved as ZWO in the library
 - [x] Uploaders (R29), ANT+ FE-C:
-  - [x] intervals.icu behind `ActivityUploader` (`torqa-upload`, ADR 0013): the rider's API
+  - [x] intervals.icu behind `ActivityUploader` (`orqwa-upload`, ADR 0013): the rider's API
     key under Accounts on their card, uploads from the summary and the history, where each
     ride went kept with it
   - [x] Upload rides automatically, per account (R60): on the summary's Done; uploads take
@@ -282,7 +282,7 @@ Built in rideable steps:
   - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth FTMS only
 - [x] Windows and Linux builds from CI (Linux x86_64 and arm64 on Ubuntu 22.04, ADR 0012)
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
-- [x] Windows `.exe` with the app icon, Torqa's name and version, as on macOS, rather than the
+- [x] Windows `.exe` with the app icon, ORQWA's name and version, as on macOS, rather than the
   Godot template's (taskbar, Explorer, Task Manager); CI fails a build that keeps them
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)
@@ -331,7 +331,7 @@ Built in rideable steps:
 - [x] The ride chart draws cadence too; clicking a legend key hides or shows its line (R73)
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
 - [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Settings → Graphics;
-  the choice is kept and Torqa starts that way
+  the choice is kept and ORQWA starts that way
 - [x] The overlay's place is each rider's, graphics quality and full screen this computer's
   (R78, #257): kept next to the cache, out of the synced data folder, carried over once
 - [x] The devices are each rider's (R82): remembered devices, cadence source and shifter
@@ -341,7 +341,7 @@ Built in rideable steps:
   used last that a scan misses is no longer forgotten
 - [x] Settings behind a cog at the top right of the start page (R83): Graphics (quality, full
   screen) moved from the devices tab, now Devices; About with the version, the commit
-  (`build.rs`) and the licence notices of Torqa, Godot, FFmpeg, every Rust crate (cargo-about,
+  (`build.rs`) and the licence notices of ORQWA, Godot, FFmpeg, every Rust crate (cargo-about,
   checked to be current) and others' models and data (ADR 0018)
 - [x] Each shifter model has its own button assignments (R84): a Di2's channels no longer
   change a Click's + and −; the assignments kept for every shifter before stay each model's
@@ -508,7 +508,7 @@ physically based materials and light, restyled group by group.
 - [x] Streets and railways as one line across tile borders, paved streets level across
   (#116, #117); nothing of a railway tunnel or a house in the road ridden (#138)
 - [ ] Realistic look, step by step (ADR 0020, R89):
-  - [x] Decision and tools: ADR 0020, the `torqa-look` and `torqa-art-pipeline` skills
+  - [x] Decision and tools: ADR 0020, the `orqwa-look` and `orqwa-art-pipeline` skills
     rewritten, a baker of tileable PBR textures from procedural Blender materials
     (`art/textures`, WebP), Cycles previews from the build scripts (`--preview DIR`,
     `art/preview.py`); taken over from the author's earlier game project
@@ -534,7 +534,7 @@ physically based materials and light, restyled group by group.
   - [ ] Props by the road (R92), group by group:
     - [x] Roadside safety: guard rails where the ground falls away (start and end spans, gaps
       at junctions), delineator posts on country roads, snow poles above 1,300 m
-      (`art/props`, `core/torqa-world/src/props.rs`)
+      (`art/props`, `core/orqwa-world/src/props.rs`)
     - [x] Towns: street lamps staggered every 60 m, benches with bins, bus shelters every
       400 m, where they have room (clear of walls, side streets and junctions); villages the
       map leaves unmarked found by their buildings
@@ -555,7 +555,7 @@ physically based materials and light, restyled group by group.
 ### Phase 10 — Workout modes & overlay (R55–R56)
 - [x] Constant-power workout (ERG target) and heart-rate hold (zone or bpm, min/max power, gentle
   ramping) in the core, tested with the fake trainer and a simulated heart rate; rides without
-  a route (flat road, FIT as indoor cycling without positions); `torqa-cli ride --power` /
+  a route (flat road, FIT as indoor cycling without positions); `orqwa-cli ride --power` /
   `--hr-zone` / `--hr-target`
 - [x] Workouts in the app (R58): a Workouts tab after Courses; a workout on its own (HUD, its
   targets and a live chart of power and heart rate) or on a course in 3D; changed during the
@@ -574,7 +574,7 @@ The rider's power across their rides on an Analysis tab, from what each ride kee
 summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
 - [x] Power curve (R62): the best power per duration among a period's rides against all rides or
   the period before, in W or W/kg; the ride's curve on its summary and ★ for its power records;
-  rides saved before analysed once from their FIT files; `torqa-cli sample-rides` for
+  rides saved before analysed once from their FIT files; `orqwa-cli sample-rides` for
   screenshots
 - [x] Power profile (R63): a radar of the best 5 s / 1 / 5 / 20 / 60 min of the period against
   the rider's best of all time (the "power spider" of #217), beside the power curve
@@ -585,7 +585,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   and the FTP tests; an FTP estimated from the last 90 days' best efforts (Morton's
   three-parameter critical power, else 95 % of 20 min) offered, never applied
 - **Exit:** a season of real rides shows where the rider got stronger, and how fit and fresh
-  they are, without leaving Torqa
+  they are, without leaving ORQWA
 
 ### Phase 12 — Android tablets (R100, [ADR 0024](adr/0024-android.md))
 - [x] A — trial: a separate Android image, the core for `aarch64-linux-android`, a Godot
@@ -606,9 +606,19 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
     the update check offers the release page
   - [x] touch: Godot turns taps into clicks, enough to ride
 - [x] D — a release-signed APK as a release asset (tags only, the key from the repository
-  secrets; version code from Torqa's version), the wiki (installing, permissions, updates,
+  secrets; version code from ORQWA's version), the wiki (installing, permissions, updates,
   picture-in-picture); the internet list is unchanged
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
+
+### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
+"Torqa" is taken by another registered app; the project becomes ORQWA (orca and watt).
+- [x] Code identifiers: crates `orqwa-*`, `OrqwaApp` and the extension `orqwa_gd`, `ORQWA_*`
+  variables, the Android plugin, the dev image and volumes, the skills
+- [x] The app named ORQWA: the wordmark (`scripts/brand/wordmark.py`), Torqa's folders moved to
+  ORQWA's on the first start, installer, `org.orqwa.bike`, release files, docs, wiki and
+  screenshots
+- [ ] Drop the release asset `Torqa-windows-x86_64.msi` (`scripts/release/publish.sh`) once
+  riders have moved past Torqa 0.5.0
 
 ## Risks
 
@@ -636,7 +646,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
 
 - **Unit tests**: FTMS packet encode/decode, physics vs reference values (e.g. 250 W, 75 kg, 0 %
   → ~36–37 km/h), GPX fixtures, smoothing, climb detection, NP/TSS.
-- **Integration**: `torqa-cli ride --fake --route core/fixtures/<route>.gpx --time-scale 50` → FIT
+- **Integration**: `orqwa-cli ride --fake --route core/fixtures/<route>.gpx --time-scale 50` → FIT
   validated with the Garmin FIT SDK / `fitdecode`, plus a test upload to intervals.icu. In the
   app, `scripts/check.sh` runs the GDExtension smoke tests (`app/tests/`): a fake-trainer ride
   over a course and the UI components.

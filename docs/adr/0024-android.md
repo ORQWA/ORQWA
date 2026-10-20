@@ -1,17 +1,17 @@
-# ADR 0024 — Torqa on Android tablets
+# ADR 0024 — ORQWA on Android tablets
 
 - Status: accepted (phases A–D done; removable as below)
 - Date: 2026-10-19
 
 ## Context
 
-The riders want Torqa on an Android tablet beside the trainer, not only on a computer. ADR 0019
+The riders want ORQWA on an Android tablet beside the trainer, not only on a computer. ADR 0019
 chose a remote in the phone's browser over a companion app (R86). This is different: the whole app
 running on the tablet, with Bluetooth to the trainer and the shifter.
 
 Two things decided whether it is possible at all:
 
-- **Bluetooth.** btleplug, Torqa's Bluetooth crate, supports Android only through Java classes of
+- **Bluetooth.** btleplug, ORQWA's Bluetooth crate, supports Android only through Java classes of
   its own (`droidplug`, with the jni-utils classes vendored). They must be in the APK and be found
   through a Java environment that has the app's class loader. Neither btleplug nor Godot
   documents how a Godot extension gets there.
@@ -41,31 +41,31 @@ build image. That is too much for the dev image, which every check pulls.
   - Android's texture formats (ETC2/ASTC; in `app/` they would re-import every committed `.import`
     file);
   - the Android export preset;
-  - Torqa's Godot Android plugin;
+  - ORQWA's Godot Android plugin;
   - Godot's Gradle build, unzipped from the templates, because the editor's
     `--install-android-build-template` stays open.
 - **Bluetooth through a small Godot Android plugin** (`android/plugin`, Java):
   - Godot creates its plugins before it opens its extensions, on the app's main thread. The plugin
-    loads `libtorqa_gd.so` there, and Torqa's `JNI_OnLoad` hands the Java VM to
+    loads `liborqwa_gd.so` there, and ORQWA's `JNI_OnLoad` hands the Java VM to
     `btleplug::platform::init`.
   - btleplug's Java sources are compiled into the plugin straight from the crate cargo built, so
     they always match. Keep rules stop R8 from stripping them.
   - The plugin asks for `BLUETOOTH_SCAN` (never for location) and `BLUETOOTH_CONNECT`, or for
     location before Android 12.
-  - In Rust this takes `torqa-devices::android` and `jni` 0.22 (already btleplug's), both only on
+  - In Rust this takes `orqwa-devices::android` and `jni` 0.22 (already btleplug's), both only on
     Android.
 - **What Android changes elsewhere:**
-  - The core's log goes to Android's log (`adb logcat -s Torqa`), at debug level while support is
+  - The core's log goes to Android's log (`adb logcat -s ORQWA`), at debug level while support is
     young.
   - A file picked on Android arrives as a `content://` address, which the core cannot open.
-    `PickedFile` copies it into Torqa's folder first. Elsewhere it changes nothing.
+    `PickedFile` copies it into ORQWA's folder first. Elsewhere it changes nothing.
 
 ## Phase A result (2026-10-19)
 
 Tried on a Samsung Galaxy Tab S7 (Snapdragon 865+, Adreno 650) running LineageOS 23.2, which is
 Android 16:
 
-- The APK starts in about a second and runs Godot's mobile renderer on Vulkan. Torqa logs
+- The APK starts in about a second and runs Godot's mobile renderer on Vulkan. ORQWA logs
   "Bluetooth ready".
 - After the permission prompt, it found and connected the KICKR CORE and the Zwift Click. Power
   came through, and the Click shifted the virtual gears.
@@ -101,7 +101,7 @@ Everything Android is in `android/`, `scripts/android.sh`, `scripts/build-androi
 
 ## Consequences
 
-- Torqa can run on Android tablets, with a 154 MB APK (debug-signed for now).
+- ORQWA can run on Android tablets, with a 154 MB APK (debug-signed for now).
 - A second image of 10.6 GB, built only for APKs. The dev image and the checks are unchanged.
 - Android support rests on btleplug's Java part and on godot-rust's community-tested Android path.
   Either can break with an update; phase B's CI job will tell.
@@ -116,7 +116,7 @@ Everything Android is in `android/`, `scripts/android.sh`, `scripts/build-androi
     the temporary directory, which is the app's cache. Data now goes to the app's `files` folder
     beside it.
   - **Graphics.** Low is the default preset on Android.
-  - **Saving.** Saving to a picked `content://` place goes through a file in Torqa's folder, which
+  - **Saving.** Saving to a picked `content://` place goes through a file in ORQWA's folder, which
     Godot then copies there.
   - **HTTPS.** reqwest checks certificates through rustls-platform-verifier, which on Android
     needs the app's context. The plugin hands it over once (`initTls`). Its Java part
@@ -126,7 +126,7 @@ Everything Android is in `android/`, `scripts/android.sh`, `scripts/build-androi
   - **The overlay (R55) is picture-in-picture.** Android has one window per app, and Godot's
     activity already allows picture-in-picture. The plugin's `enterPictureInPicture` puts it
     there, shaped like the ride's HUD-only layout (within Android's 1:2.39 to 2.39:1), and the
-    layout is scaled to the small window. Once the rider opens Torqa again, the ride screen
+    layout is scaled to the small window. Once the rider opens ORQWA again, the ride screen
     comes back.
 
 ## Amendment 2026-10-20: phase C tried
@@ -141,14 +141,14 @@ volume: a key made with each image would refuse every update after a rebuild.
 
 ## Amendment 2026-10-20: phase D
 
-- **Release signing.** A tagged release's APK is signed with Torqa's release key (alias `torqa`),
+- **Release signing.** A tagged release's APK is signed with ORQWA's release key (alias `torqa`),
   kept in the repository secrets `ANDROID_KEYSTORE` and `ANDROID_KEYSTORE_PASSWORD` and written to
   the runner only for that step. Every other build, in CI or locally, is signed with a debug key:
   switching between the two needs an uninstall, and so would a lost release key for every rider.
   The key's owner keeps a copy outside GitHub.
-- **Version.** The APK carries Torqa's version: name `0.5.0`, code `500` (major × 10000 +
+- **Version.** The APK carries ORQWA's version: name `0.5.0`, code `500` (major × 10000 +
   minor × 100 + patch), so each release installs over the last.
-- **Release asset.** `Torqa-android-arm64.apk` is published with the others; the release waits
+- **Release asset.** `ORQWA-android-arm64.apk` is published with the others; the release waits
   for the Android build.
 - **Updates.** The update check offers the release page, as on macOS and Linux; the rider
   installs the newer APK over the old one.

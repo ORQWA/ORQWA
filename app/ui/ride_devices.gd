@@ -4,7 +4,7 @@ extends VBoxContainer
 ## not, when connecting failed, R80), and a button to reconnect those that are not (R69): a
 ## strap that dropped while the rider was off the bike, or one not found at start.
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _rows: GridContainer = GridContainer.new()
 var _reconnect: Button = Button.new()
 var _note: Label = Label.new()
@@ -27,22 +27,22 @@ func _init() -> void:
 	add_child(_note)
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
 	var changed: Callable = func(_device_name: String) -> void: refresh()
-	_torqa.device_connected.connect(changed)
-	_torqa.device_disconnected.connect(changed)
-	_torqa.device_failed.connect(func(_device_name: String, _reason: String) -> void: refresh())
-	_torqa.devices_found.connect(func(_devices: Array) -> void: _on_scanned())
-	_torqa.remembered_missing.connect(_on_remembered_missing)
-	_torqa.failed.connect(func(_message: String) -> void: _on_failed())
+	_orqwa.device_connected.connect(changed)
+	_orqwa.device_disconnected.connect(changed)
+	_orqwa.device_failed.connect(func(_device_name: String, _reason: String) -> void: refresh())
+	_orqwa.devices_found.connect(func(_devices: Array) -> void: _on_scanned())
+	_orqwa.remembered_missing.connect(_on_remembered_missing)
+	_orqwa.failed.connect(func(_message: String) -> void: _on_failed())
 
 
 ## Shows how the devices are doing now.
 func refresh() -> void:
 	for child: Node in _rows.get_children():
 		child.queue_free()
-	var devices: Array = _torqa.devices() if _torqa != null else []
+	var devices: Array = _orqwa.devices() if _orqwa != null else []
 	# i18n-begin
 	var kinds: Dictionary[String, String] = {
 		"trainer": "Trainer",
@@ -98,7 +98,7 @@ func refresh() -> void:
 
 
 func _on_reconnect_pressed() -> void:
-	if _torqa == null or not _torqa.reconnect_devices():
+	if _orqwa == null or not _orqwa.reconnect_devices():
 		return
 	_searching = true
 	_reconnect.disabled = true

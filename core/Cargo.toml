@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["torqa-domain", "torqa-terrain", "torqa-video", "torqa-osm", "torqa-routes", "torqa-physics", "torqa-devices", "torqa-storage", "torqa-workouts", "torqa-session", "torqa-world", "torqa-upload", "torqa-remote", "torqa-update", "torqa-app", "torqa-gd", "torqa-cli"]
+members = ["orqwa-domain", "orqwa-terrain", "orqwa-video", "orqwa-osm", "orqwa-routes", "orqwa-physics", "orqwa-devices", "orqwa-storage", "orqwa-workouts", "orqwa-session", "orqwa-world", "orqwa-upload", "orqwa-remote", "orqwa-update", "orqwa-app", "orqwa-gd", "orqwa-cli"]
 
 [workspace.package]
 version = "0.5.0"
@@ -10,21 +10,21 @@ license = "GPL-3.0-only"
 publish = false
 
 [workspace.dependencies]
-torqa-app = { path = "torqa-app" }
-torqa-domain = { path = "torqa-domain" }
-torqa-osm = { path = "torqa-osm" }
-torqa-devices = { path = "torqa-devices" }
-torqa-physics = { path = "torqa-physics" }
-torqa-routes = { path = "torqa-routes" }
-torqa-session = { path = "torqa-session" }
-torqa-storage = { path = "torqa-storage" }
-torqa-terrain = { path = "torqa-terrain" }
-torqa-upload = { path = "torqa-upload" }
-torqa-update = { path = "torqa-update" }
-torqa-remote = { path = "torqa-remote" }
-torqa-video = { path = "torqa-video" }
-torqa-workouts = { path = "torqa-workouts" }
-torqa-world = { path = "torqa-world" }
+orqwa-app = { path = "orqwa-app" }
+orqwa-domain = { path = "orqwa-domain" }
+orqwa-osm = { path = "orqwa-osm" }
+orqwa-devices = { path = "orqwa-devices" }
+orqwa-physics = { path = "orqwa-physics" }
+orqwa-routes = { path = "orqwa-routes" }
+orqwa-session = { path = "orqwa-session" }
+orqwa-storage = { path = "orqwa-storage" }
+orqwa-terrain = { path = "orqwa-terrain" }
+orqwa-upload = { path = "orqwa-upload" }
+orqwa-update = { path = "orqwa-update" }
+orqwa-remote = { path = "orqwa-remote" }
+orqwa-video = { path = "orqwa-video" }
+orqwa-workouts = { path = "orqwa-workouts" }
+orqwa-world = { path = "orqwa-world" }
 anyhow = "1.0.104"
 btleplug = "0.13.5"
 clap = { version = "4.6.7", features = ["derive"] }
@@ -41,7 +41,7 @@ mvt-reader = "2.5.0"
 png = "0.18.1"
 quick-xml = "0.42.0"
 # Without its assembly here: the 1.1.0 package leaves out the headers its ARM assembly needs.
-# torqa-video turns it on for x86_64, whose assembly the package has (ADR 0010).
+# orqwa-video turns it on for x86_64, whose assembly the package has (ADR 0010).
 rav1d = { version = "1.1.0", default-features = false, features = ["bitdepth_8", "bitdepth_16"] }
 reqwest = "0.13.5"
 # SQLite compiled in: no system library to find on any platform (ADR 0002, R79).

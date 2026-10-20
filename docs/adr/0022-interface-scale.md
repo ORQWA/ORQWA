@@ -59,7 +59,7 @@ never seen narrower than 1600 units, so many had fixed widths that only fit ther
   1600 × 900. Tests that click or measure set the window's size themselves.
 - On a TV, the text is as large as the system makes it there, and no longer grows with the
   screen. Riders who want it larger raise the system's scale. Under X11 they cannot, until
-  Torqa has a size setting of its own.
+  ORQWA has a size setting of its own.
 
 ## Amendment 2026-10-19: scroll bars keep their room
 

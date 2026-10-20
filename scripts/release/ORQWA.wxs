@@ -1,0 +1,49 @@
+<!--
+  The Windows installer (ADR 0023): ORQWA.exe and its extension in Program Files, a Start-menu
+  entry and an uninstaller. Built by the `windows` CI job with WiX:
+    wix build -acceptEula wix7 -arch x64 -d Version=<a.b.c.0> -d AppDir=<export folder> ORQWA.wxs
+  The rider's data lives in %APPDATA% and %LOCALAPPDATA%, so installing over, upgrading or
+  uninstalling never touches rides, profiles or settings.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- Never change the UpgradeCode: it is how a newer installer finds the version to replace,
+       Torqa's from before the rename too (ADR 0026). -->
+  <Package
+    Name="ORQWA"
+    Manufacturer="ORQWA"
+    Version="$(var.Version)"
+    UpgradeCode="AA632429-2A34-4633-934D-0CE91A94F45B"
+    Scope="perMachine"
+    Compressed="yes">
+    <!-- Same-version upgrades replace the installed copy, so a reinstalled build never shows
+         twice under Installed apps. -->
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of ORQWA is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- The .exe's own icon (ADR 0018) for Installed apps and the shortcut. -->
+    <Icon Id="ORQWA.exe" SourceFile="$(var.AppDir)\ORQWA.exe" />
+    <Property Id="ARPPRODUCTICON" Value="ORQWA.exe" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/ORQWA/ORQWA" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="ORQWA">
+        <Component>
+          <File Id="OrqwaExe" Source="$(var.AppDir)\ORQWA.exe" KeyPath="yes">
+            <Shortcut
+              Name="ORQWA"
+              Directory="ProgramMenuFolder"
+              WorkingDirectory="INSTALLFOLDER"
+              Icon="ORQWA.exe"
+              Advertise="yes" />
+          </File>
+        </Component>
+        <Component>
+          <File Source="$(var.AppDir)\orqwa_gd.dll" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+  </Package>
+</Wix>

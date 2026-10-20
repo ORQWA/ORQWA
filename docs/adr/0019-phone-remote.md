@@ -12,15 +12,15 @@ locked (R59), so neither helps. Most riders have a phone or a tablet at hand any
 
 A native companion app means a second code base (Swift and Kotlin, or a cross-platform
 toolkit), an Apple developer account, review in two stores, and keeping its protocol in step
-with every Torqa version. Torqa has no server of its own (R3) to pair the two through.
+with every ORQWA version. ORQWA has no server of its own (R3) to pair the two through.
 
 ## Decision
 
-**A page Torqa serves on the local network** (`torqa-remote`, R86), opened in the browser of
-a phone or tablet ("the phone" below stands for either). The Torqa a rider runs serves the page
+**A page ORQWA serves on the local network** (`orqwa-remote`, R86), opened in the browser of
+a phone or tablet ("the phone" below stands for either). The ORQWA a rider runs serves the page
 too, so the two never disagree, and any phone, tablet or computer works.
 
-- **A shift input with assignable buttons.** `torqa_remote::Remote` implements `ShiftInput`.
+- **A shift input with assignable buttons.** `orqwa_remote::Remote` implements `ShiftInput`.
   The page has ten buttons, two big ones first. The phone remote is a `ControllerModel` like
   the shifters (`PhoneRemote`), so its buttons are the rider's own (R84). The ride's state
   that the page hears carries each button's action, by the name a shifter's button gives it
@@ -31,7 +31,7 @@ too, so the two never disagree, and any phone, tablet or computer works.
   app polls the remote beside the keyboard and the Bluetooth shifter. It does not keep it in
   their list, whose second place belongs to the shifter.
 - **Plain HTTP/1.1, hand-written** on Tokio, as the OAuth login's loopback answer already is
-  (`torqa-upload`). Presses are `POST`s and the page hears the ride (gear, paused, workout) as
+  (`orqwa-upload`). Presses are `POST`s and the page hears the ride (gear, paused, workout) as
   **Server-Sent Events**. A WebSocket would need SHA-1 and base64 for its handshake, so a
   crate, and the page only listens. Only the method and the path of a request are read; heads
   over 8 kB, requests slower than 3 s and more than 16 connections are turned away. The page
@@ -65,7 +65,7 @@ too, so the two never disagree, and any phone, tablet or computer works.
   server or a warning in the browser.
 - Not a secure context, so the browser offers no Wake Lock: the page asks the rider to turn
   the phone's auto-lock off. There is no installable web app (service worker) either.
-- macOS and Windows ask once whether Torqa may accept connections. Guest networks that keep
+- macOS and Windows ask once whether ORQWA may accept connections. Guest networks that keep
   devices apart, and phones on mobile data, cannot reach the page.
 - A touch screen has no feel of a button, and a web page cannot use the phone's volume keys.
   A Bluetooth shifter stays the better choice where there is one.
