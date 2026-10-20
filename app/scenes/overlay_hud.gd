@@ -73,6 +73,11 @@ func _init() -> void:
 	_grip.gui_input.connect(_on_grip_input)
 	_grip.draw.connect(_draw_grip)
 	_box.add_child(_grip)
+	# On Android the overlay is picture-in-picture (ADR 0024): Android sizes it, and a tap on it
+	# brings up Android's own buttons rather than reaching ours, so only the figures show.
+	if OS.has_feature("android"):
+		_bar.hide()
+		_grip.hide()
 
 
 ## Shows whether the ride is paused on the pause button.
