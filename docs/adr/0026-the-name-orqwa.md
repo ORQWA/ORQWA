@@ -46,8 +46,7 @@ The app is **ORQWA**, orca, torque and watt (R102):
 ## Consequences
 
 - macOS treats ORQWA as a new app: it asks for Bluetooth again, and the Torqa app stays in
-  Applications until the rider deletes it. On Linux the old folder of the app stays too. The
-  wiki's getting-started guide says so.
+  Applications until the rider deletes it. On Linux the old folder of the app stays too.
 - Godot names its own folder for the app (logs, shader cache) after the app, so Torqa's stays
   behind and ORQWA starts a new one.
 - A Torqa started again after the move finds no data and starts afresh in a new folder.
