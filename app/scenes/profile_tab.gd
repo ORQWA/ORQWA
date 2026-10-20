@@ -264,12 +264,12 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 	var factor: float = 2.20462 if imperial else 1.0
 	var language: String = tr("System language")
 	var chosen: String = rider.get("language", "")
-	for entry: Array in ProfileDialog.LANGUAGES:
+	for entry: Array in ProfileForm.LANGUAGES:
 		var code: String = entry[0]
 		var language_name: String = entry[1]
 		if code == chosen and not code.is_empty():
 			language = language_name
-	var single_cog: bool = rider.get("drivetrain", "cassette") == "single_cog"
+	var single_cog: bool = rider.get("drivetrain", "single_cog") == "single_cog"
 	var id: String = rider.get("id", "")
 	var hud: PackedStringArray = (
 		_torqa.hud_layout_of(id) if _torqa != null else TorqaApp.hud_default_layout()

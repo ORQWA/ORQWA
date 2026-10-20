@@ -37,6 +37,8 @@ const CHART_MIN_S: float = 600.0
 var _torqa: TorqaApp
 var _world: RideWorld
 var _settings_dialog: RideSettingsDialog = RideSettingsDialog.new()
+## The pause opened the ride settings: going on closes them again.
+var _settings_for_pause: bool = false
 ## The ride options in effect (`RideOptions.options()`).
 var _options: Dictionary = {}
 ## Finished from the settings: go to the summary as soon as the ride is saved.
@@ -176,6 +178,7 @@ func _ready() -> void:
 	_settings_dialog.options_changed.connect(_on_options_changed)
 	_settings_dialog.workout_changed.connect(_on_workout_changed)
 	_settings_dialog.hud_changed.connect(_on_hud_changed)
+	_settings_dialog.profile_changed.connect(_on_profile_changed)
 	_settings_dialog.finish_requested.connect(_on_finish_requested)
 	_settings_dialog.abort_requested.connect(_on_abort_requested)
 	# The controls in one bar at the bottom left (#189); the keys work with it folded too.
@@ -396,6 +399,35 @@ func _on_hud_changed(layout: PackedStringArray) -> void:
 	var saved: PackedStringArray = _torqa.set_hud_layout(layout)
 	if not saved.is_empty():
 		_hud.show_layout(saved)
+
+
+## The rider changed their profile in the ride settings (R98): it is saved, the core's ride
+## follows the weight, drivetrain and FTP, and the screen the rest. A heart-rate zone held
+## follows the new zones; a structured workout's chart, the new FTP.
+func _on_profile_changed(profile: Dictionary) -> void:
+	var before: Dictionary = _torqa.profile()
+	var id: String = before.get("id", "")
+	if _torqa.save_profile(id, profile).is_empty():
+		return
+	var language: String = profile.get("language", "")
+	ProfileTab.apply_language(language)
+	_imperial = profile.get("units", "metric") == "imperial"
+	_hud.imperial = _imperial
+	_hud.show_layout(_torqa.hud_layout())
+	if profile.get("map_style") != before.get("map_style"):
+		_minimap.set_map(_torqa.minimap_mesh())
+	var max_heart_rate: float = profile.get("max_heart_rate_bpm", 185.0)
+	_chart.heart_rate_range = Vector2(max_heart_rate * 0.5, max_heart_rate)
+	var ftp: float = profile.get("ftp_w", 200.0)
+	var plans: Array = _torqa.workouts()
+	_settings_dialog.configure_workout(_torqa.heart_rate_zones(), ftp, plans)
+	if _workout.get("kind", "") == "zone":
+		_torqa.change_workout(_workout)
+	elif _workout.get("kind", "") == "plan":
+		for plan: Dictionary in plans:
+			if plan["id"] == _workout.get("id", ""):
+				_workout["plan"] = plan
+	_show_plan(ftp)
 
 
 func _on_finish_requested() -> void:
@@ -679,15 +711,24 @@ func _toggle_pause() -> void:
 	_show_paused(_torqa.set_paused(not _torqa.is_paused()))
 
 
+## Paused, the ride settings open, to change what the pause was for (R98); the overlay has no
+## room for them.
 func _show_paused(paused: bool) -> void:
 	_bar.show_paused(paused)
 	_overlay_hud.show_paused(paused)
 	if paused:
 		_show_toast(tr("Paused"))
 		_toast_left = INF
-	elif _toast_left == INF:
+		if not is_overlay() and not _settings_dialog.visible:
+			_open_settings()
+			_settings_for_pause = true
+		return
+	if _toast_left == INF:
 		_toast_left = 0.0
 		_toast.hide()
+	if _settings_for_pause:
+		_settings_for_pause = false
+		_settings_dialog.hide()
 
 
 func _show_toast(message: String) -> void:

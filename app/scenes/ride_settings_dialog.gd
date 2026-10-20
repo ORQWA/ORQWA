@@ -1,13 +1,15 @@
 class_name RideSettingsDialog
 extends AcceptDialog
 ## Everything that can be changed during a ride, in one place (R48): the workout (R56), the
-## ride options (camera, difficulty, descents, time of day, weather) and the rider's HUD,
-## applied as they change; the devices, to reconnect them (R69); plus finishing and saving,
-## or aborting without saving after a confirmation (R49).
+## ride options (camera, difficulty, descents, time of day, weather), the rider's HUD and
+## profile (R98), applied as they change; the devices, to reconnect them (R69); plus finishing
+## and saving, or aborting without saving after a confirmation (R49).
 
 signal options_changed(options: Dictionary)
 signal workout_changed(workout: Dictionary)
 signal hud_changed(layout: PackedStringArray)
+## The rider changed their profile (R98): all of it, shaped like `TorqaApp.profile()`.
+signal profile_changed(profile: Dictionary)
 signal finish_requested
 signal abort_requested
 
@@ -15,7 +17,11 @@ var _tabs: TabContainer = TabContainer.new()
 var _workout: WorkoutOptions = WorkoutOptions.new()
 var _options: RideOptions = RideOptions.new()
 var _hud: HudEditor = HudEditor.new()
+var _profile: RideProfile = RideProfile.new()
 var _devices: RideDevices = RideDevices.new()
+var _torqa: TorqaApp
+## The units the HUD editor shows its figures in, to follow the rider's.
+var _imperial: bool = false
 var _confirm_abort: ConfirmationDialog = ConfirmationDialog.new()
 
 
@@ -30,6 +36,9 @@ func _ready() -> void:
 	_tabs.add_child(_options)
 	_hud.name = tr("HUD")
 	_tabs.add_child(_hud)
+	var profile_page: ScrollContainer = UiTheme.scrolling(_profile)
+	profile_page.name = tr("Profile")
+	_tabs.add_child(profile_page)
 	_devices.name = tr("Devices")
 	_tabs.add_child(_devices)
 	add_child(_tabs)
@@ -37,6 +46,7 @@ func _ready() -> void:
 	_workout.changed.connect(_on_workout_changed)
 	_options.changed.connect(func() -> void: options_changed.emit(_options.options()))
 	_hud.layout_changed.connect(func(layout: PackedStringArray) -> void: hud_changed.emit(layout))
+	_profile.changed.connect(_on_profile_changed)
 	add_button(tr("Abort without saving"), true, "abort")
 	add_button(tr("Finish & save"), false, "finish")
 	custom_action.connect(_on_action)
@@ -58,17 +68,22 @@ func _translate_ride_tab() -> void:
 		_tabs.set_tab_title(_options.get_index(), tr("Ride", "ride_tab"))
 
 
-## Shows the devices of `torqa` and reconnects them (R69).
+## Shows the devices of `torqa` and reconnects them (R69), and shows its rider's profile.
 func bind(torqa: TorqaApp) -> void:
+	_torqa = torqa
 	_devices.bind(torqa)
 
 
 ## The rider's heart-rate zones, FTP and structured workouts, for changing a workout (see
-## `WorkoutOptions`); files are imported before a ride, not during it.
+## `WorkoutOptions`); files are imported before a ride, not during it. The workout shown
+## stays, also when the rider's FTP changed while the dialog is open (R98).
 func configure_workout(zones: PackedVector2Array, ftp_w: float, plans: Array) -> void:
+	var shown: Dictionary = _workout.workout()
 	_workout.configure(zones, ftp_w)
 	_workout.set_plans(plans)
 	_workout.allow_import(false)
+	if visible:
+		_workout.set_workout(shown)
 
 
 ## Opens the dialog showing the ride's current `options` and HUD `layout`; `world_options`
@@ -87,7 +102,10 @@ func edit(
 		_workout.set_workout(workout)
 	_options.set_options(options)
 	_options.show_option_groups(world_options, not world_options, workout.is_empty())
+	_imperial = imperial
 	_hud.edit(layout, imperial)
+	if _torqa != null:
+		_profile.edit(_torqa.profile())
 	_devices.refresh()
 	UiScale.popup(self, Vector2i(960, 600))
 
@@ -96,6 +114,15 @@ func _on_workout_changed() -> void:
 	var workout: Dictionary = _workout.workout()
 	workout["plan"] = _workout.plan()
 	workout_changed.emit(workout)
+
+
+## Other units show in the HUD editor too.
+func _on_profile_changed(profile: Dictionary) -> void:
+	var imperial: bool = profile.get("units", "metric") == "imperial"
+	if imperial != _imperial:
+		_imperial = imperial
+		_hud.edit(_hud.layout(), imperial)
+	profile_changed.emit(profile)
 
 
 func _on_action(action: StringName) -> void:
