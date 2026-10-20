@@ -592,17 +592,17 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   Android plugin that readies btleplug through `JNI_OnLoad`, the project staged so `app/` stays
   untouched; on a Galaxy Tab S7 (Android 16) the KICKR's power and the Click's shifting work;
   the core's log in Android's log; picked files copied from `content://` addresses
-- [ ] B — an `android` CI job beside the others, building the APK on every pull request (its
+- [x] B — an `android` CI job beside the others, building the APK on every pull request (its
   own image cached in GHCR like the dev image); on releases only with D
-- [ ] C — fitting Android:
+- [x] C — fitting Android, tried on the Tab S7 on 2026-10-20:
   - [x] profiles, rides and courses in the app's `files` folder, not the cache Android may clear
   - [x] saving to places picked in Android's save dialog (ride export), as opening already does
   - [x] Low graphics by default (the mobile renderer has no SSAO or screen-space reflections
-    anyway); **smoothness on the Tab S7 still to judge**
+    anyway), smooth on the Tab S7
   - [x] HTTPS through Android's certificate checks (rustls-platform-verifier's Java part from its
-    own archive, set up with the app's context); **a download on the tablet still to try**
+    own archive, set up with the app's context): a course imported on the tablet fetched its tiles
   - [x] the overlay (R55) as picture-in-picture: the ride's HUD in a small window over other
-    apps, scaled to it; **still to try on the tablet**. Music control says it is not supported;
+    apps, scaled to it, the world not drawn behind it. Music control says it is not supported;
     the update check offers the release page
   - [x] touch: Godot turns taps into clicks, enough to ride
 - [ ] D — a release-signed APK as a release asset, the wiki (installing, permissions), the

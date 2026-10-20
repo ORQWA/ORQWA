@@ -1,6 +1,6 @@
 # ADR 0024 — Torqa on Android tablets
 
-- Status: accepted for a trial (phase A passed; phases B–D to follow, removable as below)
+- Status: accepted for a trial (phases A–C passed; D to follow, removable as below)
 - Date: 2026-10-19
 
 ## Context
@@ -128,3 +128,11 @@ Everything Android is in `android/`, `scripts/android.sh`, `scripts/build-androi
     there, shaped like the ride's HUD-only layout (within Android's 1:2.39 to 2.39:1), and the
     layout is scaled to the small window. Once the rider opens Torqa again, the ride screen
     comes back.
+
+## Amendment 2026-10-20: phase C tried
+
+On the Tab S7, with the KICKR CORE and the Zwift Click: a GPX imported on the tablet fetched its
+map and terrain tiles over HTTPS, a ride at Low ran smoothly, and picture-in-picture showed the
+HUD over other apps. Behind the HUD the window would still draw the world, so picture-in-picture
+switches 3D off as the overlay window does. The debug key moved out of the image into the Gradle
+volume: a key made with each image would refuse every update after a rebuild.
