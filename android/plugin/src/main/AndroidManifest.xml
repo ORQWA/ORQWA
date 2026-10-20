@@ -14,7 +14,7 @@
 
     <application>
         <meta-data
-            android:name="org.godotengine.plugin.v2.TorqaAndroid"
-            android:value="org.torqa.android.TorqaAndroid" />
+            android:name="org.godotengine.plugin.v2.OrqwaAndroid"
+            android:value="org.orqwa.android.OrqwaAndroid" />
     </application>
 </manifest>

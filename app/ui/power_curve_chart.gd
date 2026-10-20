@@ -66,7 +66,7 @@ func add_curve(
 	queue_redraw()
 
 
-## Adds the best efforts of `TorqaApp.power_curves()` as a curve, in W/kg with `per_kg`, each
+## Adds the best efforts of `OrqwaApp.power_curves()` as a curve, in W/kg with `per_kg`, each
 ## noted with the date of its ride.
 func add_efforts(efforts: Array, color: Color, per_kg: bool = false) -> void:
 	var points: PackedVector2Array = PackedVector2Array()

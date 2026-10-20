@@ -34,7 +34,7 @@ jobs:
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           hash="$(cat .devcontainer/Dockerfile scripts/build-ffmpeg.sh | sha256sum | cut -c1-16)"
-          echo "tag=ghcr.io/$owner/torqa-dev:$hash" >> "$GITHUB_OUTPUT"
+          echo "tag=ghcr.io/$owner/orqwa-dev:$hash" >> "$GITHUB_OUTPUT"
       # A PR from a fork has a read-only token: it uses the image as it is, or the checks job
       # builds its own if the Dockerfile changed.
       - name: Build and push the image if GHCR lacks it
@@ -95,9 +95,9 @@ jobs:
           mkdir -p ~/.cargo/registry core/target app/.godot
           docker run --rm \
             -e CARGO_INCREMENTAL=0 \
-            -v "$PWD:/workspaces/torqa" \
+            -v "$PWD:/workspaces/orqwa" \
             -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \
-            -w /workspaces/torqa \
+            -w /workspaces/orqwa \
             "$IMAGE" scripts/check.sh
       # The container runs as root; the cache step must be able to read what it saves.
       - name: Hand the build directory back to the runner's user
@@ -134,10 +134,10 @@ jobs:
         run: scripts/build-gdext.sh release
       - name: Build CLI
         run: |
-          cargo build --manifest-path core/Cargo.toml -p torqa-cli --release --locked
+          cargo build --manifest-path core/Cargo.toml -p orqwa-cli --release --locked
           mkdir -p dist
           # Artifacts drop the executable bit; a tarball keeps it.
-          tar -czf dist/torqa-cli-macos-arm64.tar.gz -C core/target/release torqa-cli
+          tar -czf dist/orqwa-cli-macos-arm64.tar.gz -C core/target/release orqwa-cli
       - name: Install Godot and export templates
         run: |
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
@@ -164,7 +164,7 @@ jobs:
           archive: false
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/torqa-cli-macos-arm64.tar.gz
+          path: dist/orqwa-cli-macos-arm64.tar.gz
           archive: false
 
   windows:
@@ -228,10 +228,10 @@ jobs:
         run: |
           sh scripts/build-gdext.sh release
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          cargo build --manifest-path core/Cargo.toml -p torqa-cli --release --locked
+          cargo build --manifest-path core/Cargo.toml -p orqwa-cli --release --locked
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive core/target/release/torqa-cli.exe dist/torqa-cli-windows-x86_64.zip
+          Compress-Archive core/target/release/orqwa-cli.exe dist/orqwa-cli-windows-x86_64.zip
       - name: Install Godot and export templates
         run: |
           $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION-stable"
@@ -254,9 +254,9 @@ jobs:
           & $godot --headless --path app --import
           New-Item -ItemType Directory -Force dist\Torqa | Out-Null
           & $godot --headless --path app --export-release "Windows Desktop" "$PWD\dist\Torqa\Torqa.exe"
-          if (-not (Test-Path dist\Torqa\Torqa.exe) -or -not (Test-Path dist\Torqa\torqa_gd.dll)) {
+          if (-not (Test-Path dist\Torqa\Torqa.exe) -or -not (Test-Path dist\Torqa\orqwa_gd.dll)) {
             Get-ChildItem dist\Torqa
-            throw "export is missing Torqa.exe or torqa_gd.dll"
+            throw "export is missing Torqa.exe or orqwa_gd.dll"
           }
           # The icon and these details are written together; without them the .exe keeps the
           # template's, which Windows shows on the taskbar and in Explorer.
@@ -286,7 +286,7 @@ jobs:
           $shortcut = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Torqa.lnk"
           $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', 'install.log'
           if ($run.ExitCode) { Get-Content install.log -Tail 40; throw "install failed: $($run.ExitCode)" }
-          foreach ($path in "$installed\Torqa.exe", "$installed\torqa_gd.dll", $shortcut) {
+          foreach ($path in "$installed\Torqa.exe", "$installed\orqwa_gd.dll", $shortcut) {
             if (-not (Test-Path $path)) { throw "not installed: $path" }
           }
           $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/x', "`"$msi`"", '/qn'
@@ -302,7 +302,7 @@ jobs:
           archive: false
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/torqa-cli-windows-x86_64.zip
+          path: dist/orqwa-cli-windows-x86_64.zip
           archive: false
 
   linux:
@@ -351,10 +351,10 @@ jobs:
         run: scripts/build-gdext.sh release
       - name: Build CLI
         run: |
-          cargo build --manifest-path core/Cargo.toml -p torqa-cli --release --locked
+          cargo build --manifest-path core/Cargo.toml -p orqwa-cli --release --locked
           mkdir -p dist
           # Artifacts drop the executable bit; a tarball keeps it.
-          tar -czf "dist/torqa-cli-linux-${{ matrix.arch }}.tar.gz" -C core/target/release torqa-cli
+          tar -czf "dist/orqwa-cli-linux-${{ matrix.arch }}.tar.gz" -C core/target/release orqwa-cli
       - name: Install Godot and export templates
         run: |
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
@@ -373,7 +373,7 @@ jobs:
           ./godot --headless --path app --export-release "${{ matrix.preset }}" \
             "$PWD/dist/Torqa/Torqa.${{ matrix.arch }}"
           test -x "dist/Torqa/Torqa.${{ matrix.arch }}"
-          test -s dist/Torqa/libtorqa_gd.so
+          test -s dist/Torqa/liborqwa_gd.so
           tar -czf "dist/Torqa-linux-${{ matrix.arch }}.tar.gz" -C dist Torqa
       # The exported app itself, not the editor: it must start, load the extension and run the
       # main scene without errors on the oldest glibc it is built for.
@@ -400,14 +400,14 @@ jobs:
             exit 1
           fi
           echo "$output" | grep -q "^Torqa "
-          core/target/release/torqa-cli --help >/dev/null
+          core/target/release/orqwa-cli --help >/dev/null
       - uses: actions/upload-artifact@v7
         with:
           path: dist/Torqa-linux-${{ matrix.arch }}.tar.gz
           archive: false
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/torqa-cli-linux-${{ matrix.arch }}.tar.gz
+          path: dist/orqwa-cli-linux-${{ matrix.arch }}.tar.gz
           archive: false
 
   android:
@@ -445,7 +445,7 @@ jobs:
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           hash="$(printf '%s' "$IMAGE" | cat - android/Dockerfile | sha256sum | cut -c1-16)"
-          tag="ghcr.io/$owner/torqa-android:$hash"
+          tag="ghcr.io/$owner/orqwa-android:$hash"
           echo "ANDROID_IMAGE=$tag" >> "$GITHUB_ENV"
           echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin || true
           if docker pull "$tag"; then exit 0; fi
@@ -470,18 +470,18 @@ jobs:
             keys="$(mktemp -d)"
             trap 'rm -rf "$keys"' EXIT
             printf '%s' "$KEYSTORE" | base64 -d > "$keys/release.keystore"
-            signing="-v $keys:/keys:ro -e TORQA_RELEASE_KEYSTORE=/keys/release.keystore"
-            signing="$signing -e TORQA_RELEASE_KEYSTORE_PASSWORD"
+            signing="-v $keys:/keys:ro -e ORQWA_RELEASE_KEYSTORE=/keys/release.keystore"
+            signing="$signing -e ORQWA_RELEASE_KEYSTORE_PASSWORD"
           fi
-          export TORQA_RELEASE_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD"
+          export ORQWA_RELEASE_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD"
           # shellcheck disable=SC2086 # signing is a list of docker options, or empty
           docker run --rm \
             -e CARGO_INCREMENTAL=0 \
             $signing \
-            -v "$PWD:/workspaces/torqa" \
+            -v "$PWD:/workspaces/orqwa" \
             -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \
             -v "$HOME/.gradle:/root/.gradle" \
-            -w /workspaces/torqa \
+            -w /workspaces/orqwa \
             "$ANDROID_IMAGE" scripts/build-android.sh release
       - name: Hand the build directories back to the runner's user
         if: always()

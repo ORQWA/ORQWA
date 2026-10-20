@@ -53,7 +53,7 @@ func has_map() -> bool:
 	return _map.visible
 
 
-## Shows a course's track (`TorqaApp.courses()` `track`).
+## Shows a course's track (`OrqwaApp.courses()` `track`).
 func set_track(track: PackedVector2Array) -> void:
 	_track = track
 	_lines.queue_redraw()

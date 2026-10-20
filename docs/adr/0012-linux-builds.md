@@ -27,7 +27,7 @@ Options considered:
 - The `linux` CI job builds the GDExtension, the CLI and the app natively on
   **`ubuntu-22.04`** (glibc 2.35) for x86_64 and **`ubuntu-22.04-arm`** for arm64, with the
   dev container's build packages (`libdbus-1-dev`, `pkg-config`, `libclang-dev`, `nasm`).
-- The app is exported with Godot's Linux template, the PCK embedded, `libtorqa_gd.so` beside
+- The app is exported with Godot's Linux template, the PCK embedded, `liborqwa_gd.so` beside
   it, and packed as a tarball (artifacts drop the executable bit).
 - The job starts the **exported** app headless and checks that it loads the extension and runs
   the main scene without errors, so a build that would not start is caught on the runner.

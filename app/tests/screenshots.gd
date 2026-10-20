@@ -24,7 +24,7 @@ func _run() -> void:
 		await _error_details(out_dir)
 		quit()
 		return
-	var torqa: TorqaApp = _main.get_node("Torqa")
+	var orqwa: OrqwaApp = _main.get_node("Orqwa")
 	var world: RideWorld = _main.get_node("World")
 	var start: StartPage = _main.get_node("StartPage")
 
@@ -51,13 +51,13 @@ func _run() -> void:
 	root.get_texture().get_image().save_png(out_dir.path_join("loading.png"))
 	# The rider settings with the HUD editor.
 	var dialog: ProfileDialog = start.find_children("*", "ProfileDialog", true, false)[0]
-	dialog.edit(torqa.profile(), torqa.hud_layout())
+	dialog.edit(orqwa.profile(), orqwa.hud_layout())
 	var dialog_tabs: TabContainer = dialog.find_children("*", "TabContainer", true, false)[0]
 	dialog_tabs.current_tab = 1
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("rider-settings.png"))
 	dialog.hide()
-	await _wait_for(torqa.course_added)
+	await _wait_for(orqwa.course_added)
 	# The prepared course opens on its detail page.
 	await create_timer(1.0).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("course-detail.png"))
@@ -75,18 +75,18 @@ func _run() -> void:
 	# A custom HUD, e.g. SCREENSHOT_HUD=power_3s,speed,normalized_power,upcoming_grade
 	var hud: String = OS.get_environment("SCREENSHOT_HUD")
 	if not hud.is_empty():
-		torqa.set_hud_layout(PackedStringArray(hud.split(",")))
+		orqwa.set_hud_layout(PackedStringArray(hud.split(",")))
 	# A graphics preset, e.g. SCREENSHOT_QUALITY=ultra (R43).
 	var quality: String = OS.get_environment("SCREENSHOT_QUALITY")
 	if not quality.is_empty():
-		_check(torqa.set_graphics_quality(quality), "graphics quality %s" % quality)
-	_check(torqa.connect_fake_trainer(250.0, 90.0), "fake trainer")
+		_check(orqwa.set_graphics_quality(quality), "graphics quality %s" % quality)
+	_check(orqwa.connect_fake_trainer(250.0, 90.0), "fake trainer")
 	# A pacer to race, e.g. SCREENSHOT_GHOST=300 (watts).
 	var ghost: Dictionary = {"kind": "none"}
 	var ghost_watts: String = OS.get_environment("SCREENSHOT_GHOST")
 	if not ghost_watts.is_empty():
 		ghost = {"kind": "power", "watts": ghost_watts.to_float()}
-	_check(torqa.start_ride(50.0, false, ghost), "ride started")
+	_check(orqwa.start_ride(50.0, false, ghost), "ride started")
 	start.ride_started.emit(start.ride_options())
 	var time: String = OS.get_environment("SCREENSHOT_TIME")
 	var weather: String = OS.get_environment("SCREENSHOT_WEATHER")
@@ -126,7 +126,7 @@ func _run() -> void:
 	for child: Node in ride_screen.get_children():
 		if child is RideSettingsDialog:
 			var settings_dialog: RideSettingsDialog = child
-			settings_dialog.edit(start.ride_options(), torqa.hud_layout(), false)
+			settings_dialog.edit(start.ride_options(), orqwa.hud_layout(), false)
 			await create_timer(0.5).timeout
 			root.get_texture().get_image().save_png(out_dir.path_join("ride-settings.png"))
 			print("saved ride settings")
@@ -160,8 +160,8 @@ func _run() -> void:
 			settings_dialog.hide()
 
 	# The ride's summary (R42), then the history.
-	torqa.finish_ride()
-	var newest: Dictionary = torqa.history()[0]
+	orqwa.finish_ride()
+	var newest: Dictionary = orqwa.history()[0]
 	var saved_path: String = newest["path"]
 	ride_screen.summary_requested.emit(saved_path)
 	await create_timer(1.0).timeout
@@ -259,7 +259,7 @@ func _run() -> void:
 			remote_dialog.hide()
 			# What the phone's buttons do, behind the pen beside its row.
 			var buttons_dialog: ButtonDialog = devices_tab.get("_button_dialog")
-			buttons_dialog.open(ButtonDialog.PHONE_REMOTE, TorqaApp.phone_remote_name())
+			buttons_dialog.open(ButtonDialog.PHONE_REMOTE, OrqwaApp.phone_remote_name())
 			await create_timer(0.5).timeout
 			var buttons_shot: String = out_dir.path_join("start-devices-remote-buttons.png")
 			root.get_texture().get_image().save_png(buttons_shot)
@@ -278,7 +278,7 @@ func _run() -> void:
 		root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
 	settings.hide()
 	print("saved history")
-	await _workout_screens(torqa, start)
+	await _workout_screens(orqwa, start)
 	quit(0)
 
 
@@ -341,7 +341,7 @@ func _connect_account(start: StartPage, which: int) -> AccountDialog:
 
 
 ## The Workouts tab (R58) and a heart-rate workout on its own (R56), with its settings.
-func _workout_screens(torqa: TorqaApp, start: StartPage) -> void:
+func _workout_screens(orqwa: OrqwaApp, start: StartPage) -> void:
 	var out_dir: String = OS.get_environment("SCREENSHOT_DIR")
 	var start_tabs: TabContainer = start.get("_tabs")
 	start_tabs.current_tab = StartPage.Tab.WORKOUTS
@@ -351,7 +351,7 @@ func _workout_screens(torqa: TorqaApp, start: StartPage) -> void:
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("start-workouts.png"))
 	var workout: Dictionary = tab.workout()
-	_check(torqa.start_workout(workout, false, false), "workout started")
+	_check(orqwa.start_workout(workout, false, false), "workout started")
 	start.ride_started.emit({"workout": workout, "on_course": false, "difficulty": 50.0})
 	await create_timer(maxf(OS.get_environment("SCREENSHOT_WORKOUT_S").to_float(), 20.0)).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("workout.png"))
@@ -375,7 +375,7 @@ func _workout_screens(torqa: TorqaApp, start: StartPage) -> void:
 	root.get_texture().get_image().save_png(out_dir.path_join("overlay.png"))
 	ride_screen.overlay_requested.emit(false)
 	await create_timer(0.5).timeout
-	torqa.finish_ride()
+	orqwa.finish_ride()
 
 	# A structured workout (R21): the plan on the tab, then ridden on its own.
 	(_main.get_node("RideScreen") as Control).hide()
@@ -386,12 +386,12 @@ func _workout_screens(torqa: TorqaApp, start: StartPage) -> void:
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("start-structured.png"))
 	var structured: Dictionary = tab.workout()
-	_check(torqa.start_workout(structured, false, false), "structured workout started")
+	_check(orqwa.start_workout(structured, false, false), "structured workout started")
 	start.ride_started.emit({"workout": structured, "on_course": false, "difficulty": 50.0})
 	await create_timer(25.0).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("structured.png"))
 	print("saved structured workout")
-	torqa.finish_ride()
+	orqwa.finish_ride()
 	# The FTP test (R22) on the tab.
 	(_main.get_node("RideScreen") as Control).hide()
 	start.show()
@@ -422,8 +422,8 @@ func _error_details(out_dir: String) -> void:
 		await process_frame
 		# The rider's profile selects its language at bind time; this fixture chooses one.
 		TranslationServer.set_locale(locale)
-		var torqa: TorqaApp = _main.get_node("Torqa")
-		torqa.ride_detail("/missing-261.fit", 10)
+		var orqwa: OrqwaApp = _main.get_node("Orqwa")
+		orqwa.ride_detail("/missing-261.fit", 10)
 		var details: FailureDetails = _main.get("_failures")
 		var toggle: Button = details.get("_toggle")
 		toggle.button_pressed = true

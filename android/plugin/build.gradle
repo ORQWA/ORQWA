@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace 'org.torqa.android'
+    namespace 'org.orqwa.android'
     compileSdk 36
 
     defaultConfig {

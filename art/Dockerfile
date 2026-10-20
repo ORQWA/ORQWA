@@ -22,4 +22,4 @@ RUN curl -fsSL -o /tmp/blender.tar.xz \
     && ln -s /opt/blender/blender /usr/local/bin/blender \
     && rm /tmp/blender.tar.xz
 
-WORKDIR /workspaces/torqa
+WORKDIR /workspaces/orqwa

@@ -1,0 +1,211 @@
+//! Finding, connecting and closing the trainer and heart-rate sensor.
+
+use std::time::Duration;
+
+use anyhow::{Context, Result, anyhow};
+use clap::Args;
+use orqwa_devices::ble::{Bluetooth, DeviceKind, DiscoveredDevice};
+use orqwa_devices::fake::{self, FakeHeart, FakeRider};
+use orqwa_devices::{DeviceEvent, DeviceHandle};
+use orqwa_domain::shifting::BUTTONS;
+use orqwa_domain::units::{Rpm, Watts};
+use tokio::sync::mpsc;
+
+const CLOSE_TIMEOUT: Duration = Duration::from_secs(3);
+
+#[derive(Args)]
+pub(crate) struct DeviceArgs {
+    /// Trainer name (case-insensitive substring); defaults to the strongest signal.
+    #[arg(long, conflicts_with = "fake")]
+    trainer: Option<String>,
+    /// Use the fake trainer instead of Bluetooth.
+    #[arg(long)]
+    fake: bool,
+    /// Also connect a heart-rate sensor, optionally selected by name.
+    #[arg(long, num_args = 0..=1, default_missing_value = "")]
+    hr: Option<String>,
+    /// Also connect a shifter (a Shimano Di2 or a Zwift Click, v1 or v2) whose buttons shift, optionally by name.
+    #[arg(long, num_args = 0..=1, default_missing_value = "")]
+    controller: Option<String>,
+    /// The button that shifts up: a Di2's D-Fly channel (1-4), or 1 for a Click's + (a Click v2's
+    /// Y, Z, A and B are 3-6, its arrows 7-10).
+    #[arg(long, default_value_t = 1, value_parser = clap::value_parser!(u8).range(1..=i64::from(BUTTONS)))]
+    pub(crate) up_channel: u8,
+    /// The button that shifts down: a Di2's D-Fly channel, or 2 for a Click's −.
+    #[arg(long, default_value_t = 2, value_parser = clap::value_parser!(u8).range(1..=i64::from(BUTTONS)))]
+    pub(crate) down_channel: u8,
+    /// Power of the fake rider in watts.
+    #[arg(long, default_value_t = 200.0)]
+    fake_power: f64,
+    /// Cadence of the fake rider in rpm.
+    #[arg(long, default_value_t = 90.0)]
+    fake_cadence: f64,
+    /// Bluetooth scan duration in seconds.
+    #[arg(long, default_value_t = 5)]
+    scan_seconds: u64,
+}
+
+impl DeviceArgs {
+    /// Whether a heart rate is asked for: from a strap, or the fake rider's simulated heart.
+    pub(crate) fn heart_rate(&self) -> bool {
+        self.fake || self.hr.is_some()
+    }
+}
+
+/// The connected trainer and optional heart-rate sensor and controller.
+pub(crate) struct Devices {
+    pub(crate) trainer: DeviceHandle,
+    pub(crate) sensor: Option<DeviceHandle>,
+    pub(crate) controller: Option<DeviceHandle>,
+}
+
+pub(crate) async fn connect(args: &DeviceArgs) -> Result<Devices> {
+    let bluetooth = if !args.fake || args.hr.is_some() || args.controller.is_some() {
+        let bluetooth = Bluetooth::new().await?;
+        println!("Scanning for {} s…", args.scan_seconds);
+        let devices = bluetooth
+            .scan(Duration::from_secs(args.scan_seconds))
+            .await?;
+        Some((bluetooth, devices))
+    } else {
+        None
+    };
+
+    let trainer = match &bluetooth {
+        _ if args.fake => fake::spawn(
+            FakeRider {
+                power: Watts(args.fake_power),
+                cadence: Rpm(args.fake_cadence),
+                // A real strap's heart rate is the one to use.
+                heart: args.hr.is_none().then(FakeHeart::default),
+            },
+            Duration::from_millis(250),
+        ),
+        Some((bluetooth, devices)) => bluetooth.connect(
+            pick(
+                devices,
+                DeviceKind::Trainer,
+                args.trainer.as_deref().unwrap_or(""),
+            )
+            .map_err(|error| {
+                anyhow!("{error:#}; --fake rides without one, e.g. to check a shifter")
+            })?,
+        ),
+        None => unreachable!("Bluetooth is opened whenever the trainer is not fake"),
+    };
+    // Straps only advertise while worn and not connected elsewhere; ride on without one.
+    let sensor = match (&bluetooth, &args.hr) {
+        (Some((bluetooth, devices)), Some(name)) => {
+            match pick(devices, DeviceKind::HeartRateSensor, name) {
+                Ok(device) => Some(bluetooth.connect(device)),
+                Err(error) => {
+                    eprintln!("Continuing without heart rate: {error:#}");
+                    None
+                }
+            }
+        }
+        _ => None,
+    };
+    let controller = match (&bluetooth, &args.controller) {
+        (Some((bluetooth, devices)), Some(name)) => {
+            match pick(devices, DeviceKind::Controller, name) {
+                Ok(device) => Some(bluetooth.connect(device)),
+                Err(error) => {
+                    eprintln!("Continuing without a controller: {error:#}");
+                    None
+                }
+            }
+        }
+        _ => None,
+    };
+    Ok(Devices {
+        trainer,
+        sensor,
+        controller,
+    })
+}
+
+impl Devices {
+    /// Disconnects all devices; a second Ctrl+C skips waiting.
+    pub(crate) async fn close(self) {
+        println!("Disconnecting… (Ctrl+C again to quit immediately)");
+        let close_all = async {
+            self.trainer.close(CLOSE_TIMEOUT).await;
+            if let Some(sensor) = self.sensor {
+                sensor.close(CLOSE_TIMEOUT).await;
+            }
+            if let Some(controller) = self.controller {
+                controller.close(CLOSE_TIMEOUT).await;
+            }
+        };
+        tokio::select! {
+            () = close_all => {}
+            _ = tokio::signal::ctrl_c() => {}
+        }
+    }
+}
+
+pub(crate) fn kind_label(kind: DeviceKind) -> &'static str {
+    match kind {
+        DeviceKind::Trainer => "trainer",
+        DeviceKind::HeartRateSensor => "heart rate",
+        DeviceKind::PowerMeter => "power meter",
+        DeviceKind::CadenceSensor => "cadence",
+        DeviceKind::Controller => "controller",
+    }
+}
+
+/// Selects the strongest device of `kind` whose name contains `name` (case-insensitive).
+fn pick(devices: &[DiscoveredDevice], kind: DeviceKind, name: &str) -> Result<DiscoveredDevice> {
+    let wanted = name.to_lowercase();
+    devices
+        .iter()
+        .find(|d| d.kind == kind && d.name.to_lowercase().contains(&wanted))
+        .cloned()
+        .with_context(|| {
+            let found: Vec<_> = devices.iter().map(|d| d.name.as_str()).collect();
+            let kind = kind_label(kind);
+            if name.is_empty() {
+                format!("no {kind} found (found: {found:?})")
+            } else {
+                format!("no {kind} matching {name:?} found (found: {found:?})")
+            }
+        })
+}
+
+/// Waits for the next event of an optional device; never completes without one.
+pub(crate) async fn next_event(device: Option<&mut DeviceHandle>) -> Option<(String, DeviceEvent)> {
+    match device {
+        Some(device) => {
+            let event = device.next_event().await?;
+            Some((device.name().to_owned(), event))
+        }
+        None => std::future::pending().await,
+    }
+}
+
+/// Reads stdin lines on a plain thread.
+///
+/// Tokio's stdin reads on a blocking-pool thread that runtime shutdown waits for, so the
+/// process could not exit while a read is pending.
+pub(crate) fn stdin_lines() -> mpsc::Receiver<String> {
+    let (tx, rx) = mpsc::channel(16);
+    std::thread::spawn(move || {
+        for line in std::io::stdin().lines() {
+            let Ok(line) = line else { break };
+            if tx.blocking_send(line).is_err() {
+                break;
+            }
+        }
+    });
+    rx
+}
+
+/// Formats an optional value right-aligned with its unit, `--` when unknown.
+pub(crate) fn field(value: Option<f64>, unit: &str, precision: usize) -> String {
+    let text = value.map_or_else(
+        || format!("-- {unit}"),
+        |v| format!("{v:.precision$} {unit}"),
+    );
+    format!("{text:>9}")
+}

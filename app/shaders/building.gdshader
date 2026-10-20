@@ -3,7 +3,7 @@ shader_type spatial;
 // where no model fits. Walls of textured plaster or boards, roofs of clay tiles or gravel
 // (textures baked in Blender, tinted by the surface's palette colour), with window rectangles
 // of dark, reflective glass. Each surface's style arrives in the vertex colour's alpha as code / 11 and its colour in
-// RGB (sRGB); the codes are those of `Style` in core/torqa-world/src/buildings/parts.rs. Walls
+// RGB (sRGB); the codes are those of `Style` in core/orqwa-world/src/buildings/parts.rs. Walls
 // carry metres along the wall and above the ground in UV, roofs metres along the eaves and up
 // the slope, single windows 0–1 across. Windows give way to their average colour where they
 // would be smaller than a pixel, so they never shimmer in the distance.

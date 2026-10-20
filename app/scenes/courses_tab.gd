@@ -6,7 +6,7 @@ extends VBoxContainer
 ## course here: it is built, added to the library and opened. A video without GPS cannot become
 ## a course by itself: a dialog explains how to add it to the course of its GPX route instead.
 
-## Open the detail page of `course` (from `TorqaApp.courses()`).
+## Open the detail page of `course` (from `OrqwaApp.courses()`).
 signal course_opened(course: Dictionary)
 
 const STEP_WEIGHTS: Dictionary[String, Vector2] = {
@@ -51,7 +51,7 @@ const CHIPS_WIDTH: float = 600.0
 ## The toolbar's fields and buttons are this tall, and the title beside them.
 const TOOLBAR_HEIGHT: float = 40.0
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _heading: Label = Label.new()
 ## Search, filters, sort and group, in one row with the title and Import (R85) where the
 ## window is wide enough.
@@ -74,7 +74,7 @@ var _clear: Button = UiTheme.chip_action(tr("Clear filters"), "cross")
 ## it off.
 var _active: HFlowContainer = HFlowContainer.new()
 var _clear_active: Button = UiTheme.chip_action(tr("Clear filters"), "cross")
-## What the core offers to choose from (`TorqaApp.course_library_choices()`); the length bands
+## What the core offers to choose from (`OrqwaApp.course_library_choices()`); the length bands
 ## follow the rider's units.
 var _choices: Dictionary = {}
 ## The chips turned on, by kind (`kinds`, `terrains`, `lengths`): the names the core knows.
@@ -114,16 +114,16 @@ var _pending: String = ""
 var _importing: String = ""
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.loading_progress.connect(_on_loading_progress)
-	_torqa.course_added.connect(_on_course_added)
-	_torqa.courses_changed.connect(refresh)
-	_torqa.failed.connect(_on_failed)
-	_choices = _torqa.course_library_choices()
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.loading_progress.connect(_on_loading_progress)
+	_orqwa.course_added.connect(_on_course_added)
+	_orqwa.courses_changed.connect(refresh)
+	_orqwa.failed.connect(_on_failed)
+	_choices = _orqwa.course_library_choices()
 	_build_menus()
 	_build_chips()
-	var view: Dictionary = _torqa.courses_view()
+	var view: Dictionary = _orqwa.courses_view()
 	var sort: String = view["sort"]
 	var group: String = view["group"]
 	_select(_sort, sort)
@@ -135,14 +135,14 @@ func bind(torqa: TorqaApp) -> void:
 
 ## Rebuilds the gallery from the library as the toolbar and chips ask for it.
 func refresh() -> void:
-	var choices: Dictionary = _torqa.course_library_choices()
+	var choices: Dictionary = _orqwa.course_library_choices()
 	if choices != _choices:
 		# The rider changed units: the length bands have other edges.
 		_choices = choices
 		_build_chips()
 	for child: Node in _gallery.get_children():
 		child.queue_free()
-	var library: Dictionary = _torqa.course_library(query())
+	var library: Dictionary = _orqwa.course_library(query())
 	var countries: Array = library["countries"]
 	if countries != _countries:
 		_countries = countries
@@ -171,7 +171,7 @@ func _show_clear(active: bool) -> void:
 	_clear.mouse_filter = Control.MOUSE_FILTER_STOP if active else Control.MOUSE_FILTER_IGNORE
 
 
-## What the toolbar and chips ask the library for, as `TorqaApp.course_library()` takes it.
+## What the toolbar and chips ask the library for, as `OrqwaApp.course_library()` takes it.
 func query() -> Dictionary:
 	return {
 		"search": _search.text,
@@ -270,7 +270,7 @@ func _init() -> void:
 	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	var videos: PackedStringArray = PackedStringArray()
-	for extension: String in TorqaApp.video_extensions():
+	for extension: String in OrqwaApp.video_extensions():
 		videos.append("*." + extension)
 	_file_dialog.filters = PackedStringArray(
 		[
@@ -567,7 +567,7 @@ func _country_label(code: String) -> String:
 
 ## A length band in the rider's units, e.g. "< 25 km", "25–50 km" or "≥ 100 km".
 func _length_label(band_name: String) -> String:
-	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
+	var imperial: bool = _orqwa.profile().get("units", "metric") == "imperial"
 	var unit: String = "mi" if imperial else "km"
 	var per_unit: float = METERS_PER_MILE if imperial else 1000.0
 	for band: Dictionary in _choices["lengths"]:
@@ -613,13 +613,13 @@ func _add_group(group: Dictionary) -> void:
 	cards.add_theme_constant_override("h_separation", CARD_GAP)
 	cards.add_theme_constant_override("v_separation", CARD_GAP)
 	var width: float = card_width(_gallery.size.x)
-	var imperial: bool = _torqa.profile().get("units", "metric") == "imperial"
+	var imperial: bool = _orqwa.profile().get("units", "metric") == "imperial"
 	for course: Dictionary in courses:
 		var card: CourseCard = CourseCard.new(course, imperial)
 		card.custom_minimum_size.x = width
 		var course_path: String = course["path"]
 		if not _maps.has(course_path):
-			_maps[course_path] = _torqa.course_preview(course_path)
+			_maps[course_path] = _orqwa.course_preview(course_path)
 		card.set_map(_maps[course_path])
 		card.pressed.connect(func() -> void: course_opened.emit(course))
 		cards.add_child(card)
@@ -687,7 +687,7 @@ func _show_direction() -> void:
 
 
 func _view_changed() -> void:
-	_torqa.set_courses_view(_selected(_sort), _descending, _selected(_group))
+	_orqwa.set_courses_view(_selected(_sort), _descending, _selected(_group))
 	refresh()
 
 
@@ -713,7 +713,7 @@ func _on_file_selected(picked: String) -> void:
 	if not extension in ["tqc", "gpx", "xml", "rlv"]:
 		# Set so that a video that cannot be read is reported like a failed import.
 		_importing = "probe"
-		var probe: Dictionary = _torqa.video_probe(path)
+		var probe: Dictionary = _orqwa.video_probe(path)
 		if probe.is_empty():
 			return
 		_importing = ""
@@ -722,7 +722,7 @@ func _on_file_selected(picked: String) -> void:
 			_no_gps_dialog.popup_centered()
 			return
 	_pending = path
-	_name_edit.text = TorqaApp.suggested_course_name(path)
+	_name_edit.text = OrqwaApp.suggested_course_name(path)
 	_name_dialog.popup_centered()
 	_name_edit.grab_focus()
 	_name_edit.select_all()
@@ -733,7 +733,7 @@ func _on_name_confirmed() -> void:
 	if name.is_empty():
 		_name_dialog.popup_centered.call_deferred()
 		return
-	if _torqa.course_exists(name):
+	if _orqwa.course_exists(name):
 		_replace_dialog.dialog_text = (
 			tr("A course named “%s” exists already. Replace it, or keep both?") % name
 		)
@@ -750,18 +750,18 @@ func _on_replace_action(action: StringName) -> void:
 
 ## Imports the pending file as the course named in the name dialog.
 func _import(replace: bool) -> void:
-	_torqa.name_next_import(_name_edit.text.strip_edges(), replace)
+	_orqwa.name_next_import(_name_edit.text.strip_edges(), replace)
 	var path: String = _pending
 	match path.get_extension().to_lower():
 		"tqc":
 			_importing = "tqc"
-			_torqa.import_course(path)
+			_orqwa.import_course(path)
 		"gpx":
 			_start_loading("gpx", path)
-			_torqa.load_route(path, false)
+			_orqwa.load_route(path, false)
 		_:
 			_start_loading("video", path)
-			_torqa.load_video(path, false)
+			_orqwa.load_video(path, false)
 
 
 ## What to do with a video without GPS: it rides on the course of its GPX route.
@@ -796,7 +796,7 @@ func _on_loading_progress(step: String, unit: String, done: int, total: int) -> 
 func _cancel_loading() -> void:
 	if _importing != "gpx" and _importing != "video":
 		return
-	_torqa.cancel_loading()
+	_orqwa.cancel_loading()
 	_importing = ""
 	_loading.hide()
 	_import_button.disabled = false
@@ -809,18 +809,18 @@ func _on_course_added(path: String) -> void:
 	_loading.hide()
 	_import_button.disabled = false
 	# The course's map picture for its card (#192), from the map loaded with it (#203).
-	if _torqa.course_preview_outdated(path):
+	if _orqwa.course_preview_outdated(path):
 		var png: PackedByteArray = await MapPreview.capture(
-			get_tree(), _torqa.course_map(path), _torqa.track(2000)
+			get_tree(), _orqwa.course_map(path), _orqwa.track(2000)
 		)
 		if not png.is_empty():
-			_torqa.set_course_preview(path, png)
+			_orqwa.set_course_preview(path, png)
 	# A course replaced under the same name has another picture.
 	_maps.erase(path)
 	refresh()
 	if importing.is_empty():
 		return
-	for course: Dictionary in _torqa.courses():
+	for course: Dictionary in _orqwa.courses():
 		if course["path"] == path:
 			course_opened.emit(course)
 

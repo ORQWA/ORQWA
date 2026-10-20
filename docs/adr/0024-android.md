@@ -46,13 +46,13 @@ build image. That is too much for the dev image, which every check pulls.
     `--install-android-build-template` stays open.
 - **Bluetooth through a small Godot Android plugin** (`android/plugin`, Java):
   - Godot creates its plugins before it opens its extensions, on the app's main thread. The plugin
-    loads `libtorqa_gd.so` there, and Torqa's `JNI_OnLoad` hands the Java VM to
+    loads `liborqwa_gd.so` there, and Torqa's `JNI_OnLoad` hands the Java VM to
     `btleplug::platform::init`.
   - btleplug's Java sources are compiled into the plugin straight from the crate cargo built, so
     they always match. Keep rules stop R8 from stripping them.
   - The plugin asks for `BLUETOOTH_SCAN` (never for location) and `BLUETOOTH_CONNECT`, or for
     location before Android 12.
-  - In Rust this takes `torqa-devices::android` and `jni` 0.22 (already btleplug's), both only on
+  - In Rust this takes `orqwa-devices::android` and `jni` 0.22 (already btleplug's), both only on
     Android.
 - **What Android changes elsewhere:**
   - The core's log goes to Android's log (`adb logcat -s Torqa`), at debug level while support is

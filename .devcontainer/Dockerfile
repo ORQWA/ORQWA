@@ -51,7 +51,7 @@ RUN case "$(uname -m)" in \
     && mv "/tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.${godot_arch}" /usr/local/bin/godot \
     && rm -rf /tmp/godot /tmp/godot.zip
 
-# FFmpeg's libraries for torqa-video (ADR 0010), from the pinned release the script verifies;
+# FFmpeg's libraries for orqwa-video (ADR 0010), from the pinned release the script verifies;
 # ffmpeg-sys-next finds them through FFMPEG_DIR instead of building its own. The Windows build
 # is for scripts/build-gdext.sh's Windows extension (ADR 0021).
 COPY scripts/build-ffmpeg.sh /tmp/build-ffmpeg.sh
@@ -78,4 +78,4 @@ RUN arch="$(uname -m)" \
     && mv "/tmp/cargo-about-${CARGO_ABOUT_VERSION}-${arch}-unknown-linux-musl/cargo-about" /usr/local/cargo/bin/ \
     && rm -rf /tmp/cargo-about*
 
-WORKDIR /workspaces/torqa
+WORKDIR /workspaces/orqwa

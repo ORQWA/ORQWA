@@ -13,7 +13,7 @@ const POWER_METRICS: Array[String] = ["power", "power_3s", "power_10s"]
 ## Drag data carries the metric id under this key.
 const DRAG_KEY: String = "hud_metric"
 
-## Metric descriptions by id, from `TorqaApp.hud_metrics()`.
+## Metric descriptions by id, from `OrqwaApp.hud_metrics()`.
 var catalogue: Dictionary[String, Dictionary] = {}
 ## Speed, distance and elevation in imperial units.
 var imperial: bool = false
@@ -31,7 +31,7 @@ var _power_detail: Label = Label.new()
 
 func _init() -> void:
 	add_theme_constant_override("separation", 12)
-	for metric: Dictionary in TorqaApp.hud_metrics():
+	for metric: Dictionary in OrqwaApp.hud_metrics():
 		var id: String = metric["id"]
 		catalogue[id] = metric
 	# Kept in the tree between layouts, so it is freed with the panel.

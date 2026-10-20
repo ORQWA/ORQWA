@@ -7,14 +7,14 @@ set -eu
 
 set -- \
     dist/Torqa-macos-arm64.zip \
-    dist/torqa-cli-macos-arm64.tar.gz \
+    dist/orqwa-cli-macos-arm64.tar.gz \
     dist/Torqa-windows-x86_64.zip \
     dist/Torqa-windows-x86_64.msi \
-    dist/torqa-cli-windows-x86_64.zip \
+    dist/orqwa-cli-windows-x86_64.zip \
     dist/Torqa-linux-x86_64.tar.gz \
-    dist/torqa-cli-linux-x86_64.tar.gz \
+    dist/orqwa-cli-linux-x86_64.tar.gz \
     dist/Torqa-linux-arm64.tar.gz \
-    dist/torqa-cli-linux-arm64.tar.gz \
+    dist/orqwa-cli-linux-arm64.tar.gz \
     dist/Torqa-android-arm64.apk
 
 # A missing upload must not turn a successful build into an incomplete release.

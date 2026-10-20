@@ -5,7 +5,7 @@
 
 ## Context
 
-Torqa for Windows ships as a zip holding `Torqa.exe` and `torqa_gd.dll`. A rider unpacks it
+Torqa for Windows ships as a zip holding `Torqa.exe` and `orqwa_gd.dll`. A rider unpacks it
 somewhere, finds it again to start it, and replaces both files by hand for every release. A
 rider who wants the newest version for every real ride needs more than that: an install into
 Program Files, a Start-menu entry, an uninstaller, and in the end Torqa telling them about a new
@@ -58,9 +58,9 @@ Options considered:
 
 ## Amendment 2026-10-19: the update function
 
-- **Where.** A crate of its own, `torqa-update`: GitHub's latest release
+- **Where.** A crate of its own, `orqwa-update`: GitHub's latest release
   (`api.github.com/repos/Torqa-Indoor-Cycling/Torqa/releases/latest`), its version against the
-  running one, and the installer asset downloaded and started. `torqa-app` runs it in the
+  running one, and the installer asset downloaded and started. `orqwa-app` runs it in the
   background like its other online work, and the front end only shows what it finds.
 - **When.** Once at start-up in released builds, unless this computer turned it off
   (`check_updates` in `computer.toml`, R78). Builds started from the editor, and the checks, never

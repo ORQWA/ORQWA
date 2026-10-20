@@ -1,0 +1,35 @@
+[package]
+name = "orqwa-app"
+description = "Torqa application layer: devices, routes, rides and storage behind a frame-driven API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+orqwa-domain.workspace = true
+orqwa-osm.workspace = true
+orqwa-devices.workspace = true
+orqwa-physics.workspace = true
+orqwa-routes.workspace = true
+orqwa-session.workspace = true
+orqwa-storage.workspace = true
+orqwa-terrain.workspace = true
+orqwa-upload.workspace = true
+orqwa-update.workspace = true
+orqwa-remote.workspace = true
+orqwa-workouts.workspace = true
+orqwa-video.workspace = true
+orqwa-world.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "time", "fs", "sync"] }
+tracing.workspace = true
+
+[dev-dependencies]
+orqwa-video = { workspace = true, features = ["testing"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[lints]
+workspace = true

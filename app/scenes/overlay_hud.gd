@@ -95,7 +95,7 @@ func begin(layout: PackedStringArray, imperial: bool, workout: Dictionary) -> vo
 	_box.reset_size()
 
 
-## Shows the ride's state (`TorqaApp.ride_state()`).
+## Shows the ride's state (`OrqwaApp.ride_state()`).
 func show_state(state: Dictionary) -> void:
 	var metrics: Dictionary = state["metrics"]
 	_hud.show_values(metrics, state["watts_per_kg"], state["power_zone"])

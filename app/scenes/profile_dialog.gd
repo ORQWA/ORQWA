@@ -1,9 +1,9 @@
 class_name ProfileDialog
 extends ConfirmationDialog
-## Rider settings: the profile (fields mirror `TorqaApp.profile()`) and the rider's HUD layout
+## Rider settings: the profile (fields mirror `OrqwaApp.profile()`) and the rider's HUD layout
 ## (R51). Saving is left to the caller.
 
-## The edited profile, shaped like `TorqaApp.profile()`, and HUD layout; `id` is empty for a new
+## The edited profile, shaped like `OrqwaApp.profile()`, and HUD layout; `id` is empty for a new
 ## rider.
 signal profile_confirmed(id: String, profile: Dictionary, hud_layout: PackedStringArray)
 
@@ -54,7 +54,7 @@ func _ready() -> void:
 	confirmed.connect(_on_confirmed)
 
 
-## Opens the dialog for `profile` (shaped like `TorqaApp.profile()`) with its `hud_layout`, or
+## Opens the dialog for `profile` (shaped like `OrqwaApp.profile()`) with its `hud_layout`, or
 ## for a new rider if `profile` has no id.
 func edit(profile: Dictionary, hud_layout: PackedStringArray) -> void:
 	_id = profile.get("id", "")

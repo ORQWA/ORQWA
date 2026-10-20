@@ -2,14 +2,14 @@
   "name": "Torqa",
   // Built from the repository root: the image runs scripts/build-ffmpeg.sh (see .dockerignore).
   "build": { "dockerfile": "Dockerfile", "context": ".." },
-  "workspaceFolder": "/workspaces/torqa",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/torqa,type=bind",
+  "workspaceFolder": "/workspaces/orqwa",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/orqwa,type=bind",
   // Build artifacts and the cargo cache live in volumes: bind mounts on macOS are slow.
   "mounts": [
-    "source=torqa-cargo-registry,target=/usr/local/cargo/registry,type=volume",
-    "source=torqa-target,target=/workspaces/torqa/core/target,type=volume",
+    "source=orqwa-cargo-registry,target=/usr/local/cargo/registry,type=volume",
+    "source=orqwa-target,target=/workspaces/orqwa/core/target,type=volume",
     // Map and terrain downloads, as a real installation would keep them.
-    "source=torqa-cache,target=/root/.cache,type=volume"
+    "source=orqwa-cache,target=/root/.cache,type=volume"
   ],
   "customizations": {
     "vscode": {

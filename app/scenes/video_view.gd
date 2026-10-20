@@ -6,7 +6,7 @@ extends TextureRect
 
 const SHADER: Shader = preload("res://shaders/video_blend.gdshader")
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _material: ShaderMaterial = ShaderMaterial.new()
 ## The frame blended from and the one blended towards, with their video times.
 var _previous: ImageTexture
@@ -29,15 +29,15 @@ func _init() -> void:
 	visibility_changed.connect(_on_visibility_changed)
 
 
-## Starts showing the video of the ride on `torqa`'s video course.
-func begin(torqa: TorqaApp) -> void:
-	_torqa = torqa
+## Starts showing the video of the ride on `orqwa`'s video course.
+func begin(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
 	_previous = null
 	_current = null
 	texture = null
 	_sound.stop()
 	_playback = null
-	var rate: int = torqa.video_sound_rate()
+	var rate: int = orqwa.video_sound_rate()
 	if rate > 0:
 		var generator: AudioStreamGenerator = AudioStreamGenerator.new()
 		generator.mix_rate = rate
@@ -74,19 +74,19 @@ func blend_at(now_s: float) -> float:
 
 
 func _process(_delta: float) -> void:
-	if not visible or _torqa == null:
+	if not visible or _orqwa == null:
 		return
-	var frame: Dictionary = _torqa.video_frame()
+	var frame: Dictionary = _orqwa.video_frame()
 	if not frame.is_empty():
 		var image: Image = frame["image"]
 		var time_s: float = frame["time_s"]
 		take(image, time_s)
 	if _current != null:
-		_material.set_shader_parameter("blend", blend_at(_torqa.video_time()))
+		_material.set_shader_parameter("blend", blend_at(_orqwa.video_time()))
 	if _playback != null:
 		var frames: int = _playback.get_frames_available()
 		if frames > 0:
-			_playback.push_buffer(_torqa.video_sound(frames))
+			_playback.push_buffer(_orqwa.video_sound(frames))
 
 
 func _on_visibility_changed() -> void:

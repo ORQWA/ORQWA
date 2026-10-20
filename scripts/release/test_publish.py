@@ -11,14 +11,14 @@ import unittest
 SCRIPT = Path(__file__).with_name("publish.sh").resolve()
 ASSETS = (
     "Torqa-macos-arm64.zip",
-    "torqa-cli-macos-arm64.tar.gz",
+    "orqwa-cli-macos-arm64.tar.gz",
     "Torqa-windows-x86_64.zip",
     "Torqa-windows-x86_64.msi",
-    "torqa-cli-windows-x86_64.zip",
+    "orqwa-cli-windows-x86_64.zip",
     "Torqa-linux-x86_64.tar.gz",
-    "torqa-cli-linux-x86_64.tar.gz",
+    "orqwa-cli-linux-x86_64.tar.gz",
     "Torqa-linux-arm64.tar.gz",
-    "torqa-cli-linux-arm64.tar.gz",
+    "orqwa-cli-linux-arm64.tar.gz",
     "Torqa-android-arm64.apk",
 )
 

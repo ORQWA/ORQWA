@@ -34,15 +34,15 @@ if $quick; then
         case "$path" in
             core/Cargo.lock | core/Cargo.toml | core/deny.toml | core/about.*)
                 rust=true; deps=true; release=true ;;
-            core/torqa-*/*)
+            core/orqwa-*/*)
                 rust=true; crates="$crates $(echo "$path" | cut -d/ -f2)" ;;
             core/*) rust=true ;;
         esac
         # Files the crates embed (include_str!/include_bytes!): a change is one to the crate.
         case "$path" in
             app/assets/palette.json | app/assets/models/*/models.json)
-                rust=true; crates="$crates torqa-world" ;;
-            app/assets/brand/*) rust=true; crates="$crates torqa-remote" ;;
+                rust=true; crates="$crates orqwa-world" ;;
+            app/assets/brand/*) rust=true; crates="$crates orqwa-remote" ;;
             LICENSE) rust=true ;;
         esac
         case "$path" in

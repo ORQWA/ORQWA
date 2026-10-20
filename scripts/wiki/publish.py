@@ -104,7 +104,7 @@ WIKI_REMOTES = (
 
 def publish(application_remote, api):
     # Work in disposable clones: local agent work and the workflow checkout remain untouched.
-    with tempfile.TemporaryDirectory(prefix="torqa-wiki-publish-") as directory:
+    with tempfile.TemporaryDirectory(prefix="orqwa-wiki-publish-") as directory:
         app = Path(directory) / "application"
         git(directory, "clone", "--no-checkout", application_remote, str(app))
         identity(app)

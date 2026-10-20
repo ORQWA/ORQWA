@@ -55,7 +55,7 @@ func _run() -> void:
 			avatar.animate(fposmod(deg_to_rad(crank) - turned, TAU) / TAU, 60.0, 0.0, motion)
 			turned = deg_to_rad(crank)
 			var leaning: bool = view.size() > 4 and view[4]
-			var lean: float = TorqaApp.lean_angle(40.0, 1.0 / 40.0) if leaning else 0.0
+			var lean: float = OrqwaApp.lean_angle(40.0, 1.0 / 40.0) if leaning else 0.0
 			avatar.transform = Transform3D(Basis(Vector3.FORWARD, lean + motion.rock), Vector3.ZERO)
 			_camera.look_at_from_position(eye, target, Vector3.UP)
 			for frame: int in range(12):

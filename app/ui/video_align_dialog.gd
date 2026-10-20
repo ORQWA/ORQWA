@@ -19,7 +19,7 @@ const BELOW_PREVIEW: float = 400.0
 ## Fine steps, in seconds, for the buttons under the video.
 const STEPS: Array[float] = [-1.0, -0.1, 0.1, 1.0]
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _video: String = ""
 var _length_m: float = 0.0
 var _imperial: bool = false
@@ -43,7 +43,7 @@ var _refresh: Timer = Timer.new()
 ## with elevation `profile` (distance, elevation); `marks` as `aligned` gives them, or empty
 ## for the whole video over the whole route.
 func edit(
-	torqa: TorqaApp,
+	orqwa: OrqwaApp,
 	video: String,
 	duration_s: float,
 	length_m: float,
@@ -51,7 +51,7 @@ func edit(
 	marks: PackedVector2Array,
 	imperial: bool = false
 ) -> void:
-	_torqa = torqa
+	_orqwa = orqwa
 	_video = video
 	_length_m = length_m
 	_imperial = imperial
@@ -269,9 +269,9 @@ func _rebuild_list() -> void:
 
 
 func _show_frame() -> void:
-	if _torqa == null or _video.is_empty():
+	if _orqwa == null or _video.is_empty():
 		return
-	var image: Image = _torqa.video_preview(_video, _marks[_selected].y)
+	var image: Image = _orqwa.video_preview(_video, _marks[_selected].y)
 	_picture.texture = ImageTexture.create_from_image(image) if image != null else null
 
 
@@ -286,5 +286,5 @@ static func _time_text(seconds: float) -> String:
 
 
 func _on_visibility_changed() -> void:
-	if not visible and _torqa != null:
-		_torqa.close_video_preview()
+	if not visible and _orqwa != null:
+		_orqwa.close_video_preview()

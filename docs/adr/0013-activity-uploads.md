@@ -21,8 +21,8 @@ an app in differently. As of October 2026:
 
 ## Decision
 
-- **`ActivityUploader`** (`torqa-domain::upload`) is object-safe, so all platforms sit in one
-  list (`torqa_upload::platforms()`). It has:
+- **`ActivityUploader`** (`orqwa-domain::upload`) is object-safe, so all platforms sit in one
+  list (`orqwa_upload::platforms()`). It has:
   - an id and a name;
   - the **fields** the rider types in to connect, with a help text and a link;
   - `connect`, which checks what was entered with the platform;
@@ -84,7 +84,7 @@ Decision:
 
 - **Strava connects through the rider's own API application**: its Client ID and Client
   Secret in the dialog, then the login in the browser, asking for `activity:write` only.
-- **OAuth platforms share `torqa_upload::oauth`**: the authorization code comes back over a
+- **OAuth platforms share `orqwa_upload::oauth`**: the authorization code comes back over a
   loopback redirect (RFC 8252). For the login only, Torqa listens on `127.0.0.1` at a free
   port and checks the `state`. While the browser waits, Torqa trades the code for tokens, so
   the page it then shows says how it ended. Access tokens are renewed shortly before they
@@ -113,7 +113,7 @@ Consequences:
 
 intervals.icu holds many riders' training plans. `ActivityUploader` gains `holds_plan` and
 `planned(credentials, day)`: a platform that keeps the plan answers with the day's calendar
-entries, each as a ZWO file where it has steps, which `torqa-workouts` parses like an imported
+entries, each as a ZWO file where it has steps, which `orqwa-workouts` parses like an imported
 file. The app asks every such platform with an account when the Workouts tab opens, with the
 computer's local date, and lists what came under ids `planned:<platform>:<entry>` ahead of the
 library; the list lives in memory only, so Torqa stores nothing of the plan and plans nothing

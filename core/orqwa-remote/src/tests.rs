@@ -1,0 +1,436 @@
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+
+use super::*;
+
+const TOKEN: &str = "0123456789abcdef";
+
+fn texts() -> Texts {
+    Texts {
+        language: "de".to_owned(),
+        words: words()
+            .map(|key| (key.to_owned(), format!("{key} auf Deutsch")))
+            .collect(),
+    }
+}
+
+/// The page's buttons as a rider gave them: up and two up big, pause and skip below, the
+/// fifth left out.
+fn buttons() -> [Option<ButtonAction>; BUTTONS as usize] {
+    let mut buttons = [None; BUTTONS as usize];
+    buttons[..4].copy_from_slice(&[
+        Some(ButtonAction::ShiftUp),
+        Some(ButtonAction::ShiftUpTwo),
+        Some(ButtonAction::Control(Control::Pause)),
+        Some(ButtonAction::Control(Control::SkipStep)),
+    ]);
+    buttons[5] = Some(ButtonAction::Control(Control::NextCamera));
+    buttons
+}
+
+/// A remote on a free port, its buttons as [`buttons`] gives them.
+fn remote() -> (RemoteServer, Remote) {
+    let started = start(&tokio::runtime::Handle::current(), 0, TOKEN, &texts()).unwrap();
+    started.0.show(RemoteState {
+        buttons: buttons(),
+        ..RemoteState::default()
+    });
+    started
+}
+
+/// Sends a request for `path` and reads the whole answer.
+async fn request(port: u16, method: &str, path: &str) -> String {
+    let mut socket = TcpStream::connect((Ipv4Addr::LOCALHOST, port))
+        .await
+        .unwrap();
+    socket
+        .write_all(format!("{method} {path} HTTP/1.1\r\nHost: orqwa\r\n\r\n").as_bytes())
+        .await
+        .unwrap();
+    let mut answer = String::new();
+    socket.read_to_string(&mut answer).await.unwrap();
+    answer
+}
+
+/// Opens the event stream; the reader is past the stream's head.
+async fn listen(port: u16) -> BufReader<TcpStream> {
+    let mut socket = TcpStream::connect((Ipv4Addr::LOCALHOST, port))
+        .await
+        .unwrap();
+    socket
+        .write_all(format!("GET /{TOKEN}/events HTTP/1.1\r\nHost: orqwa\r\n\r\n").as_bytes())
+        .await
+        .unwrap();
+    let mut reader = BufReader::new(socket);
+    let mut line = String::new();
+    reader.read_line(&mut line).await.unwrap();
+    assert_eq!(line, "HTTP/1.1 200 OK\r\n");
+    while line != "\r\n" {
+        line.clear();
+        reader.read_line(&mut line).await.unwrap();
+    }
+    reader
+}
+
+/// The next event's data.
+async fn next_event(reader: &mut BufReader<TcpStream>) -> serde_json::Value {
+    let mut line = String::new();
+    loop {
+        line.clear();
+        assert!(
+            reader.read_line(&mut line).await.unwrap() > 0,
+            "the stream ended"
+        );
+        if let Some(data) = line.strip_prefix("data: ") {
+            return serde_json::from_str(data.trim_end()).unwrap();
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_press_on_the_phone_does_what_its_button_was_given() {
+    let (server, mut remote) = remote();
+
+    for button in 1..=4 {
+        let answer = request(server.port(), "POST", &format!("/{TOKEN}/press/{button}")).await;
+        assert!(answer.starts_with("HTTP/1.1 204"), "{answer}");
+    }
+
+    assert_eq!(remote.poll(), [Shift::Up, Shift::Up, Shift::Up]);
+    assert_eq!(remote.controls(), [Control::Pause, Control::SkipStep]);
+    assert_eq!(remote.poll(), [], "each press once");
+    assert_eq!(remote.controls(), []);
+}
+
+#[tokio::test]
+async fn the_pad_steps_through_the_screens_and_finish_ends_the_ride() {
+    let (server, mut remote) = remote();
+
+    for path in ["nav/down", "nav/ok", "nav/back", "finish"] {
+        let answer = request(server.port(), "POST", &format!("/{TOKEN}/{path}")).await;
+        assert!(answer.starts_with("HTTP/1.1 204"), "{path}: {answer}");
+    }
+    for path in ["nav/home", "nav/", "nav"] {
+        let answer = request(server.port(), "POST", &format!("/{TOKEN}/{path}")).await;
+        assert!(answer.starts_with("HTTP/1.1 404"), "{path}: {answer}");
+    }
+
+    assert_eq!(remote.poll(), [], "steps shift nothing");
+    assert_eq!(
+        remote.navigation(),
+        [Navigation::Down, Navigation::Accept, Navigation::Back]
+    );
+    assert_eq!(remote.controls(), [Control::FinishRide]);
+    assert_eq!(remote.navigation(), [], "each step once");
+}
+
+#[tokio::test]
+async fn a_button_given_something_else_does_that_from_then_on() {
+    let (server, mut remote) = remote();
+    let mut buttons = buttons();
+    buttons[0] = Some(ButtonAction::ShiftDown);
+
+    server.show(RemoteState {
+        buttons,
+        ..RemoteState::default()
+    });
+    request(server.port(), "POST", &format!("/{TOKEN}/press/1")).await;
+
+    assert_eq!(remote.poll(), [Shift::Down]);
+}
+
+#[tokio::test]
+async fn without_the_token_nothing_is_there_and_nothing_is_pressed() {
+    let (server, mut remote) = remote();
+
+    for path in [
+        "/press/1".to_owned(),
+        "/fedcba9876543210/press/1".to_owned(),
+        format!("/{}/press/1", &TOKEN[..15]),
+        format!("/{TOKEN}0/press/1"),
+        "/".to_owned(),
+        "/fedcba9876543210/".to_owned(),
+    ] {
+        for method in ["GET", "POST"] {
+            let answer = request(server.port(), method, &path).await;
+            assert!(
+                answer.starts_with("HTTP/1.1 404"),
+                "{method} {path}: {answer}"
+            );
+        }
+    }
+
+    assert_eq!(remote.poll(), []);
+    assert_eq!(remote.controls(), []);
+}
+
+#[tokio::test]
+async fn a_button_that_is_not_there_presses_nothing() {
+    let (server, mut remote) = remote();
+
+    for path in [
+        "press/5",
+        "press/0",
+        "press/11",
+        "press/-1",
+        "press/shift_up",
+        "press/",
+        "press",
+        "1",
+    ] {
+        let answer = request(server.port(), "POST", &format!("/{TOKEN}/{path}")).await;
+        assert!(answer.starts_with("HTTP/1.1 404"), "{path}: {answer}");
+    }
+    let answer = request(server.port(), "GET", &format!("/{TOKEN}/press/1")).await;
+    assert!(
+        answer.starts_with("HTTP/1.1 404"),
+        "a press is posted: {answer}"
+    );
+
+    assert_eq!(remote.poll(), []);
+}
+
+#[tokio::test]
+async fn the_page_speaks_the_riders_language_shows_the_logo_and_loads_nothing_from_elsewhere() {
+    let (server, _remote) = remote();
+
+    for path in [
+        format!("/{TOKEN}/"),
+        format!("/{TOKEN}"),
+        format!("/{TOKEN}/?from=qr"),
+    ] {
+        let page = request(server.port(), "GET", &path).await;
+        assert!(page.starts_with("HTTP/1.1 200"), "{path}: {page}");
+        assert!(page.contains(r#"<html lang="de">"#));
+        assert!(page.contains(r#""shift_up":"shift_up auf Deutsch""#));
+        assert!(
+            page.contains(r#"class="mark" aria-hidden="true""#),
+            "the logo's mark"
+        );
+        assert!(
+            page.contains(r#"class="wordmark" aria-hidden="true""#),
+            "and its wordmark"
+        );
+        assert!(!page.contains("<title id="), "the header says Torqa once");
+        assert!(page.contains("Content-Security-Policy: default-src 'none';"));
+        assert!(page.contains("Referrer-Policy: no-referrer"));
+    }
+
+    let mut odd = texts();
+    odd.language = "de\"><script>".to_owned();
+    odd.words
+        .insert("title".to_owned(), "</script><script>alert(1)".to_owned());
+    server.set_texts(&odd);
+    let page = request(server.port(), "GET", &format!("/{TOKEN}/")).await;
+    assert!(
+        page.contains(r#"<html lang="descript">"#),
+        "only a language code"
+    );
+    assert!(
+        page.contains(r"\u003c/script>\u003cscript>alert(1)"),
+        "a text cannot end the page's script"
+    );
+    assert_eq!(page.matches("</script>").count(), 2, "the page's own two");
+}
+
+#[tokio::test]
+async fn the_page_carries_the_clip_that_keeps_the_screen_on() {
+    let (server, _remote) = remote();
+
+    let page = request(server.port(), "GET", &format!("/{TOKEN}/")).await;
+    assert!(page.contains(&format!(
+        r#"<video id="awake" src="data:video/mp4;base64,{}""#,
+        base64(KEEP_AWAKE)
+    )));
+    assert!(
+        page.contains("media-src data:;"),
+        "the policy lets it play from the page, and nothing from elsewhere"
+    );
+}
+
+#[test]
+fn the_clip_has_a_picture_and_a_sound_that_every_phone_plays() {
+    // Safari and Firefox keep the screen on only for a video with a sound track; H.264 and
+    // AAC play everywhere.
+    let has = |tag: &[u8]| KEEP_AWAKE.windows(tag.len()).any(|window| window == tag);
+    for (tag, what) in [
+        (b"vide", "a picture"),
+        (b"soun", "a sound"),
+        (b"avc1", "in H.264"),
+        (b"mp4a", "in AAC"),
+    ] {
+        assert!(has(tag), "{what}");
+    }
+}
+
+#[test]
+fn base64_is_as_rfc_4648_writes_it() {
+    for (bytes, text) in [
+        ("", ""),
+        ("f", "Zg=="),
+        ("fo", "Zm8="),
+        ("foo", "Zm9v"),
+        ("foob", "Zm9vYg=="),
+        ("fooba", "Zm9vYmE="),
+        ("foobar", "Zm9vYmFy"),
+    ] {
+        assert_eq!(base64(bytes.as_bytes()), text);
+    }
+    assert_eq!(base64(&[0xfb, 0xff, 0xbf]), "+/+/", "the last two digits");
+}
+
+#[tokio::test]
+async fn the_phone_sees_the_gear_and_the_pause_as_they_change() {
+    let (server, remote) = remote();
+    assert!(!remote.connected(), "no phone yet");
+
+    let mut phone = listen(server.port()).await;
+    let first = next_event(&mut phone).await;
+    assert_eq!(first["riding"], false);
+    assert!(first["gear"].is_null());
+    assert_eq!(
+        first["buttons"],
+        serde_json::json!([
+            "shift_up",
+            "shift_up_two",
+            "pause",
+            "skip_step",
+            null,
+            "next_camera",
+            null,
+            null,
+            null,
+            null
+        ]),
+        "what each button does, to show it"
+    );
+    assert!(remote.connected(), "a phone listens");
+
+    server.show(RemoteState {
+        riding: true,
+        paused: false,
+        gear: Some((7, 24)),
+        workout: false,
+        buttons: buttons(),
+    });
+    let riding = next_event(&mut phone).await;
+    assert_eq!(riding["riding"], true);
+    assert_eq!(riding["gear"], 7);
+    assert_eq!(riding["gears"], 24);
+
+    // The same state again sends nothing: the next event is the pause.
+    server.show(RemoteState {
+        riding: true,
+        paused: false,
+        gear: Some((7, 24)),
+        workout: false,
+        buttons: buttons(),
+    });
+    server.show(RemoteState {
+        riding: true,
+        paused: true,
+        gear: Some((7, 24)),
+        workout: true,
+        buttons: buttons(),
+    });
+    let paused = next_event(&mut phone).await;
+    assert_eq!(paused["paused"], true);
+    assert_eq!(paused["workout"], true);
+
+    drop(phone);
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while remote.connected() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the phone that closed the page is gone");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_stopped_remote_ends_the_phones_streams_and_frees_its_port() {
+    let (server, remote) = remote();
+    let port = server.port();
+    let mut phone = listen(port).await;
+    next_event(&mut phone).await;
+
+    drop(server);
+    let mut rest = String::new();
+    tokio::time::timeout(Duration::from_secs(5), phone.read_to_string(&mut rest))
+        .await
+        .expect("the stream ends")
+        .unwrap();
+    assert!(!remote.connected());
+
+    let again = start(&tokio::runtime::Handle::current(), port, TOKEN, &texts());
+    assert!(again.is_ok(), "the port is free again: {:?}", again.err());
+}
+
+#[tokio::test]
+async fn a_port_another_program_has_is_an_error() {
+    let taken = std::net::TcpListener::bind((Ipv4Addr::UNSPECIFIED, 0)).unwrap();
+    let port = taken.local_addr().unwrap().port();
+
+    let error = start(&tokio::runtime::Handle::current(), port, TOKEN, &texts()).unwrap_err();
+
+    assert_eq!(error.kind(), ErrorKind::AddrInUse);
+}
+
+#[tokio::test]
+async fn an_endless_request_is_turned_away() {
+    let (server, mut remote) = remote();
+    let mut socket = TcpStream::connect((Ipv4Addr::LOCALHOST, server.port()))
+        .await
+        .unwrap();
+    let head = format!(
+        "POST /{TOKEN}/press/shift_up HTTP/1.1\r\nX: {}",
+        "a".repeat(9000)
+    );
+
+    // The server may close before it has taken it all.
+    let _ = socket.write_all(head.as_bytes()).await;
+    let mut buffer = [0; 64];
+    let read = tokio::time::timeout(Duration::from_secs(5), socket.read(&mut buffer))
+        .await
+        .expect("closed, not left waiting");
+
+    assert!(matches!(read, Ok(0) | Err(_)), "no answer: {read:?}");
+    assert_eq!(remote.poll(), []);
+}
+
+#[test]
+fn tokens_are_new_each_time() {
+    let token = new_token();
+    assert_eq!(token.len(), 16);
+    assert!(token.bytes().all(|b| b.is_ascii_hexdigit()));
+    assert_ne!(new_token(), token);
+}
+
+#[test]
+fn the_address_leads_to_the_page() {
+    assert_eq!(
+        address(Ipv4Addr::new(192, 168, 1, 20), 8571, TOKEN),
+        "http://192.168.1.20:8571/0123456789abcdef/"
+    );
+}
+
+#[test]
+fn the_qr_code_is_square_with_its_three_finder_patterns() {
+    let code = qr_code(&address(Ipv4Addr::new(192, 168, 1, 20), 8571, TOKEN)).unwrap();
+    let size = code.size;
+    assert_eq!(code.dark.len(), size * size);
+    assert_eq!((size - 17) % 4, 0, "a QR code's side: {size}");
+    let dark = |row: usize, column: usize| code.dark[row * size + column];
+    // Each finder: a dark ring, a light ring, a dark 3×3 centre; the fourth corner has none.
+    for (top, left) in [(0, 0), (0, size - 7), (size - 7, 0)] {
+        for i in 0..7 {
+            assert!(dark(top, left + i) && dark(top + 6, left + i));
+            assert!(dark(top + i, left) && dark(top + i, left + 6));
+        }
+        assert!(!dark(top + 1, left + 1) && !dark(top + 5, left + 5));
+        assert!(dark(top + 3, left + 3));
+    }
+    assert!(
+        !(0..7).all(|i| dark(size - 1, size - 7 + i)),
+        "no finder bottom right"
+    );
+}

@@ -39,7 +39,7 @@ heights (R16). The source must be free, need no account, allow local caching for
   use OpenStreetMap bridge/tunnel tags during world generation (Phase 3).
 - A 30 m terrain cell straddles the cliff above a road on a ledge, or the roof of a gallery
   the map does not know, and the profile climbs a wall no road has (#172). Along the road the
-  model is checked twice (`torqa-routes`): where it departs from the file's own elevations by
+  model is checked twice (`orqwa-routes`): where it departs from the file's own elevations by
   more than 30 m beyond their offset, the file wins there; and a rise steeper than 18 % that
   falls as steeply back to its level within 400 m is cut straight across. A climb that goes on
   is kept, however steep.

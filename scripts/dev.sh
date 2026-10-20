@@ -6,14 +6,14 @@ set -eu
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
 # From Git Bash on Windows: Docker wants the checkout as a Windows path, and the container
-# paths must not be rewritten into Windows ones (MSYS turns `/workspaces/torqa` into
-# `C:/Program Files/Git/workspaces/torqa` otherwise).
+# paths must not be rewritten into Windows ones (MSYS turns `/workspaces/orqwa` into
+# `C:/Program Files/Git/workspaces/orqwa` otherwise).
 if command -v cygpath >/dev/null 2>&1; then
     root="$(cygpath -m "$root")"
     export MSYS_NO_PATHCONV=1
 fi
 
-docker build -q -t torqa-dev -f "$root/.devcontainer/Dockerfile" "$root" >/dev/null
+docker build -q -t orqwa-dev -f "$root/.devcontainer/Dockerfile" "$root" >/dev/null
 
 # The commit for the About tab (R83): a worktree's Git directory lies outside the mounted
 # checkout, so the build inside cannot ask Git itself.
@@ -29,12 +29,12 @@ fi
 status=0
 # shellcheck disable=SC2086 # tty_flags is intentionally empty or a single flag
 docker run --rm $tty_flags \
-    -e TORQA_COMMIT="$commit" \
-    -v "$root:/workspaces/torqa" \
-    -v torqa-cargo-registry:/usr/local/cargo/registry \
-    -v torqa-target:/workspaces/torqa/core/target \
-    -v torqa-cache:/root/.cache \
-    -w /workspaces/torqa \
-    torqa-dev "$@" || status=$?
-give_back_files torqa-dev
+    -e ORQWA_COMMIT="$commit" \
+    -v "$root:/workspaces/orqwa" \
+    -v orqwa-cargo-registry:/usr/local/cargo/registry \
+    -v orqwa-target:/workspaces/orqwa/core/target \
+    -v orqwa-cache:/root/.cache \
+    -w /workspaces/orqwa \
+    orqwa-dev "$@" || status=$?
+give_back_files orqwa-dev
 exit "$status"

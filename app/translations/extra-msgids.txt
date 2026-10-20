@@ -3,7 +3,7 @@
 Chase
 First Person
 Drone
-# Units of the loading steps (torqa-app LoadStage::unit).
+# Units of the loading steps (orqwa-app LoadStage::unit).
 files
 tiles
 points
@@ -11,7 +11,7 @@ chunks
 # Language choice in the rider settings (ProfileForm.LANGUAGES); other language names stay
 # in their own language.
 System language
-# Why a device could not be connected (torqa-devices DeviceError), shown beside its row (R80).
+# Why a device could not be connected (orqwa-devices DeviceError), shown beside its row (R80).
 connecting timed out
 device not found
 device driver has stopped

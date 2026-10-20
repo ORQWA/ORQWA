@@ -5,7 +5,7 @@ CC0, CC BY and CC BY-SA are allowed.
 
 The app's settings show these credits and every licence notice of the software built into it
 on their About tab (R83, ADR 0018): Torqa's GPL, the Godot engine and its components, FFmpeg's
-libraries (LGPL 2.1 or later) and every Rust crate, from `core/torqa-app/notices/`.
+libraries (LGPL 2.1 or later) and every Rust crate, from `core/orqwa-app/notices/`.
 
 ## Models
 
@@ -31,12 +31,12 @@ The Blender skills in `.claude/skills/blender-*` are from
 Map and terrain data credits are shown in the app and stored in every course file; see
 [Courses](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Courses).
 
-The sample course Torqa ships (`core/torqa-gd/courses/twann-chasseral.tqc`, R95) holds such
+The sample course Torqa ships (`core/orqwa-gd/courses/twann-chasseral.tqc`, R95) holds such
 data: map tiles © OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0), and
 terrain by Mapterhorn (CC BY 4.0) and AWS Terrain Tiles.
 
 The list of ISO 3166-1 country codes that matches the map's three-letter codes to two-letter
-ones (`core/torqa-osm/src/iso.rs`) is taken from Debian's
+ones (`core/orqwa-osm/src/iso.rs`) is taken from Debian's
 [iso-codes](https://salsa.debian.org/iso-codes-team/iso-codes) (`data/iso_3166-1.json`,
 LGPL 2.1 or later). The test tiles in `core/fixtures/countries/` are cut from OpenFreeMap
 tiles: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0).

@@ -9,7 +9,7 @@ set -eu
 
 profile="${1:-debug}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
-stage=/tmp/torqa-android
+stage=/tmp/orqwa-android
 triple=aarch64-linux-android
 bin="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
 
@@ -27,7 +27,7 @@ FFMPEG_DIR=/opt/ffmpeg-android \
     CC_aarch64_linux_android="$bin/aarch64-linux-android24-clang" \
     AR_aarch64_linux_android="$bin/llvm-ar" \
     BINDGEN_EXTRA_CLANG_ARGS="--target=aarch64-linux-android24 --sysroot=$bin/../sysroot" \
-    cargo build --manifest-path "$root/core/Cargo.toml" -p torqa-gd --locked \
+    cargo build --manifest-path "$root/core/Cargo.toml" -p orqwa-gd --locked \
     --target "$triple" $cargo_flags
 
 rm -rf "$stage"
@@ -38,9 +38,9 @@ tar -C "$root/app" --exclude=./.godot --exclude=./bin --exclude=./android -cf - 
     tar -C "$stage/app" -xf -
 "$root/scripts/build-gdext.sh" release >/dev/null
 mkdir -p "$stage/app/bin/android"
-cp "$root/app/bin/libtorqa_gd.so" "$stage/app/bin/"
-"$bin/llvm-strip" -o "$stage/app/bin/android/libtorqa_gd.so" \
-    "$root/core/target/$triple/$profile/libtorqa_gd.so"
+cp "$root/app/bin/liborqwa_gd.so" "$stage/app/bin/"
+"$bin/llvm-strip" -o "$stage/app/bin/android/liborqwa_gd.so" \
+    "$root/core/target/$triple/$profile/liborqwa_gd.so"
 cp -r "$root/android/godot/addons" "$stage/app/"
 python3 "$root/android/stage.py" "$stage/app" "$root/android/godot/export_preset.cfg" \
     "$root/core/Cargo.lock" "$root/core/Cargo.toml"
@@ -61,9 +61,9 @@ for p in json.load(sys.stdin)["packages"]:
 cp -r "$root/android/plugin" "$stage/plugin"
 (cd "$stage/app/android/build" && sh ./gradlew --quiet -p "$stage/plugin" assembleRelease \
     -Pbtleplug="$btleplug")
-mkdir -p "$stage/app/addons/torqa_android/bin"
-cp "$stage/plugin/build/outputs/aar/torqa-android-release.aar" \
-    "$stage/app/addons/torqa_android/bin/"
+mkdir -p "$stage/app/addons/orqwa_android/bin"
+cp "$stage/plugin/build/outputs/aar/orqwa-android-release.aar" \
+    "$stage/app/addons/orqwa_android/bin/"
 
 godot --headless --path "$stage/app" --import >/dev/null 2>&1 || true
 mkdir -p "$root/dist"
@@ -72,14 +72,15 @@ rm -f "$apk"
 # With the release key (CI, for tagged releases: ADR 0024), the APK riders install. Without it the
 # debug key, as Android Studio keeps one per developer: in the Gradle volume, not the image, so a
 # rebuilt image still signs alike and an update installs over the APK already on a device.
-if [ -n "${TORQA_RELEASE_KEYSTORE:-}" ]; then
-    : "${TORQA_RELEASE_KEYSTORE_PASSWORD:?Set it with TORQA_RELEASE_KEYSTORE}"
-    GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$TORQA_RELEASE_KEYSTORE" \
+# The release key keeps the alias it was made with, before the rename from Torqa.
+if [ -n "${ORQWA_RELEASE_KEYSTORE:-}" ]; then
+    : "${ORQWA_RELEASE_KEYSTORE_PASSWORD:?Set it with ORQWA_RELEASE_KEYSTORE}"
+    GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$ORQWA_RELEASE_KEYSTORE" \
         GODOT_ANDROID_KEYSTORE_RELEASE_USER=torqa \
-        GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$TORQA_RELEASE_KEYSTORE_PASSWORD" \
+        GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD="$ORQWA_RELEASE_KEYSTORE_PASSWORD" \
         godot --headless --path "$stage/app" --export-release "Android" "$apk"
 else
-    keystore=/root/.gradle/torqa-debug.keystore
+    keystore=/root/.gradle/orqwa-debug.keystore
     test -s "$keystore" || keytool -genkeypair -keystore "$keystore" -storepass android \
         -alias androiddebugkey -keypass android -keyalg RSA -validity 10000 \
         -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1

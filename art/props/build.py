@@ -6,7 +6,7 @@ fences, hay bales, wayside crosses and power poles; road signs — and exports t
 Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/props/build.py
 
-The world (`core/torqa-world/src/props.rs`) places them beside the road ridden, each with its
+The world (`core/orqwa-world/src/props.rs`) places them beside the road ridden, each with its
 back to the road: the model's +x points away from the road, its length runs along Blender +y
 (Godot −z, the way the road is ridden on the right-hand side), the origin on the ground where
 it stands. Guard rails are 4 m spans that the world shears to the road's grade, so posts stay
@@ -434,7 +434,7 @@ def sign_grade(spec):
 def power_pole(spec):
     """A wooden power pole: a tapered trunk, a crossarm across the line (along x: away from the
     road and toward it) and three insulators where the wires are held (`WIRES` in
-    core/torqa-world/src/props.rs)."""
+    core/orqwa-world/src/props.rs)."""
     mesh = Mesh()
     sides = 10
 

@@ -52,7 +52,7 @@ func configure(has_personal_best: bool, ftp_w: float) -> void:
 		_option.select(Ghost.NONE)
 
 
-## The ghost to race, as `TorqaApp.start_ride` takes it.
+## The ghost to race, as `OrqwaApp.start_ride` takes it.
 func choice() -> Dictionary:
 	match _option.selected:
 		Ghost.BEST:

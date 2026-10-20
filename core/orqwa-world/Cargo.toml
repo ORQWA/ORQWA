@@ -1,0 +1,22 @@
+[package]
+name = "orqwa-world"
+description = "3D world geometry for Torqa: terrain, road, streets, railways, water, buildings and plants around the route"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+orqwa-domain.workspace = true
+orqwa-routes.workspace = true
+orqwa-osm.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[lints]
+workspace = true

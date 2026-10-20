@@ -12,14 +12,14 @@ if command -v cygpath >/dev/null 2>&1; then
     export MSYS_NO_PATHCONV=1
 fi
 
-docker build -q --platform linux/amd64 -t torqa-art "$root/art" >/dev/null
+docker build -q --platform linux/amd64 -t orqwa-art "$root/art" >/dev/null
 
 . "$root/scripts/give-back-files.sh"
 
 status=0
 docker run --rm --platform linux/amd64 \
-    -v "$root:/workspaces/torqa" \
-    -w /workspaces/torqa \
-    torqa-art "$@" || status=$?
-give_back_files --platform linux/amd64 torqa-art
+    -v "$root:/workspaces/orqwa" \
+    -w /workspaces/orqwa \
+    orqwa-art "$@" || status=$?
+give_back_files --platform linux/amd64 orqwa-art
 exit "$status"

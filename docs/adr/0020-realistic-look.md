@@ -36,7 +36,7 @@ Decisions (user, 2026-10-18):
   enough geometry for their silhouettes (eaves, window depth, leaf-card tree crowns, rounded
   rock forms); smooth shading with hard edges where objects have them. Natural colours,
   weathering where it happens in nature. Physically based sky, sun and fog, a filmic tone
-  mapping. No racing UI or accessories (R44). The working guide is the `torqa-look` skill.
+  mapping. No racing UI or accessories (R44). The working guide is the `orqwa-look` skill.
 - **Even quality over local peaks.** What made the first attempt fail was a few good assets
   beside many poor ones. A group is restyled as a whole, and every surface in view on a ride
   must reach the same level before the next group starts.
@@ -64,7 +64,7 @@ Decisions (user, 2026-10-18):
 - **Pipeline unchanged** (ADR 0009): Blender scripts are the source, exports are committed,
   Blender runs headless in the art container. New: build scripts render **Cycles previews**
   (`--preview DIR`, `art/preview.py`) with their own materials and textures, before those
-  exist in the app's shaders; the world is still checked with `torqa-render-review`.
+  exist in the app's shaders; the world is still checked with `orqwa-render-review`.
 - **Performance.** 60 fps on Medium on an M1 stays the bar (R43). Mesh LODs from Godot's
   import, texture sizes per preset, and shadows, AO, view distance and vegetation density
   varying by preset keep it there.
@@ -76,7 +76,7 @@ Decisions (user, 2026-10-18):
 - Most of ADR 0011's restyling is redone; the logic it kept (route snapping, road shaping,
   building kinds and placement, presets, rider IK) stays.
 - Assets grow again: about 2 MB per 1024 px material in the repository; the budgets in
-  `torqa-look` keep this in check.
+  `orqwa-look` keep this in check.
 - More triangles and texture samples cost GPU time; Medium on an M1 has to be measured after
   every group, and presets may need to cut density.
 - Riders need smooth, realistic bodies; the faceted Human Base Meshes bases are revisited

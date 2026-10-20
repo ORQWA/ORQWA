@@ -1557,6 +1557,228 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
+name = "orqwa-app"
+version = "0.5.0"
+dependencies = [
+ "orqwa-devices",
+ "orqwa-domain",
+ "orqwa-osm",
+ "orqwa-physics",
+ "orqwa-remote",
+ "orqwa-routes",
+ "orqwa-session",
+ "orqwa-storage",
+ "orqwa-terrain",
+ "orqwa-update",
+ "orqwa-upload",
+ "orqwa-video",
+ "orqwa-workouts",
+ "orqwa-world",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-cli"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "orqwa-app",
+ "orqwa-devices",
+ "orqwa-domain",
+ "orqwa-physics",
+ "orqwa-routes",
+ "orqwa-session",
+ "orqwa-storage",
+ "orqwa-terrain",
+ "orqwa-video",
+ "orqwa-workouts",
+ "orqwa-world",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "orqwa-devices"
+version = "0.5.0"
+dependencies = [
+ "btleplug",
+ "futures",
+ "jni",
+ "orqwa-domain",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-domain"
+version = "0.5.0"
+
+[[package]]
+name = "orqwa-gd"
+version = "0.5.0"
+dependencies = [
+ "godot",
+ "orqwa-app",
+ "orqwa-devices",
+ "orqwa-domain",
+ "orqwa-physics",
+ "orqwa-routes",
+ "orqwa-session",
+ "orqwa-workouts",
+ "orqwa-world",
+ "rustls-platform-verifier",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-osm"
+version = "0.5.0"
+dependencies = [
+ "futures",
+ "geo-types",
+ "mvt-reader",
+ "orqwa-domain",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-physics"
+version = "0.5.0"
+dependencies = [
+ "orqwa-domain",
+]
+
+[[package]]
+name = "orqwa-remote"
+version = "0.5.0"
+dependencies = [
+ "fast_qr",
+ "orqwa-domain",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-routes"
+version = "0.5.0"
+dependencies = [
+ "orqwa-domain",
+ "orqwa-osm",
+ "orqwa-terrain",
+ "quick-xml",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-session"
+version = "0.5.0"
+dependencies = [
+ "orqwa-devices",
+ "orqwa-domain",
+ "orqwa-physics",
+ "orqwa-routes",
+ "tokio",
+]
+
+[[package]]
+name = "orqwa-storage"
+version = "0.5.0"
+dependencies = [
+ "embedded-io-adapters",
+ "orqwa-domain",
+ "orqwa-world",
+ "rusqlite",
+ "rustyfit",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "toml",
+ "zip",
+]
+
+[[package]]
+name = "orqwa-terrain"
+version = "0.5.0"
+dependencies = [
+ "image-webp",
+ "orqwa-domain",
+ "png",
+ "reqwest",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-update"
+version = "0.5.0"
+dependencies = [
+ "reqwest",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-upload"
+version = "0.5.0"
+dependencies = [
+ "orqwa-domain",
+ "reqwest",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-video"
+version = "0.5.0"
+dependencies = [
+ "ffmpeg-next",
+ "quick-xml",
+ "rav1d",
+ "thiserror",
+]
+
+[[package]]
+name = "orqwa-workouts"
+version = "0.5.0"
+dependencies = [
+ "embedded-io-adapters",
+ "orqwa-domain",
+ "quick-xml",
+ "rustyfit",
+ "tracing",
+]
+
+[[package]]
+name = "orqwa-world"
+version = "0.5.0"
+dependencies = [
+ "orqwa-domain",
+ "orqwa-osm",
+ "orqwa-routes",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2487,228 +2709,6 @@ name = "toml_writer"
 version = "1.1.2+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d56353a2a665ad0f41a421187180aab746c8c325620617ad883a99a1cbe66d2"
-
-[[package]]
-name = "torqa-app"
-version = "0.5.0"
-dependencies = [
- "serde_json",
- "thiserror",
- "tokio",
- "torqa-devices",
- "torqa-domain",
- "torqa-osm",
- "torqa-physics",
- "torqa-remote",
- "torqa-routes",
- "torqa-session",
- "torqa-storage",
- "torqa-terrain",
- "torqa-update",
- "torqa-upload",
- "torqa-video",
- "torqa-workouts",
- "torqa-world",
- "tracing",
-]
-
-[[package]]
-name = "torqa-cli"
-version = "0.5.0"
-dependencies = [
- "anyhow",
- "clap",
- "tokio",
- "torqa-app",
- "torqa-devices",
- "torqa-domain",
- "torqa-physics",
- "torqa-routes",
- "torqa-session",
- "torqa-storage",
- "torqa-terrain",
- "torqa-video",
- "torqa-workouts",
- "torqa-world",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "torqa-devices"
-version = "0.5.0"
-dependencies = [
- "btleplug",
- "futures",
- "jni",
- "thiserror",
- "tokio",
- "torqa-domain",
- "tracing",
-]
-
-[[package]]
-name = "torqa-domain"
-version = "0.5.0"
-
-[[package]]
-name = "torqa-gd"
-version = "0.5.0"
-dependencies = [
- "godot",
- "rustls-platform-verifier",
- "torqa-app",
- "torqa-devices",
- "torqa-domain",
- "torqa-physics",
- "torqa-routes",
- "torqa-session",
- "torqa-workouts",
- "torqa-world",
- "tracing",
-]
-
-[[package]]
-name = "torqa-osm"
-version = "0.5.0"
-dependencies = [
- "futures",
- "geo-types",
- "mvt-reader",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "torqa-domain",
- "tracing",
-]
-
-[[package]]
-name = "torqa-physics"
-version = "0.5.0"
-dependencies = [
- "torqa-domain",
-]
-
-[[package]]
-name = "torqa-remote"
-version = "0.5.0"
-dependencies = [
- "fast_qr",
- "serde_json",
- "tokio",
- "torqa-domain",
- "tracing",
-]
-
-[[package]]
-name = "torqa-routes"
-version = "0.5.0"
-dependencies = [
- "quick-xml",
- "thiserror",
- "tokio",
- "torqa-domain",
- "torqa-osm",
- "torqa-terrain",
- "tracing",
-]
-
-[[package]]
-name = "torqa-session"
-version = "0.5.0"
-dependencies = [
- "tokio",
- "torqa-devices",
- "torqa-domain",
- "torqa-physics",
- "torqa-routes",
-]
-
-[[package]]
-name = "torqa-storage"
-version = "0.5.0"
-dependencies = [
- "embedded-io-adapters",
- "rusqlite",
- "rustyfit",
- "serde",
- "serde_json",
- "thiserror",
- "toml",
- "torqa-domain",
- "torqa-world",
- "zip",
-]
-
-[[package]]
-name = "torqa-terrain"
-version = "0.5.0"
-dependencies = [
- "image-webp",
- "png",
- "reqwest",
- "thiserror",
- "tokio",
- "torqa-domain",
- "tracing",
-]
-
-[[package]]
-name = "torqa-update"
-version = "0.5.0"
-dependencies = [
- "reqwest",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "torqa-upload"
-version = "0.5.0"
-dependencies = [
- "reqwest",
- "serde_json",
- "tokio",
- "torqa-domain",
- "tracing",
-]
-
-[[package]]
-name = "torqa-video"
-version = "0.5.0"
-dependencies = [
- "ffmpeg-next",
- "quick-xml",
- "rav1d",
- "thiserror",
-]
-
-[[package]]
-name = "torqa-workouts"
-version = "0.5.0"
-dependencies = [
- "embedded-io-adapters",
- "quick-xml",
- "rustyfit",
- "torqa-domain",
- "tracing",
-]
-
-[[package]]
-name = "torqa-world"
-version = "0.5.0"
-dependencies = [
- "serde",
- "serde_json",
- "tokio",
- "torqa-domain",
- "torqa-osm",
- "torqa-routes",
- "tracing",
-]
 
 [[package]]
 name = "tower"

@@ -32,29 +32,29 @@ func _fullscreen() -> void:
 	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
-	var torqa: TorqaApp = main.get_node("Torqa")
+	var orqwa: OrqwaApp = main.get_node("Orqwa")
 	var window: Window = root
 	# Headless, the window has no mode of its own: it is checked on a real display.
 	var headless: bool = DisplayServer.get_name() == "headless"
-	torqa.set_fullscreen(false)
+	orqwa.set_fullscreen(false)
 
 	_press(KEY_F11)
-	_check(torqa.fullscreen(), "F11 fills the screen, also next time")
+	_check(orqwa.fullscreen(), "F11 fills the screen, also next time")
 	_check(headless or FullScreen.is_on(window), "the window fills the screen")
 	if not headless:
 		_press(KEY_F11)
-		_check(not torqa.fullscreen() and not FullScreen.is_on(window), "F11 again: a window")
-	torqa.set_fullscreen(false)
+		_check(not orqwa.fullscreen() and not FullScreen.is_on(window), "F11 again: a window")
+	orqwa.set_fullscreen(false)
 	_press(KEY_ENTER, true)
-	_check(torqa.fullscreen(), "Alt+Enter as well")
+	_check(orqwa.fullscreen(), "Alt+Enter as well")
 
 	var box: CheckBox = _button_with_text(main, "Full screen (F11)")
 	_check(box != null, "a check box in the settings")
 	if box != null:
 		box.button_pressed = true
-		_check(torqa.fullscreen(), "the check box fills the screen")
+		_check(orqwa.fullscreen(), "the check box fills the screen")
 		box.button_pressed = false
-		_check(not torqa.fullscreen(), "and puts it back in a window")
+		_check(not orqwa.fullscreen(), "and puts it back in a window")
 
 	var ride: RideScreen = main.get_node("RideScreen")
 	# The start page goes as a ride starts: the gallery is not made for the overlay's size.
@@ -65,7 +65,7 @@ func _fullscreen() -> void:
 	for i: int in range(3):
 		await process_frame
 	_press(KEY_F11)
-	_check(not torqa.fullscreen(), "the overlay does not fill the screen")
+	_check(not orqwa.fullscreen(), "the overlay does not fill the screen")
 	ride.overlay_requested.emit(false)
 	await process_frame
 	main.free()
@@ -203,16 +203,16 @@ func _show_courses(courses: CoursesTab, count: int) -> void:
 
 ## A short ride, so the history, its summary and the analysis have something to lay out.
 func _record_ride() -> String:
-	var torqa: TorqaApp = TorqaApp.new()
-	root.add_child(torqa)
+	var orqwa: OrqwaApp = OrqwaApp.new()
+	root.add_child(orqwa)
 	var saved: Array[String] = []
-	torqa.ride_saved.connect(func(path: String) -> void: saved.append(path))
-	_check(torqa.connect_fake_trainer(250.0, 90.0), "fake trainer")
+	orqwa.ride_saved.connect(func(path: String) -> void: saved.append(path))
+	_check(orqwa.connect_fake_trainer(250.0, 90.0), "fake trainer")
 	var workout: Dictionary = {"kind": "power", "power": 200.0, "name": "Window smoke test"}
-	_check(torqa.start_workout(workout, false, false), "a ride")
+	_check(orqwa.start_workout(workout, false, false), "a ride")
 	await create_timer(1.5).timeout
-	torqa.finish_ride()
-	torqa.free()
+	orqwa.finish_ride()
+	orqwa.free()
 	_check(saved.size() == 1, "the ride saved: %s" % [saved])
 	return saved[0] if saved.size() == 1 else ""
 
@@ -222,7 +222,7 @@ func _record_ride() -> String:
 ## what is taller than the window scrolls.
 func _small_window(locale: String, ride: String) -> void:
 	TranslationServer.set_locale(locale)
-	var settings: TorqaApp = TorqaApp.new()
+	var settings: OrqwaApp = OrqwaApp.new()
 	root.add_child(settings)
 	var rider: Dictionary = settings.profile()
 	var rider_id: String = rider["id"]
@@ -235,7 +235,7 @@ func _small_window(locale: String, ride: String) -> void:
 	await process_frame
 	root.size = Vector2i((UiScale.MIN_WINDOW_SIZE * root.content_scale_factor).ceil())
 	var room: Vector2 = root.get_visible_rect().size
-	var torqa: TorqaApp = main.get_node("Torqa")
+	var orqwa: OrqwaApp = main.get_node("Orqwa")
 	var start: StartPage = main.get_node("StartPage")
 	# The gallery's toolbar as with courses in it, and the rider's whole setup.
 	var courses: CoursesTab = start.get("_courses")
@@ -270,13 +270,13 @@ func _small_window(locale: String, ride: String) -> void:
 	settings_dialog.open()
 	await _dialog_fits(settings_dialog, room, locale)
 	var rider_dialog: ProfileDialog = start.find_children("*", "ProfileDialog", true, false)[0]
-	rider_dialog.edit(torqa.profile(), torqa.hud_layout())
+	rider_dialog.edit(orqwa.profile(), orqwa.hud_layout())
 	await _dialog_fits(rider_dialog, room, locale)
 	var editor: WorkoutEditor = start.find_children("*", "WorkoutEditor", true, false)[0]
 	editor.edit({}, 200.0)
 	await _dialog_fits(editor, room, locale)
 	var buttons: ButtonDialog = start.find_children("*", "ButtonDialog", true, false)[0]
-	buttons.open(ButtonDialog.PHONE_REMOTE, TorqaApp.phone_remote_name())
+	buttons.open(ButtonDialog.PHONE_REMOTE, OrqwaApp.phone_remote_name())
 	await _dialog_fits(buttons, room, locale)
 	start.hide()
 	var summary: HistoryScreen = main.get_node("HistoryScreen")
@@ -297,7 +297,7 @@ func _small_window(locale: String, ride: String) -> void:
 	await _dialog_fits(ride_settings, room, locale)
 	main.free()
 	rider["language"] = language
-	settings = TorqaApp.new()
+	settings = OrqwaApp.new()
 	root.add_child(settings)
 	settings.save_profile(rider_id, rider)
 	settings.free()

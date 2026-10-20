@@ -13,8 +13,8 @@ Rider language selection is described in the [wiki](https://github.com/Torqa-Ind
 ## Adding or updating a language
 
 1. In the dev container, refresh the template after code changes:
-   `python3 scripts/i18n/extract.py` → `app/translations/torqa.pot`.
-2. Copy `torqa.pot` to `<code>.po` (e.g. `fr.po`), set `"Language: fr\n"` in the header and
+   `python3 scripts/i18n/extract.py` → `app/translations/orqwa.pot`.
+2. Copy `orqwa.pot` to `<code>.po` (e.g. `fr.po`), set `"Language: fr\n"` in the header and
    fill in every `msgstr`. Keep placeholders like `%s`, `%d`, `%.1f` and `%%` — the check fails
    if they differ.
 3. Add the file to `internationalization/locale/translations` in `app/project.godot` and the

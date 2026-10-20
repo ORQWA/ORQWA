@@ -1,0 +1,20 @@
+[package]
+name = "orqwa-session"
+description = "Ride engine for Torqa: moves the rider along a route and drives the trainer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+orqwa-domain.workspace = true
+orqwa-physics.workspace = true
+orqwa-routes.workspace = true
+
+[dev-dependencies]
+orqwa-devices.workspace = true
+tokio = { workspace = true, features = ["rt", "macros", "time", "test-util"] }
+
+[lints]
+workspace = true

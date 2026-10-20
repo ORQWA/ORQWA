@@ -38,17 +38,17 @@ does the same.
 | Regenerate the boot splash PNG after a logo change | `scripts/render-splash.sh` |
 | Refresh the translation template after text changes | `python3 scripts/i18n/extract.py` |
 | Refresh the crates' licence notices the About tab shows, after changing dependencies ([ADR 0018](adr/0018-about-and-notices.md)) | `scripts/notices.sh` |
-| Run the CLI with the fake trainer | `cargo run --manifest-path core/Cargo.toml -p torqa-cli -- ride --fake` |
+| Run the CLI with the fake trainer | `cargo run --manifest-path core/Cargo.toml -p orqwa-cli -- ride --fake` |
 
 The 3D models are Blender scripts in `art/` (see [art/README.md](../art/README.md) for them and a
 gallery of every model); Blender runs in its own container on the host:
 `scripts/art.sh blender --background --factory-startup --python art/<group>/build.py`.
 
 Worlds can be kept across updates (R101, [ADR 0025](adr/0025-kept-worlds.md)): a change that
-makes courses come out differently raises `torqa_world::GENERATOR`, so their pages offer to
+makes courses come out differently raises `orqwa_world::GENERATOR`, so their pages offer to
 regenerate them; one that kept worlds could no longer be read or drawn with raises
-`torqa_world::stored::FORMAT` and writes the stored sample again
-(`TORQA_WRITE_STORED_WORLD=1 cargo test -p torqa-world stored`). With **Keep courses ready to
+`orqwa_world::stored::FORMAT` and writes the stored sample again
+(`ORQWA_WRITE_STORED_WORLD=1 cargo test -p orqwa-world stored`). With **Keep courses ready to
 ride** on, a library course rides the world kept before your change: turn it off while working
 on the generator. Renders and screenshots prepare GPX routes, which always build.
 
@@ -60,12 +60,12 @@ Between releases, download artifacts from the
 [CI runs on main](https://github.com/Torqa-Indoor-Cycling/Torqa/actions/workflows/ci.yml?query=branch%3Amain)
 while signed in to GitHub. Both use the same archives:
 
-The `macos` CI job builds `Torqa-macos-arm64.zip` and `torqa-cli-macos-arm64.tar.gz`. To test
+The `macos` CI job builds `Torqa-macos-arm64.zip` and `orqwa-cli-macos-arm64.tar.gz`. To test
 real trainers on macOS, use the CLI built by CI: see the [command-line guide](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Command-line-tool).
 
 Windows builds come from the `windows` CI job: `Torqa-windows-x86_64.zip` (`Torqa.exe` with
-`torqa_gd.dll` beside it; keep both in one folder), the installer `Torqa-windows-x86_64.msi`
-and `torqa-cli-windows-x86_64.zip`, all under the run's artifacts. The installer is built from
+`orqwa_gd.dll` beside it; keep both in one folder), the installer `Torqa-windows-x86_64.msi`
+and `orqwa-cli-windows-x86_64.zip`, all under the run's artifacts. The installer is built from
 `scripts/release/Torqa.wxs` with the WiX Toolset ([ADR 0023](adr/0023-windows-installer.md)),
 and the job installs and uninstalls it once to check it. Like the macOS app it is built natively on the runner (MSVC, with MSYS2's
 `sh` and `make` for FFmpeg).
@@ -79,13 +79,13 @@ extension too ([ADR 0021](adr/0021-windows-extension-in-the-container.md)):
 scripts/dev.sh scripts/build-gdext.sh release windows
 ```
 
-It puts `torqa_gd.dll` (MinGW, linked statically) into `app/bin/`, where the portable Godot
+It puts `orqwa_gd.dll` (MinGW, linked statically) into `app/bin/`, where the portable Godot
 editor on the host loads it to render the views in seconds instead of lavapipe's minutes. It is
 for development only; the released Windows app is CI's.
 
 Linux builds come from the `linux` CI job, for x86_64 and arm64: `Torqa-linux-<arch>.tar.gz`
-(a `Torqa` folder with `Torqa.<arch>` and `libtorqa_gd.so`; keep both together) and
-`torqa-cli-linux-<arch>.tar.gz`. They are built on Ubuntu 22.04 so they run on any distribution
+(a `Torqa` folder with `Torqa.<arch>` and `liborqwa_gd.so`; keep both together) and
+`orqwa-cli-linux-<arch>.tar.gz`. They are built on Ubuntu 22.04 so they run on any distribution
 with glibc 2.35 or newer (Ubuntu 22.04+, Debian 12+, Fedora 36+), not only on ones as new as
 the dev container ([ADR 0012](adr/0012-linux-builds.md)). CI starts the exported app
 headless to check that it loads.
@@ -94,7 +94,7 @@ Docker on macOS cannot access Bluetooth or the GPU, so macOS builds are produced
 To test 3D rendering or a real trainer, run the built app (or the portable Godot editor) natively.
 
 Every build names the commit it comes from on the settings' About tab and in its first log
-line (`Torqa 0.2.1 (0ad9af1)`), as Git reports it while building, or the `TORQA_COMMIT`
+line (`Torqa 0.2.1 (0ad9af1)`), as Git reports it while building, or the `ORQWA_COMMIT`
 variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
 the host: a worktree's Git directory lies outside the checkout the container sees.
 
@@ -150,7 +150,7 @@ scripts/android.sh scripts/build-android.sh release   # → dist/Torqa-android-a
 
 Install it on a tablet with adb over USB or wireless debugging (`adb install -r …`) and read
 Torqa's log with `adb logcat -s Torqa godot`. Local builds are signed with a debug key made once
-in the `torqa-gradle` volume; `TORQA_RELEASE_KEYSTORE` and `TORQA_RELEASE_KEYSTORE_PASSWORD`
+in the `orqwa-gradle` volume; `ORQWA_RELEASE_KEYSTORE` and `ORQWA_RELEASE_KEYSTORE_PASSWORD`
 sign with a release key instead, as CI does for releases. The APK's version is Torqa's
 (`version/code` 500 for 0.5.0). [android/README.md](../android/README.md) lists
 the parts and how to remove Android support again.

@@ -4,7 +4,7 @@ extends ConfirmationDialog
 ## it, Torqa starting again when done; elsewhere it opens the release page. Shown only outside
 ## rides; the rider's rides and settings stay as they are.
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _version: String = ""
 var _page: String = ""
 var _installable: bool = false
@@ -28,10 +28,10 @@ func _ready() -> void:
 	title = tr("Update available")
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.update_downloaded.connect(_on_downloaded)
-	_torqa.update_failed.connect(_on_failed)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.update_downloaded.connect(_on_downloaded)
+	_orqwa.update_failed.connect(_on_failed)
 
 
 ## Shows the newer `version`, its release `page`, and whether Torqa can install it itself.
@@ -45,7 +45,7 @@ func offer(version: String, page: String, installable: bool) -> void:
 
 
 func _show_offer() -> void:
-	var text: String = tr("Torqa %s is available; you have %s.") % [_version, TorqaCore.version()]
+	var text: String = tr("Torqa %s is available; you have %s.") % [_version, OrqwaCore.version()]
 	if _installable:
 		text += " " + tr("Torqa downloads it, closes and installs it, then starts again.")
 		text += " " + tr("Your rides and settings stay as they are.")
@@ -63,7 +63,7 @@ func _on_confirmed() -> void:
 		OS.shell_open(_page)
 		hide()
 		return
-	if _torqa == null or not _torqa.download_update():
+	if _orqwa == null or not _orqwa.download_update():
 		return
 	_downloading = true
 	get_ok_button().disabled = true
@@ -80,7 +80,7 @@ func _on_downloaded() -> void:
 		return
 	dialog_text = tr("Installing Torqa %s…") % _version
 	# The installer replaces Torqa's files only once it has closed.
-	if _torqa.install_update():
+	if _orqwa.install_update():
 		get_tree().quit()
 		return
 	_downloading = false

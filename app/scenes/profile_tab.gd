@@ -9,7 +9,7 @@ extends VBoxContainer
 ## The active rider changed (figures, units, language or HUD).
 signal profile_changed
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _cards: VBoxContainer = VBoxContainer.new()
 var _add_button: Button = Button.new()
 var _dialog: ProfileDialog = ProfileDialog.new()
@@ -21,10 +21,10 @@ var _deleting: String = ""
 var _unfolded: Dictionary[String, bool] = {}
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_account_dialog.bind(torqa)
-	_torqa.account_connected.connect(
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_account_dialog.bind(orqwa)
+	_orqwa.account_connected.connect(
 		func(_rider: String, _platform: String, _label: String) -> void: refresh()
 	)
 	refresh()
@@ -32,11 +32,11 @@ func bind(torqa: TorqaApp) -> void:
 
 ## Lists the riders with the active one marked and their figures.
 func refresh() -> void:
-	var active: Dictionary = _torqa.profile()
+	var active: Dictionary = _orqwa.profile()
 	var language: String = active.get("language", "")
 	apply_language(language)
 	var active_id: String = active.get("id", "")
-	_show_riders(_torqa.profiles(), active_id)
+	_show_riders(_orqwa.profiles(), active_id)
 
 
 ## Switches the interface to a rider's language; "" follows the system.
@@ -57,7 +57,7 @@ func _init() -> void:
 	_add_button.icon = UiIcons.texture("plus")
 	_add_button.tooltip_text = tr("New rider…")
 	_add_button.focus_mode = Control.FOCUS_NONE
-	_add_button.pressed.connect(func() -> void: _dialog.edit({}, TorqaApp.hud_default_layout()))
+	_add_button.pressed.connect(func() -> void: _dialog.edit({}, OrqwaApp.hud_default_layout()))
 	row.add_child(_add_button)
 	add_child(row)
 	_cards.add_theme_constant_override("separation", 12)
@@ -77,7 +77,7 @@ func _init() -> void:
 	add_child(_confirm_delete)
 
 
-## Builds a card per rider (dictionaries as `TorqaApp.profile()` gives them).
+## Builds a card per rider (dictionaries as `OrqwaApp.profile()` gives them).
 func _show_riders(riders: Array, active_id: String) -> void:
 	for child: Node in _cards.get_children():
 		_cards.remove_child(child)
@@ -186,12 +186,12 @@ func _card(rider: Dictionary, active: bool, deletable: bool) -> PanelContainer:
 		columns.add_child(settings)
 		_show_zones(columns, rider)
 		rows.add_child(columns)
-		var accounts: Array = _torqa.accounts(id) if _torqa != null else []
+		var accounts: Array = _orqwa.accounts(id) if _orqwa != null else []
 		rows.add_child(_account_section(id, accounts))
 	return card
 
 
-## Rider `id`'s accounts on training platforms (R29), as `TorqaApp.accounts()` gives them:
+## Rider `id`'s accounts on training platforms (R29), as `OrqwaApp.accounts()` gives them:
 ## who is connected where, whether kept rides go up by themselves (R60), and the way to
 ## connect or disconnect each.
 func _account_section(id: String, accounts: Array) -> VBoxContainer:
@@ -272,9 +272,9 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 	var single_cog: bool = rider.get("drivetrain", "single_cog") == "single_cog"
 	var id: String = rider.get("id", "")
 	var hud: PackedStringArray = (
-		_torqa.hud_layout_of(id) if _torqa != null else TorqaApp.hud_default_layout()
+		_orqwa.hud_layout_of(id) if _orqwa != null else OrqwaApp.hud_default_layout()
 	)
-	var custom_hud: bool = hud != TorqaApp.hud_default_layout()
+	var custom_hud: bool = hud != OrqwaApp.hud_default_layout()
 	var difficulty: float = rider.get("default_difficulty_pct", 50.0)
 	# i18n-begin
 	var rows: Array[Array] = [
@@ -384,21 +384,21 @@ func _zone_column(
 
 func _toggle(id: String) -> void:
 	_unfolded[id] = not _unfolded.get(id, false)
-	if _torqa != null:
+	if _orqwa != null:
 		refresh()
 
 
 func _set_auto_upload(on: bool, id: String, platform: String) -> void:
-	_torqa.set_auto_upload(id, platform, on)
+	_orqwa.set_auto_upload(id, platform, on)
 
 
 func _disconnect(id: String, platform: String) -> void:
-	if _torqa.disconnect_account(id, platform):
+	if _orqwa.disconnect_account(id, platform):
 		refresh()
 
 
 func _use(id: String) -> void:
-	_torqa.select_profile(id)
+	_orqwa.select_profile(id)
 	refresh()
 	profile_changed.emit()
 
@@ -406,11 +406,11 @@ func _use(id: String) -> void:
 ## Editing a rider makes them the active one: saving does anyway, and the HUD layout edited
 ## is the active rider's.
 func _edit(id: String) -> void:
-	if id != _torqa.profile().get("id", ""):
-		_torqa.select_profile(id)
+	if id != _orqwa.profile().get("id", ""):
+		_orqwa.select_profile(id)
 		refresh()
 		profile_changed.emit()
-	_dialog.edit(_torqa.profile(), _torqa.hud_layout())
+	_dialog.edit(_orqwa.profile(), _orqwa.hud_layout())
 
 
 func _ask_delete(id: String, rider_name: String) -> void:
@@ -420,8 +420,8 @@ func _ask_delete(id: String, rider_name: String) -> void:
 
 
 func _delete() -> void:
-	var was_active: bool = _deleting == _torqa.profile().get("id", "")
-	if not _torqa.delete_profile(_deleting):
+	var was_active: bool = _deleting == _orqwa.profile().get("id", "")
+	if not _orqwa.delete_profile(_deleting):
 		return
 	_unfolded.erase(_deleting)
 	refresh()
@@ -431,7 +431,7 @@ func _delete() -> void:
 
 func _on_profile_confirmed(id: String, profile: Dictionary, hud_layout: PackedStringArray) -> void:
 	# Saving makes the rider active, so the layout goes to the right rider.
-	if not _torqa.save_profile(id, profile).is_empty():
-		_torqa.set_hud_layout(hud_layout)
+	if not _orqwa.save_profile(id, profile).is_empty():
+		_orqwa.set_hud_layout(hud_layout)
 	refresh()
 	profile_changed.emit()

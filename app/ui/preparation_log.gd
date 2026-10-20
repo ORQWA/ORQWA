@@ -1,7 +1,7 @@
 class_name PreparationLog
 extends VBoxContainer
 ## What Torqa is doing while it prepares a course (R40), step by step as a build log: each
-## step the core reports (`TorqaApp.loading_progress`) on its own line, the one under way with
+## step the core reports (`OrqwaApp.loading_progress`) on its own line, the one under way with
 ## its count ("143 / 412 tiles") and how long it has taken, the finished ones ticked with
 ## their time, and at the end how long the whole took. A rider waiting minutes for a long
 ## course's world sees it move rather than a bar alone.

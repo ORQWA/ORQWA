@@ -103,7 +103,7 @@ hidden by building the world while the course's page is open (#237).
 
 A rider who has just downloaded Torqa has no course to ride before importing one, which needs
 the internet. Torqa now ships one prepared course, **Twann – Chasseral** (20.4 km, 1,190 m of
-climbing, 13.1 MB), kept in `core/torqa-gd/courses/` with how it was made.
+climbing, 13.1 MB), kept in `core/orqwa-gd/courses/` with how it was made.
 
 - It is an ordinary format 1 course, prepared in the app from its GPX like any import, so it
   rides offline from its own tiles and is rebuilt by the current generator when opened.

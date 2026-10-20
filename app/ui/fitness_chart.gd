@@ -59,7 +59,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
 
-## The days as `TorqaApp.fitness()` gives them: each day's start, stress, fitness, fatigue and
+## The days as `OrqwaApp.fitness()` gives them: each day's start, stress, fitness, fatigue and
 ## form.
 func set_days(data: Dictionary) -> void:
 	_days = data.get("day_unix_s", PackedInt64Array())

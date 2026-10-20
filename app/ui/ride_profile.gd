@@ -4,7 +4,7 @@ extends VBoxContainer
 ## during the ride as before it. The trainer difficulty rides start with is left out; the
 ## Ride tab has the ride's own.
 
-## The rider changed their profile: all of it, shaped like `TorqaApp.profile()`.
+## The rider changed their profile: all of it, shaped like `OrqwaApp.profile()`.
 signal changed(profile: Dictionary)
 
 var _profile: Dictionary = {}
@@ -21,7 +21,7 @@ func _init() -> void:
 	_zones.changed.connect(_on_changed)
 
 
-## Shows the rider's `profile` (`TorqaApp.profile()`) without emitting `changed`.
+## Shows the rider's `profile` (`OrqwaApp.profile()`) without emitting `changed`.
 func edit(profile: Dictionary) -> void:
 	_profile = profile.duplicate()
 	_form.edit(profile)

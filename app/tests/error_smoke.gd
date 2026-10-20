@@ -100,21 +100,21 @@ func _run() -> void:
 	_check(ride_button.text == "Ride", "ride action switches back to English")
 	_check(tabs.get_tab_title(ride_options.get_index()) == "Ride", "ride tab switches back")
 	_check(FailureDetails.summary(failure) == "Could not open " + path + ".", "English summary")
-	var torqa: TorqaApp = TorqaApp.new()
-	root.add_child(torqa)
+	var orqwa: OrqwaApp = OrqwaApp.new()
+	root.add_child(orqwa)
 	await process_frame
 	var summaries: Array[String] = []
-	torqa.failed.connect(func(message: String) -> void: summaries.append(message))
+	orqwa.failed.connect(func(message: String) -> void: summaries.append(message))
 	TranslationServer.set_locale("de")
-	torqa.ride_detail("/missing-261.fit", 10)
+	orqwa.ride_detail("/missing-261.fit", 10)
 	var last_summary: String = summaries.back()
 	_check(last_summary == "Die Aktivität konnte nicht geladen werden.", "core error translates")
-	var payload: Dictionary = torqa.last_failure()
+	var payload: Dictionary = orqwa.last_failure()
 	var message_key: String = payload["message"]
 	var diagnostic: String = payload["details"]
 	_check(message_key == "Could not load the activity.", "binding preserves the key")
 	_check("/missing-261.fit" in diagnostic, "binding preserves the original cause")
-	torqa.free()
+	orqwa.free()
 	history.free()
 	zones.free()
 	settings.free()

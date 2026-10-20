@@ -21,8 +21,8 @@ Torqa — offline-first, open-source (GPL-3.0) indoor cycling app. Read before w
 
 ## Skills
 
-Project skills live in `.claude/skills/` (see its README): the art direction (`torqa-look`),
-the Blender pipeline (`torqa-art-pipeline`), render review (`torqa-render-review`) and imported
+Project skills live in `.claude/skills/` (see its README): the art direction (`orqwa-look`),
+the Blender pipeline (`orqwa-art-pipeline`), render review (`orqwa-render-review`) and imported
 Blender references. Use them for any visual or model work.
 
 ## Architecture boundary
@@ -32,13 +32,13 @@ Blender references. Use them for any visual or model work.
 - New capabilities go behind the plugin traits (`RouteImporter`, `TrainerDriver`, `SensorDriver`,
   `ShiftInput`, `ActivityUploader`, `WorkoutParser`) so implementations stay swappable.
 - Riders may keep built worlds across updates (R101, ADR 0025). A change that makes courses come
-  out differently raises `torqa_world::GENERATOR`; one that changes the stored world's layout or
+  out differently raises `orqwa_world::GENERATOR`; one that changes the stored world's layout or
   what the app makes of it (fields, instance buffers, model names) raises
-  `torqa_world::stored::FORMAT`.
+  `orqwa_world::stored::FORMAT`.
 
 ## Rust conventions
 
-- Errors: `thiserror` in library crates, `anyhow` only in binaries (`torqa-cli`, gdext glue).
+- Errors: `thiserror` in library crates, `anyhow` only in binaries (`orqwa-cli`, gdext glue).
 - Async: `tokio`. Logging: `tracing`.
 - Physical quantities as custom newtypes (`Watts`, `Meters`, `MetersPerSecond`, `Kilograms`, …),
   SI units internally; convert to imperial only at the presentation edge.

@@ -39,7 +39,7 @@
           </File>
         </Component>
         <Component>
-          <File Source="$(var.AppDir)\torqa_gd.dll" KeyPath="yes" />
+          <File Source="$(var.AppDir)\orqwa_gd.dll" KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>

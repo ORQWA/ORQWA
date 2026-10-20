@@ -4,7 +4,7 @@ extends Control
 
 ## Torqa's Android plugin (ADR 0024), for picture-in-picture, which Godot's Android activity
 ## already allows.
-const ANDROID: StringName = &"TorqaAndroid"
+const ANDROID: StringName = &"OrqwaAndroid"
 
 ## Video courses are ridden along their video instead of the 3D world (R17).
 var _video: VideoView = VideoView.new()
@@ -20,7 +20,7 @@ var _pending_update: Array = []
 var _picture_in_picture: bool = false
 var _clear_color: Color = Color()
 
-@onready var _torqa: TorqaApp = $Torqa
+@onready var _orqwa: OrqwaApp = $Orqwa
 @onready var _world: RideWorld = $World
 @onready var _start: StartPage = $StartPage
 @onready var _ride: RideScreen = $RideScreen
@@ -28,8 +28,8 @@ var _clear_color: Color = Color()
 
 
 func _ready() -> void:
-	var commit: String = TorqaCore.commit()
-	print("Torqa %s" % TorqaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
+	var commit: String = OrqwaCore.commit()
+	print("Torqa %s" % OrqwaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
 	UiScale.apply(get_window())
 	UiScale.size_new(get_window())
 	theme = UiTheme.build()
@@ -42,14 +42,14 @@ func _ready() -> void:
 	_failures.offset_right = -24
 	_failures.offset_top = -24
 	_failures.offset_bottom = -24
-	_torqa.failure_reported.connect(_failures.report)
+	_orqwa.failure_reported.connect(_failures.report)
 	add_child(_video)
 	move_child(_video, _world.get_index() + 1)
-	_world.bind(_torqa)
-	_world.apply_quality(_torqa.graphics_quality(), _torqa.graphics_options())
-	_start.bind(_torqa)
-	_ride.bind(_torqa, _world)
-	_summary.bind(_torqa)
+	_world.bind(_orqwa)
+	_world.apply_quality(_orqwa.graphics_quality(), _orqwa.graphics_options())
+	_start.bind(_orqwa)
+	_ride.bind(_orqwa, _world)
+	_summary.bind(_orqwa)
 	move_child(_failures, get_child_count() - 1)
 	_start.ride_started.connect(_on_ride_started)
 	_overlay = OverlayWindow.new(get_window())
@@ -72,19 +72,19 @@ func _ready() -> void:
 	get_window().size_changed.connect(_on_window_resized)
 	_summary.closed.connect(_back_home)
 	# The remote's pad (#228) goes through the screens as the keyboard does.
-	_torqa.navigation_requested.connect(
+	_orqwa.navigation_requested.connect(
 		func(step: String) -> void: RemoteNavigation.step(get_window(), step)
 	)
 	# As the rider left it (#218).
-	if _torqa.fullscreen():
+	if _orqwa.fullscreen():
 		get_window().mode = Window.MODE_FULLSCREEN
 	add_child(_update)
-	_update.bind(_torqa)
-	_torqa.update_available.connect(_on_update_available)
+	_update.bind(_orqwa)
+	_orqwa.update_available.connect(_on_update_available)
 	# Released builds look for a newer one unless this computer turned it off (R99); builds
 	# from the editor and the checks never contact GitHub on their own.
 	if not OS.is_debug_build():
-		_torqa.check_for_updates(false)
+		_orqwa.check_for_updates(false)
 
 
 func _on_ride_started(options: Dictionary) -> void:
@@ -94,15 +94,15 @@ func _on_ride_started(options: Dictionary) -> void:
 	var on_its_own: bool = options.has("workout") and not options.get("on_course", false)
 	if on_its_own:
 		pass  # A workout on its own (R58) is the ride screen alone, over its own backdrop.
-	elif not _torqa.riding_along_video():
-		_world.apply_quality(_torqa.graphics_quality(), _torqa.graphics_options())
+	elif not _orqwa.riding_along_video():
+		_world.apply_quality(_orqwa.graphics_quality(), _orqwa.graphics_options())
 		_world.apply_options(options)
 		_world.reset_view()
 		_world.show()
 	else:
 		var video_sound: bool = options.get("video_sound", true)
-		_torqa.set_video_sound(video_sound)
-		_video.begin(_torqa)
+		_orqwa.set_video_sound(video_sound)
+		_video.begin(_orqwa)
 		_video.show()
 	_ride.begin(options)
 	_ride.show()
@@ -124,16 +124,16 @@ func _set_overlay(on: bool) -> void:
 		# One frame for the overlay's content to take its size.
 		await get_tree().process_frame
 		_overlay.enter(
-			_ride.overlay_content_size(), _torqa.overlay_window(), _torqa.overlay_scale()
+			_ride.overlay_content_size(), _orqwa.overlay_window(), _orqwa.overlay_scale()
 		)
 		await get_tree().process_frame
 		_overlay.set_clickable(_ride.overlay_outline())
 	else:
 		# Taken first: restoring the window resizes it, which is no choice of the rider's.
 		var chosen: float = _overlay.scale
-		_torqa.set_overlay_window(_overlay.leave(), chosen)
+		_orqwa.set_overlay_window(_overlay.leave(), chosen)
 		_ride.set_overlay(false)
-		_video.visible = _ride.visible and _torqa.riding_along_video()
+		_video.visible = _ride.visible and _orqwa.riding_along_video()
 		_opaque.show()
 
 
@@ -152,7 +152,7 @@ func _set_picture_in_picture(on: bool) -> void:
 		RenderingServer.set_default_clear_color(Color(UiTheme.PANEL, 1.0))
 	else:
 		RenderingServer.set_default_clear_color(_clear_color)
-	_video.visible = not on and _ride.visible and _torqa.riding_along_video()
+	_video.visible = not on and _ride.visible and _orqwa.riding_along_video()
 	if on:
 		# One frame for the overlay's content to take its size.
 		await get_tree().process_frame
@@ -202,7 +202,7 @@ func _shortcut_input(event: InputEvent) -> void:
 		return
 	# The overlay is a small window of its own; leaving it brings full screen back.
 	if not _overlay.active:
-		FullScreen.set_on(get_window(), _torqa, not FullScreen.is_on(get_window()))
+		FullScreen.set_on(get_window(), _orqwa, not FullScreen.is_on(get_window()))
 	get_viewport().set_input_as_handled()
 
 
@@ -218,10 +218,10 @@ func _notification(what: int) -> void:
 		return
 	if _overlay.active:
 		# Quit from the overlay: it opens there next time.
-		_torqa.set_overlay_window(_overlay.geometry(), _overlay.scale)
+		_orqwa.set_overlay_window(_overlay.geometry(), _overlay.scale)
 	else:
 		# Full screen may also have been turned on or off by the system (macOS's green button).
-		_torqa.set_fullscreen(FullScreen.is_on(get_window()))
+		_orqwa.set_fullscreen(FullScreen.is_on(get_window()))
 
 
 ## The summary of the ride just saved (R42); closing it returns to the start page.

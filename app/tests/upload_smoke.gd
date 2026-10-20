@@ -27,10 +27,10 @@ func _uploads() -> void:
 	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
-	var torqa: TorqaApp = main.get_node("Torqa")
+	var orqwa: OrqwaApp = main.get_node("Orqwa")
 	var tab: ProfileTab = ProfileTab.new()
 	root.add_child(tab)
-	tab.bind(torqa)
+	tab.bind(orqwa)
 	var unfolded: Dictionary = tab.get("_unfolded")
 	unfolded["nobody-yet"] = true
 	tab.call("_show_riders", [{"id": "nobody-yet", "name": "Nobody"}], "nobody-yet")
@@ -159,7 +159,7 @@ func _uploads() -> void:
 		"a refused upload says why: %s" % history_status.text
 	)
 	# Connecting again says why it is needed.
-	var strava: Dictionary = torqa.accounts("nobody-yet")[1]
+	var strava: Dictionary = orqwa.accounts("nobody-yet")[1]
 	reconnecting.open("nobody-yet", strava, "Strava no longer lets Torqa in.")
 	var why: Label = reconnecting.get("_status")
 	_check(

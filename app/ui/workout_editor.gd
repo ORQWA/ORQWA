@@ -5,7 +5,7 @@ extends ConfirmationDialog
 ## a block of intervals added at once and the result drawn as it will be ridden. Saved as a
 ## ZWO file in the library; a built-in workout is saved as a copy.
 
-## The workout was saved as `id` (`TorqaApp.workouts()`).
+## The workout was saved as `id` (`OrqwaApp.workouts()`).
 signal saved(id: String)
 ## The workout's file was deleted from the library.
 signal deleted
@@ -14,7 +14,7 @@ enum Kind { STEADY, RAMP, FREE }
 
 const ROW_SEPARATION: int = 8
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 ## The library file being edited, replaced on saving; "" for a new workout or a built-in.
 var _replace: String = ""
 var _ftp_w: float = 200.0
@@ -32,11 +32,11 @@ var _confirm_delete: ConfirmationDialog = ConfirmationDialog.new()
 var _delete_button: Button
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
 
 
-## Whether `plan` (a `TorqaApp.workouts()` entry) is not the rider's own file, so it is
+## Whether `plan` (a `OrqwaApp.workouts()` entry) is not the rider's own file, so it is
 ## edited as a copy and cannot be deleted: a built-in one, or one planned on the rider's
 ## platform (R81), whose plan stays there.
 static func edited_as_copy(plan: Dictionary) -> bool:
@@ -45,7 +45,7 @@ static func edited_as_copy(plan: Dictionary) -> bool:
 	return builtin or not planned.is_empty()
 
 
-## Opens the editor on `plan` (a `TorqaApp.workouts()` entry), or on a new workout if empty,
+## Opens the editor on `plan` (a `OrqwaApp.workouts()` entry), or on a new workout if empty,
 ## for a rider with `ftp_w`.
 func edit(plan: Dictionary, ftp_w: float) -> void:
 	_ftp_w = ftp_w
@@ -72,7 +72,7 @@ func edit(plan: Dictionary, ftp_w: float) -> void:
 	UiScale.popup(self, Vector2i(1100, 680))
 
 
-## The workout as `TorqaApp.save_workout()` takes it.
+## The workout as `OrqwaApp.save_workout()` takes it.
 func workout() -> Dictionary:
 	var steps: Array = []
 	for row: Node in _rows.get_children():
@@ -253,7 +253,7 @@ func _update_preview() -> void:
 
 
 func _save() -> void:
-	var id: String = _torqa.save_workout(workout(), _replace)
+	var id: String = _orqwa.save_workout(workout(), _replace)
 	if not id.is_empty():
 		saved.emit(id)
 
@@ -264,7 +264,7 @@ func _on_action(action: StringName) -> void:
 
 
 func _delete() -> void:
-	if _torqa.delete_workout(_replace):
+	if _orqwa.delete_workout(_replace):
 		hide()
 		deleted.emit()
 
@@ -362,7 +362,7 @@ class _Step:
 			row.add_child(label)
 		return row
 
-	## The step as `TorqaApp.save_workout()` takes it.
+	## The step as `OrqwaApp.save_workout()` takes it.
 	func value() -> Dictionary:
 		var free: bool = _kind.selected == Kind.FREE
 		var ramp: bool = _kind.selected == Kind.RAMP

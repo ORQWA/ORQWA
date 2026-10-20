@@ -30,7 +30,7 @@ const PAGE_TEXTS: Dictionary[String, String] = {
 }
 # i18n-end
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _code: TextureRect = TextureRect.new()
 var _address: LineEdit = LineEdit.new()
 var _no_network: Label = Label.new()
@@ -43,8 +43,8 @@ static func page_text(key: String) -> String:
 	return PAGE_TEXTS.get(key, ButtonDialog.ACTION_LABELS.get(key, ""))
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
 	_send_texts()
 
 
@@ -57,9 +57,9 @@ func open() -> void:
 
 ## Shows the remote as it is now: its code and address while it is on.
 func refresh() -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
-	var remote: Dictionary = _torqa.phone_remote()
+	var remote: Dictionary = _orqwa.phone_remote()
 	var on: bool = remote.get("on", false)
 	var address: String = remote.get("address", "")
 	var port: int = remote.get("port", 0)
@@ -136,18 +136,18 @@ func _notification(what: int) -> void:
 
 ## The phone's page says its texts in the interface language.
 func _send_texts() -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
 	var words: Dictionary = {}
-	for key: String in TorqaApp.phone_remote_words():
+	for key: String in OrqwaApp.phone_remote_words():
 		words[key] = tr(page_text(key))
-	_torqa.set_phone_remote_texts(TranslationServer.get_locale().replace("_", "-"), words)
+	_orqwa.set_phone_remote_texts(TranslationServer.get_locale().replace("_", "-"), words)
 
 
 ## The remote's QR code with its quiet zone, a pixel per module: drawn without smoothing, it
 ## stays sharp at any size.
 func _code_texture() -> ImageTexture:
-	var code: Dictionary = _torqa.phone_remote_code()
+	var code: Dictionary = _orqwa.phone_remote_code()
 	if code.is_empty():
 		return null
 	var size: int = code["size"]
@@ -163,10 +163,10 @@ func _code_texture() -> ImageTexture:
 
 ## Another port: the code and address change with it; if the port is taken, it stays.
 func _on_port_changed(port: float) -> void:
-	_torqa.set_phone_remote_port(roundi(port))
+	_orqwa.set_phone_remote_port(roundi(port))
 	refresh()
 
 
 func _on_renew_pressed() -> void:
-	_torqa.renew_phone_remote()
+	_orqwa.renew_phone_remote()
 	refresh()

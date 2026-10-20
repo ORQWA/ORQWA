@@ -14,7 +14,7 @@ signal import_requested
 enum Kind { POWER, ZONE, BPM, PLAN, FTP_TEST }
 
 const KINDS: Array[String] = ["power", "zone", "bpm", "plan", "ftp_test"]
-## The FTP tests (#125), as `TorqaApp.start_workout()` takes them.
+## The FTP tests (#125), as `OrqwaApp.start_workout()` takes them.
 const FTP_TESTS: Array[String] = ["ramp", "twenty_minutes", "two_by_eight"]
 
 var _kind: OptionButton = OptionButton.new()
@@ -26,7 +26,7 @@ var _max_power: SpinBox = SpinBox.new()
 var _plan: OptionButton = OptionButton.new()
 var _ftp_test: OptionButton = OptionButton.new()
 var _import: Button = Button.new()
-## The structured workouts to choose from (`TorqaApp.workouts()`).
+## The structured workouts to choose from (`OrqwaApp.workouts()`).
 var _plans: Array = []
 ## Import… is offered before a ride, not during it.
 var _import_allowed: bool = true
@@ -80,7 +80,7 @@ func _init() -> void:
 	_show_rows()
 
 
-## Sets the rider's heart-rate zones to choose from (`TorqaApp.heart_rate_zones()`) and, for a
+## Sets the rider's heart-rate zones to choose from (`OrqwaApp.heart_rate_zones()`) and, for a
 ## rider not seen before, starting values that suit their `ftp_w`.
 func configure(zones: PackedVector2Array, ftp_w: float) -> void:
 	var selected: int = maxi(_zone.selected, 1)
@@ -101,7 +101,7 @@ func configure(zones: PackedVector2Array, ftp_w: float) -> void:
 		_bpm.set_value_no_signal(roundf((zones[1].x + zones[1].y) / 2.0))
 
 
-## Sets the structured workouts to choose from (`TorqaApp.workouts()`), keeping the chosen
+## Sets the structured workouts to choose from (`OrqwaApp.workouts()`), keeping the chosen
 ## one; `select_id` chooses another, e.g. one just imported.
 func set_plans(plans: Array, select_id: String = "") -> void:
 	var chosen: String = select_id if not select_id.is_empty() else _plan_id()
@@ -130,7 +130,7 @@ func allow_import(allowed: bool) -> void:
 	_show_rows()
 
 
-## The structured workout chosen (`TorqaApp.workouts()` entry), or empty for other kinds.
+## The structured workout chosen (`OrqwaApp.workouts()` entry), or empty for other kinds.
 func plan() -> Dictionary:
 	if _kind.selected != Kind.PLAN or _plan.selected < 0 or _plan.selected >= _plans.size():
 		return {}
@@ -138,7 +138,7 @@ func plan() -> Dictionary:
 	return chosen
 
 
-## The workout as `TorqaApp.start_workout()` takes it, without its name.
+## The workout as `OrqwaApp.start_workout()` takes it, without its name.
 func workout() -> Dictionary:
 	return {
 		"kind": KINDS[_kind.selected],

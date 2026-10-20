@@ -36,7 +36,7 @@ var _hidden: Dictionary[String, bool] = {}
 var _duration: float = 1.0
 
 
-## Series of `(elapsed s, value)` points, as `TorqaApp.ride_detail()` returns them.
+## Series of `(elapsed s, value)` points, as `OrqwaApp.ride_detail()` returns them.
 func set_series(
 	elevation: PackedVector2Array,
 	power: PackedVector2Array,

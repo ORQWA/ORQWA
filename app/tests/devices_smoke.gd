@@ -28,7 +28,7 @@ func _run() -> void:
 ## two buttons with a press and a hold, no double press, a Click v2 (R77) its ten, + and −
 ## first, and a Di2 its four channels with a double press too.
 func _shifter_buttons() -> void:
-	var actions: PackedStringArray = TorqaApp.button_actions()
+	var actions: PackedStringArray = OrqwaApp.button_actions()
 	for action: String in actions:
 		_check(ButtonDialog.ACTION_LABELS.has(action), "a label for %s" % action)
 	_check(actions.size() == ButtonDialog.ACTION_LABELS.size(), "no label for a gone action")
@@ -222,58 +222,58 @@ func _missed_devices() -> void:
 ## Each rider has their own devices (R82): switching riders starts the rows afresh with the
 ## new rider's cadence source; saving the same rider leaves them as they are.
 func _rider_devices() -> void:
-	var torqa: TorqaApp = TorqaApp.new()
-	root.add_child(torqa)
+	var orqwa: OrqwaApp = OrqwaApp.new()
+	root.add_child(orqwa)
 	await process_frame
 	var tab: DevicesTab = DevicesTab.new()
 	root.add_child(tab)
-	tab.bind(torqa)
+	tab.bind(orqwa)
 	var cadence: OptionButton = tab.find_children("*", "OptionButton", true, false)[2]
-	var first: Dictionary = torqa.profile()
+	var first: Dictionary = orqwa.profile()
 	var first_id: String = first["id"]
-	var before: String = torqa.cadence_source()
+	var before: String = orqwa.cadence_source()
 	var other: String = "power_meter" if before != "power_meter" else "trainer"
 	tab._set_state("controller", "connected")
-	torqa.save_profile(first_id, first)
+	orqwa.save_profile(first_id, first)
 	_check(tab.state_of("controller") == "connected", "saving the rider keeps the rows")
 	var ben: Dictionary = first.duplicate()
 	ben["name"] = "Ben (devices smoke test)"
-	var ben_id: String = torqa.save_profile("", ben)
+	var ben_id: String = orqwa.save_profile("", ben)
 	_check(tab.state_of("controller") == "", "another rider's rows start afresh")
-	torqa.set_cadence_source(other)
-	torqa.select_profile(first_id)
+	orqwa.set_cadence_source(other)
+	orqwa.select_profile(first_id)
 	_check(
 		cadence.get_item_text(cadence.selected) == _cadence_label(before),
 		"the first rider's cadence: %s" % cadence.get_item_text(cadence.selected)
 	)
-	torqa.select_profile(ben_id)
+	orqwa.select_profile(ben_id)
 	_check(
 		cadence.get_item_text(cadence.selected) == _cadence_label(other),
 		"Ben's cadence: %s" % cadence.get_item_text(cadence.selected)
 	)
-	torqa.delete_profile(ben_id)
-	var active: String = torqa.profile()["id"]
+	orqwa.delete_profile(ben_id)
+	var active: String = orqwa.profile()["id"]
 	_check(active == first_id, "back to the first rider")
 	tab.free()
-	torqa.free()
+	orqwa.free()
 
 
 ## The phone remote (#228): its page has a text for everything it says, and its row turns it
 ## on, showing the code to scan at once, and off again.
 func _phone_remote() -> void:
-	for key: String in TorqaApp.phone_remote_words():
+	for key: String in OrqwaApp.phone_remote_words():
 		_check(not RemoteDialog.page_text(key).is_empty(), "a text for the page's %s" % key)
-	var torqa: TorqaApp = TorqaApp.new()
-	root.add_child(torqa)
+	var orqwa: OrqwaApp = OrqwaApp.new()
+	root.add_child(orqwa)
 	await process_frame
 	var tab: DevicesTab = DevicesTab.new()
 	root.add_child(tab)
-	tab.bind(torqa)
+	tab.bind(orqwa)
 	var toggle: CheckButton = tab.find_children("*", "CheckButton", true, false)[0]
 	var dialog: RemoteDialog = tab.find_children("*", "RemoteDialog", true, false)[0]
 	_check(not toggle.button_pressed, "off until the rider turns it on")
 	toggle.button_pressed = true
-	var remote: Dictionary = torqa.phone_remote()
+	var remote: Dictionary = orqwa.phone_remote()
 	var on: bool = remote["on"]
 	_check(on, "on")
 	_check(dialog.visible, "its code shows at once")
@@ -282,10 +282,10 @@ func _phone_remote() -> void:
 	_check(address.is_empty() or code.texture != null, "a code to scan for %s" % address)
 	dialog.hide()
 	toggle.button_pressed = false
-	var off: bool = not torqa.phone_remote()["on"]
+	var off: bool = not orqwa.phone_remote()["on"]
 	_check(off, "off again, for the next time too")
 	tab.free()
-	torqa.free()
+	orqwa.free()
 
 
 static func _cadence_label(source: String) -> String:

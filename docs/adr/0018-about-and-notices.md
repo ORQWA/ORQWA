@@ -13,7 +13,7 @@ The version comes from Cargo; nothing recorded the commit.
 
 ## Decision
 
-**Commit.** `torqa-gd`'s build script sets `TORQA_COMMIT`: the environment variable of that
+**Commit.** `orqwa-gd`'s build script sets `ORQWA_COMMIT`: the environment variable of that
 name when set, else `git rev-parse --short=7 HEAD`, else empty (About then shows the version
 alone). It reruns when the variable, Git's `HEAD` or `HEAD`'s log changes. Git runs with
 `safe.directory=*`, as CI's container mounts the checkout under another user. `scripts/dev.sh`
@@ -23,14 +23,14 @@ checkout. Only the leaf crate rebuilds on a new commit.
 **Crate notices.** cargo-about (in the dev container, like cargo-deny) writes them from the
 crates' own licence files with `core/about.toml` and `core/about.hbs`, for the extension's
 dependency graph on all four release targets, without build and dev dependencies or Torqa's
-own crates. The result, `core/torqa-app/notices/crates.txt`, is committed: release builds run
+own crates. The result, `core/orqwa-app/notices/crates.txt`, is committed: release builds run
 on the native CI runners, which do not have cargo-about. `scripts/notices.sh` regenerates it;
 `scripts/check.sh` runs it with `--check`, so a dependency change without new notices fails CI.
 
-**The other notices** live in `torqa_app::about`: Torqa's `LICENSE` and FFmpeg's LGPL 2.1
+**The other notices** live in `orqwa_app::about`: Torqa's `LICENSE` and FFmpeg's LGPL 2.1
 (taken from its release's `COPYING.LGPLv2.1`) embedded with `include_str!`, the models' and
 data's credits, and Godot's licence and components as the running engine reports them
-(`Engine.get_license_text`, `get_copyright_info`, `get_license_info`). `TorqaCore.notices()`
+(`Engine.get_license_text`, `get_copyright_info`, `get_license_info`). `OrqwaCore.notices()`
 hands them to the About tab, which only shows them.
 
 ## Consequences
@@ -39,7 +39,7 @@ hands them to the About tab, which only shows them.
 - Changing a dependency means running `scripts/notices.sh` and committing the result.
 - The texts are as their licensors wrote them, in English; only the titles are translated.
 - Builds from a source archive without Git show no commit.
-- `torqa-cli` carries no notices; it would need its own if it is distributed further.
+- `orqwa-cli` carries no notices; it would need its own if it is distributed further.
 
 ## Amendment 2026-10-17: the version a release shows
 

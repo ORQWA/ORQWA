@@ -64,8 +64,8 @@ func _hud_editor() -> void:
 		editor.remove(id)
 	_expect(editor.layout(), ["heart_rate"], "the last figure stays")
 	for i: int in range(20):
-		editor.place(str(TorqaApp.hud_metrics()[i]["id"]), 99)
-	_check(editor.layout().size() == TorqaApp.hud_max_metrics(), "at most the maximum figures")
+		editor.place(str(OrqwaApp.hud_metrics()[i]["id"]), 99)
+	_check(editor.layout().size() == OrqwaApp.hud_max_metrics(), "at most the maximum figures")
 	_check(not changes.is_empty(), "changes are reported")
 	editor.free()
 

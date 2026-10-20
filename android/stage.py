@@ -20,10 +20,10 @@ verifier = re.search(
 )
 if verifier is None:
     sys.exit("Cargo.lock names no rustls-platform-verifier-android")
-(app / "addons/torqa_android/verifier_version.txt").write_text(verifier.group(1) + "\n")
+(app / "addons/orqwa_android/verifier_version.txt").write_text(verifier.group(1) + "\n")
 
-extension = app / "torqa.gdextension"
-library = '"res://bin/android/libtorqa_gd.so"'
+extension = app / "orqwa.gdextension"
+library = '"res://bin/android/liborqwa_gd.so"'
 extension.write_text(
     extension.read_text().rstrip("\n")
     + f"\nandroid.debug.arm64 = {library}\nandroid.release.arm64 = {library}\n"
@@ -49,7 +49,7 @@ project = app / "project.godot"
 text = project.read_text()
 text = set_setting(text, "rendering", "textures/vram_compression/import_etc2_astc", "true")
 text = set_setting(
-    text, "editor_plugins", "enabled", 'PackedStringArray("res://addons/torqa_android/plugin.cfg")'
+    text, "editor_plugins", "enabled", 'PackedStringArray("res://addons/orqwa_android/plugin.cfg")'
 )
 project.write_text(text)
 

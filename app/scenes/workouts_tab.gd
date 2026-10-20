@@ -15,7 +15,7 @@ signal ready_to_start
 ## The workout's side of the page takes this many times the start panel's share of its width.
 const WORKOUT_SHARE: float = 1.8
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 var _options: WorkoutOptions = WorkoutOptions.new()
 ## The structured workout chosen: what it is about and its steps.
 var _about: Label = Label.new()
@@ -42,15 +42,15 @@ var _planned_rows: VBoxContainer = VBoxContainer.new()
 var _planned_note: Label = Label.new()
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.route_loaded.connect(_on_route_loaded)
-	_torqa.loading_progress.connect(_on_loading_progress)
-	_torqa.world_ready.connect(_on_world_ready)
-	_torqa.failed.connect(_on_failed)
-	_torqa.planned_workouts.connect(_on_planned_workouts)
-	_torqa.planned_workouts_failed.connect(_on_planned_workouts_failed)
-	_editor.bind(torqa)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.route_loaded.connect(_on_route_loaded)
+	_orqwa.loading_progress.connect(_on_loading_progress)
+	_orqwa.world_ready.connect(_on_world_ready)
+	_orqwa.failed.connect(_on_failed)
+	_orqwa.planned_workouts.connect(_on_planned_workouts)
+	_orqwa.planned_workouts_failed.connect(_on_planned_workouts_failed)
+	_editor.bind(orqwa)
 	refresh()
 
 
@@ -58,15 +58,15 @@ func bind(torqa: TorqaApp) -> void:
 func refresh() -> void:
 	# First: asking lets go of what is no longer the rider's plan for today.
 	_fetch_planned()
-	var ftp: float = _torqa.profile().get("ftp_w", 200.0)
-	_options.configure(_torqa.heart_rate_zones(), ftp)
-	_options.set_plans(_torqa.workouts())
+	var ftp: float = _orqwa.profile().get("ftp_w", 200.0)
+	_options.configure(_orqwa.heart_rate_zones(), ftp)
+	_options.set_plans(_orqwa.workouts())
 	_show_plan()
 	var chosen: String = course_path()
 	_where.clear()
 	_course_paths.clear()
 	_where.add_item(tr("On its own (HUD only)"))
-	for course: Dictionary in _torqa.courses():
+	for course: Dictionary in _orqwa.courses():
 		var located: bool = course.get("located", true)
 		if not located:
 			continue
@@ -90,7 +90,7 @@ func start_as_overlay() -> bool:
 
 ## The workout chosen here, as `start_requested` hands it out: `WorkoutOptions.workout()` with
 ## its `name` (for the history and on screen) and, for a structured workout, its `plan`
-## (`TorqaApp.workouts()` entry).
+## (`OrqwaApp.workouts()` entry).
 func workout() -> Dictionary:
 	var chosen: Dictionary = _options.workout()
 	chosen["name"] = _options.title()
@@ -109,9 +109,9 @@ func prepare() -> void:
 	_log.clear()
 	_status.text = tr("Loading the course") + " …"
 	_loading_route = true
-	if _torqa.loaded_course() != path:
-		_torqa.open_course(path)
-	elif _torqa.has_route():
+	if _orqwa.loaded_course() != path:
+		_orqwa.open_course(path)
+	elif _orqwa.has_route():
 		_build()
 
 
@@ -178,7 +178,7 @@ func _init() -> void:
 	_import_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	_import_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	var patterns: PackedStringArray = PackedStringArray()
-	for extension: String in TorqaApp.workout_extensions():
+	for extension: String in OrqwaApp.workout_extensions():
 		patterns.append("*." + extension)
 	_import_dialog.filters = PackedStringArray([", ".join(patterns) + " ; " + tr("Workouts")])
 	_import_dialog.use_native_dialog = true
@@ -228,7 +228,7 @@ func _init() -> void:
 ## test as far as most riders get, as it goes on until the rider gives way.
 func _ftp_test_plan() -> Dictionary:
 	var test: String = _options.workout()["test"]
-	var steps: Array = _torqa.ftp_test_steps(test)
+	var steps: Array = _orqwa.ftp_test_steps(test)
 	var duration: float = 0.0
 	for step: Dictionary in steps:
 		var seconds: float = step["duration_s"]
@@ -270,26 +270,26 @@ func _show_plan() -> void:
 
 
 func _ftp() -> float:
-	if _torqa == null:
+	if _orqwa == null:
 		return 200.0
-	var ftp: float = _torqa.profile().get("ftp_w", 200.0)
+	var ftp: float = _orqwa.profile().get("ftp_w", 200.0)
 	return ftp
 
 
 ## Asks the platforms holding the rider's plan for today's workouts (R81), by this computer's
 ## date, listing what is still known meanwhile; the section shows only with such an account.
 func _fetch_planned() -> void:
-	if not _torqa.fetch_planned_workouts(Time.get_date_string_from_system()):
+	if not _orqwa.fetch_planned_workouts(Time.get_date_string_from_system()):
 		_planned_panel.hide()
 		return
-	_show_planned(_torqa.workouts())
+	_show_planned(_orqwa.workouts())
 	_planned_note.text = tr("Looking up today's plan…")
 	_planned_note.add_theme_color_override("font_color", UiTheme.MUTED)
 	_planned_note.show()
 
 
 func _on_planned_workouts(_platform: String, _day: String) -> void:
-	var plans: Array = _torqa.workouts()
+	var plans: Array = _orqwa.workouts()
 	_options.set_plans(plans)
 	_show_planned(plans)
 
@@ -300,7 +300,7 @@ func _on_planned_workouts_failed(_platform: String, message: String) -> void:
 	_planned_note.show()
 
 
-## Lists the planned workouts among `plans` (`TorqaApp.workouts()` entries), each with a
+## Lists the planned workouts among `plans` (`OrqwaApp.workouts()` entries), each with a
 ## button that chooses it as the structured workout to ride.
 func _show_planned(plans: Array) -> void:
 	for child: Node in _planned_rows.get_children():
@@ -341,16 +341,16 @@ func _choose_planned(id: String) -> void:
 
 
 func _on_saved(id: String) -> void:
-	_options.set_plans(_torqa.workouts(), id)
+	_options.set_plans(_orqwa.workouts(), id)
 	_show_plan()
 	_status.text = tr("Saved to your workouts.")
 
 
 func _import(picked: String) -> void:
-	var id: String = _torqa.import_workout(PickedFile.local_path(picked))
+	var id: String = _orqwa.import_workout(PickedFile.local_path(picked))
 	if id.is_empty():
 		return
-	_options.set_plans(_torqa.workouts(), id)
+	_options.set_plans(_orqwa.workouts(), id)
 	_show_plan()
 	_status.text = tr("Added to your workouts.")
 
@@ -367,15 +367,15 @@ func _on_start_pressed() -> void:
 
 
 func _on_route_loaded(_route: Dictionary) -> void:
-	if _loading_route and _torqa.loaded_course() == course_path():
+	if _loading_route and _orqwa.loaded_course() == course_path():
 		_build()
 
 
 ## The course's route is there: its world next, ridden in 3D even if it has a video (R58).
 func _build() -> void:
 	_loading_route = false
-	_torqa.ride_along_video(false)
-	if _torqa.build_world():
+	_orqwa.ride_along_video(false)
+	if _orqwa.build_world():
 		_done()
 		return
 	_building = true

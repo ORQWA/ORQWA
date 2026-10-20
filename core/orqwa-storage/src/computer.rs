@@ -1,0 +1,376 @@
+//! Settings of this computer (R78, #257): how detailed the 3D world is drawn (R43), the
+//! graphics options set apart from that preset (R90), whether the app fills the screen (#218),
+//! the phone remote (#228) and whether courses' worlds are kept (R101) depend on the machine in
+//! front of the rider, so they live in `computer.toml` next to the cache, never in the data
+//! directory, which a rider may share between computers (R30): there the last one to save
+//! would win.
+
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use serde::{Deserialize, Serialize};
+
+use crate::profiles::{GraphicsQuality, ProfileError, write_atomically};
+
+/// The file's name, in the cache directory.
+pub const FILE: &str = "computer.toml";
+
+/// The file format. Missing fields take defaults.
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct ComputerFile {
+    /// How detailed the 3D world is drawn on this computer (R43).
+    graphics_quality: Option<GraphicsQuality>,
+    /// Whether the app fills the screen (#218).
+    fullscreen: Option<bool>,
+    /// Graphics options set apart from the preset (R90), by name; the others follow it.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    graphics: BTreeMap<String, String>,
+    /// The phone remote (#228).
+    remote: PhoneRemote,
+    /// Whether Torqa looks for a newer version at start-up (R99); on unless turned off.
+    check_updates: Option<bool>,
+    /// Whether the courses' built worlds are kept (R101); off unless turned on.
+    keep_worlds: Option<bool>,
+}
+
+/// The phone remote on this computer (#228): a phone pairs with the computer it rides beside.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PhoneRemote {
+    /// Whether it is on; off until the rider turns it on.
+    pub on: bool,
+    /// The port it listens on; `None` for the remote's own.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<u16>,
+    /// The secret in its address, once it has one; a new one locks out the phones paired
+    /// before.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token: Option<String>,
+}
+
+/// The graphics options a rider may set apart from the quality preset (R90), each with the
+/// values it takes. An option left unset follows the preset ("auto"); the app turns the values
+/// into engine settings.
+pub const GRAPHICS_OPTIONS: &[(&str, &[&str])] = &[
+    ("shadows", &["low", "medium", "high", "ultra"]),
+    ("ambient_occlusion", &["off", "on"]),
+    ("reflections", &["off", "on"]),
+    ("bloom", &["off", "on"]),
+    ("view_distance", &["low", "medium", "high", "ultra"]),
+    ("grass", &["off", "near", "medium", "far"]),
+    ("antialiasing", &["off", "fxaa", "msaa_2x", "msaa_4x"]),
+    ("render_scale", &["50", "67", "77", "85", "100"]),
+    ("fps_limit", &["unlimited", "30", "60", "90", "120", "144"]),
+    ("vsync", &["off", "on"]),
+];
+
+/// The value of a graphics option that follows the preset.
+pub const AUTO: &str = "auto";
+
+/// The graphics options set on this computer (R90), by name; options following the preset
+/// are missing. Values no longer known (from another version) are left out.
+#[must_use]
+pub fn graphics_options(file: &Path) -> BTreeMap<String, String> {
+    read(file)
+        .graphics
+        .into_iter()
+        .filter(|(name, value)| is_known(name, value))
+        .collect()
+}
+
+/// Sets graphics option `name` to `value` on this computer (R90); [`AUTO`] lets it follow the
+/// preset again. Returns false, changing nothing, for an unknown option or value.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_graphics_option(file: &Path, name: &str, value: &str) -> Result<bool, ProfileError> {
+    if value != AUTO && !is_known(name, value) {
+        return Ok(false);
+    }
+    if !GRAPHICS_OPTIONS.iter().any(|(known, _)| *known == name) {
+        return Ok(false);
+    }
+    let mut computer = read(file);
+    if value == AUTO {
+        computer.graphics.remove(name);
+    } else {
+        computer.graphics.insert(name.to_owned(), value.to_owned());
+    }
+    save(file, &computer)?;
+    Ok(true)
+}
+
+fn is_known(name: &str, value: &str) -> bool {
+    GRAPHICS_OPTIONS
+        .iter()
+        .any(|(known, values)| *known == name && values.contains(&value))
+}
+
+/// The graphics quality chosen on this computer; until one is chosen Medium, or Low on Android,
+/// where tablets run the 3D world on far less than a computer's graphics card (ADR 0024).
+#[must_use]
+pub fn graphics_quality(file: &Path) -> GraphicsQuality {
+    read(file)
+        .graphics_quality
+        .unwrap_or(if cfg!(target_os = "android") {
+            GraphicsQuality::Low
+        } else {
+            GraphicsQuality::default()
+        })
+}
+
+/// Remembers the graphics quality for this computer.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_graphics_quality(file: &Path, quality: GraphicsQuality) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.graphics_quality = Some(quality);
+    save(file, &computer)
+}
+
+/// Whether the app fills the screen on this computer (#218).
+#[must_use]
+pub fn fullscreen(file: &Path) -> bool {
+    read(file).fullscreen.unwrap_or(false)
+}
+
+/// Remembers whether the app fills the screen, to start that way next time.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_fullscreen(file: &Path, fullscreen: bool) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.fullscreen = Some(fullscreen);
+    save(file, &computer)
+}
+
+/// Whether this computer looks for a newer Torqa at start-up (R99): yes until turned off.
+#[must_use]
+pub fn check_updates(file: &Path) -> bool {
+    read(file).check_updates.unwrap_or(true)
+}
+
+/// Turns looking for a newer Torqa at start-up on or off.
+///
+/// # Errors
+/// [`ProfileError`] if the file cannot be written.
+pub fn set_check_updates(file: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.check_updates = Some(on);
+    save(file, &computer)
+}
+
+/// Whether this computer keeps the worlds of its courses once built (R101): no until turned
+/// on, as they take a lot of room.
+#[must_use]
+pub fn keep_worlds(file: &Path) -> bool {
+    read(file).keep_worlds.unwrap_or(false)
+}
+
+/// Turns keeping the courses' worlds on or off.
+///
+/// # Errors
+/// [`ProfileError`] if the file cannot be written.
+pub fn set_keep_worlds(file: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.keep_worlds = Some(on);
+    save(file, &computer)
+}
+
+/// The phone remote as set on this computer.
+#[must_use]
+pub fn phone_remote(file: &Path) -> PhoneRemote {
+    read(file).remote
+}
+
+/// Remembers how the phone remote is set on this computer.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_phone_remote(file: &Path, remote: &PhoneRemote) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.remote = remote.clone();
+    save(file, &computer)
+}
+
+/// Takes over the settings a data directory from before R78 kept for every computer, where
+/// this computer has not chosen its own yet.
+pub(crate) fn take_over(
+    file: &Path,
+    quality: Option<GraphicsQuality>,
+    fullscreen: Option<bool>,
+) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.graphics_quality = computer.graphics_quality.or(quality);
+    computer.fullscreen = computer.fullscreen.or(fullscreen);
+    save(file, &computer)
+}
+
+fn read(file: &Path) -> ComputerFile {
+    std::fs::read_to_string(file)
+        .ok()
+        .and_then(|text| toml::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
+fn save(file: &Path, computer: &ComputerFile) -> Result<(), ProfileError> {
+    write_atomically(file, &toml::to_string_pretty(computer)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+
+    fn temp_file(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("orqwa-computer-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        dir.join(FILE)
+    }
+
+    #[test]
+    fn the_computer_keeps_its_graphics_quality_and_full_screen() {
+        let file = temp_file("settings");
+        assert_eq!(graphics_quality(&file), GraphicsQuality::Medium);
+        assert!(!fullscreen(&file), "a window until the rider chooses");
+
+        set_graphics_quality(&file, GraphicsQuality::Ultra).unwrap();
+        set_fullscreen(&file, true).unwrap();
+
+        assert_eq!(graphics_quality(&file), GraphicsQuality::Ultra);
+        assert!(fullscreen(&file));
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(text.contains(r#"graphics_quality = "ultra""#), "{text}");
+        set_fullscreen(&file, false).unwrap();
+        assert!(!fullscreen(&file));
+        assert_eq!(
+            graphics_quality(&file),
+            GraphicsQuality::Ultra,
+            "kept with it"
+        );
+    }
+
+    #[test]
+    fn updates_are_looked_for_until_turned_off() {
+        let file = temp_file("updates");
+        assert!(check_updates(&file), "on for a new computer (R99)");
+
+        set_check_updates(&file, false).unwrap();
+        set_fullscreen(&file, true).unwrap();
+
+        assert!(!check_updates(&file), "kept beside other settings");
+        set_check_updates(&file, true).unwrap();
+        assert!(check_updates(&file));
+    }
+
+    #[test]
+    fn worlds_are_kept_once_turned_on() {
+        let file = temp_file("keep-worlds");
+        assert!(!keep_worlds(&file), "off for a new computer (R101)");
+
+        set_keep_worlds(&file, true).unwrap();
+        set_check_updates(&file, false).unwrap();
+
+        assert!(keep_worlds(&file), "kept beside other settings");
+        set_keep_worlds(&file, false).unwrap();
+        assert!(!keep_worlds(&file));
+    }
+
+    #[test]
+    fn graphics_options_follow_the_preset_until_set_and_again_on_auto() {
+        let file = temp_file("graphics-options");
+        assert!(
+            graphics_options(&file).is_empty(),
+            "all follow the preset at first"
+        );
+
+        assert!(set_graphics_option(&file, "shadows", "ultra").unwrap());
+        assert!(set_graphics_option(&file, "fps_limit", "60").unwrap());
+        set_graphics_quality(&file, GraphicsQuality::Low).unwrap();
+
+        let options = graphics_options(&file);
+        assert_eq!(options.get("shadows").map(String::as_str), Some("ultra"));
+        assert_eq!(options.get("fps_limit").map(String::as_str), Some("60"));
+        assert_eq!(
+            graphics_quality(&file),
+            GraphicsQuality::Low,
+            "the preset is kept apart"
+        );
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(
+            text.contains("[graphics]") && text.contains(r#"shadows = "ultra""#),
+            "{text}"
+        );
+
+        assert!(set_graphics_option(&file, "shadows", AUTO).unwrap());
+        assert!(
+            !graphics_options(&file).contains_key("shadows"),
+            "auto follows the preset"
+        );
+    }
+
+    #[test]
+    fn unknown_graphics_options_and_values_are_refused_and_not_read() {
+        let file = temp_file("graphics-unknown");
+        assert!(!set_graphics_option(&file, "shadows", "extreme").unwrap());
+        assert!(!set_graphics_option(&file, "ray_tracing", "on").unwrap());
+        assert!(!set_graphics_option(&file, "ray_tracing", AUTO).unwrap());
+        assert!(graphics_options(&file).is_empty());
+
+        // A file from another version may hold values this one does not know.
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(
+            &file,
+            "[graphics]\nshadows = \"extreme\"\nbloom = \"off\"\n",
+        )
+        .unwrap();
+        let options = graphics_options(&file);
+        assert_eq!(options.len(), 1, "{options:?}");
+        assert_eq!(options.get("bloom").map(String::as_str), Some("off"));
+    }
+
+    #[test]
+    fn the_computer_keeps_its_phone_remote_off_until_turned_on() {
+        let file = temp_file("remote");
+        assert_eq!(
+            phone_remote(&file),
+            PhoneRemote::default(),
+            "off, nothing chosen"
+        );
+        set_fullscreen(&file, true).unwrap();
+        assert!(!phone_remote(&file).on, "other settings leave it off");
+
+        let remote = PhoneRemote {
+            on: true,
+            port: Some(9000),
+            token: Some("0123456789abcdef".to_owned()),
+        };
+        set_phone_remote(&file, &remote).unwrap();
+
+        assert_eq!(phone_remote(&file), remote);
+        assert!(fullscreen(&file), "kept with it");
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(text.contains("[remote]"), "{text}");
+    }
+
+    #[test]
+    fn settings_taken_over_never_replace_the_computers_own() {
+        let file = temp_file("take-over");
+        set_fullscreen(&file, false).unwrap();
+
+        take_over(&file, Some(GraphicsQuality::Low), Some(true)).unwrap();
+
+        assert_eq!(
+            graphics_quality(&file),
+            GraphicsQuality::Low,
+            "none chosen yet"
+        );
+        assert!(!fullscreen(&file), "chosen before");
+        take_over(&file, Some(GraphicsQuality::Ultra), None).unwrap();
+        assert_eq!(graphics_quality(&file), GraphicsQuality::Low);
+    }
+}

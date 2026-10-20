@@ -57,7 +57,7 @@ const STATE_LABELS: Dictionary[String, String] = {
 ## The core's name for the fake trainer, as its connection is reported.
 const FAKE_TRAINER_NAME: String = "Fake trainer"
 
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 ## The rider whose devices the rows show (R82), by id.
 var _rider: String = ""
 var _scan_button: Button = Button.new()
@@ -104,22 +104,22 @@ var _remote_dialog: RemoteDialog = RemoteDialog.new()
 var _remote_failed: bool = false
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	_torqa.devices_found.connect(_on_devices_found)
-	_torqa.device_connected.connect(_on_device_connected)
-	_torqa.device_disconnected.connect(_on_device_disconnected)
-	_torqa.device_failed.connect(_on_device_failed)
-	_torqa.remembered_missing.connect(_on_remembered_missing)
-	_torqa.failed.connect(func(_message: String) -> void: _scan_button.disabled = false)
-	_torqa.profile_changed.connect(_on_profile_changed)
-	_rider = _torqa.profile().get("id", "")
-	_button_dialog.bind(torqa)
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	_orqwa.devices_found.connect(_on_devices_found)
+	_orqwa.device_connected.connect(_on_device_connected)
+	_orqwa.device_disconnected.connect(_on_device_disconnected)
+	_orqwa.device_failed.connect(_on_device_failed)
+	_orqwa.remembered_missing.connect(_on_remembered_missing)
+	_orqwa.failed.connect(func(_message: String) -> void: _scan_button.disabled = false)
+	_orqwa.profile_changed.connect(_on_profile_changed)
+	_rider = _orqwa.profile().get("id", "")
+	_button_dialog.bind(orqwa)
 	_select_cadence_source()
 	_reconnect_remembered()
 	# Texts first: a phone may load the page the moment the remote is back on.
-	_remote_dialog.bind(torqa)
-	_remote_failed = not _torqa.resume_phone_remote()
+	_remote_dialog.bind(orqwa)
+	_remote_failed = not _orqwa.resume_phone_remote()
 	_show_remote()
 
 
@@ -255,7 +255,7 @@ func _init() -> void:
 func _add_remote_row(grid: GridContainer) -> void:
 	var caption: Label = Label.new()
 	# The core's name, translated as the label shows it.
-	caption.text = TorqaApp.phone_remote_name()
+	caption.text = OrqwaApp.phone_remote_name()
 	caption.custom_minimum_size = Vector2(RideOptions.CAPTION_WIDTH, 0)
 	grid.add_child(caption)
 	_remote.text = tr("Shift from a phone or tablet")
@@ -270,7 +270,7 @@ func _add_remote_row(grid: GridContainer) -> void:
 	_remote_pen.custom_minimum_size = Vector2(44, 0)
 	_remote_pen.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_remote_pen.pressed.connect(
-		func() -> void: _button_dialog.open(ButtonDialog.PHONE_REMOTE, TorqaApp.phone_remote_name())
+		func() -> void: _button_dialog.open(ButtonDialog.PHONE_REMOTE, OrqwaApp.phone_remote_name())
 	)
 	grid.add_child(_remote_pen)
 	_remote_code.text = tr("Code")
@@ -310,7 +310,7 @@ func _notification(what: int) -> void:
 
 ## The devices used last reconnect in the background (R41), shown by name until found.
 func _reconnect_remembered() -> void:
-	if _torqa.reconnect_remembered():
+	if _orqwa.reconnect_remembered():
 		_set_searching(true)
 		_scan_label.text = tr("Reconnecting your devices…")
 	_show_remembered()
@@ -320,7 +320,7 @@ func _reconnect_remembered() -> void:
 ## start afresh with what is left and the rider's cadence source, and the rider's own devices
 ## reconnect as at start. Saving the same rider changes nothing here.
 func _on_profile_changed() -> void:
-	var rider: String = _torqa.profile().get("id", "")
+	var rider: String = _orqwa.profile().get("id", "")
 	if rider == _rider:
 		return
 	_rider = rider
@@ -338,18 +338,18 @@ func _on_scan_pressed() -> void:
 	_set_searching(true)
 	_scan_label.text = tr("Scanning…")
 	_status.text = ""
-	_torqa.scan(SCAN_SECONDS)
+	_orqwa.scan(SCAN_SECONDS)
 
 
 ## Looks for devices of the row's kind (R76): the nearest one found is chosen and connected.
 func _on_search(role: String) -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
 	_searching = role
 	_set_state(role, "searching")
 	_set_searching(true)
 	_status.text = ""
-	_torqa.scan(SCAN_SECONDS)
+	_orqwa.scan(SCAN_SECONDS)
 
 
 ## One search at a time: the buttons wait for the scan to end.
@@ -450,7 +450,7 @@ static func _first_scanned(option: OptionButton) -> int:
 ## The core reported a device connected: the row waiting for it shows so. A row that shows
 ## the device without waiting for it (connected from elsewhere, e.g. the ride settings) too.
 func _on_device_connected(device_name: String) -> void:
-	if device_name == TorqaApp.phone_remote_name():
+	if device_name == OrqwaApp.phone_remote_name():
 		_show_remote()
 		return
 	var told: bool = false
@@ -479,7 +479,7 @@ func _selected_name(role: String) -> String:
 
 ## A device dropped; its driver keeps looking for it.
 func _on_device_disconnected(device_name: String) -> void:
-	if device_name == TorqaApp.phone_remote_name():
+	if device_name == OrqwaApp.phone_remote_name():
 		_show_remote()
 		return
 	for role: String in _expected:
@@ -498,7 +498,7 @@ func _on_device_failed(device_name: String, reason: String) -> void:
 
 ## Twice a second, a connected device's reading is shown beside it (R80).
 func _process(delta: float) -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
 	_since_reading += delta
 	if _since_reading < READING_SECONDS:
@@ -506,7 +506,7 @@ func _process(delta: float) -> void:
 	_since_reading = 0.0
 	for role: String in READING_KINDS:
 		if _states[role] == "connected":
-			_show_reading(role, _torqa.device_reading(READING_KINDS[role]))
+			_show_reading(role, _orqwa.device_reading(READING_KINDS[role]))
 
 
 ## Shows what the role's device reports: the trainer's and the power meter's power and
@@ -575,7 +575,7 @@ func _show_remembered() -> void:
 		"heart_rate": HEART_RATE,
 		"controller": CONTROLLER,
 	}
-	for device: Dictionary in _torqa.devices():
+	for device: Dictionary in _orqwa.devices():
 		var role: String = roles.get(device["kind"], "")
 		if role.is_empty():
 			continue
@@ -625,7 +625,7 @@ func _choose(role: String) -> bool:
 
 ## Connects the chosen trainer at once (R76): the fake one, or a scanned one.
 func _choose_trainer() -> bool:
-	if _torqa == null:
+	if _orqwa == null:
 		return false
 	var chosen: int = _chosen(TRAINER)
 	if chosen == REMEMBERED:
@@ -635,9 +635,9 @@ func _choose_trainer() -> bool:
 		return true
 	_expected[TRAINER] = expected
 	var connecting: bool = (
-		_torqa.connect_fake_trainer(200.0, 90.0)
+		_orqwa.connect_fake_trainer(200.0, 90.0)
 		if chosen == FAKE_TRAINER
-		else _torqa.connect_trainer(chosen)
+		else _orqwa.connect_trainer(chosen)
 	)
 	_set_state(TRAINER, "connecting" if connecting else "failed")
 	return connecting
@@ -657,13 +657,13 @@ func _choose_shifter() -> void:
 
 ## A device's own cadence lets go of the cadence sensor; a sensor connects at once.
 func _choose_cadence() -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
 	var chosen: int = _chosen(CADENCE)
 	if chosen == REMEMBERED:
 		_look_again(CADENCE)
 	elif CADENCE_SOURCES.has(chosen):
-		_torqa.set_cadence_source(CADENCE_SOURCES[chosen])
+		_orqwa.set_cadence_source(CADENCE_SOURCES[chosen])
 		_expected.erase(CADENCE)
 		_set_state(CADENCE, "")
 	else:
@@ -673,14 +673,14 @@ func _choose_cadence() -> void:
 ## Connects the scanned device chosen for `role` at once, or lets the role's device go when
 ## `none` is chosen (R76); `connect` and `disconnect` name the core's commands.
 func _choose_device(role: String, none: int, connect: String, disconnect: String) -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
 	var chosen: int = _chosen(role)
 	if chosen == REMEMBERED:
 		_look_again(role)
 	elif chosen == none:
 		if _expected.has(role):
-			_torqa.call(disconnect)
+			_orqwa.call(disconnect)
 		_expected.erase(role)
 		_set_state(role, "")
 	else:
@@ -692,7 +692,7 @@ func _connect_scanned(role: String, index: int, connect: String) -> void:
 	if _keeps(role, expected):
 		return
 	_expected[role] = expected
-	var connecting: bool = _torqa.call(connect, index)
+	var connecting: bool = _orqwa.call(connect, index)
 	_set_state(role, "connecting" if connecting else "failed")
 
 
@@ -710,7 +710,7 @@ func _look_again(role: String) -> bool:
 	_set_state(role, "connecting")
 	_set_searching(true)
 	_scan_label.text = tr("Reconnecting your devices…")
-	return _torqa.reconnect_devices()
+	return _orqwa.reconnect_devices()
 
 
 func _set_state(role: String, state: String) -> void:
@@ -752,7 +752,7 @@ static func _paint_state(label: Label, state: String, text: String) -> void:
 ## Turns the phone remote on, showing its code to scan at once, or off. Should its port be
 ## taken, it stays off and the row says it failed; the notice says why.
 func _on_remote_toggled(on: bool) -> void:
-	_remote_failed = not _torqa.set_phone_remote(on)
+	_remote_failed = not _orqwa.set_phone_remote(on)
 	_show_remote()
 	if on and not _remote_failed:
 		_remote_dialog.open()
@@ -760,7 +760,7 @@ func _on_remote_toggled(on: bool) -> void:
 
 ## Shows how the phone remote is doing: off, waiting for a phone, connected, or failed.
 func _show_remote() -> void:
-	var remote: Dictionary = _torqa.phone_remote() if _torqa != null else {}
+	var remote: Dictionary = _orqwa.phone_remote() if _orqwa != null else {}
 	var on: bool = remote.get("on", false)
 	_remote.set_pressed_no_signal(on)
 	_remote_code.disabled = not on
@@ -784,9 +784,9 @@ func _label_cadence_sources() -> void:
 
 ## Shows the cadence source chosen before; a remembered sensor is selected once found.
 func _select_cadence_source() -> void:
-	if _torqa == null:
+	if _orqwa == null:
 		return
-	var source: String = _torqa.cadence_source()
+	var source: String = _orqwa.cadence_source()
 	for i: int in range(CADENCE_SOURCES.size()):
 		if CADENCE_SOURCES[_cadence.get_item_metadata(i)] == source:
 			_cadence.select(i)

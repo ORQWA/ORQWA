@@ -27,7 +27,7 @@ Options considered:
 - The dev image carries the MinGW cross compiler (`gcc-mingw-w64-x86-64`), Rust's
   `x86_64-pc-windows-gnu` target and FFmpeg built for Windows by `scripts/build-ffmpeg.sh`
   (`/opt/ffmpeg-windows`, the same pinned release and parts as everywhere else).
-- `scripts/build-gdext.sh [debug|release] windows` builds `torqa_gd.dll` in the container,
+- `scripts/build-gdext.sh [debug|release] windows` builds `orqwa_gd.dll` in the container,
   linked statically (it needs only Windows' own DLLs), strips it and puts it in `app/bin/`,
   where the portable Godot editor on the host loads it for native renders.
 - It is for development only: the released Windows app and its DLL still come from the

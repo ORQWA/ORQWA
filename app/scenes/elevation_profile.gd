@@ -46,7 +46,7 @@ func set_profile(profile: PackedVector2Array) -> void:
 	queue_redraw()
 
 
-## Marks the route's climbs (`TorqaApp.climbs()["climbs"]`) with a band in their category colour.
+## Marks the route's climbs (`OrqwaApp.climbs()["climbs"]`) with a band in their category colour.
 func set_climbs(climbs: Array) -> void:
 	_climbs.clear()
 	for climb: Dictionary in climbs:

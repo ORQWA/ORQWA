@@ -12,12 +12,12 @@ var _fullscreen: CheckBox = CheckBox.new()
 ## The details (R90): option name → its choice, "auto" first.
 var _details: Dictionary[String, OptionButton] = {}
 var _details_grid: GridContainer = GridContainer.new()
-var _torqa: TorqaApp
+var _orqwa: OrqwaApp
 
 
-func bind(torqa: TorqaApp) -> void:
-	_torqa = torqa
-	var current: String = _torqa.graphics_quality()
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	var current: String = _orqwa.graphics_quality()
 	for i: int in range(_quality.item_count):
 		if _quality.get_item_metadata(i) == current:
 			_quality.select(i)
@@ -60,7 +60,7 @@ func _init() -> void:
 	screen_row.add_child(screen_caption)
 	_fullscreen.text = tr("Full screen (F11)")
 	_fullscreen.toggled.connect(
-		func(on: bool) -> void: FullScreen.set_on(_app_window(), _torqa, on)
+		func(on: bool) -> void: FullScreen.set_on(_app_window(), _orqwa, on)
 	)
 	screen_row.add_child(_fullscreen)
 	add_child(screen_row)
@@ -99,7 +99,7 @@ func _app_window() -> Window:
 
 func _on_quality_selected(index: int) -> void:
 	var key: String = _quality.get_item_metadata(index)
-	_torqa.set_graphics_quality(key)
+	_orqwa.set_graphics_quality(key)
 	_show_quality_note()
 
 
@@ -112,7 +112,7 @@ func _show_quality_note() -> void:
 		"ultra": "For powerful GPUs: the sharpest shadows, the most grass and the farthest view.",
 	}
 	# i18n-end
-	var key: String = _torqa.graphics_quality() if _torqa != null else "medium"
+	var key: String = _orqwa.graphics_quality() if _orqwa != null else "medium"
 	var note: String = notes.get(key, notes["medium"])
 	_quality_note.text = tr(note) + " " + tr("Applies from the next ride.")
 
@@ -152,8 +152,8 @@ func _build_details() -> void:
 		"unlimited": "Unlimited",
 	}
 	# i18n-end
-	var choices: Dictionary = TorqaApp.graphics_option_values()
-	var current: Dictionary = _torqa.graphics_options()
+	var choices: Dictionary = OrqwaApp.graphics_option_values()
+	var current: Dictionary = _orqwa.graphics_options()
 	for option: String in choices:
 		var caption: Label = Label.new()
 		var option_name: String = names.get(option, option)
@@ -188,10 +188,10 @@ func _value_name(option: String, value: String, values: Dictionary[String, Strin
 
 func _on_detail_selected(index: int, option: String) -> void:
 	var value: String = _details[option].get_item_metadata(index)
-	_torqa.set_graphics_option(option, value)
+	_orqwa.set_graphics_option(option, value)
 
 
 func _reset_details() -> void:
 	for option: String in _details:
-		_torqa.set_graphics_option(option, "auto")
+		_orqwa.set_graphics_option(option, "auto")
 		_details[option].select(0)

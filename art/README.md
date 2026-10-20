@@ -142,7 +142,7 @@ scripts/art.sh blender --background --factory-startup --python art/vegetation/bu
 The app gives each name its look in `app/scenes/vegetation_models.gd`,
 `app/shaders/vegetation.gdshader` and `app/shaders/foliage.gdshader` (cards seen from both
 sides, lit through from behind; trees sway in the wind, leaves flutter). `models.json` lists
-each model's `kind` and `height`; the world (`core/torqa-world/src/vegetation.rs`) picks one
+each model's `kind` and `height`; the world (`core/orqwa-world/src/vegetation.rs`) picks one
 model of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
 
 ## Props (`props/`)
@@ -186,7 +186,7 @@ scripts/art.sh blender --background --factory-startup --python art/props/build.p
 | `insulator` | the power poles' insulators |
 
 The app colours each name from the palette's `props` section (`app/scenes/prop_models.gd`).
-The world (`core/torqa-world/src/props.rs`) places them by rules from the road's shape and
+The world (`core/orqwa-world/src/props.rs`) places them by rules from the road's shape and
 the ground beside it: guard rails, span by span, on the side where the ground 4.5 m beyond
 the edge lies 2 m or more below the road, with a start and an end span at each run and none
 where a street joins; delineator posts every 50 m on both sides of country roads; snow poles
@@ -277,7 +277,7 @@ Both riders, from every side, are in the [gallery](#riders).
 ## The remote's clip (`remote/`)
 
 Not a model: `keep_awake.py` renders the silent clip the phone remote's page plays, unseen, to
-keep the phone's screen on (R88, ADR 0019), into `core/torqa-remote/src/keep-awake.mp4`. Four
+keep the phone's screen on (R88, ADR 0019), into `core/orqwa-remote/src/keep-awake.mp4`. Four
 seconds of black, 64 px, with a silent sound track, in H.264 and AAC, about 3.6 kB, from the
 sequencer, so no GPU is needed. Blender's own FFmpeg encodes the H.264 the dev container's
 cannot. Keep the sound track: Safari and Firefox keep the screen on only for a video that has

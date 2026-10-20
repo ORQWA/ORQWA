@@ -19,7 +19,7 @@ import bpy
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(
-    os.path.join(HERE, "..", "..", "core", "torqa-remote", "src", "keep-awake.mp4"))
+    os.path.join(HERE, "..", "..", "core", "orqwa-remote", "src", "keep-awake.mp4"))
 
 SIZE = 64
 FPS = 5
