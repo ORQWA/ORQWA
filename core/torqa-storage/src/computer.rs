@@ -27,6 +27,8 @@ struct ComputerFile {
     graphics: BTreeMap<String, String>,
     /// The phone remote (#228).
     remote: PhoneRemote,
+    /// Whether Torqa looks for a newer version at start-up (R99); on unless turned off.
+    check_updates: Option<bool>,
 }
 
 /// The phone remote on this computer (#228): a phone pairs with the computer it rides beside.
@@ -134,6 +136,22 @@ pub fn set_fullscreen(file: &Path, fullscreen: bool) -> Result<(), ProfileError>
     save(file, &computer)
 }
 
+/// Whether this computer looks for a newer Torqa at start-up (R99): yes until turned off.
+#[must_use]
+pub fn check_updates(file: &Path) -> bool {
+    read(file).check_updates.unwrap_or(true)
+}
+
+/// Turns looking for a newer Torqa at start-up on or off.
+///
+/// # Errors
+/// [`ProfileError`] if the file cannot be written.
+pub fn set_check_updates(file: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.check_updates = Some(on);
+    save(file, &computer)
+}
+
 /// The phone remote as set on this computer.
 #[must_use]
 pub fn phone_remote(file: &Path) -> PhoneRemote {
@@ -207,6 +225,19 @@ mod tests {
             GraphicsQuality::Ultra,
             "kept with it"
         );
+    }
+
+    #[test]
+    fn updates_are_looked_for_until_turned_off() {
+        let file = temp_file("updates");
+        assert!(check_updates(&file), "on for a new computer (R99)");
+
+        set_check_updates(&file, false).unwrap();
+        set_fullscreen(&file, true).unwrap();
+
+        assert!(!check_updates(&file), "kept beside other settings");
+        set_check_updates(&file, true).unwrap();
+        assert!(check_updates(&file));
     }
 
     #[test]

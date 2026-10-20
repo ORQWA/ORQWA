@@ -1,6 +1,6 @@
 # ADR 0023 — A Windows installer, and updates from within Torqa
 
-- Status: accepted (the installer; the update function follows in a second step)
+- Status: accepted
 - Date: 2026-10-19
 
 ## Context
@@ -42,7 +42,7 @@ Options considered:
 - **Unsigned for now.** Like the `.exe`, the MSI is not code-signed, so Windows' SmartScreen
   warns once per new version ("More info → Run anyway"). Signing (SignPath for open-source
   projects, or Azure Trusted Signing) can follow without changing the installer.
-- **Updates (next step).** Torqa will look for a newer release once at start-up, never during a
+- **Updates.** Torqa will look for a newer release once at start-up, never during a
   ride, behind a setting that turns it off. It will offer to download the new MSI and install it
   over the running version. The servers it contacts will be added to the wiki's internet list
   with that change.
@@ -55,3 +55,28 @@ Options considered:
 - The project depends on WiX's EULA terms staying free for projects without revenue. If they
   change, the installer can be built from WiX's source, which the EULA leaves free.
 - macOS and Linux keep their archives for now.
+
+## Amendment 2026-10-19: the update function
+
+- **Where.** A crate of its own, `torqa-update`: GitHub's latest release
+  (`api.github.com/repos/Torqa-Indoor-Cycling/Torqa/releases/latest`), its version against the
+  running one, and the installer asset downloaded and started. `torqa-app` runs it in the
+  background like its other online work, and the front end only shows what it finds.
+- **When.** Once at start-up in released builds, unless this computer turned it off
+  (`check_updates` in `computer.toml`, R78). Builds started from the editor, and the checks, never
+  look on their own. Settings → About also checks on request. A check never starts during a ride,
+  and a newer version found then is offered after the ride. At start-up only a newer version is
+  told; a failure goes to the log. On request, being up to date and failures are told too.
+- **Versions.** Tags are `v<major>.<minor>.<patch>`. A release counts only when its numbers are
+  higher than the running version's. A pre-release, which is never GitHub's "latest" anyway, and
+  a development build's version are never offered.
+- **Installing (Windows).** The MSI is downloaded into the cache (`updates/Torqa-<version>.msi`)
+  and kept only when complete. Torqa then starts `msiexec /i … /passive` through a hidden
+  `cmd` that waits about three seconds, so Torqa has quit before its files are replaced, and
+  starts Torqa again afterwards. Torqa quits at once. Windows asks for permission, because the
+  installation is per machine.
+- **Elsewhere.** macOS and Linux have no installer yet. The offer opens the release page instead.
+- **Servers.** `api.github.com` for the check, and `github.com` with
+  `release-assets.githubusercontent.com` for the download, are listed in the wiki's internet list.
+- **No new dependency.** It uses `reqwest`, `serde_json`, `tokio` and `thiserror`, which the
+  workspace already has.

@@ -2,7 +2,7 @@ class_name SettingsDialog
 extends AcceptDialog
 ## The settings, opened from the cog at the top right of the start page (R83): this
 ## computer's graphics and full screen (R43, R78, #218), applied as they change, and About:
-## the version, the commit and the licences.
+## the version, the commit, looking for updates (R99) and the licences.
 
 var _tabs: TabContainer = TabContainer.new()
 var _graphics: GraphicsSettings = GraphicsSettings.new()
@@ -25,6 +25,7 @@ func _ready() -> void:
 
 func bind(torqa: TorqaApp) -> void:
 	_graphics.bind(torqa)
+	_about.bind(torqa)
 
 
 ## Opens the settings on their first tab.

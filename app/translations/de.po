@@ -2101,3 +2101,60 @@ msgstr "Zum Beenden gedrückt halten"
 
 msgid "Ready in %s"
 msgstr "Fertig nach %s"
+
+msgid "Check for updates"
+msgstr "Nach Updates suchen"
+
+msgid "Could not download the update."
+msgstr "Das Update konnte nicht heruntergeladen werden."
+
+msgid "Could not look for a newer version of Torqa."
+msgstr "Es konnte nicht nach einer neueren Version von Torqa gesucht werden."
+
+msgid "Could not start the update's installer."
+msgstr "Das Installationsprogramm des Updates konnte nicht gestartet werden."
+
+msgid "Download it from its release page."
+msgstr "Lade sie von ihrer Release-Seite herunter."
+
+msgid "Downloading Torqa %s…"
+msgstr "Torqa %s wird heruntergeladen …"
+
+msgid "Installing Torqa %s…"
+msgstr "Torqa %s wird installiert …"
+
+msgid "Later"
+msgstr "Später"
+
+msgid "Look for updates when Torqa starts"
+msgstr "Beim Start von Torqa nach Updates suchen"
+
+msgid "Looking for updates…"
+msgstr "Suche nach Updates …"
+
+msgid "Open the release page"
+msgstr "Release-Seite öffnen"
+
+msgid "Torqa %s is available."
+msgstr "Torqa %s ist verfügbar."
+
+msgid "Torqa %s is available; you have %s."
+msgstr "Torqa %s ist verfügbar; du hast %s."
+
+msgid "Torqa downloads it, closes and installs it, then starts again."
+msgstr "Torqa lädt sie herunter, schliesst sich, installiert sie und startet dann neu."
+
+msgid "Your rides and settings stay as they are."
+msgstr "Deine Fahrten und Einstellungen bleiben, wie sie sind."
+
+msgid "Torqa is up to date."
+msgstr "Torqa ist auf dem neuesten Stand."
+
+msgid "Update available"
+msgstr "Update verfügbar"
+
+msgid "Update now"
+msgstr "Jetzt aktualisieren"
+
+msgid "What's new"
+msgstr "Was ist neu"
