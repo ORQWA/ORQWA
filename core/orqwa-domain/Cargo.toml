@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-domain"
-description = "Core domain types and plugin interfaces of Torqa"
+description = "Core domain types and plugin interfaces of ORQWA"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

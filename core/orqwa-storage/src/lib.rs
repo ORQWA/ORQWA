@@ -1,4 +1,4 @@
-//! Storage for Torqa: recorded rides as FIT activities (R28), course files (R32–R35), rider
+//! Storage for ORQWA: recorded rides as FIT activities (R28), course files (R32–R35), rider
 //! profiles (R22) and their accounts on training platforms (R29), the history index that
 //! spares reading every ride's metadata (R79) and the 3D worlds a computer keeps (R101).
 
@@ -251,7 +251,7 @@ fn file_id(created: typedef::DateTime) -> mesgdef::FileId {
     file_id.manufacturer = typedef::Manufacturer::DEVELOPMENT;
     file_id.product = 0;
     file_id.time_created = created;
-    "Torqa".clone_into(&mut file_id.product_name);
+    "ORQWA".clone_into(&mut file_id.product_name);
     file_id
 }
 

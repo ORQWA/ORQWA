@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-upload"
-description = "Uploading Torqa rides to training platforms (intervals.icu, Strava)"
+description = "Uploading ORQWA rides to training platforms (intervals.icu, Strava)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

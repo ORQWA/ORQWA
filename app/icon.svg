@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="14 -16 720 720" role="img" aria-labelledby="title">
-  <title id="title">Torqa</title>
+  <title id="title">ORQWA</title>
   <defs>
     <path id="tooth" d="M287 214 C290 207 293 199 295 195 Q300 191 305 195 C307 199 310 207 313 214 Z"/>
     <g id="crank"><path transform="translate(300 400) rotate(30)" d="M33.8 -48.3 Q43.4 -40 53.4 -40 L300 -40 A40 40 0 0 1 300 40 L53.4 40 Q43.4 40 33.8 48.3 A59 59 0 1 1 33.8 -48.3 Z"/></g>

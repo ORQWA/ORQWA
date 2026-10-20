@@ -15,7 +15,7 @@ free, need no account and work offline once fetched (R3).
 - Source: **OpenStreetMap** via the public **Overpass API**, with mirror fallbacks
   (overpass-api.de, maps.mail.ru, private.coffee).
 - Queried in 0.05° tiles covering a 1.5 km corridor around the route, restricted to features
-  Torqa draws (buildings, selected landuse/natural values, waterways, highway bridges and
+  ORQWA draws (buildings, selected landuse/natural values, waterways, highway bridges and
   tunnels). Tiles are cached on disk under a versioned folder and reused across routes.
 - Fetched at route import: bridges and tunnels shape the elevation profile (straight between the
   ends of each structure, matched by distance and direction so roads passing over or under the

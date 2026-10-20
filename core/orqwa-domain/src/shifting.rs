@@ -45,7 +45,7 @@ pub enum Control {
     FinishRide,
 }
 
-/// A step through Torqa's screens, as a TV remote's arrows, OK and back take it (#228): the
+/// A step through ORQWA's screens, as a TV remote's arrows, OK and back take it (#228): the
 /// front end moves its focus, presses what has it, or goes back.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Navigation {
@@ -360,7 +360,7 @@ pub trait ShiftInput: Send {
         Vec::new()
     }
 
-    /// The steps through Torqa's screens asked for up to the last [`Self::poll`], oldest
+    /// The steps through ORQWA's screens asked for up to the last [`Self::poll`], oldest
     /// first, with or without a ride; only a remote has them (#228).
     fn navigation(&mut self) -> Vec<Navigation> {
         Vec::new()

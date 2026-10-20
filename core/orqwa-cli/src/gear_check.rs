@@ -153,7 +153,7 @@ struct Verdict {
     expected: Option<Watts>,
     /// What it would brake if it ignored the gear: the road's parameters at that speed.
     ungeared: Option<Watts>,
-    /// The gear Torqa's virtual speed rides in at this cadence: settles at the virtual gear's
+    /// The gear ORQWA's virtual speed rides in at this cadence: settles at the virtual gear's
     /// ratio when the trainer brakes as expected.
     virtual_ratio: Option<f64>,
 }

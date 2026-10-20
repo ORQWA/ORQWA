@@ -1,4 +1,4 @@
-//! Structured workouts for Torqa (R21): reading ZWO, ERG/MRC and FIT workout files through
+//! Structured workouts for ORQWA (R21): reading ZWO, ERG/MRC and FIT workout files through
 //! the [`WorkoutParser`] interface, the built-in workouts, and the rider's workout library — a
 //! `workouts/` folder in the data directory, shared by all riders like the courses.
 
@@ -51,7 +51,7 @@ pub fn extensions() -> Vec<&'static str> {
 /// Reads a workout file, by its extension.
 ///
 /// # Errors
-/// [`WorkoutFileError`] if it cannot be read or is no workout Torqa understands.
+/// [`WorkoutFileError`] if it cannot be read or is no workout ORQWA understands.
 pub fn parse_file(path: &Path) -> Result<Plan, WorkoutFileError> {
     let extension = path
         .extension()
@@ -152,7 +152,7 @@ pub fn load(id: &str) -> Result<Plan, WorkoutFileError> {
 /// copy's path.
 ///
 /// # Errors
-/// [`WorkoutFileError`] if it is no workout Torqa understands, or cannot be copied.
+/// [`WorkoutFileError`] if it is no workout ORQWA understands, or cannot be copied.
 pub fn import(dir: &Path, file: &Path) -> Result<PathBuf, WorkoutFileError> {
     parse_file(file)?;
     std::fs::create_dir_all(dir)

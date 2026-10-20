@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-app"
-description = "Torqa application layer: devices, routes, rides and storage behind a frame-driven API"
+description = "ORQWA application layer: devices, routes, rides and storage behind a frame-driven API"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

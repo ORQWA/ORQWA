@@ -1,6 +1,6 @@
-//! Newer versions of Torqa (R99, ADR 0023): looked for at start-up unless this computer turned
+//! Newer versions of ORQWA (R99, ADR 0023): looked for at start-up unless this computer turned
 //! that off, or when the rider asks; never during a ride. On Windows the new installer is
-//! downloaded and run over Torqa when the rider agrees; elsewhere the rider gets its page.
+//! downloaded and run over ORQWA when the rider agrees; elsewhere the rider gets its page.
 
 use std::path::PathBuf;
 
@@ -46,13 +46,13 @@ pub(crate) enum Done {
 }
 
 impl App {
-    /// Whether this computer looks for a newer Torqa at start-up (R99); yes unless turned off.
+    /// Whether this computer looks for a newer ORQWA at start-up (R99); yes unless turned off.
     #[must_use]
     pub fn checks_for_updates(&self) -> bool {
         computer::check_updates(&self.computer)
     }
 
-    /// Turns looking for a newer Torqa at start-up on or off for this computer.
+    /// Turns looking for a newer ORQWA at start-up on or off for this computer.
     ///
     /// # Errors
     /// [`AppError::Reported`] if it cannot be saved.
@@ -94,7 +94,7 @@ impl App {
             return false;
         }
         let name = format!(
-            "Torqa-{}.msi",
+            "ORQWA-{}.msi",
             self.updates
                 .release
                 .as_ref()
@@ -110,8 +110,8 @@ impl App {
         true
     }
 
-    /// Starts installing the downloaded update over Torqa, which then starts again; the front
-    /// end quits at once after this succeeds, so the installer can replace Torqa's files.
+    /// Starts installing the downloaded update over ORQWA, which then starts again; the front
+    /// end quits at once after this succeeds, so the installer can replace ORQWA's files.
     ///
     /// # Errors
     /// [`AppError::Reported`] without a downloaded update, during a ride, or if the installer

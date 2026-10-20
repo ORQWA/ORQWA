@@ -77,8 +77,8 @@ Measured on the 7 km Lake Biel route: 6.2 MB, opened on an empty machine offline
 `manifest.json` gains an optional `countries` list: the countries the route passes, in order,
 each with its ISO 3166-1 two-letter `code` and its `names` by language, so a shared course
 names its countries offline (R68). The field is absent until the countries were looked up and
-an empty list where none is known, so Torqa fills in older courses' countries in the background
-and never asks again for a course without any. Older Torqa versions ignore the field; the
+an empty list where none is known, so ORQWA fills in older courses' countries in the background
+and never asks again for a course without any. Older ORQWA versions ignore the field; the
 format stays 1. Filling it in rewrites the course file, like a rename: two machines doing so
 before their sync folder catches up may leave a sync conflict copy (ADR 0002).
 
@@ -101,8 +101,8 @@ hidden by building the world while the course's page is open (#237).
 
 ## Amendment 2026-10-19 — a sample course (R95)
 
-A rider who has just downloaded Torqa has no course to ride before importing one, which needs
-the internet. Torqa now ships one prepared course, **Twann – Chasseral** (20.4 km, 1,190 m of
+A rider who has just downloaded ORQWA has no course to ride before importing one, which needs
+the internet. ORQWA now ships one prepared course, **Twann – Chasseral** (20.4 km, 1,190 m of
 climbing, 13.1 MB), kept in `core/orqwa-gd/courses/` with how it was made.
 
 - It is an ordinary format 1 course, prepared in the app from its GPX like any import, so it
@@ -113,7 +113,7 @@ climbing, 13.1 MB), kept in `core/orqwa-gd/courses/` with how it was made.
 - On start, when the data directory has **no `courses/` yet**, the app writes the library with
   the sample in it. It is written to `courses.part/` and renamed, so a first start cut short
   leaves no empty library that would keep the sample out. An existing library is never
-  touched: a rider who deleted the sample does not get it back, and riders updating Torqa keep
+  touched: a rider who deleted the sample does not get it back, and riders updating ORQWA keep
   their library as it is.
 
 Consequences: the repository and every app download grow by the file's 13 MB, and the

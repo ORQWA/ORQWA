@@ -46,7 +46,7 @@ pub enum Kind {
     CourseNotReady,
     /// The rider profile was not found.
     UnknownProfile,
-    /// Torqa could not start.
+    /// ORQWA could not start.
     Runtime,
     /// The selected platform is not supported.
     UnknownPlatform,
@@ -136,7 +136,7 @@ pub enum Kind {
     PlannedWorkouts,
     /// Could not start the remote on port %s.
     StartRemote,
-    /// Could not look for a newer version of Torqa.
+    /// Could not look for a newer version of ORQWA.
     CheckUpdate,
     /// Could not download the update.
     DownloadUpdate,
@@ -172,7 +172,7 @@ impl Kind {
             Self::UnknownDevice => "The selected device is not available.",
             Self::CourseNotReady => "The course is not ready yet.",
             Self::UnknownProfile => "The rider profile was not found.",
-            Self::Runtime => "Torqa could not start.",
+            Self::Runtime => "ORQWA could not start.",
             Self::UnknownPlatform => "The selected platform is not supported.",
             Self::ConnectFirst => "Connect %s first.",
             Self::GhostRoute => "%s does not follow this route.",
@@ -227,7 +227,7 @@ impl Kind {
             Self::StartRemote => {
                 "Could not start the remote on port %s. Another program may use it: choose another port."
             }
-            Self::CheckUpdate => "Could not look for a newer version of Torqa.",
+            Self::CheckUpdate => "Could not look for a newer version of ORQWA.",
             Self::DownloadUpdate => "Could not download the update.",
             Self::InstallUpdate => "Could not start the update's installer.",
         }

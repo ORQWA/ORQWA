@@ -1,6 +1,6 @@
 # Development
 
-How to build, check and change Torqa. Contributor conventions are in [CLAUDE.md](../CLAUDE.md),
+How to build, check and change ORQWA. Contributor conventions are in [CLAUDE.md](../CLAUDE.md),
 architecture decisions in [adr/](adr/).
 
 ## Setup
@@ -35,6 +35,7 @@ does the same.
 | Render the screenshots in another window size, e.g. the smallest the layouts are made for (R94) | `SCREENSHOT_SIZE=1024x640 scripts/screenshots.sh` |
 | Render the standard views of the 3D world (before and after a visual change) into `screenshots/views/` | `scripts/render-views.sh` |
 | Render the 3D models (buildings, plants, clouds) and the riders for review; with `GALLERY=docs/images/models`, also the galleries in `art/README.md` | `scripts/render-models.sh`, `scripts/render-riders.sh` |
+| Redraw the wordmark and the lockups in `docs/brand/` after changing their geometry ([ADR 0026](adr/0026-the-name-orqwa.md)) | `python3 scripts/brand/wordmark.py` |
 | Regenerate the boot splash PNG after a logo change | `scripts/render-splash.sh` |
 | Refresh the translation template after text changes | `python3 scripts/i18n/extract.py` |
 | Refresh the crates' licence notices the About tab shows, after changing dependencies ([ADR 0018](adr/0018-about-and-notices.md)) | `scripts/notices.sh` |
@@ -55,18 +56,18 @@ on the generator. Renders and screenshots prepare GPX routes, which always build
 ## Builds
 
 Tagged builds of the app and CLI are available on the
-[Releases page](https://github.com/Torqa-Indoor-Cycling/Torqa/releases), without signing in.
+[Releases page](https://github.com/ORQWA/ORQWA/releases), without signing in.
 Between releases, download artifacts from the
-[CI runs on main](https://github.com/Torqa-Indoor-Cycling/Torqa/actions/workflows/ci.yml?query=branch%3Amain)
+[CI runs on main](https://github.com/ORQWA/ORQWA/actions/workflows/ci.yml?query=branch%3Amain)
 while signed in to GitHub. Both use the same archives:
 
-The `macos` CI job builds `Torqa-macos-arm64.zip` and `orqwa-cli-macos-arm64.tar.gz`. To test
-real trainers on macOS, use the CLI built by CI: see the [command-line guide](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Command-line-tool).
+The `macos` CI job builds `ORQWA-macos-arm64.zip` and `orqwa-cli-macos-arm64.tar.gz`. To test
+real trainers on macOS, use the CLI built by CI: see the [command-line guide](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool).
 
-Windows builds come from the `windows` CI job: `Torqa-windows-x86_64.zip` (`Torqa.exe` with
-`orqwa_gd.dll` beside it; keep both in one folder), the installer `Torqa-windows-x86_64.msi`
+Windows builds come from the `windows` CI job: `ORQWA-windows-x86_64.zip` (`ORQWA.exe` with
+`orqwa_gd.dll` beside it; keep both in one folder), the installer `ORQWA-windows-x86_64.msi`
 and `orqwa-cli-windows-x86_64.zip`, all under the run's artifacts. The installer is built from
-`scripts/release/Torqa.wxs` with the WiX Toolset ([ADR 0023](adr/0023-windows-installer.md)),
+`scripts/release/ORQWA.wxs` with the WiX Toolset ([ADR 0023](adr/0023-windows-installer.md)),
 and the job installs and uninstalls it once to check it. Like the macOS app it is built natively on the runner (MSVC, with MSYS2's
 `sh` and `make` for FFmpeg).
 FFmpeg's libraries come from `scripts/build-ffmpeg.sh` (a pinned, verified release; ADR 0010):
@@ -83,8 +84,8 @@ It puts `orqwa_gd.dll` (MinGW, linked statically) into `app/bin/`, where the por
 editor on the host loads it to render the views in seconds instead of lavapipe's minutes. It is
 for development only; the released Windows app is CI's.
 
-Linux builds come from the `linux` CI job, for x86_64 and arm64: `Torqa-linux-<arch>.tar.gz`
-(a `Torqa` folder with `Torqa.<arch>` and `liborqwa_gd.so`; keep both together) and
+Linux builds come from the `linux` CI job, for x86_64 and arm64: `ORQWA-linux-<arch>.tar.gz`
+(a `ORQWA` folder with `ORQWA.<arch>` and `liborqwa_gd.so`; keep both together) and
 `orqwa-cli-linux-<arch>.tar.gz`. They are built on Ubuntu 22.04 so they run on any distribution
 with glibc 2.35 or newer (Ubuntu 22.04+, Debian 12+, Fedora 36+), not only on ones as new as
 the dev container ([ADR 0012](adr/0012-linux-builds.md)). CI starts the exported app
@@ -94,7 +95,7 @@ Docker on macOS cannot access Bluetooth or the GPU, so macOS builds are produced
 To test 3D rendering or a real trainer, run the built app (or the portable Godot editor) natively.
 
 Every build names the commit it comes from on the settings' About tab and in its first log
-line (`Torqa 0.2.1 (0ad9af1)`), as Git reports it while building, or the `ORQWA_COMMIT`
+line (`ORQWA 0.2.1 (0ad9af1)`), as Git reports it while building, or the `ORQWA_COMMIT`
 variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
 the host: a worktree's Git directory lies outside the checkout the container sees.
 
@@ -120,7 +121,7 @@ native macOS, Windows and both Linux builds, and the Android build. After all su
 draft with generated release notes, uploads the archives and publishes it. Only that job has
 `contents: write`, using the automatic `GITHUB_TOKEN`.
 
-The APK of a tag is signed with Torqa's release key, from the repository secrets
+The APK of a tag is signed with ORQWA's release key, from the repository secrets
 `ANDROID_KEYSTORE` (the keystore, base64) and `ANDROID_KEYSTORE_PASSWORD` (alias `torqa`); the
 build fails without them. Every Android update must carry the same key, so its owner keeps a
 copy outside GitHub. Other builds are signed with a debug key.
@@ -145,13 +146,13 @@ The APK comes from a container of its own ([ADR 0024](adr/0024-android.md)), bui
 image only when needed. `app/` is never changed: the build works on a copy.
 
 ```sh
-scripts/android.sh scripts/build-android.sh release   # → dist/Torqa-android-arm64.apk
+scripts/android.sh scripts/build-android.sh release   # → dist/ORQWA-android-arm64.apk
 ```
 
 Install it on a tablet with adb over USB or wireless debugging (`adb install -r …`) and read
-Torqa's log with `adb logcat -s Torqa godot`. Local builds are signed with a debug key made once
+ORQWA's log with `adb logcat -s ORQWA godot`. Local builds are signed with a debug key made once
 in the `orqwa-gradle` volume; `ORQWA_RELEASE_KEYSTORE` and `ORQWA_RELEASE_KEYSTORE_PASSWORD`
-sign with a release key instead, as CI does for releases. The APK's version is Torqa's
+sign with a release key instead, as CI does for releases. The APK's version is ORQWA's
 (`version/code` 500 for 0.5.0). [android/README.md](../android/README.md) lists
 the parts and how to remove Android support again.
 
@@ -165,7 +166,7 @@ the parts and how to remove Android support again.
 
 ## Usage wiki
 
-Rider guides live in the [GitHub wiki](https://github.com/Torqa-Indoor-Cycling/Torqa/wiki), checked out as
+Rider guides live in the [GitHub wiki](https://github.com/ORQWA/ORQWA/wiki), checked out as
 the `wiki/` submodule ([ADR 0015](adr/0015-usage-wiki.md)). Clone with
 `git clone --recurse-submodules`, or run `make wiki-init`
 in an existing checkout. Initialization leaves an existing wiki checkout untouched; after
@@ -180,8 +181,8 @@ and `python3 -m unittest discover -s scripts/wiki -p 'test_*.py'` directly.
    `make wiki-init`, then `git -C wiki switch -c docs/my-change`.
    Resume an existing branch with `git -C wiki switch docs/my-change`.
 2. Update the relevant guides, `Home.md`, `_Sidebar.md` and screenshots. Wiki filenames are
-   GitHub page names. Use absolute `https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/<page>` links, and
-   `https://raw.githubusercontent.com/Torqa-Indoor-Cycling/Torqa/main/docs/images/<file>` for shared images.
+   GitHub page names. Use absolute `https://github.com/ORQWA/ORQWA/wiki/<page>` links, and
+   `https://raw.githubusercontent.com/ORQWA/ORQWA/main/docs/images/<file>` for shared images.
    Check wiki references before deleting an image from the application repository.
 3. Run `make wiki-prepare BRANCH=docs/my-change`. It validates, commits wiki changes and
    pushes only the preparation branch; it never updates published pages. Name it `docs/<change>`

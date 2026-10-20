@@ -49,9 +49,9 @@ pub enum CourseError {
     /// The manifest is missing fields or malformed.
     #[error("invalid course manifest: {0}")]
     Manifest(#[from] serde_json::Error),
-    /// The file was written by a newer Torqa.
+    /// The file was written by a newer ORQWA.
     #[error(
-        "course format {0} is newer than this Torqa supports ({FORMAT_VERSION}); please update"
+        "course format {0} is newer than this ORQWA supports ({FORMAT_VERSION}); please update"
     )]
     NewerFormat(u32),
     /// A data file to pack lies outside the data root.
@@ -67,7 +67,7 @@ pub enum CourseError {
 pub struct Manifest {
     /// Course file format version.
     pub format: u32,
-    /// The program that prepared the course, e.g. `Torqa 0.1.0`.
+    /// The program that prepared the course, e.g. `ORQWA 0.1.0`.
     pub generator: String,
     /// Display name.
     pub name: String,
@@ -85,7 +85,7 @@ pub struct Manifest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub route_key: Option<String>,
     /// Thinned track for course cards (R37): metres east/north of the start. Optional fields
-    /// like this one are read as empty by older Torqa versions and need no format bump.
+    /// like this one are read as empty by older ORQWA versions and need no format bump.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub track: Vec<[f32; 2]>,
     /// Thinned elevation profile for course cards: (distance m, elevation m).
@@ -278,7 +278,7 @@ fn write_to(
 /// Reads only the manifest, e.g. for listing courses.
 ///
 /// # Errors
-/// [`CourseError::NewerFormat`] for files from a newer Torqa, or an I/O, zip or manifest error.
+/// [`CourseError::NewerFormat`] for files from a newer ORQWA, or an I/O, zip or manifest error.
 pub fn read_manifest(path: &Path) -> Result<Manifest, CourseError> {
     let mut zip = ZipArchive::new(BufReader::new(File::open(path)?))?;
     manifest_of(&mut zip)
@@ -287,7 +287,7 @@ pub fn read_manifest(path: &Path) -> Result<Manifest, CourseError> {
 /// The original GPX track of the course at `path`.
 ///
 /// # Errors
-/// [`CourseError::NewerFormat`] for files from a newer Torqa, or an I/O, zip or manifest error.
+/// [`CourseError::NewerFormat`] for files from a newer ORQWA, or an I/O, zip or manifest error.
 pub fn route_gpx(path: &Path) -> Result<String, CourseError> {
     let mut zip = ZipArchive::new(BufReader::new(File::open(path)?))?;
     manifest_of(&mut zip)?;
@@ -300,7 +300,7 @@ pub fn route_gpx(path: &Path) -> Result<String, CourseError> {
 /// cache paths are versioned, so an existing file has the same content.
 ///
 /// # Errors
-/// [`CourseError::NewerFormat`] for files from a newer Torqa, [`CourseError::UnsafePath`] for
+/// [`CourseError::NewerFormat`] for files from a newer ORQWA, [`CourseError::UnsafePath`] for
 /// entries that would land outside `data_root`, or an I/O, zip or manifest error.
 pub fn unpack(path: &Path, data_root: &Path) -> Result<Unpacked, CourseError> {
     let mut zip = ZipArchive::new(BufReader::new(File::open(path)?))?;
@@ -343,7 +343,7 @@ pub fn unpack(path: &Path, data_root: &Path) -> Result<Unpacked, CourseError> {
 /// copied unchanged. The file is replaced only once the new one is complete.
 ///
 /// # Errors
-/// [`CourseError::NewerFormat`] for files from a newer Torqa, or an I/O, zip or manifest error.
+/// [`CourseError::NewerFormat`] for files from a newer ORQWA, or an I/O, zip or manifest error.
 pub fn rewrite_manifest(path: &Path, manifest: &Manifest) -> Result<(), CourseError> {
     rewrite(path, &[MANIFEST], |out| {
         out.start_file(
@@ -383,7 +383,7 @@ pub fn preview_outdated(path: &Path) -> bool {
 /// and data files, by their checksums in the file's directory, so nothing is unpacked. The
 /// manifest and the map picture are left out: renaming the course or finding its countries
 /// rewrites them, not its world. Two files from the same inputs have the same fingerprint in
-/// the same build of Torqa; another build may hash differently, but its worlds are its own.
+/// the same build of ORQWA; another build may hash differently, but its worlds are its own.
 ///
 /// # Errors
 /// An I/O or zip error.
@@ -478,7 +478,7 @@ mod tests {
     fn manifest() -> Manifest {
         Manifest {
             format: FORMAT_VERSION,
-            generator: "Torqa test".to_owned(),
+            generator: "ORQWA test".to_owned(),
             name: "Lake Biel".to_owned(),
             length_m: 12_345.0,
             elevation_gain_m: 120.0,

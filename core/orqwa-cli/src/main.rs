@@ -1,4 +1,4 @@
-//! Headless command-line interface to the Torqa core.
+//! Headless command-line interface to the ORQWA core.
 
 mod devices;
 mod free_ride;
@@ -28,7 +28,7 @@ use devices::DeviceArgs;
 #[command(
     name = "orqwa-cli",
     version,
-    about = "Headless Torqa: find and ride smart trainers"
+    about = "Headless ORQWA: find and ride smart trainers"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -91,7 +91,7 @@ struct RideArgs {
     /// Only use cached terrain data.
     #[arg(long)]
     offline: bool,
-    /// Where to save the FIT activity (default: torqa-<date>-<time>.fit).
+    /// Where to save the FIT activity (default: orqwa-<date>-<time>.fit).
     #[arg(long)]
     output: Option<PathBuf>,
     /// Virtual gears for a single cog, as chainring x cog teeth (e.g. 50x14): type u / d and
@@ -371,7 +371,7 @@ fn video_check(file: &Path, seconds: u64) -> Result<()> {
         if report.keeps_up() {
             "keeps up: a ride along this video runs smoothly here"
         } else {
-            "cannot keep up: a ride along this video stutters here (see https://github.com/Torqa-Indoor-Cycling/Torqa/wiki/Video-courses)"
+            "cannot keep up: a ride along this video stutters here (see https://github.com/ORQWA/ORQWA/wiki/Video-courses)"
         }
     );
     Ok(())

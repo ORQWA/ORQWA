@@ -1,6 +1,6 @@
-//! Finding a newer Torqa release and installing it (R99, ADR 0023): GitHub's latest release,
+//! Finding a newer ORQWA release and installing it (R99, ADR 0023): GitHub's latest release,
 //! its version against the running one, and on Windows its installer, downloaded and run over
-//! the installed Torqa.
+//! the installed ORQWA.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -8,12 +8,11 @@ use std::time::Duration;
 
 use tokio::io::AsyncWriteExt;
 
-/// GitHub's latest published release of Torqa; drafts and pre-releases are never "latest".
-pub const LATEST_RELEASE: &str =
-    "https://api.github.com/repos/Torqa-Indoor-Cycling/Torqa/releases/latest";
+/// GitHub's latest published release of ORQWA; drafts and pre-releases are never "latest".
+pub const LATEST_RELEASE: &str = "https://api.github.com/repos/ORQWA/ORQWA/releases/latest";
 
-/// The release asset that installs Torqa on Windows.
-pub const INSTALLER: &str = "Torqa-windows-x86_64.msi";
+/// The release asset that installs ORQWA on Windows.
+pub const INSTALLER: &str = "ORQWA-windows-x86_64.msi";
 
 /// Something went wrong looking for, downloading or installing an update.
 #[derive(Debug, thiserror::Error)]
@@ -21,7 +20,7 @@ pub enum UpdateError {
     /// GitHub could not be reached, or answered with an error.
     #[error("cannot reach GitHub: {0}")]
     Unreachable(String),
-    /// GitHub's answer is not a release Torqa understands.
+    /// GitHub's answer is not a release ORQWA understands.
     #[error("unexpected answer from GitHub: {0}")]
     Unexpected(String),
     /// The installer could not be downloaded or saved.
@@ -96,9 +95,9 @@ pub struct Installer {
 fn client(timeout: Duration) -> Result<reqwest::Client, UpdateError> {
     reqwest::Client::builder()
         .user_agent(concat!(
-            "Torqa/",
+            "ORQWA/",
             env!("CARGO_PKG_VERSION"),
-            " (+https://github.com/Torqa-Indoor-Cycling/Torqa)"
+            " (+https://github.com/ORQWA/ORQWA)"
         ))
         .timeout(timeout)
         .build()
@@ -210,9 +209,9 @@ pub const fn can_install() -> bool {
     cfg!(windows)
 }
 
-/// Starts installing `msi` over the running Torqa and then starting `app` again; the caller
-/// quits at once, so the installer can replace Torqa's files. Windows asks for permission, as
-/// Torqa is installed for all users.
+/// Starts installing `msi` over the running ORQWA and then starting `app` again; the caller
+/// quits at once, so the installer can replace ORQWA's files. Windows asks for permission, as
+/// ORQWA is installed for all users.
 ///
 /// # Errors
 /// [`UpdateError::Install`] if the installer cannot be started, or on another system.
@@ -222,7 +221,7 @@ pub fn install(msi: &Path, app: &Path) -> Result<(), UpdateError> {
         use std::os::windows::process::CommandExt;
         /// Runs without a console window flashing up.
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        // `ping` waits a few seconds without needing a console (unlike `timeout`), so Torqa
+        // `ping` waits a few seconds without needing a console (unlike `timeout`), so ORQWA
         // has quit before the installer replaces its files. `/S` keeps cmd's quoting simple.
         let script = format!(
             "/S /C \"ping -n 4 127.0.0.1 >nul & msiexec /i \"{}\" /passive /norestart && start \"\" \"{}\"\"",
@@ -240,7 +239,7 @@ pub fn install(msi: &Path, app: &Path) -> Result<(), UpdateError> {
     {
         let _ = (msi, app);
         Err(UpdateError::Install(
-            "Torqa installs updates itself only on Windows".to_owned(),
+            "ORQWA installs updates itself only on Windows".to_owned(),
         ))
     }
 }
@@ -251,10 +250,10 @@ mod tests {
     use tokio::io::AsyncReadExt;
     use tokio::net::TcpListener;
 
-    /// GitHub's answer for a release, cut to what Torqa reads.
+    /// GitHub's answer for a release, cut to what ORQWA reads.
     fn release_json(tag: &str, assets: &str) -> String {
         format!(
-            r#"{{"tag_name":"{tag}","html_url":"https://github.com/Torqa-Indoor-Cycling/Torqa/releases/tag/{tag}","draft":false,"prerelease":false,"assets":[{assets}]}}"#
+            r#"{{"tag_name":"{tag}","html_url":"https://github.com/ORQWA/ORQWA/releases/tag/{tag}","draft":false,"prerelease":false,"assets":[{assets}]}}"#
         )
     }
 
@@ -317,7 +316,7 @@ mod tests {
         let json = release_json(
             "v0.5.0",
             &[
-                asset("Torqa-windows-x86_64.zip", "https://x/zip", 1),
+                asset("ORQWA-windows-x86_64.zip", "https://x/zip", 1),
                 asset(INSTALLER, "https://x/msi", 130_000_000),
             ]
             .join(","),
@@ -338,7 +337,7 @@ mod tests {
 
     #[test]
     fn a_release_without_an_installer_still_counts() {
-        let json = release_json("v0.5.0", &asset("Torqa-macos-arm64.zip", "https://x/m", 1));
+        let json = release_json("v0.5.0", &asset("ORQWA-macos-arm64.zip", "https://x/m", 1));
 
         let release = parse_release(&json).unwrap();
 
@@ -393,17 +392,17 @@ mod tests {
             size: 4,
         };
 
-        let path = download(&installer, &dir, "Torqa-0.5.0.msi").await.unwrap();
+        let path = download(&installer, &dir, "ORQWA-0.5.0.msi").await.unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), b"MSI!");
         std::fs::remove_file(&path).unwrap();
 
-        let cut = download(&installer, &dir, "Torqa-0.5.0.msi").await;
+        let cut = download(&installer, &dir, "ORQWA-0.5.0.msi").await;
         assert!(matches!(cut, Err(UpdateError::Download(_))), "{cut:?}");
         assert!(
             !path.exists(),
             "nothing incomplete under the installer's name"
         );
-        assert!(!dir.join("Torqa-0.5.0.msi.part").exists());
+        assert!(!dir.join("ORQWA-0.5.0.msi.part").exists());
         std::fs::remove_dir_all(dir).unwrap();
     }
 }

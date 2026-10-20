@@ -1,4 +1,4 @@
-//! What the About tab shows (R83): Torqa's licence and those of everything built into the app,
+//! What the About tab shows (R83): ORQWA's licence and those of everything built into the app,
 //! each notice with its licence's full text, so the notices those licences ask for ship with
 //! every copy (ADR 0018).
 
@@ -6,8 +6,8 @@ use std::fmt::Write as _;
 
 use crate::ATTRIBUTION;
 
-/// Where Torqa's source code is, as the GPL offers it to everyone who has the app.
-pub const SOURCE: &str = "https://github.com/Torqa-Indoor-Cycling/Torqa";
+/// Where ORQWA's source code is, as the GPL offers it to everyone who has the app.
+pub const SOURCE: &str = "https://github.com/ORQWA/ORQWA";
 
 /// Between the licences in a notice, as in the crates' notices (`core/about.hbs`).
 const RULE: &str = "────────────────────────────────────────";
@@ -21,7 +21,7 @@ const GPL: &str = include_str!("../../../LICENSE");
 /// A part of the app that a notice covers, in the order the About tab lists them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Part {
-    /// Torqa itself.
+    /// ORQWA itself.
     Orqwa,
     /// The Godot engine and the components it is built from.
     Godot,
@@ -80,7 +80,7 @@ pub struct Component {
     pub licence: String,
 }
 
-/// The notices of Torqa and of everything built into it, in the order they are listed;
+/// The notices of ORQWA and of everything built into it, in the order they are listed;
 /// `engine` is what the Godot engine reports of itself.
 #[must_use]
 pub fn notices(engine: &EngineCredits) -> Vec<Notice> {
@@ -88,7 +88,7 @@ pub fn notices(engine: &EngineCredits) -> Vec<Notice> {
         Notice {
             part: Part::Orqwa,
             text: format!(
-                "Torqa {}\n\nTorqa is free software under the GNU General Public License, \
+                "ORQWA {}\n\nORQWA is free software under the GNU General Public License, \
                  version 3. Its source code: {SOURCE}\n\n{GPL}",
                 orqwa_domain::version()
             ),
@@ -103,8 +103,8 @@ pub fn notices(engine: &EngineCredits) -> Vec<Notice> {
                 "FFmpeg's libavcodec, libavformat, libavutil and libswscale, © the FFmpeg \
                  developers (https://ffmpeg.org).\n\nBuilt without FFmpeg's optional GPL parts, \
                  under the GNU Lesser General Public License, version 2.1 or later. Its source \
-                 code: https://ffmpeg.org/download.html; Torqa builds it with \
-                 scripts/build-ffmpeg.sh in Torqa's source code.\n\n{LGPL}"
+                 code: https://ffmpeg.org/download.html; ORQWA builds it with \
+                 scripts/build-ffmpeg.sh in ORQWA's source code.\n\n{LGPL}"
             ),
         },
         Notice {
@@ -143,8 +143,8 @@ fn assets() -> String {
     let mut text = String::from(
         "Rider bodies: derived from the \"primitive\" bodies of Human Base Meshes v1.4.1 by \
          Blender Studio and contributors, CC0 1.0 (https://www.blender.org/download/demo-files/). \
-         Buildings, vegetation, clouds, kits, helmets and bikes are Torqa's own work, under \
-         Torqa's licence.\n\nMap and terrain data, credited on every course built from it:\n",
+         Buildings, vegetation, clouds, kits, helmets and bikes are ORQWA's own work, under \
+         ORQWA's licence.\n\nMap and terrain data, credited on every course built from it:\n",
     );
     for line in ATTRIBUTION {
         text.push_str(line);
@@ -192,7 +192,7 @@ mod tests {
     fn orqwa_comes_with_the_gpl_and_where_its_source_is() {
         let notices = notices(&EngineCredits::default());
         let orqwa = text_of(&notices, Part::Orqwa);
-        assert!(orqwa.starts_with(&format!("Torqa {}", orqwa_domain::version())));
+        assert!(orqwa.starts_with(&format!("ORQWA {}", orqwa_domain::version())));
         assert!(orqwa.contains("GNU GENERAL PUBLIC LICENSE"));
         assert!(orqwa.contains("Version 3, 29 June 2007"));
         assert!(orqwa.contains(SOURCE));
@@ -210,7 +210,7 @@ mod tests {
     fn crates_are_third_party_with_their_licence_texts() {
         let notices = notices(&EngineCredits::default());
         let crates = text_of(&notices, Part::Crates);
-        // The Godot bindings are linked into the app; Torqa's own crates are under its licence.
+        // The Godot bindings are linked into the app; ORQWA's own crates are under its licence.
         let mut names = crates.split([',', '\n']).map(str::trim_start);
         assert!(names.any(|entry| entry.starts_with("godot ")));
         assert!(!crates.contains("orqwa-"));

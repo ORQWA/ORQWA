@@ -500,7 +500,7 @@ fn add_road(
     }
 }
 
-/// What a way of the transportation layer is to Torqa, from its `class`, `subclass` and
+/// What a way of the transportation layer is to ORQWA, from its `class`, `subclass` and
 /// `bicycle` access. `None` for railways, ferries and ways for pedestrians only: footways and
 /// mapped sidewalks, pedestrian zones, steps, platforms and paths closed to bikes. Those carry
 /// no ride and do not belong among the streets drawn; footways open to bikes stay as paths.

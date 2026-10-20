@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-remote"
-description = "The phone remote of Torqa: a page on the local network that shifts and controls the ride"
+description = "The phone remote of ORQWA: a page on the local network that shifts and controls the ride"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

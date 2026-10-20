@@ -1,5 +1,5 @@
 //! Strava (R29). Strava lets an app in only with OAuth, and every token request needs the
-//! app's client secret, which open-source Torqa cannot keep. So each rider connects through a
+//! app's client secret, which open-source ORQWA cannot keep. So each rider connects through a
 //! Strava API application of their own: its Client ID and Client Secret, then a login in the
 //! browser (ADR 0013). Rides go up as FIT files on a trainer; Strava processes them and then
 //! names the activity.
@@ -24,7 +24,7 @@ const CLIENT_SECRET: &str = "client_secret";
 const ACCESS_TOKEN: &str = "access_token";
 const REFRESH_TOKEN: &str = "refresh_token";
 const EXPIRES_AT: &str = "expires_at";
-/// Uploading activities is all Torqa asks for.
+/// Uploading activities is all ORQWA asks for.
 const SCOPE: &str = "activity:write";
 /// How often to ask whether Strava has processed an upload, and how many times.
 const POLL: Duration = Duration::from_secs(2);
@@ -109,7 +109,7 @@ impl Strava {
     ) -> Result<Account, UploadError> {
         if !grant.scope.split([',', ' ']).any(|scope| scope == SCOPE) {
             return Err(UploadError::Rejected(
-                "Torqa may not upload activities: connect again and leave that box ticked."
+                "ORQWA may not upload activities: connect again and leave that box ticked."
                     .to_owned(),
             ));
         }
@@ -186,7 +186,7 @@ impl Strava {
                 ("data_type", "fit"),
                 ("name", &activity.name),
                 ("external_id", &activity.external_id),
-                // Every Torqa ride is on a trainer.
+                // Every ORQWA ride is on a trainer.
                 ("trainer", "1"),
             ],
             (
@@ -303,7 +303,7 @@ async fn answered(answer: reqwest::Response) -> Result<serde_json::Value, Upload
     let text = answer.text().await.map_err(|e| cannot_reach(NAME, &e))?;
     match status {
         StatusCode::UNAUTHORIZED => Err(UploadError::Unauthorized(format!(
-            "{NAME} no longer lets Torqa in: {}.",
+            "{NAME} no longer lets ORQWA in: {}.",
             describe(&text)
         ))),
         // Connecting again would not help: the login works, the application is off.
@@ -409,8 +409,8 @@ mod tests {
     use crate::decode;
     use crate::testing::serve;
 
-    const CONNECTED: &str = "Torqa is connected to Strava.";
-    const FAILED: &str = "Torqa could not connect.";
+    const CONNECTED: &str = "ORQWA is connected to Strava.";
+    const FAILED: &str = "ORQWA could not connect.";
 
     /// Strava at `site`, quick to poll and to give up on a login.
     fn strava(site: &str) -> Strava {
@@ -444,7 +444,7 @@ mod tests {
     }
 
     /// A browser that, shown Strava's login, comes straight back with `answer` (a query,
-    /// `STATE` standing for the state Torqa sent; `None` never comes back). Hands back the
+    /// `STATE` standing for the state ORQWA sent; `None` never comes back). Hands back the
     /// login's address and the page the browser then showed.
     fn browser(answer: Option<&'static str>) -> (Browser, oneshot::Receiver<(String, String)>) {
         let (tx, rx) = oneshot::channel();
@@ -589,7 +589,7 @@ mod tests {
         Activity {
             fit: b"FIT activity".to_vec(),
             name: "Gurten & back".to_owned(),
-            external_id: "torqa-20261012-071500".to_owned(),
+            external_id: "orqwa-20261012-071500".to_owned(),
         }
     }
 
@@ -598,7 +598,7 @@ mod tests {
         let (site, served) = serve(vec![
             (
                 "201 Created",
-                r#"{"id":5,"id_str":"5","external_id":"torqa-20261012-071500.fit",
+                r#"{"id":5,"id_str":"5","external_id":"orqwa-20261012-071500.fit",
                     "error":null,"status":"Your activity is still being processed.",
                     "activity_id":null}"#
                     .to_owned(),
@@ -627,7 +627,7 @@ mod tests {
         for (field, value) in [
             ("data_type", "fit"),
             ("name", "Gurten & back"),
-            ("external_id", "torqa-20261012-071500"),
+            ("external_id", "orqwa-20261012-071500"),
             ("trainer", "1"),
         ] {
             assert!(
@@ -681,7 +681,7 @@ mod tests {
         let (site, _served) = serve(vec![(
             "201 Created",
             r#"{"id":5,"id_str":"5","activity_id":null,
-                "error":"torqa-20261012-071500.fit duplicate of activity 4242"}"#
+                "error":"orqwa-20261012-071500.fit duplicate of activity 4242"}"#
                 .to_owned(),
         )])
         .await;

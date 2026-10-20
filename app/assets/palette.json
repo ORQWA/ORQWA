@@ -1,5 +1,5 @@
 {
-  "about": "Torqa's colour palette (ADR 0011, skill orqwa-look): sRGB, read by the Rust core (core/orqwa-world/src/palette.rs) and the app (app/scenes/palette.gd). Change colours here only.",
+  "about": "ORQWA's colour palette (ADR 0011, skill orqwa-look): sRGB, read by the Rust core (core/orqwa-world/src/palette.rs) and the app (app/scenes/palette.gd). Change colours here only.",
   "sky": {
     "top": "#4a78c0",
     "horizon": "#b9cde0",

@@ -131,7 +131,7 @@ func _about(dialog: SettingsDialog) -> void:
 	_check(version.text.contains(OrqwaCore.version()), "the version: %s" % version.text)
 	_check(commit.is_empty() or version.text.contains(commit), "and the commit: %s" % commit)
 	var report: String = about.call("_version_report")
-	_check(report.begins_with("Torqa " + OrqwaCore.version()), "copied for a bug report")
+	_check(report.begins_with("ORQWA " + OrqwaCore.version()), "copied for a bug report")
 	var godot: String = Engine.get_version_info()["string"]
 	_check(report.contains(godot), "with Godot's version")
 	var parts: ItemList = about.get("_parts")
@@ -139,11 +139,11 @@ func _about(dialog: SettingsDialog) -> void:
 	for i: int in range(parts.item_count):
 		titles.append(parts.get_item_text(i))
 	var listed: PackedStringArray = [
-		"Torqa", "Godot Engine", "FFmpeg", "Rust libraries", "Models and data"
+		"ORQWA", "Godot Engine", "FFmpeg", "Rust libraries", "Models and data"
 	]
-	_check(titles == listed, "Torqa, then what it is built from: %s" % titles)
+	_check(titles == listed, "ORQWA, then what it is built from: %s" % titles)
 	var notice: TextEdit = about.get("_notice")
-	_check(notice.text.contains("GNU GENERAL PUBLIC LICENSE"), "Torqa's licence shows first")
+	_check(notice.text.contains("GNU GENERAL PUBLIC LICENSE"), "ORQWA's licence shows first")
 	_check(notice.text.contains(OrqwaCore.source_url()), "with where its source code is")
 	var expected: Array = [
 		[1, Engine.get_license_text().left(60)],
@@ -198,7 +198,7 @@ func _updates(orqwa: OrqwaApp, dialog: SettingsDialog, main: Control) -> void:
 	_check(offer.ok_button_text == "Open the release page", "elsewhere, its page")
 	offer.hide()
 	offer.offer("99.0.0", "https://example.org/v99.0.0", true)
-	_check(offer.ok_button_text == "Update now", "on Windows, installed by Torqa")
+	_check(offer.ok_button_text == "Update now", "on Windows, installed by ORQWA")
 	offer.hide()
 	var start: StartPage = main.get_node("StartPage")
 	start.hide()
@@ -220,7 +220,7 @@ func _in_german(dialog: SettingsDialog) -> void:
 	var about_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(2))
 	_check(graphics == "Grafik", "Graphics in German: %s" % graphics)
 	_check(courses_title == "Routen", "Courses in German: %s" % courses_title)
-	_check(about_title == "Über Torqa", "About in German: %s" % about_title)
+	_check(about_title == "Über ORQWA", "About in German: %s" % about_title)
 	_check(dialog.atr(dialog.title) == "Einstellungen", "titled: %s" % dialog.atr(dialog.title))
 	var about: AboutPage = dialog.get("_about")
 	var parts: ItemList = about.get("_parts")

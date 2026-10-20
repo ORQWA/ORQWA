@@ -4,7 +4,7 @@
 //! characteristic, and from then on notifies the state of both buttons whenever it changes,
 //! about ten times a second while a button is held. No key exchange, no pairing, no unlock.
 //!
-//! The unit only tells whether a button is down. Torqa makes the presses of a Di2 out of that
+//! The unit only tells whether a button is down. ORQWA makes the presses of a Di2 out of that
 //! (#139): a hold once the button has been down for [`HOLD`], else a press when it is let go.
 //! There is no double press, so a tap shifts the moment the button comes up.
 //!

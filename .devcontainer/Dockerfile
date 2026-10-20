@@ -1,4 +1,4 @@
-# Torqa development container: everything needed to build, lint and test lives here.
+# ORQWA development container: everything needed to build, lint and test lives here.
 FROM rust:1.99.0-trixie
 
 ARG GODOT_VERSION=4.7.2

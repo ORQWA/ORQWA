@@ -128,7 +128,7 @@ if ! $godot; then
 fi
 
 # Godot checks: the extension loads, all scripts compile (warnings are errors) and the
-# Torqa node API works end to end.
+# ORQWA node API works end to end.
 "$root/scripts/build-gdext.sh" debug
 godot --headless --path "$root/app" --import >/dev/null 2>&1 || true
 
@@ -145,7 +145,7 @@ run_godot() {
 }
 # Capture first: in a pipeline, sh would only see grep's exit status.
 main_output="$(run_godot --quit-after 10)"
-echo "$main_output" | grep -q "^Torqa "
+echo "$main_output" | grep -q "^ORQWA "
 echo "Main scene smoke test passed"
 ride_output="$(run_godot -s res://tests/ride_smoke.gd)"
 echo "$ride_output" | grep "RIDE SMOKE TEST PASSED"

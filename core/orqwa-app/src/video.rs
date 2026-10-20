@@ -16,7 +16,7 @@ use orqwa_session::ghost::Ghost;
 use orqwa_video::audio::{Audio, Stereo, Stretcher};
 use orqwa_video::{Frame, Video, gps_track, gpx_from_track, incyclist, tacx};
 
-/// File extensions of the videos Torqa reads directly (GoPro and similar).
+/// File extensions of the videos ORQWA reads directly (GoPro and similar).
 pub const VIDEO_EXTENSIONS: [&str; 4] = ["mp4", "mov", "m4v", "mkv"];
 
 /// What a video course is prepared from.

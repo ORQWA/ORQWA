@@ -229,7 +229,7 @@ class PublicationTests(unittest.TestCase):
 
 class PullRequestTests(unittest.TestCase):
     def test_create_update_and_close_existing_pr(self):
-        api = GitHub("Torqa-Indoor-Cycling/Torqa", "unused-test-token")
+        api = GitHub("ORQWA/ORQWA", "unused-test-token")
         with patch.object(api, "request", return_value=[]) as request:
             api.reconcile_pr(True, "Review")
             self.assertEqual(request.call_args.args[:2], ("POST", "pulls"))

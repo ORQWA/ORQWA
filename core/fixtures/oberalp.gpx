@@ -4,7 +4,7 @@
      alongside, three road tunnels, the Oberalpsee drawn by the planner through the lake
      (#166), the summit tunnel, Tschamut, Sedrun and Disentis. Elevations are the planner's.
      Route geometry from OpenStreetMap via Komoot, (c) OpenStreetMap contributors, ODbL 1.0. -->
-<gpx version="1.1" creator="Torqa test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+<gpx version="1.1" creator="ORQWA test fixture" xmlns="http://www.topografix.com/GPX/1/1">
   <metadata><name>Oberalp</name></metadata>
   <trk><trkseg>
     <trkpt lat="46.637567" lon="8.592943"><ele>1435.1</ele></trkpt>

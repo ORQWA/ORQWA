@@ -31,7 +31,7 @@ def ancestor(path, before, after):
 
 
 def identity(path):
-    git(path, "config", "user.name", "Torqa wiki automation")
+    git(path, "config", "user.name", "ORQWA wiki automation")
     git(path, "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
 
 
@@ -94,9 +94,10 @@ class GitHub:
             self.request("POST", "pulls", {**data, "head": SYNC_BRANCH, "base": "main"})
 
 
-# The wiki's home, and where it was before the repository moved (a main from before the move
-# still names it; GitHub redirects).
+# The wiki's home, and where it was before the repository moved and was renamed (a main from
+# before still names them; GitHub redirects).
 WIKI_REMOTES = (
+    "https://github.com/ORQWA/ORQWA.wiki.git",
     "https://github.com/Torqa-Indoor-Cycling/Torqa.wiki.git",
     "https://github.com/bossm8/Torqa.wiki.git",
 )
@@ -168,7 +169,7 @@ def publish(application_remote, api):
 
 
 if __name__ == "__main__":
-    repository = os.environ.get("GITHUB_REPOSITORY", "Torqa-Indoor-Cycling/Torqa")
+    repository = os.environ.get("GITHUB_REPOSITORY", "ORQWA/ORQWA")
     token = os.environ.get("GH_TOKEN")
     if not token:
         raise SystemExit("Pass the workflow's automatic GitHub token in GH_TOKEN")

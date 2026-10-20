@@ -1,6 +1,6 @@
 ---
 name: orqwa-physics
-description: Change or tune how Torqa's rider moves — the ride simulation (speed from power, grade sent to the trainer) in orqwa-physics, and the rider and bike motion in the 3D world (pitch, lean into bends, standing on the pedals, rock, sway, pedalling) — and check it end to end with tick traces and tests. Use for anything that changes how fast the rider goes or how rider and bike move on screen.
+description: Change or tune how ORQWA's rider moves — the ride simulation (speed from power, grade sent to the trainer) in orqwa-physics, and the rider and bike motion in the 3D world (pitch, lean into bends, standing on the pedals, rock, sway, pedalling) — and check it end to end with tick traces and tests. Use for anything that changes how fast the rider goes or how rider and bike move on screen.
 ---
 
 # Physics

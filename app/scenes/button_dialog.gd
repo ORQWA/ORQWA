@@ -88,7 +88,7 @@ func bind(orqwa: OrqwaApp) -> void:
 ## assignments as the core has them.
 func open(model: String, device_name: String) -> void:
 	_model = model
-	# A shifter by its own name; the remote is Torqa's.
+	# A shifter by its own name; the remote is ORQWA's.
 	title = (
 		tr("What the remote's buttons do")
 		if model == PHONE_REMOTE

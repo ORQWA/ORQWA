@@ -4,7 +4,7 @@
 //! which a sync client may fetch on demand (R30). The ride files stay the source of truth: the
 //! index knows each metadata file by its size and modification time, reads one again when that
 //! changed (a rename, an upload, a rebuild), forgets rides whose files are gone, and is built
-//! afresh when it is missing or from another version of Torqa. What it has read in this
+//! afresh when it is missing or from another version of ORQWA. What it has read in this
 //! session it keeps in memory, so a second look costs one `stat` per ride.
 
 use std::collections::{HashMap, HashSet};
@@ -136,7 +136,7 @@ impl HistoryIndex {
     }
 
     /// The record the index holds for `fit`, if its metadata file is still as indexed. A
-    /// record this Torqa cannot read (a newer format) counts as unknown.
+    /// record this ORQWA cannot read (a newer format) counts as unknown.
     fn stored(&self, fit: &Path, state: FileState) -> Result<Option<RideRecord>, IndexError> {
         let text: Option<String> = self
             .connection
@@ -263,12 +263,12 @@ mod tests {
         let file = dir.join("cache").join(FILE);
         let gurten = ride(
             &dir,
-            "torqa-20260301-100000",
+            "orqwa-20260301-100000",
             &record("Gurten", 1_700_000_000),
         );
         let moron = ride(
             &dir,
-            "torqa-20260302-100000",
+            "orqwa-20260302-100000",
             &record("Moron", 1_700_100_000),
         );
         let reads = Cell::new(0);
@@ -298,12 +298,12 @@ mod tests {
         let file = dir.join("cache").join(FILE);
         let gurten = ride(
             &dir,
-            "torqa-20260301-100000",
+            "orqwa-20260301-100000",
             &record("Gurten", 1_700_000_000),
         );
         let moron = ride(
             &dir,
-            "torqa-20260302-100000",
+            "orqwa-20260302-100000",
             &record("Moron", 1_700_100_000),
         );
         let reads = Cell::new(0);
@@ -333,7 +333,7 @@ mod tests {
     fn a_ride_that_cannot_be_read_is_left_out_and_asked_for_again() {
         let dir = temp_dir("unreadable");
         let file = dir.join("cache").join(FILE);
-        let fit = dir.join("rides").join("torqa-20260301-100000.fit");
+        let fit = dir.join("rides").join("orqwa-20260301-100000.fit");
         std::fs::write(&fit, b"fit").unwrap();
         let reads = Cell::new(0);
         let mut index = HistoryIndex::open(&file).unwrap();
@@ -376,7 +376,7 @@ mod tests {
         }
         ride(
             &dir,
-            "torqa-20260301-100000",
+            "orqwa-20260301-100000",
             &record("Gurten", 1_700_000_000),
         );
         let reads = Cell::new(0);

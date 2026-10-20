@@ -12,8 +12,8 @@ enum Tab { COURSES, WORKOUTS, HISTORY, ANALYSIS, PROFILE, DEVICES }
 
 ## Where the wordmark's letters sit in its drawing (its viewBox): their baseline is this share
 ## of its height above the bottom, the middle of their capitals this share above the baseline.
-const WORDMARK_DESCENT: float = 58.0 / 184.0
-const WORDMARK_CAP_MIDDLE: float = 53.0 / 184.0
+const WORDMARK_DESCENT: float = 21.0 / 141.0
+const WORDMARK_CAP_MIDDLE: float = 50.0 / 141.0
 
 var _orqwa: OrqwaApp
 var _tabs: TabContainer = TabContainer.new()

@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless end-to-end check of the Torqa node API: load a route, save it as a course, ride it
+## Headless end-to-end check of the ORQWA node API: load a route, save it as a course, ride it
 ## with the fake trainer, save a FIT file and reopen the course.
 ## Run: godot --headless --path app -s res://tests/ride_smoke.gd
 
@@ -37,7 +37,7 @@ func _run() -> void:
 	var flat_s: float = flat_estimate["time_s"]
 	_check(flat_s >= estimated_s, "flat descents: %s" % flat_estimate)
 	await _wait_for(_orqwa.world_ready)
-	# A world kept from an older Torqa may name models this one no longer has (R101).
+	# A world kept from an older ORQWA may name models this one no longer has (R101).
 	var unknown: Array = [
 		BuildingModels.mesh("gone"), VegetationModels.mesh("gone"), PropModels.mesh("gone")
 	]

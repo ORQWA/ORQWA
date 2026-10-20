@@ -1,6 +1,6 @@
 //! Shimano Di2 over Bluetooth (12-speed Di2, or the EW-WU111 wireless unit): the D-Fly
 //! channels. In E-TUBE the hood buttons (or any switch) are assigned to channels 1–4; the
-//! unit indicates each press, which Torqa turns into shifts and other controls (R7, #139).
+//! unit indicates each press, which ORQWA turns into shifts and other controls (R7, #139).
 //!
 //! The service and its button characteristic sit in Shimano's own UUID base, which spells
 //! `SHIMANO_BLE`. The unit must be paired before it sends the presses.

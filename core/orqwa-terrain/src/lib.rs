@@ -1,4 +1,4 @@
-//! Elevation data for Torqa (R12, later the 3D terrain in R16).
+//! Elevation data for ORQWA (R12, later the 3D terrain in R16).
 //!
 //! Heights come from Terrarium-encoded raster tiles in Web Mercator. Tiles are downloaded from
 //! the first [`TileSource`] that has them and cached on disk, so a route prepared online can be
@@ -56,9 +56,9 @@ impl Terrain {
     pub fn new(sources: Vec<TileSource>, cache_dir: PathBuf) -> Self {
         let client = reqwest::Client::builder()
             .user_agent(concat!(
-                "Torqa/",
+                "ORQWA/",
                 env!("CARGO_PKG_VERSION"),
-                " (+https://github.com/Torqa-Indoor-Cycling/Torqa)"
+                " (+https://github.com/ORQWA/ORQWA)"
             ))
             .timeout(Duration::from_secs(20))
             .build()

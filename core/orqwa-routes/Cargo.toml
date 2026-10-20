@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-routes"
-description = "Route import, elevation correction and gradient lookup for Torqa"
+description = "Route import, elevation correction and gradient lookup for ORQWA"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

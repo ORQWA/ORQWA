@@ -1,7 +1,7 @@
 class_name UpdateDialog
 extends ConfirmationDialog
-## Offers a newer Torqa (R99): on Windows it downloads the installer, closes Torqa and installs
-## it, Torqa starting again when done; elsewhere it opens the release page. Shown only outside
+## Offers a newer ORQWA (R99): on Windows it downloads the installer, closes ORQWA and installs
+## it, ORQWA starting again when done; elsewhere it opens the release page. Shown only outside
 ## rides; the rider's rides and settings stay as they are.
 
 var _orqwa: OrqwaApp
@@ -34,7 +34,7 @@ func bind(orqwa: OrqwaApp) -> void:
 	_orqwa.update_failed.connect(_on_failed)
 
 
-## Shows the newer `version`, its release `page`, and whether Torqa can install it itself.
+## Shows the newer `version`, its release `page`, and whether ORQWA can install it itself.
 func offer(version: String, page: String, installable: bool) -> void:
 	_version = version
 	_page = page
@@ -45,9 +45,9 @@ func offer(version: String, page: String, installable: bool) -> void:
 
 
 func _show_offer() -> void:
-	var text: String = tr("Torqa %s is available; you have %s.") % [_version, OrqwaCore.version()]
+	var text: String = tr("ORQWA %s is available; you have %s.") % [_version, OrqwaCore.version()]
 	if _installable:
-		text += " " + tr("Torqa downloads it, closes and installs it, then starts again.")
+		text += " " + tr("ORQWA downloads it, closes and installs it, then starts again.")
 		text += " " + tr("Your rides and settings stay as they are.")
 		ok_button_text = tr("Update now")
 	else:
@@ -67,7 +67,7 @@ func _on_confirmed() -> void:
 		return
 	_downloading = true
 	get_ok_button().disabled = true
-	dialog_text = tr("Downloading Torqa %s…") % _version
+	dialog_text = tr("Downloading ORQWA %s…") % _version
 
 
 func _on_custom_action(action: StringName) -> void:
@@ -78,8 +78,8 @@ func _on_custom_action(action: StringName) -> void:
 func _on_downloaded() -> void:
 	if not _downloading:
 		return
-	dialog_text = tr("Installing Torqa %s…") % _version
-	# The installer replaces Torqa's files only once it has closed.
+	dialog_text = tr("Installing ORQWA %s…") % _version
+	# The installer replaces ORQWA's files only once it has closed.
 	if _orqwa.install_update():
 		get_tree().quit()
 		return

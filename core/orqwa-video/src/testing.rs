@@ -1,4 +1,4 @@
-//! Test videos for Torqa's own tests (feature `testing`): small MPEG-4 videos generated on the
+//! Test videos for ORQWA's own tests (feature `testing`): small MPEG-4 videos generated on the
 //! fly, optionally with a GoPro-style GPS metadata track, so no sample footage is needed.
 
 // Fixtures: a failure to build a test video is a broken test environment, so they panic.

@@ -1,7 +1,7 @@
 """Adds what only the Android build needs to its copy of the project (ADR 0024): the extension's
-Android library, Android's texture formats, Torqa's Android plugin and the Android preset.
+Android library, Android's texture formats, ORQWA's Android plugin and the Android preset.
 And the version of rustls-platform-verifier's Java part that matches the crate in Cargo.lock,
-and Torqa's version from Cargo.toml as the APK's: Android installs an update only over a lower
+and ORQWA's version from Cargo.toml as the APK's: Android installs an update only over a lower
 version code.
 Usage: stage.py <copied app folder> <android/godot/export_preset.cfg> <core/Cargo.lock>
     <core/Cargo.toml>"""

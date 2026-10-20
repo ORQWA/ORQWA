@@ -196,7 +196,7 @@ impl App {
     }
 
     /// Forgets rider `rider`'s account on `platform` and, in the background, withdraws
-    /// Torqa's access where the platform keeps a grant for it.
+    /// ORQWA's access where the platform keeps a grant for it.
     ///
     /// # Errors
     /// [`AppError::Reported`] if the accounts cannot be read or written.
@@ -214,7 +214,7 @@ impl App {
         Ok(())
     }
 
-    /// Withdraws Torqa's access to all of rider `rider`'s accounts in the background, as the
+    /// Withdraws ORQWA's access to all of rider `rider`'s accounts in the background, as the
     /// rider is deleted.
     pub(crate) fn revoke_accounts(&mut self, rider: &str) {
         let stored = accounts::load(&self.data_dir, rider).unwrap_or_default();
@@ -416,7 +416,7 @@ impl App {
             .collect()
     }
 
-    /// The platform's name for the rider; its id if Torqa does not know it.
+    /// The platform's name for the rider; its id if ORQWA does not know it.
     fn platform_name<'a>(&self, platform: &'a str) -> &'a str {
         self.uploader(platform)
             .map_or(platform, |uploader| uploader.name())
@@ -908,7 +908,7 @@ mod tests {
 
     /// A ride of the active rider, named `name`.
     fn ride(app: &App, name: Option<&str>) -> PathBuf {
-        ride_at(app, "torqa-20261012-071500", name)
+        ride_at(app, "orqwa-20261012-071500", name)
     }
 
     /// A ride of the active rider in `stem.fit`, named `name`.
@@ -1127,7 +1127,7 @@ mod tests {
         let sent = fake.received()[0].clone();
         assert_eq!(sent.name, "Gurten · Mon 12 Oct");
         assert_eq!(sent.fit, b"FIT activity");
-        assert_eq!(sent.external_id, "torqa-20261012-071500");
+        assert_eq!(sent.external_id, "orqwa-20261012-071500");
         let uploads = &app.history()[0].record.uploads;
         assert_eq!(uploads["fake"].url, "https://fake.example/a1");
         std::fs::remove_dir_all(dir).unwrap();
@@ -1281,8 +1281,8 @@ mod tests {
     fn uploads_take_turns_so_a_renewed_token_is_never_stale() {
         let (mut app, fake, dir) = app("turns");
         connect(&mut app, "good");
-        let first = ride_at(&app, "torqa-20261012-071500", None);
-        let second = ride_at(&app, "torqa-20261012-181500", None);
+        let first = ride_at(&app, "orqwa-20261012-071500", None);
+        let second = ride_at(&app, "orqwa-20261012-181500", None);
 
         app.upload_ride(&first, "fake", "First").unwrap();
         app.upload_ride(&second, "fake", "Second").unwrap();
@@ -1425,7 +1425,7 @@ mod failure_tests {
         let failure = upload_failure(&key, "intervals.icu", false);
         assert_eq!(failure.kind, Kind::ConnectAccount);
         assert_eq!(failure.args, ["intervals.icu", "copy the API key again."]);
-        let cancelled = UploadError::Rejected("You did not let Torqa in.".to_owned());
+        let cancelled = UploadError::Rejected("You did not let ORQWA in.".to_owned());
         assert_eq!(
             upload_failure(&cancelled, "Strava", false).kind,
             Kind::ConnectAccount

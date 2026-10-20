@@ -1,4 +1,4 @@
-//! Core domain types and plugin interfaces of Torqa.
+//! Core domain types and plugin interfaces of ORQWA.
 
 pub mod battery;
 pub mod files;
@@ -11,9 +11,9 @@ pub mod upload;
 pub mod workout;
 
 /// Human-readable application name.
-pub const APP_NAME: &str = "Torqa";
+pub const APP_NAME: &str = "ORQWA";
 
-/// Version of the Torqa core.
+/// Version of the ORQWA core.
 #[must_use]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")

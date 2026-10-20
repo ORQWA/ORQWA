@@ -210,7 +210,7 @@ async fn the_page_speaks_the_riders_language_shows_the_logo_and_loads_nothing_fr
             page.contains(r#"class="wordmark" aria-hidden="true""#),
             "and its wordmark"
         );
-        assert!(!page.contains("<title id="), "the header says Torqa once");
+        assert!(!page.contains("<title id="), "the header says ORQWA once");
         assert!(page.contains("Content-Security-Policy: default-src 'none';"));
         assert!(page.contains("Referrer-Policy: no-referrer"));
     }

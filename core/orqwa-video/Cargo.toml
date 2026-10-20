@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-video"
-description = "Video decoding for Torqa's video ride mode, built on FFmpeg"
+description = "Video decoding for ORQWA's video ride mode, built on FFmpeg"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

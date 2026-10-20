@@ -1,4 +1,4 @@
-//! The core's log (`tracing`) on standard error, so that problems show in the terminal Torqa
+//! The core's log (`tracing`) on standard error, so that problems show in the terminal ORQWA
 //! was started from (or Godot's output when run from the editor) — without it, warnings such
 //! as a video that cannot be decoded would go nowhere.
 
@@ -9,7 +9,7 @@ use tracing::span::{Attributes, Id, Record};
 use tracing::{Event, Level, Metadata, Subscriber};
 
 /// Writes events at info level and above (debug on Android) as
-/// `Torqa WARN target: message key=value`.
+/// `ORQWA WARN target: message key=value`.
 pub struct StderrLog;
 
 impl Subscriber for StderrLog {
@@ -33,7 +33,7 @@ impl Subscriber for StderrLog {
 
     fn event(&self, event: &Event<'_>) {
         let metadata = event.metadata();
-        let mut line = format!("Torqa {} {}:", metadata.level(), metadata.target());
+        let mut line = format!("ORQWA {} {}:", metadata.level(), metadata.target());
         event.record(&mut Line(&mut line));
         #[cfg(target_os = "android")]
         orqwa_devices::android::log(&line);

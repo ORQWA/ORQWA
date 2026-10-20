@@ -1,6 +1,6 @@
 //! Uploading rides to training platforms (R4, R29) behind the [`ActivityUploader`] plugin
 //! interface. Each platform decides what it keeps about a rider's account (an API key, the
-//! tokens of a login) as [`Credentials`]; Torqa stores them per rider as given and hands them
+//! tokens of a login) as [`Credentials`]; ORQWA stores them per rider as given and hands them
 //! back for every upload, so a new platform needs no change outside its uploader. Platforms
 //! the rider logs in to on their website get the rider's [`Browser`].
 
@@ -23,7 +23,7 @@ pub struct Activity {
     pub fit: Vec<u8>,
     /// Its name on the platform (R50): FIT files carry none.
     pub name: String,
-    /// Torqa's own id for it, so a platform can tell a second upload of the same ride.
+    /// ORQWA's own id for it, so a platform can tell a second upload of the same ride.
     pub external_id: String,
 }
 
@@ -46,7 +46,7 @@ pub struct Account {
 }
 
 /// A workout on the rider's calendar at a platform that holds their plan, for one day (R81).
-/// The plan stays the platform's: Torqa reads the day's workouts and rides one, and keeps
+/// The plan stays the platform's: ORQWA reads the day's workouts and rides one, and keeps
 /// nothing of it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlannedWorkout {
@@ -54,7 +54,7 @@ pub struct PlannedWorkout {
     pub id: String,
     /// Its name on the calendar.
     pub name: String,
-    /// The workout as a ZWO file, for Torqa's parser; `None` for a planned ride without steps.
+    /// The workout as a ZWO file, for ORQWA's parser; `None` for a planned ride without steps.
     pub zwo: Option<Vec<u8>>,
 }
 
@@ -149,14 +149,14 @@ pub trait ActivityUploader: Send + Sync {
         activity: &'a Activity,
     ) -> BoxFuture<'a, Result<Uploaded, UploadError>>;
 
-    /// Withdraws Torqa's access to the account with `credentials` where the platform keeps a
+    /// Withdraws ORQWA's access to the account with `credentials` where the platform keeps a
     /// grant for it, as the rider disconnects it; best effort.
     fn disconnect<'a>(&'a self, credentials: &'a Credentials) -> BoxFuture<'a, ()> {
         let _ = credentials;
         Box::pin(async {})
     }
 
-    /// Whether the platform keeps the rider's training plan, so Torqa can ask for a day's
+    /// Whether the platform keeps the rider's training plan, so ORQWA can ask for a day's
     /// workouts (R81). Most only take rides.
     fn holds_plan(&self) -> bool {
         false

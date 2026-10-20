@@ -530,7 +530,7 @@ mod tests {
                 path: PathBuf::from(format!("/courses/{name}.tqc")),
                 manifest: Manifest {
                     format: 1,
-                    generator: "Torqa test".to_owned(),
+                    generator: "ORQWA test".to_owned(),
                     name: name.to_owned(),
                     length_m: km * KM,
                     elevation_gain_m: gain_m,

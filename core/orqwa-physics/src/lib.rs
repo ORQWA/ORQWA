@@ -1,4 +1,4 @@
-//! Cycling physics for Torqa (R13–R15): how fast the virtual rider moves for a given power,
+//! Cycling physics for ORQWA (R13–R15): how fast the virtual rider moves for a given power,
 //! and which gradient the trainer should simulate.
 //!
 //! Forces on the rider: `P·η / v = m·g·sin θ + m·g·Crr·cos θ + ½·ρ·CdA·v_air² + m·a`.

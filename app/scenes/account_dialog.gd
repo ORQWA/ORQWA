@@ -124,8 +124,8 @@ func _on_confirmed() -> void:
 	_set_connecting(true)
 	_show_status(tr("Checking…"), UiTheme.MUTED)
 	# What the browser shows after a login.
-	var connected_page: String = tr("Torqa is connected. You can close this page.")
-	var failed_page: String = tr("Torqa could not connect. Go back to Torqa to try again.")
+	var connected_page: String = tr("ORQWA is connected. You can close this page.")
+	var failed_page: String = tr("ORQWA could not connect. Go back to ORQWA to try again.")
 	if not _orqwa.connect_account(_rider, _platform, entered, connected_page, failed_page):
 		_set_connecting(false)
 		_show_status(tr("Cannot connect."), UiTheme.DANGER)
@@ -138,7 +138,7 @@ func _on_open_url(url: String) -> void:
 	OS.shell_open(url)
 	_show_status(
 		(
-			tr("Log in to %s in your browser and let Torqa upload your rides. Then come back here.")
+			tr("Log in to %s in your browser and let ORQWA upload your rides. Then come back here.")
 			% _platform_name
 		),
 		UiTheme.MUTED

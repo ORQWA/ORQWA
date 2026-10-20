@@ -1,4 +1,4 @@
-//! Routes for Torqa: GPX import (R11), elevation correction and smoothing (R12) and position,
+//! Routes for ORQWA: GPX import (R11), elevation correction and smoothing (R12) and position,
 //! elevation and gradient lookup along the route.
 
 pub mod climbs;

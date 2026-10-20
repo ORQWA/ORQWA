@@ -25,7 +25,7 @@ var _path: String = ""
 ## Waiting for this course's route, or for its world after Ride.
 var _loading_route: bool = false
 var _building: bool = false
-## Building the world again in place of one kept from an older Torqa (R101), not to ride yet.
+## Building the world again in place of one kept from an older ORQWA (R101), not to ride yet.
 var _regenerating: bool = false
 var _regenerate: Button = Button.new()
 var _title: EditableTitle = EditableTitle.new(tr("Edit the course's name and video"), false)
@@ -116,7 +116,7 @@ func build() -> void:
 	_show_building()
 
 
-## Builds the world kept from an older Torqa again with this one (R101); the rider rides after.
+## Builds the world kept from an older ORQWA again with this one (R101); the rider rides after.
 func _regenerate_world() -> void:
 	if not _orqwa.regenerate_world():
 		return
@@ -196,10 +196,10 @@ func _init() -> void:
 	_loading_bar.max_value = 1.0
 	_loading_bar.show_percentage = false
 	_loading_bar.custom_minimum_size = Vector2(0, 8)
-	# A world kept from an older Torqa is ridden as it is until the rider has it built again.
+	# A world kept from an older ORQWA is ridden as it is until the rider has it built again.
 	_regenerate.text = tr("Regenerate world")
 	_regenerate.tooltip_text = tr(
-		"Its 3D world was kept from an older Torqa: build it with this one"
+		"Its 3D world was kept from an older ORQWA: build it with this one"
 	)
 	_regenerate.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_regenerate.pressed.connect(_regenerate_world)

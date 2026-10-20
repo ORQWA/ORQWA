@@ -315,7 +315,7 @@ func _picked_files() -> void:
 		+ "primary%3ADownload%2FRide.gpx"
 	)
 	_check(PickedFile.name_of(address) == "Ride.gpx", "a content address shows its file name")
-	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in Torqa's folder")
+	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in ORQWA's folder")
 
 
 ## The captions of a three-column options grid whose rows show.

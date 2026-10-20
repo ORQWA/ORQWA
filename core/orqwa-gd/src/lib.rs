@@ -1,4 +1,4 @@
-//! Godot GDExtension bindings exposing the Torqa core to the presentation layer.
+//! Godot GDExtension bindings exposing the ORQWA core to the presentation layer.
 //!
 //! This crate only translates between Godot types and [`orqwa_app`]; it holds no logic.
 
@@ -40,14 +40,14 @@ struct OrqwaExtension;
 #[gdextension]
 unsafe impl ExtensionLibrary for OrqwaExtension {}
 
-/// Static information about the Torqa core.
+/// Static information about the ORQWA core.
 #[derive(GodotClass)]
 #[class(base = RefCounted, init)]
 pub struct OrqwaCore;
 
 #[godot_api]
 impl OrqwaCore {
-    /// Version of the Torqa core.
+    /// Version of the ORQWA core.
     #[func]
     fn version() -> GString {
         GString::from(orqwa_domain::version())
@@ -60,13 +60,13 @@ impl OrqwaCore {
         GString::from(COMMIT)
     }
 
-    /// Where Torqa's source code is.
+    /// Where ORQWA's source code is.
     #[func]
     fn source_url() -> GString {
         GString::from(orqwa_app::about::SOURCE)
     }
 
-    /// The licence notices of Torqa and of everything built into the app, in the order to list
+    /// The licence notices of ORQWA and of everything built into the app, in the order to list
     /// them (R83): `[{part, text}]`, `part` one of `orqwa`, `godot`, `ffmpeg`, `crates` and
     /// `assets`.
     #[func]
@@ -130,7 +130,7 @@ fn engine_credits() -> orqwa_app::about::EngineCredits {
     }
 }
 
-/// The Torqa application as a node: add it to the scene tree, call its commands and listen to
+/// The ORQWA application as a node: add it to the scene tree, call its commands and listen to
 /// its signals. It advances rides in `_process`.
 #[derive(GodotClass)]
 #[class(base = Node)]
@@ -158,7 +158,7 @@ impl INode for OrqwaApp {
                     }
                 })
                 .inspect_err(|error| {
-                    godot_error!("Torqa: {error}");
+                    godot_error!("ORQWA: {error}");
                     startup_failure = Some(Failure::new(Kind::Runtime, error));
                 })
                 .ok()
@@ -172,7 +172,7 @@ impl INode for OrqwaApp {
     }
 
     fn ready(&mut self) {
-        // Courses from before Torqa knew countries, or prepared offline, learn them (#230).
+        // Courses from before ORQWA knew countries, or prepared offline, learn them (#230).
         if let Some(app) = self.app.as_mut() {
             app.fill_in_countries(false);
             // Courses deleted on another computer, or an update, may leave kept worlds no
@@ -298,12 +298,12 @@ impl OrqwaApp {
     #[signal]
     fn open_url(url: GString);
 
-    /// Torqa `version` was released, its notes at `page` (R99); `installable` when
+    /// ORQWA `version` was released, its notes at `page` (R99); `installable` when
     /// `download_update` and `install_update` can put it in place, else the rider gets the page.
     #[signal]
     fn update_available(version: GString, page: GString, installable: bool);
 
-    /// The rider asked, and Torqa is the newest version.
+    /// The rider asked, and ORQWA is the newest version.
     #[signal]
     fn up_to_date();
 
@@ -646,7 +646,7 @@ impl OrqwaApp {
         self.app.as_mut().is_some_and(App::build_world)
     }
 
-    /// Builds the loaded course's world again with this Torqa, in place of the one kept from an
+    /// Builds the loaded course's world again with this ORQWA, in place of the one kept from an
     /// older one (R101); emits `world_ready` like `build_world`. False if no library course is
     /// loaded.
     #[func]
@@ -654,7 +654,7 @@ impl OrqwaApp {
         self.app.as_mut().is_some_and(App::regenerate_world)
     }
 
-    /// Whether the course at `path` has a world kept that an older Torqa built, which
+    /// Whether the course at `path` has a world kept that an older ORQWA built, which
     /// `regenerate_world` builds again (R101).
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
@@ -1625,13 +1625,13 @@ impl OrqwaApp {
         self.command(|app| app.set_fullscreen(fullscreen));
     }
 
-    /// Whether this computer looks for a newer Torqa at start-up (R99).
+    /// Whether this computer looks for a newer ORQWA at start-up (R99).
     #[func]
     fn checks_for_updates(&self) -> bool {
         self.app.as_ref().is_some_and(App::checks_for_updates)
     }
 
-    /// Turns looking for a newer Torqa at start-up on or off for this computer.
+    /// Turns looking for a newer ORQWA at start-up on or off for this computer.
     #[func]
     fn set_checks_for_updates(&mut self, on: bool) {
         self.command(|app| app.set_checks_for_updates(on));
@@ -1659,7 +1659,7 @@ impl OrqwaApp {
         })
     }
 
-    /// Looks for a newer Torqa in the background (R99): at start-up (`asked` false) only if
+    /// Looks for a newer ORQWA in the background (R99): at start-up (`asked` false) only if
     /// this computer does, telling only a newer version; when the rider `asked`, also
     /// `up_to_date` or `update_failed`. Never during a ride. Whether it looks.
     #[func]
@@ -3824,7 +3824,7 @@ mod sample_course_tests {
     }
 }
 
-/// Android loads Torqa's library from Java first (ADR 0024: the APK's plugin does, before Godot
+/// Android loads ORQWA's library from Java first (ADR 0024: the APK's plugin does, before Godot
 /// opens it as an extension), on a thread with the app's class loader: the one moment Bluetooth
 /// can find btleplug's Java classes.
 #[cfg(target_os = "android")]

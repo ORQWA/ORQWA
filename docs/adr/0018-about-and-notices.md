@@ -22,12 +22,12 @@ checkout. Only the leaf crate rebuilds on a new commit.
 
 **Crate notices.** cargo-about (in the dev container, like cargo-deny) writes them from the
 crates' own licence files with `core/about.toml` and `core/about.hbs`, for the extension's
-dependency graph on all four release targets, without build and dev dependencies or Torqa's
+dependency graph on all four release targets, without build and dev dependencies or ORQWA's
 own crates. The result, `core/orqwa-app/notices/crates.txt`, is committed: release builds run
 on the native CI runners, which do not have cargo-about. `scripts/notices.sh` regenerates it;
 `scripts/check.sh` runs it with `--check`, so a dependency change without new notices fails CI.
 
-**The other notices** live in `orqwa_app::about`: Torqa's `LICENSE` and FFmpeg's LGPL 2.1
+**The other notices** live in `orqwa_app::about`: ORQWA's `LICENSE` and FFmpeg's LGPL 2.1
 (taken from its release's `COPYING.LGPLv2.1`) embedded with `include_str!`, the models' and
 data's credits, and Godot's licence and components as the running engine reports them
 (`Engine.get_license_text`, `get_copyright_info`, `get_license_info`). `OrqwaCore.notices()`
@@ -53,6 +53,6 @@ tagging it (docs/development.md).
 
 ## Amendment 2026-10-19: the Windows `.exe`'s version
 
-The Windows `.exe` now carries Torqa's icon, name and version instead of the Godot template's.
+The Windows `.exe` now carries ORQWA's icon, name and version instead of the Godot template's.
 Its file and product versions take four numbers, so the preset holds the version with a fourth
 0 (`0.3.0.0`); `scripts/release/version.py` checks and sets them with the macOS bundle's.

@@ -23,7 +23,7 @@ pub struct SampleRidesArgs {
     /// How many weeks of rides, up to today.
     #[arg(long, default_value_t = 16)]
     weeks: u32,
-    /// The data directory to write to (default: Torqa's).
+    /// The data directory to write to (default: ORQWA's).
     #[arg(long)]
     data_dir: Option<PathBuf>,
 }
@@ -108,7 +108,7 @@ pub fn write(args: &SampleRidesArgs) -> Result<()> {
     Ok(())
 }
 
-/// The rider Torqa starts with: the active one, else the first, else a new default rider.
+/// The rider ORQWA starts with: the active one, else the first, else a new default rider.
 fn rider(data_dir: &Path) -> Result<(String, Profile)> {
     let listed = profiles::list(data_dir);
     if let Some(found) = profiles::active(data_dir)

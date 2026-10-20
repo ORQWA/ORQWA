@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-# The repository's home first, then the owner it moved from: GitHub redirects links to the
-# latter and older wiki revisions carry them, so both pass; new links use the home.
-OWNERS = ("Torqa-Indoor-Cycling/Torqa", "bossm8/Torqa")
+# The repository's home first, then the names it had before: GitHub redirects links to them
+# and older wiki revisions carry them, so they pass; new links use the home.
+OWNERS = ("ORQWA/ORQWA", "Torqa-Indoor-Cycling/Torqa", "bossm8/Torqa")
 WIKI_URLS = tuple(f"https://github.com/{owner}/wiki" for owner in OWNERS)
 REPO_URLS = tuple(f"https://github.com/{owner}/blob/main/" for owner in OWNERS)
 RAW_URLS = tuple(f"https://raw.githubusercontent.com/{owner}/main/" for owner in OWNERS)
@@ -56,7 +56,7 @@ def check(root):
             elif link.startswith(REPO_URLS):
                 target = root / unquote(parsed.path.split("/blob/main/", 1)[1])
             elif link.startswith(RAW_URLS):
-                target = root / unquote(parsed.path.split("/Torqa/main/", 1)[1])
+                target = root / unquote(parsed.path.split("/main/", 1)[1])
             elif not parsed.scheme:
                 target = path if not parsed.path else wiki / unquote(parsed.path)
                 if parsed.path:

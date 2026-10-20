@@ -1,4 +1,4 @@
-//! 3D world geometry for Torqa (R16): terrain chunks in a corridor around the route, coloured
+//! 3D world geometry for ORQWA (R16): terrain chunks in a corridor around the route, coloured
 //! by land cover, with buildings and trees from OpenStreetMap, rivers, and the road.
 //!
 //! Coordinates follow Godot: metres with x east, y up and z south (−z is north), relative to

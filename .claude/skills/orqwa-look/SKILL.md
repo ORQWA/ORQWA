@@ -1,11 +1,11 @@
 ---
 name: orqwa-look
-description: Torqa's art direction — as realistic as possible (since 2026-10-18, ADR 0020; replaces the faceted pastel low-poly look) — real proportions, smooth shading, physically based materials and light, textures baked from procedural Blender materials or CC0 scans. Use for any visual work on the 3D world or riders — shaders in app/shaders, colours and geometry from core/orqwa-world, Blender models and textures in art/, lighting, sky, weather, quality presets — and whenever judging a screenshot or render.
+description: ORQWA's art direction — as realistic as possible (since 2026-10-18, ADR 0020; replaces the faceted pastel low-poly look) — real proportions, smooth shading, physically based materials and light, textures baked from procedural Blender materials or CC0 scans. Use for any visual work on the 3D world or riders — shaders in app/shaders, colours and geometry from core/orqwa-world, Blender models and textures in art/, lighting, sky, weather, quality presets — and whenever judging a screenshot or render.
 ---
 
-# Torqa's look
+# ORQWA's look
 
-Torqa's 3D world and riders are to look **as realistic as possible**: the real place — its
+ORQWA's 3D world and riders are to look **as realistic as possible**: the real place — its
 terrain, roads and buildings — with real proportions, smooth shading and physically based
 materials and light, like a modern cycling simulator, as far as open, scripted assets reach.
 The decision (user, 2026-10-18) replaces the faceted pastel diorama of ADR 0011 completely; no

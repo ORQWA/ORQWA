@@ -1,6 +1,6 @@
 class_name RideWorld
 extends Node3D
-## The 3D world: terrain and road from Torqa, a rider following the ride state and cameras.
+## The 3D world: terrain and road from ORQWA, a rider following the ride state and cameras.
 
 enum CameraMode { CHASE, FIRST_PERSON, DRONE }
 

@@ -44,7 +44,7 @@ static func mesh(name: String) -> Mesh:
 	if _meshes.has(name):
 		return _meshes[name]
 	var path: String = DIRECTORY + name + ".glb"
-	# A world kept from an older Torqa may name a model this one no longer has (R101): it is
+	# A world kept from an older ORQWA may name a model this one no longer has (R101): it is
 	# left out rather than breaking its chunk.
 	if not ResourceLoader.exists(path):
 		return null

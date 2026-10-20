@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-physics"
-description = "Cycling physics for Torqa: virtual speed from power, gradient and drag"
+description = "Cycling physics for ORQWA: virtual speed from power, gradient and drag"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

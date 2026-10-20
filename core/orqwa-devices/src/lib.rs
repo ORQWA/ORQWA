@@ -1,4 +1,4 @@
-//! Trainer and sensor drivers for Torqa.
+//! Trainer and sensor drivers for ORQWA.
 //!
 //! Every device — Bluetooth trainer, power meter, cadence sensor, heart-rate strap, shifter or
 //! the fake trainer — is driven by a background task and exposed through the same

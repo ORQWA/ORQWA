@@ -57,7 +57,7 @@ pub fn save(data_dir: &Path, id: &str, accounts: &Accounts) -> Result<(), Profil
     #[cfg(unix)]
     std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
     let mut file = options.open(&partial)?;
-    // A partial file left by an older Torqa keeps its mode on open.
+    // A partial file left by an older ORQWA keeps its mode on open.
     #[cfg(unix)]
     std::fs::set_permissions(
         &partial,

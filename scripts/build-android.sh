@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-# Builds the Android APK (ADR 0024) in the Android container: Torqa's core for 64-bit ARM, the
-# project copied to a build folder with what only Android needs (its export preset, Torqa's
-# Android plugin and Godot's Android build), exported to dist/Torqa-android-arm64.apk.
+# Builds the Android APK (ADR 0024) in the Android container: ORQWA's core for 64-bit ARM, the
+# project copied to a build folder with what only Android needs (its export preset, ORQWA's
+# Android plugin and Godot's Android build), exported to dist/ORQWA-android-arm64.apk.
 # The project itself stays as it is: Android's texture formats alone would re-import every
 # texture into the committed .import files.
 # Usage: scripts/android.sh scripts/build-android.sh [debug|release]
@@ -19,7 +19,7 @@ case "$profile" in
     *) echo "usage: $0 [debug|release]" >&2; exit 1 ;;
 esac
 
-# Torqa's core, with FFmpeg as the image builds it for Android and bindgen reading Android's
+# ORQWA's core, with FFmpeg as the image builds it for Android and bindgen reading Android's
 # headers. API 24 (Android 7) is the oldest Godot's Android build supports.
 # shellcheck disable=SC2086 # cargo_flags is intentionally empty or a single flag
 FFMPEG_DIR=/opt/ffmpeg-android \
@@ -33,7 +33,7 @@ FFMPEG_DIR=/opt/ffmpeg-android \
 rm -rf "$stage"
 mkdir -p "$stage/app"
 # The project without its import cache and the desktop libraries; the editor exporting it needs
-# this system's extension to load Torqa's classes.
+# this system's extension to load ORQWA's classes.
 tar -C "$root/app" --exclude=./.godot --exclude=./bin --exclude=./android -cf - . |
     tar -C "$stage/app" -xf -
 "$root/scripts/build-gdext.sh" release >/dev/null
@@ -45,7 +45,7 @@ cp -r "$root/android/godot/addons" "$stage/app/"
 python3 "$root/android/stage.py" "$stage/app" "$root/android/godot/export_preset.cfg" \
     "$root/core/Cargo.lock" "$root/core/Cargo.toml"
 
-# Godot's Android build, then Torqa's plugin built with its Gradle, btleplug's Java sources
+# Godot's Android build, then ORQWA's plugin built with its Gradle, btleplug's Java sources
 # taken from the crate cargo built.
 # What the editor's "Install Android Build Template" does, without the editor that stays open.
 mkdir -p "$stage/app/android/build"
@@ -67,7 +67,7 @@ cp "$stage/plugin/build/outputs/aar/orqwa-android-release.aar" \
 
 godot --headless --path "$stage/app" --import >/dev/null 2>&1 || true
 mkdir -p "$root/dist"
-apk="$root/dist/Torqa-android-arm64.apk"
+apk="$root/dist/ORQWA-android-arm64.apk"
 rm -f "$apk"
 # With the release key (CI, for tagged releases: ADR 0024), the APK riders install. Without it the
 # debug key, as Android Studio keeps one per developer: in the Gradle volume, not the image, so a

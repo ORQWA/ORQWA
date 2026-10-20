@@ -1,5 +1,5 @@
 //! ISO 3166-1 country codes: the vector tiles name the countries on either side of a border by
-//! their three-letter code, their labels and Torqa by the two-letter one.
+//! their three-letter code, their labels and ORQWA by the two-letter one.
 //!
 //! From Debian's iso-codes (`data/iso_3166-1.json`), plus Kosovo's `XKX`, which
 //! OpenStreetMap uses where ISO has no code.

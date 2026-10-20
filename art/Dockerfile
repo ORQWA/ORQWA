@@ -1,4 +1,4 @@
-# Torqa art container: headless Blender for the scripted models (ADR 0009). Blender publishes
+# ORQWA art container: headless Blender for the scripted models (ADR 0009). Blender publishes
 # Linux builds for x86-64 only, so this image is x86-64; on Apple Silicon Docker runs it
 # emulated, which scripted modelling tolerates well.
 FROM --platform=linux/amd64 debian:13.7-slim

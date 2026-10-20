@@ -1,8 +1,8 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scenes/start_page.gd" id="1_start"]
-[ext_resource type="Texture2D" path="res://assets/brand/torqa-logo-dark.svg" id="2_logo"]
-[ext_resource type="Texture2D" path="res://assets/brand/torqa-wordmark-dark.svg" id="3_wordmark"]
+[ext_resource type="Texture2D" path="res://assets/brand/orqwa-logo-dark.svg" id="2_logo"]
+[ext_resource type="Texture2D" path="res://assets/brand/orqwa-wordmark-dark.svg" id="3_wordmark"]
 
 [node name="StartPage" type="Control"]
 layout_mode = 3
@@ -55,7 +55,7 @@ stretch_mode = 4
 
 [node name="Wordmark" type="TextureRect" parent="Margin/Rows/Header"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(75, 28)
+custom_minimum_size = Vector2(112, 20)
 layout_mode = 2
 size_flags_vertical = 8
 texture = ExtResource("3_wordmark")

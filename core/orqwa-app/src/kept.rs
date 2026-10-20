@@ -93,7 +93,7 @@ impl Keeper {
         self.tidy();
     }
 
-    /// Drops the worlds of courses gone from the library and those this Torqa cannot read, or
+    /// Drops the worlds of courses gone from the library and those this ORQWA cannot read, or
     /// all of them once keeping them is turned off.
     pub(crate) fn tidy(&self) {
         let tidied = if computer::keep_worlds(&self.computer) {
@@ -164,7 +164,7 @@ impl App {
             })
     }
 
-    /// Builds the world of the course loaded again with this Torqa's generator, in place of the
+    /// Builds the world of the course loaded again with this ORQWA's generator, in place of the
     /// one kept (R101): the kept one is deleted, and the course opened anew and its world built
     /// and kept as for a ride, reported by [`AppEvent::WorldReady`](crate::AppEvent::WorldReady).
     /// False if no library course is loaded.
@@ -183,7 +183,7 @@ impl App {
     }
 
     /// Drops, in the background, the kept worlds of courses gone from the library (also on
-    /// another computer sharing it) and those this Torqa cannot read, or all once keeping them
+    /// another computer sharing it) and those this ORQWA cannot read, or all once keeping them
     /// is off.
     pub fn tidy_kept_worlds(&self) {
         let keeper = self.keeper();

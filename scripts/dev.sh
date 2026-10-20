@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Runs a command inside the Torqa dev container (same image as the VS Code devcontainer),
+# Runs a command inside the ORQWA dev container (same image as the VS Code devcontainer),
 # for use outside VS Code. Example: scripts/dev.sh scripts/check.sh
 set -eu
 

@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-storage"
-description = "Storage for Torqa: FIT export, course files, rider profiles and their accounts, the history index"
+description = "Storage for ORQWA: FIT export, course files, rider profiles and their accounts, the history index"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

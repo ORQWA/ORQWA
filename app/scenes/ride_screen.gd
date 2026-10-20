@@ -93,7 +93,7 @@ func bind(orqwa: OrqwaApp, world: RideWorld) -> void:
 	_orqwa.device_disconnected.connect(_on_device_disconnected)
 	_orqwa.remembered_missing.connect(_on_remembered_missing)
 	_settings_dialog.bind(_orqwa)
-	# Deferred: the handler calls back into Torqa, which is still busy emitting the signal.
+	# Deferred: the handler calls back into ORQWA, which is still busy emitting the signal.
 	_orqwa.ride_finished.connect(_on_ride_finished, CONNECT_DEFERRED)
 	_orqwa.ride_saved.connect(_on_ride_saved)
 	_orqwa.climb_completed.connect(_on_climb_completed)

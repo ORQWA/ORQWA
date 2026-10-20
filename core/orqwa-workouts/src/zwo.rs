@@ -264,7 +264,7 @@ pub fn write(plan: &Plan, ftp: Watts) -> String {
         Intensity::Watts(watts) => watts.0 / ftp.0.max(1.0),
     };
     let mut xml = String::from("<workout_file>\n");
-    let _ = writeln!(xml, "    <author>Torqa</author>");
+    let _ = writeln!(xml, "    <author>ORQWA</author>");
     let _ = writeln!(xml, "    <name>{}</name>", escape(&plan.name));
     let _ = writeln!(
         xml,

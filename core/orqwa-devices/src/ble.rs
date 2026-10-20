@@ -541,7 +541,7 @@ impl Driver {
                 None
             }
             DeviceKind::Controller if self.device.model == Some(ControllerModel::ZwiftClick) => {
-                // A button down when the link dropped is let go of as far as Torqa knows.
+                // A button down when the link dropped is let go of as far as ORQWA knows.
                 self.click = zwift_click::Buttons::default();
                 self.start_zwift_click(peripheral).await?;
                 None
@@ -828,7 +828,7 @@ impl Driver {
             debug!(device = %name, "Click session started");
         } else {
             // An old firmware answers the handshake with its key for an encrypted session,
-            // which Torqa does not speak (ADR 0003).
+            // which ORQWA does not speak (ADR 0003).
             warn!(device = %name, ?value, "unexpected Click handshake answer");
         }
     }

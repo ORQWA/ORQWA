@@ -18,7 +18,7 @@ pair, and whether the right Click v2 pod tells its level at all.
 
 The macOS app is only signed ad hoc and the Windows `.exe` not at all, so Gatekeeper and
 SmartScreen stop riders on the first start of every download (the wiki's Getting started says
-how to get past them), and Windows' Smart App Control blocks Torqa outright. To decide:
+how to get past them), and Windows' Smart App Control blocks ORQWA outright. To decide:
 
 - **macOS:** only a Developer ID with notarization avoids it, and that needs the Apple
   Developer Program (US$99 a year). Apple waives it for nonprofits, schools and governments, not

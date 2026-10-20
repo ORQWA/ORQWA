@@ -1,8 +1,8 @@
 # Skills
 
-Agent skills for working on Torqa (Claude Code loads them from here when a task matches).
+Agent skills for working on ORQWA (Claude Code loads them from here when a task matches).
 
-Torqa's own:
+ORQWA's own:
 
 - `orqwa-look` — the art direction: as realistic as possible (ADR 0020), replacing the
   faceted pastel look.
@@ -16,7 +16,7 @@ Torqa's own:
 
 Imported unchanged from [ra100/blender-claude-plugin](https://github.com/ra100/blender-claude-plugin)
 at commit `78e9151`, MIT licence (`LICENSE` in each folder), for Blender 5.x. Their "MCP-first"
-advice does not apply here; Torqa runs Blender headless (see `orqwa-art-pipeline`):
+advice does not apply here; ORQWA runs Blender headless (see `orqwa-art-pipeline`):
 
 - `blender-python-scripting`, `blender-modeling-modifiers`, `blender-animation-rigging`,
   `blender-scene-rendering`, `blender-geometry-nodes`.

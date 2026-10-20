@@ -1,9 +1,9 @@
 ---
 name: orqwa-art-pipeline
-description: How Torqa makes 3D models and textures — scripted Blender (5.2 LTS, headless, in the x86-64 art container), models exported as .glb into app/assets/models with a manifest the Rust world reads and material names the Godot side styles, tileable PBR textures baked from procedural materials, quick Cycles previews (ADR 0009, ADR 0020). Use when creating or changing anything under art/, app/assets/models/, app/assets/textures/, the model loaders (app/scenes/*_models.gd) or the model shaders, and when bringing in third-party (CC0) bases such as rider bodies.
+description: How ORQWA makes 3D models and textures — scripted Blender (5.2 LTS, headless, in the x86-64 art container), models exported as .glb into app/assets/models with a manifest the Rust world reads and material names the Godot side styles, tileable PBR textures baked from procedural materials, quick Cycles previews (ADR 0009, ADR 0020). Use when creating or changing anything under art/, app/assets/models/, app/assets/textures/, the model loaders (app/scenes/*_models.gd) or the model shaders, and when bringing in third-party (CC0) bases such as rider bodies.
 ---
 
-# Torqa's art pipeline
+# ORQWA's art pipeline
 
 Models are **Blender Python scripts** (the source of truth) plus the **exported `.glb` files**
 (committed, so the app builds without Blender). Look and colours follow the `orqwa-look` skill.
@@ -187,7 +187,7 @@ differ); `cargo test -p orqwa-remote` checks the tracks are there.
 - Allowed: own work, CC0, CC-BY, CC-BY-SA (ADR 0009). Not: NC, ND, engine-locked, Mixamo.
 - Check the licence at the source (the page, not a re-upload) and record it before using.
 - Keep the untouched original under `art/sources/<name>/` with `LICENSE` or `SOURCE.md` (URL,
-  author, licence, date); the script derives the Torqa model from it, so changes stay
+  author, licence, date); the script derives the ORQWA model from it, so changes stay
   reviewable and repeatable.
 - List every third-party asset in `docs/CREDITS.md`.
 

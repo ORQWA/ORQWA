@@ -1,16 +1,16 @@
 class_name AboutPage
 extends VBoxContainer
-## What Torqa is, on the settings' About tab (R83): its version and the commit it is built
+## What ORQWA is, on the settings' About tab (R83): its version and the commit it is built
 ## from, whether a newer one is out (R99), its licence and where its source code is, and the
 ## licence notices of everything built into the app, each with its full text.
 
-const LOGO: Texture2D = preload("res://assets/brand/torqa-logo-dark.svg")
-const WORDMARK: Texture2D = preload("res://assets/brand/torqa-wordmark-dark.svg")
+const LOGO: Texture2D = preload("res://assets/brand/orqwa-logo-dark.svg")
+const WORDMARK: Texture2D = preload("res://assets/brand/orqwa-wordmark-dark.svg")
 
 var _version: Label = Label.new()
 var _copy: Button = Button.new()
 var _orqwa: OrqwaApp
-## Looking for a newer Torqa at start-up, on this computer (R99), and right now.
+## Looking for a newer ORQWA at start-up, on this computer (R99), and right now.
 var _check_at_start: CheckBox = CheckBox.new()
 var _check_now: Button = Button.new()
 var _update_status: Label = Label.new()
@@ -27,7 +27,7 @@ func _init() -> void:
 	add_theme_constant_override("separation", 12)
 	var brand: HBoxContainer = HBoxContainer.new()
 	brand.add_theme_constant_override("separation", 12)
-	for image: Array in [[LOGO, Vector2(40, 40)], [WORDMARK, Vector2(84, 32)]]:
+	for image: Array in [[LOGO, Vector2(40, 40)], [WORDMARK, Vector2(140, 32)]]:
 		var texture: TextureRect = TextureRect.new()
 		texture.texture = image[0]
 		texture.custom_minimum_size = image[1]
@@ -96,11 +96,11 @@ func _init() -> void:
 func bind(orqwa: OrqwaApp) -> void:
 	_orqwa = orqwa
 	_check_at_start.set_pressed_no_signal(orqwa.checks_for_updates())
-	orqwa.up_to_date.connect(func() -> void: _update_status.text = tr("Torqa is up to date."))
+	orqwa.up_to_date.connect(func() -> void: _update_status.text = tr("ORQWA is up to date."))
 	orqwa.update_failed.connect(func(message: String) -> void: _update_status.text = message)
 	orqwa.update_available.connect(
 		func(version: String, _page: String, _installable: bool) -> void:
-			_update_status.text = tr("Torqa %s is available.") % version
+			_update_status.text = tr("ORQWA %s is available.") % version
 	)
 
 
@@ -122,9 +122,9 @@ func _translate() -> void:
 		_version.text = tr("Version %s, commit %s") % [OrqwaCore.version(), commit]
 	_copy.text = tr("Copy")
 	_copy.tooltip_text = tr("Copy the version, e.g. for a bug report")
-	_check_at_start.text = tr("Look for updates when Torqa starts")
+	_check_at_start.text = tr("Look for updates when ORQWA starts")
 	_check_now.text = tr("Check for updates")
-	_free.text = tr("Torqa is free software under the GNU General Public License, version 3:")
+	_free.text = tr("ORQWA is free software under the GNU General Public License, version 3:")
 	var selected: PackedInt32Array = _parts.get_selected_items()
 	_parts.clear()
 	for notice: Dictionary in _notices:
@@ -137,7 +137,7 @@ func _translate() -> void:
 func _title(part: String) -> String:
 	match part:
 		"orqwa":
-			return "Torqa"
+			return "ORQWA"
 		"godot":
 			return "Godot Engine"
 		"ffmpeg":
@@ -156,12 +156,12 @@ func _show_notice(index: int) -> void:
 	_notice.scroll_vertical = 0
 
 
-## What the Copy button puts on the clipboard: Torqa's version and commit, Godot's and the
+## What the Copy button puts on the clipboard: ORQWA's version and commit, Godot's and the
 ## system's, as a bug report asks for them.
 func _version_report() -> String:
 	var commit: String = OrqwaCore.commit()
 	var orqwa: String = OrqwaCore.version() + ("" if commit.is_empty() else " (%s)" % commit)
 	return (
-		"Torqa %s, Godot %s, %s %s"
+		"ORQWA %s, Godot %s, %s %s"
 		% [orqwa, Engine.get_version_info()["string"], OS.get_name(), OS.get_version()]
 	)

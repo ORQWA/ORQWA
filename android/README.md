@@ -1,16 +1,16 @@
 # Android (ADR 0024)
 
-Torqa as an APK for Android tablets, built in a container of its own so the dev image and the
+ORQWA as an APK for Android tablets, built in a container of its own so the dev image and the
 checks stay as they are.
 
 ```sh
-scripts/android.sh scripts/build-android.sh      # → dist/Torqa-android-arm64.apk (debug-signed)
+scripts/android.sh scripts/build-android.sh      # → dist/ORQWA-android-arm64.apk (debug-signed)
 ```
 
 | Part | What it is |
 |---|---|
 | `Dockerfile` | The Android image: the dev image plus OpenJDK 21, the SDK (platform 36, build tools 36.1.0), the NDK, FFmpeg for Android and Godot's Android templates. The debug key is made once and kept in the `orqwa-gradle` volume, so updates install over the APK on a device |
-| `plugin/` | Torqa's Godot Android plugin: loads Torqa's library early so btleplug finds its Java classes (compiled in from the btleplug crate), asks for Bluetooth |
+| `plugin/` | ORQWA's Godot Android plugin: loads ORQWA's library early so btleplug finds its Java classes (compiled in from the btleplug crate), asks for Bluetooth |
 | `godot/` | What only the APK build adds to its copy of the project: the export preset and the editor addon that puts the plugin into the export |
 | `stage.py` | Adds those, the extension's Android library and Android's texture formats to the copy |
 
@@ -22,8 +22,8 @@ the container first.
 With wireless debugging paired (`adb pair`, then `adb connect <address>`):
 
 ```sh
-adb install -r dist/Torqa-android-arm64.apk
-adb logcat -s Torqa godot
+adb install -r dist/ORQWA-android-arm64.apk
+adb logcat -s ORQWA godot
 ```
 
 ## Release signing

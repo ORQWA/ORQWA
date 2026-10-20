@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-update"
-description = "Finding a newer Torqa release and installing it (R99, ADR 0023)"
+description = "Finding a newer ORQWA release and installing it (R99, ADR 0023)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

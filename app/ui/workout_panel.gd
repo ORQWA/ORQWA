@@ -113,6 +113,6 @@ func _show_progress(progress: Variant) -> void:
 	_step.text = line
 	_step.show()
 	var cue: String = info["cue"]
-	# The FTP tests' messages are Torqa's own; a workout file's stay as their author wrote them.
+	# The FTP tests' messages are ORQWA's own; a workout file's stay as their author wrote them.
 	_cue.text = tr(cue) if not cue.is_empty() else ""
 	_cue.visible = not cue.is_empty()

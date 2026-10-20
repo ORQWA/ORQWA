@@ -1,8 +1,8 @@
 extends Control
-## Root scene: owns the Torqa node and switches between the start page, the ride, the overlay
+## Root scene: owns the ORQWA node and switches between the start page, the ride, the overlay
 ## (R55) and the ride summary.
 
-## Torqa's Android plugin (ADR 0024), for picture-in-picture, which Godot's Android activity
+## ORQWA's Android plugin (ADR 0024), for picture-in-picture, which Godot's Android activity
 ## already allows.
 const ANDROID: StringName = &"OrqwaAndroid"
 
@@ -14,7 +14,7 @@ var _overlay: OverlayWindow
 var _opaque: ColorRect = ColorRect.new()
 var _failures: FailureDetails = FailureDetails.new()
 var _update: UpdateDialog = UpdateDialog.new()
-## A newer Torqa found during a ride, offered once back on the start page (R99).
+## A newer ORQWA found during a ride, offered once back on the start page (R99).
 var _pending_update: Array = []
 ## On Android: the ride's HUD shows in a small window on top of other apps.
 var _picture_in_picture: bool = false
@@ -29,7 +29,7 @@ var _clear_color: Color = Color()
 
 func _ready() -> void:
 	var commit: String = OrqwaCore.commit()
-	print("Torqa %s" % OrqwaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
+	print("ORQWA %s" % OrqwaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
 	UiScale.apply(get_window())
 	UiScale.size_new(get_window())
 	theme = UiTheme.build()
@@ -193,7 +193,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## F11, or Alt+Enter, fills the screen or puts Torqa back in a window (#218), from any page.
+## F11, or Alt+Enter, fills the screen or puts ORQWA back in a window (#218), from any page.
 func _shortcut_input(event: InputEvent) -> void:
 	var key: InputEventKey = event as InputEventKey
 	if key == null or not key.pressed or key.echo:
@@ -245,7 +245,7 @@ func _back_home() -> void:
 		_pending_update = []
 
 
-## A newer Torqa: offered on the start page, or after the ride (R99).
+## A newer ORQWA: offered on the start page, or after the ride (R99).
 func _on_update_available(version: String, page: String, installable: bool) -> void:
 	if _start.visible:
 		_offer_update(version, page, installable)

@@ -115,7 +115,7 @@ func _uploads() -> void:
 
 	var history: HistoryScreen = main.get_node("HistoryScreen")
 	var ride: Dictionary = {
-		"path": "/nowhere/torqa-20261012-071500.fit",
+		"path": "/nowhere/orqwa-20261012-071500.fit",
 		"name": "Morning loop",
 		"route": "Gurten",
 		"start_unix_s": 0,
@@ -160,10 +160,10 @@ func _uploads() -> void:
 	)
 	# Connecting again says why it is needed.
 	var strava: Dictionary = orqwa.accounts("nobody-yet")[1]
-	reconnecting.open("nobody-yet", strava, "Strava no longer lets Torqa in.")
+	reconnecting.open("nobody-yet", strava, "Strava no longer lets ORQWA in.")
 	var why: Label = reconnecting.get("_status")
 	_check(
-		reconnecting.visible and why.visible and why.text == "Strava no longer lets Torqa in.",
+		reconnecting.visible and why.visible and why.text == "Strava no longer lets ORQWA in.",
 		"connecting again says why: %s" % why.text
 	)
 	reconnecting.hide()

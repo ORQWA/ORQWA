@@ -1,4 +1,4 @@
-# Torqa — Architecture & Plan
+# ORQWA — Architecture & Plan
 
 See [REQUIREMENTS.md](REQUIREMENTS.md) for requirement IDs and [adr/](adr/) for decisions.
 
@@ -30,7 +30,7 @@ core/                      Rust workspace (tokio + tracing)
                            a ShiftInput
                            (ADR 0019)
   orqwa-update/            a newer release on GitHub, its Windows installer downloaded and
-                           started over Torqa (ADR 0023)
+                           started over ORQWA (ADR 0023)
   orqwa-app/               application layer: commands + update() per frame for front ends,
                            the analysis across a rider's rides
   orqwa-gd/                gdext bindings (OrqwaApp node), the sample course (R95)
@@ -94,7 +94,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   GPX course by its start and end marks.
 - **Development environment**: everything runs in Docker / devcontainer. Docker on macOS has no
   Bluetooth or Metal, so macOS builds come from GitHub Actions macOS runners and only the
-  portable Godot editor and built Torqa app run natively.
+  portable Godot editor and built ORQWA app run natively.
 
 ## Roadmap
 
@@ -112,7 +112,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   after v0.2.0 shipped saying 0.1.0 (ADR 0018 amendment); `make release-version VERSION=<version>`
   sets it in all of them and in `core/Cargo.lock`
 - [x] Windows installer and updates (R99, ADR 0023):
-  - [x] `Torqa-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
+  - [x] `ORQWA-windows-x86_64.msi` (WiX v7) on every release: Program Files, Start menu,
     uninstall, upgrade in place; installed and uninstalled once in CI, installed by hand
   - [x] Update check at start-up in released builds (Settings → About turns it off and checks
     now), offered on the start page or after the ride; Windows downloads and installs the new
@@ -251,9 +251,9 @@ Built in rideable steps:
   - [x] The remote (R86, #228, ADR 0019): a page on the local network (`orqwa-remote`)
     that a phone's or tablet's browser opens from a QR code, its ten buttons (two big) doing what the
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the
-    Torqa logo; off until turned on under Devices, a secret token in its address, a new
+    ORQWA logo; off until turned on under Devices, a secret token in its address, a new
     address to lock out those paired before; **not yet tried on a real phone or tablet**
-  - [x] A TV remote between rides (R87): a pad of arrows, OK and Back goes through Torqa's
+  - [x] A TV remote between rides (R87): a pad of arrows, OK and Back goes through ORQWA's
     screens to start a course or workout, a held Finish & save ends a ride, and a focus ring
     shows where keyboard and remote are (Escape goes back too)
   - [x] The remote keeps the screen on (R88): an unseen silent clip, muted for Chrome and
@@ -282,7 +282,7 @@ Built in rideable steps:
   - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth FTMS only
 - [x] Windows and Linux builds from CI (Linux x86_64 and arm64 on Ubuntu 22.04, ADR 0012)
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
-- [x] Windows `.exe` with the app icon, Torqa's name and version, as on macOS, rather than the
+- [x] Windows `.exe` with the app icon, ORQWA's name and version, as on macOS, rather than the
   Godot template's (taskbar, Explorer, Task Manager); CI fails a build that keeps them
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)
@@ -331,7 +331,7 @@ Built in rideable steps:
 - [x] The ride chart draws cadence too; clicking a legend key hides or shows its line (R73)
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
 - [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Settings → Graphics;
-  the choice is kept and Torqa starts that way
+  the choice is kept and ORQWA starts that way
 - [x] The overlay's place is each rider's, graphics quality and full screen this computer's
   (R78, #257): kept next to the cache, out of the synced data folder, carried over once
 - [x] The devices are each rider's (R82): remembered devices, cadence source and shifter
@@ -341,7 +341,7 @@ Built in rideable steps:
   used last that a scan misses is no longer forgotten
 - [x] Settings behind a cog at the top right of the start page (R83): Graphics (quality, full
   screen) moved from the devices tab, now Devices; About with the version, the commit
-  (`build.rs`) and the licence notices of Torqa, Godot, FFmpeg, every Rust crate (cargo-about,
+  (`build.rs`) and the licence notices of ORQWA, Godot, FFmpeg, every Rust crate (cargo-about,
   checked to be current) and others' models and data (ADR 0018)
 - [x] Each shifter model has its own button assignments (R84): a Di2's channels no longer
   change a Click's + and −; the assignments kept for every shifter before stay each model's
@@ -585,7 +585,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   and the FTP tests; an FTP estimated from the last 90 days' best efforts (Morton's
   three-parameter critical power, else 95 % of 20 min) offered, never applied
 - **Exit:** a season of real rides shows where the rider got stronger, and how fit and fresh
-  they are, without leaving Torqa
+  they are, without leaving ORQWA
 
 ### Phase 12 — Android tablets (R100, [ADR 0024](adr/0024-android.md))
 - [x] A — trial: a separate Android image, the core for `aarch64-linux-android`, a Godot
@@ -606,16 +606,19 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
     the update check offers the release page
   - [x] touch: Godot turns taps into clicks, enough to ride
 - [x] D — a release-signed APK as a release asset (tags only, the key from the repository
-  secrets; version code from Torqa's version), the wiki (installing, permissions, updates,
+  secrets; version code from ORQWA's version), the wiki (installing, permissions, updates,
   picture-in-picture); the internet list is unchanged
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
-### The name ORQWA
+### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
 "Torqa" is taken by another registered app; the project becomes ORQWA (orca and watt).
 - [x] Code identifiers: crates `orqwa-*`, `OrqwaApp` and the extension `orqwa_gd`, `ORQWA_*`
   variables, the Android plugin, the dev image and volumes, the skills
-- [ ] The app named ORQWA: the wordmark, Torqa's folders moved to ORQWA's on the first start,
-  installer, bundle ids and release files, docs, wiki and screenshots
+- [x] The app named ORQWA: the wordmark (`scripts/brand/wordmark.py`), Torqa's folders moved to
+  ORQWA's on the first start, installer, `org.orqwa.bike`, release files, docs, wiki and
+  screenshots
+- [ ] Drop the release asset `Torqa-windows-x86_64.msi` (`scripts/release/publish.sh`) once
+  riders have moved past Torqa 0.5.0
 
 ## Risks
 

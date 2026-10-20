@@ -1,5 +1,5 @@
 //! Logging the rider in on a platform's website (OAuth 2.0 authorization code, RFC 6749)
-//! without a server of Torqa's: for the login only, Torqa listens on the loopback address at
+//! without a server of ORQWA's: for the login only, ORQWA listens on the loopback address at
 //! a free port, and the platform sends the browser back there (RFC 8252). The `state` ties
 //! the answer to the request. Access tokens are renewed shortly before they expire, and
 //! disconnecting revokes the grant (RFC 7009).
@@ -109,7 +109,7 @@ where
         Ok(_) => page(&browser.connected_page, ""),
         Err(error) => page(&browser.failed_page, &error.to_string()),
     };
-    // The browser may have gone; the rider sees the outcome in Torqa anyway.
+    // The browser may have gone; the rider sees the outcome in ORQWA anyway.
     let _ = reply(&mut socket, "200 OK", "text/html; charset=utf-8", &page).await;
     result
 }
@@ -145,7 +145,7 @@ async fn come_back(
             ))
         } else if let Some(error) = get("error") {
             Err(UploadError::Rejected(if error == "access_denied" {
-                "You did not let Torqa in.".to_owned()
+                "You did not let ORQWA in.".to_owned()
             } else {
                 format!("The login failed ({error}).")
             }))
@@ -202,11 +202,11 @@ fn page(text: &str, why: &str) -> String {
         format!("<p class=\"why\">{}</p>", escape(why))
     };
     format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>Torqa</title><style>\
+        "<!doctype html><html><head><meta charset=\"utf-8\"><title>ORQWA</title><style>\
          body{{font-family:system-ui,sans-serif;background:#111318;color:#f0f2f7;\
          display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}\
          main{{max-width:34rem;padding:2rem;text-align:center;line-height:1.5}}\
-         .why{{color:#a3adbd}}</style></head><body><main><h1>Torqa</h1><p>{}</p>{why}\
+         .why{{color:#a3adbd}}</style></head><body><main><h1>ORQWA</h1><p>{}</p>{why}\
          </main></body></html>",
         escape(text)
     )
@@ -249,7 +249,7 @@ pub async fn request_tokens(
         .map_err(|e| cannot_reach(platform, &e))?;
     if status.is_client_error() {
         return Err(UploadError::Unauthorized(format!(
-            "{platform} no longer lets Torqa in: {} ({status}).",
+            "{platform} no longer lets ORQWA in: {} ({status}).",
             describe(&text)
         )));
     }
@@ -304,7 +304,7 @@ pub async fn revoke(platform: &str, url: &str, client_id: &str, client_secret: &
             .map_err(|e| UploadError::Rejected(e.to_string()))
     };
     if let Err(error) = sent.await {
-        tracing::warn!(%error, platform, "cannot revoke Torqa's access");
+        tracing::warn!(%error, platform, "cannot revoke ORQWA's access");
     }
 }
 

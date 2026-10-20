@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-cli"
-description = "Headless command-line interface to the Torqa core"
+description = "Headless command-line interface to the ORQWA core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

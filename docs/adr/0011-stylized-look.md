@@ -6,7 +6,7 @@
 
 ## Context
 
-Torqa's world aimed at MyWhoosh-level realism (R44): photo textures, PBR ground, realistic
+ORQWA's world aimed at MyWhoosh-level realism (R44): photo textures, PBR ground, realistic
 trees, a MakeHuman/MPFB2 rider. Realism in an open, zero-budget project needs a lot of assets of
 high quality, and every gap shows; the user's verdict after the first realistic buildings and
 textures was to change direction. They chose two references:
@@ -37,7 +37,7 @@ Decisions (user, 2026-10-05):
   app gives them flat palette colours.
 - **Pipeline unchanged otherwise** (ADR 0009): Blender scripts are the source, `.glb` files are
   committed, Blender runs headless in the art container. MPFB2 is dropped: its humans are
-  realistic. Riders come from Torqa's own scripts and from CC0 stylized bases kept untouched
+  realistic. Riders come from ORQWA's own scripts and from CC0 stylized bases kept untouched
   under `art/sources/`, with the scripts deriving the faceted riders from them.
 - **Performance.** Flat shading and few, simple shaders free GPU time. Quality presets keep
   their names; they mostly vary shadows, ambient occlusion, view distance and the amount of

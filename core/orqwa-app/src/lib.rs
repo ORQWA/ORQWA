@@ -1,4 +1,4 @@
-//! The Torqa application layer: devices, routes, the ride engine and storage behind a simple,
+//! The ORQWA application layer: devices, routes, the ride engine and storage behind a simple,
 //! frame-driven API. Front ends (the Godot app, tests) call commands and [`App::update`] once per
 //! frame; all asynchronous work runs on an internal runtime, so callers never block or await.
 
@@ -392,16 +392,16 @@ pub enum AppEvent {
     },
     /// A page to show the rider in their browser, e.g. a platform's login.
     OpenUrl(String),
-    /// A newer Torqa was released (R99).
+    /// A newer ORQWA was released (R99).
     UpdateAvailable {
         /// Its version, e.g. `0.5.0`.
         version: String,
         /// Its release page, with what changed.
         page: String,
-        /// Whether Torqa can download and install it itself; else the rider gets the page.
+        /// Whether ORQWA can download and install it itself; else the rider gets the page.
         installable: bool,
     },
-    /// The rider asked, and Torqa is the newest version.
+    /// The rider asked, and ORQWA is the newest version.
     UpToDate,
     /// The update's installer is downloaded, ready to install.
     UpdateDownloaded,
@@ -861,7 +861,7 @@ impl App {
         Ok(id)
     }
 
-    /// Deletes a rider with their rides, withdrawing Torqa's access to their accounts on
+    /// Deletes a rider with their rides, withdrawing ORQWA's access to their accounts on
     /// training platforms (R29); deleting the active one switches to the first rider left.
     ///
     /// # Errors
@@ -1341,7 +1341,7 @@ impl App {
             .map_or_else(|| name.clone(), |n| n.name.clone());
         let manifest = Manifest {
             format: course::FORMAT_VERSION,
-            generator: format!("Torqa {}", orqwa_domain::version()),
+            generator: format!("ORQWA {}", orqwa_domain::version()),
             name: name.clone(),
             length_m: route.length().0,
             elevation_gain_m: route.elevation_gain().0,
@@ -1679,7 +1679,7 @@ impl App {
     }
 
     /// Looks up in the background the countries of the courses that do not know them yet
-    /// (#230): those prepared before Torqa knew countries, offline, or while the map tiles were
+    /// (#230): those prepared before ORQWA knew countries, offline, or while the map tiles were
     /// out of reach. Each course's file learns its countries as they are found, and
     /// [`AppEvent::CoursesChanged`] follows once all were looked up. `offline` uses cached map
     /// tiles only. Does nothing while a lookup is under way.
@@ -2692,7 +2692,7 @@ impl App {
     /// Adds a workout file (ZWO, ERG, MRC or FIT) to the library; returns its id.
     ///
     /// # Errors
-    /// [`AppError::Reported`] if it is no workout Torqa understands or cannot be copied.
+    /// [`AppError::Reported`] if it is no workout ORQWA understands or cannot be copied.
     pub fn import_workout(&mut self, file: &Path) -> Result<String, AppError> {
         orqwa_workouts::import(&orqwa_workouts::library_dir(&self.data_dir), file)
             .map(|path| path.display().to_string())
@@ -2957,7 +2957,7 @@ impl App {
     /// where it knows them as their files are now (R79), else read from the files. Rides
     /// without metadata, e.g. FIT files copied in by hand, are analysed once and get it
     /// written; so do rides without the data the analysis across rides needs (R62), e.g. saved
-    /// by an older Torqa.
+    /// by an older ORQWA.
     fn ride_records(&self) -> Vec<(PathBuf, RideRecord)> {
         let mut load = |fit: &Path| {
             let record = rides::load(fit)
@@ -4941,7 +4941,7 @@ mod tests {
             .collect();
         let fit = rides_dir.join(paths::activity_file_name(start));
         std::fs::write(&fit, orqwa_storage::encode_fit(start, &samples).unwrap()).unwrap();
-        // As an older Torqa saved it: named, on a known course, without the analysis.
+        // As an older ORQWA saved it: named, on a known course, without the analysis.
         let saved = RideRecord {
             route: "Gurten".to_owned(),
             start,
@@ -5101,7 +5101,7 @@ mod tests {
     fn sample_course(dir: &Path) -> Vec<u8> {
         let manifest = Manifest {
             format: course::FORMAT_VERSION,
-            generator: "Torqa test".to_owned(),
+            generator: "ORQWA test".to_owned(),
             name: "Sample climb".to_owned(),
             length_m: 20_000.0,
             elevation_gain_m: 1_150.0,
@@ -5327,7 +5327,7 @@ mod tests {
         app.set_courses_view(view).unwrap();
         assert_eq!(app.courses_view(), view);
 
-        // A choice only a newer Torqa knows.
+        // A choice only a newer ORQWA knows.
         let newer = profiles::CoursesView {
             sort: "colour".to_owned(),
             descending: true,

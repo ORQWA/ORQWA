@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-workouts"
-description = "Structured workouts for Torqa: ZWO, ERG/MRC and FIT workout files, built-in workouts and the workout library"
+description = "Structured workouts for ORQWA: ZWO, ERG/MRC and FIT workout files, built-in workouts and the workout library"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

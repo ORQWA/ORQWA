@@ -22,7 +22,7 @@ const CADENCE_SOURCES: Dictionary[int, String] = {
 }
 const NO_SHIFTER: int = -1
 ## A device used last that the scan has not shown yet (reconnecting at start, or not found):
-## shown by name so the rider knows what Torqa is looking for; choosing it looks again.
+## shown by name so the rider knows what ORQWA is looking for; choosing it looks again.
 const REMEMBERED: int = -9
 const SCAN_SECONDS: float = 5.0
 ## How often a connected device's reading beside its row is refreshed (R80).
@@ -566,7 +566,7 @@ func _on_remembered_missing(names: PackedStringArray) -> void:
 
 
 ## While the devices used last reconnect at start, their rows show their names and that
-## Torqa is looking for them, before any scan has filled the choices.
+## ORQWA is looking for them, before any scan has filled the choices.
 func _show_remembered() -> void:
 	var roles: Dictionary[String, String] = {
 		"trainer": TRAINER,

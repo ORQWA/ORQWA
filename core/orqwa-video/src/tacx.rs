@@ -202,7 +202,7 @@ pub fn gpx_from_profile(name: &str, pgmf: &Pgmf) -> String {
     const STEP_M: f64 = 10.0;
     const METRES_PER_DEGREE: f64 = 111_195.0;
     let mut gpx = String::from(
-        r#"<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Torqa"><trk><name>"#,
+        r#"<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="ORQWA"><trk><name>"#,
     );
     gpx.push_str(&escape(name));
     gpx.push_str("</name><trkseg>");

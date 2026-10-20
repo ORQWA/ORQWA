@@ -1,6 +1,6 @@
 # Art
 
-Scripted 3D models for Torqa ([ADR 0009](../docs/adr/0009-asset-pipeline.md)), and the phone
+Scripted 3D models for ORQWA ([ADR 0009](../docs/adr/0009-asset-pipeline.md)), and the phone
 remote's [silent clip](#the-remotes-clip-remote). The scripts are the source; what they make
 (the `.glb` files, the clip) is committed so the app builds without Blender.
 

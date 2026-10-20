@@ -17,7 +17,7 @@ pub const FORMAT_VERSION: u32 = 2;
 
 /// The analysis data written by this version (R62, ADR 0014). It has its own version, so it can
 /// grow and be computed again from the FIT file without a new [`FORMAT_VERSION`], which an older
-/// Torqa would answer by rebuilding the metadata and losing the ride's name and times. Later
+/// ORQWA would answer by rebuilding the metadata and losing the ride's name and times. Later
 /// versions only add to it, so a newer one still reads as this one. Version 1 held the power
 /// curve, version 2 added the power and heart-rate histograms (R64).
 pub const ANALYSIS_VERSION: u32 = 2;
@@ -31,8 +31,8 @@ pub enum RideError {
     /// The file is not valid ride metadata.
     #[error("invalid ride metadata: {0}")]
     Json(#[from] serde_json::Error),
-    /// Written by a newer Torqa.
-    #[error("ride metadata format {0} is newer than this Torqa supports")]
+    /// Written by a newer ORQWA.
+    #[error("ride metadata format {0} is newer than this ORQWA supports")]
     NewerFormat(u32),
 }
 
@@ -57,13 +57,13 @@ pub struct RideRecord {
     /// The FTP an FTP test showed (R22), if the ride was one.
     pub ftp_estimate: Option<Watts>,
     /// The rider's body mass on the ride, for power per kilogram (R62); `None` for rides saved
-    /// before Torqa kept it.
+    /// before ORQWA kept it.
     pub rider_mass: Option<Kilograms>,
     /// Sped up or moved along in simulation (#53): not the rider's own effort, so it counts
     /// towards no records and no analysis.
     pub simulated: bool,
     /// What the analysis across rides keeps of the ride (R62); `None` until it is computed
-    /// from the FIT file, or if an older Torqa computed less than this one keeps.
+    /// from the FIT file, or if an older ORQWA computed less than this one keeps.
     pub analysis: Option<RideAnalysis>,
     /// Where the ride was uploaded (R29), by platform id.
     pub uploads: BTreeMap<String, Upload>,
@@ -314,7 +314,7 @@ pub fn save(fit: &Path, record: &RideRecord) -> Result<(), RideError> {
 /// Reads the metadata of the ride stored in `fit`.
 ///
 /// # Errors
-/// If it is missing, malformed or from a newer Torqa.
+/// If it is missing, malformed or from a newer ORQWA.
 pub fn load(fit: &Path) -> Result<RideRecord, RideError> {
     from_json(&std::fs::read_to_string(metadata_path(fit))?)
 }
@@ -330,7 +330,7 @@ pub fn to_json(record: &RideRecord) -> Result<String, RideError> {
 /// A ride's metadata from the text of its file.
 ///
 /// # Errors
-/// If it is malformed or from a newer Torqa.
+/// If it is malformed or from a newer ORQWA.
 pub fn from_json(text: &str) -> Result<RideRecord, RideError> {
     let format = serde_json::from_str::<serde_json::Value>(text)?["format"]
         .as_u64()
@@ -455,11 +455,11 @@ mod tests {
     #[test]
     fn metadata_round_trips_next_to_the_fit_file() {
         let dir = temp_dir("roundtrip");
-        let fit = dir.join("torqa-20260930-071500.fit");
+        let fit = dir.join("orqwa-20260930-071500.fit");
 
         save(&fit, &record()).unwrap();
 
-        assert!(dir.join("torqa-20260930-071500.json").exists());
+        assert!(dir.join("orqwa-20260930-071500.json").exists());
         assert_eq!(load(&fit).unwrap(), record());
         std::fs::remove_dir_all(dir).unwrap();
     }
@@ -546,7 +546,7 @@ mod tests {
     #[test]
     fn exports_an_exact_copy_and_replaces_an_older_export() {
         let dir = temp_dir("export");
-        let fit = dir.join("torqa-20261003-071500.fit");
+        let fit = dir.join("orqwa-20261003-071500.fit");
         std::fs::write(&fit, b"FIT activity").unwrap();
         let to = dir.join("Morning loop.fit");
         std::fs::write(&to, b"an older export, longer than the ride").unwrap();
@@ -602,8 +602,8 @@ mod tests {
     fn lists_fit_files_newest_first() {
         let dir = temp_dir("list");
         for name in [
-            "torqa-20260101-080000.fit",
-            "torqa-20261001-080000.fit",
+            "orqwa-20260101-080000.fit",
+            "orqwa-20261001-080000.fit",
             "notes.txt",
         ] {
             std::fs::write(dir.join(name), b"").unwrap();
@@ -616,7 +616,7 @@ mod tests {
 
         assert_eq!(
             names,
-            ["torqa-20261001-080000.fit", "torqa-20260101-080000.fit"]
+            ["orqwa-20261001-080000.fit", "orqwa-20260101-080000.fit"]
         );
         std::fs::remove_dir_all(dir).unwrap();
     }

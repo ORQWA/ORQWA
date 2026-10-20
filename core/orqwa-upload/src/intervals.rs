@@ -123,7 +123,7 @@ impl IntervalsIcu {
     }
 
     /// The rides on the calendar for `day`, each with its steps as a ZWO file where it has
-    /// any (R81). Planned runs, swims and the like are not Torqa's.
+    /// any (R81). Planned runs, swims and the like are not ORQWA's.
     async fn planned_on(&self, key: &str, day: &str) -> Result<Vec<PlannedWorkout>, UploadError> {
         let answer = client()?
             .get(format!(
@@ -282,7 +282,7 @@ mod tests {
         Activity {
             fit: vec![14, 16, 0xD4, 0x08, b'.', b'F', b'I', b'T'],
             name: "Gurten & back".to_owned(),
-            external_id: "torqa-20261012-071500".to_owned(),
+            external_id: "orqwa-20261012-071500".to_owned(),
         }
     }
 
@@ -366,12 +366,12 @@ mod tests {
         assert!(
             text.starts_with(
                 "POST /api/v1/athlete/0/activities?name=Gurten%20%26%20back\
-                 &external_id=torqa-20261012-071500 "
+                 &external_id=orqwa-20261012-071500 "
             ),
             "{text}"
         );
         assert!(text.contains(AS_SECRET), "{text}");
-        assert!(text.contains("filename=\"torqa-20261012-071500.fit\""));
+        assert!(text.contains("filename=\"orqwa-20261012-071500.fit\""));
         assert!(request.windows(8).any(|w| w == activity().fit.as_slice()));
     }
 
@@ -394,7 +394,7 @@ mod tests {
             .await
             .unwrap();
 
-        // The run is not Torqa's; the ride planned by feel is listed without steps.
+        // The run is not ORQWA's; the ride planned by feel is listed without steps.
         assert_eq!(
             planned,
             [

@@ -38,7 +38,7 @@ func _init() -> void:
 	add_child(_box)
 
 	var bar: HBoxContainer = HBoxContainer.new()
-	var title: Label = UiTheme.caption("Torqa")
+	var title: Label = UiTheme.caption("ORQWA")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(title)

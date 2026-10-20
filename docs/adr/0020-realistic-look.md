@@ -10,7 +10,7 @@
 ADR 0011 replaced the first realistic attempt (photo textures, MyWhoosh as the benchmark) with
 a faceted low-poly diorama in pastels, because realism with few assets showed every gap. The
 world, vegetation, buildings, clouds and riders are now all faceted. The user's verdict
-(2026-10-18): Torqa should look **as realistic as possible**.
+(2026-10-18): ORQWA should look **as realistic as possible**.
 
 Meanwhile the author's earlier Godot game (choppa) showed a way to realistic surfaces with no
 asset budget: **procedural PBR materials scripted in Blender and baked to tileable textures**

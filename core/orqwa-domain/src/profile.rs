@@ -37,7 +37,7 @@ pub enum MapStyle {
 pub enum Drivetrain {
     /// A cassette: the rider shifts on the bike and the trainer follows the road.
     Cassette,
-    /// A single cog (e.g. the Zwift Cog): Torqa shifts virtual gears.
+    /// A single cog (e.g. the Zwift Cog): ORQWA shifts virtual gears.
     SingleCog {
         /// Teeth of the chainring ridden.
         chainring: u8,

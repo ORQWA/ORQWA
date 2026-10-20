@@ -1,4 +1,4 @@
-//! OpenStreetMap data for Torqa: buildings, land cover, water, roads, bridges and tunnels around
+//! OpenStreetMap data for ORQWA: buildings, land cover, water, roads, bridges and tunnels around
 //! a route, and the countries it passes (#230), from [`OpenFreeMap`](https://openfreemap.org)
 //! vector tiles (`OpenMapTiles` schema), cached on disk for offline rides (R3).
 //!
@@ -246,9 +246,9 @@ impl Osm {
     pub fn new(cache_dir: PathBuf) -> Self {
         let client = reqwest::Client::builder()
             .user_agent(concat!(
-                "Torqa/",
+                "ORQWA/",
                 env!("CARGO_PKG_VERSION"),
-                " (+https://github.com/Torqa-Indoor-Cycling/Torqa)"
+                " (+https://github.com/ORQWA/ORQWA)"
             ))
             .timeout(Duration::from_secs(30))
             .build()

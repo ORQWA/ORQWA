@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-terrain"
-description = "Elevation tiles for Torqa: download, offline cache and height lookup"
+description = "Elevation tiles for ORQWA: download, offline cache and height lookup"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

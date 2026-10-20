@@ -10,7 +10,7 @@
 //! (ADR 0003):
 //!
 //! - Zwift **locks the left pod** to its own app, as the community reports: unless it was in a
-//!   Zwift session within about a day, it answers the handshake with a challenge Torqa cannot
+//!   Zwift session within about a day, it answers the handshake with a challenge ORQWA cannot
 //!   answer, and tells nothing of its buttons. An unlocked pod stays unlocked while an [`UNLOCK_ACK`] follows the handshake.
 //!   The right pod is never locked.
 //! - A pod **falls asleep** after about a minute without a message, dropping the link, so the
@@ -32,7 +32,7 @@ use crate::zwift_click::{Button, HANDSHAKE, varint_fields};
 pub const RIGHT_POD: u8 = 0x0A;
 /// The left pod's device type.
 pub const LEFT_POD: u8 = 0x0B;
-/// What Torqa calls the pair: the pods advertise the original Click's name.
+/// What ORQWA calls the pair: the pods advertise the original Click's name.
 pub const NAME: &str = "Zwift Click v2";
 /// Written to the left pod's control characteristic after the handshake: keeps an unlocked
 /// pod unlocked across connections, and does nothing to a locked one.

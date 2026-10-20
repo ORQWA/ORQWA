@@ -1,9 +1,9 @@
 ---
 name: orqwa-render-review
-description: How to see Torqa's 3D world and models without a GPU — render screenshots in the dev container with software Vulkan (lavapipe), at a chosen place on a route and from a chosen camera, then judge and share them. Use whenever a change affects what the world, roads, terrain, buildings, vegetation, riders, sky or lighting look like, before declaring it done.
+description: How to see ORQWA's 3D world and models without a GPU — render screenshots in the dev container with software Vulkan (lavapipe), at a chosen place on a route and from a chosen camera, then judge and share them. Use whenever a change affects what the world, roads, terrain, buildings, vegetation, riders, sky or lighting look like, before declaring it done.
 ---
 
-# Rendering Torqa for review
+# Rendering ORQWA for review
 
 On a Windows PC with a GPU, render natively instead: `scripts/dev.sh scripts/build-gdext.sh
 release windows` cross-builds the extension into `app/bin/` (ADR 0021), and the portable Godot
@@ -92,6 +92,6 @@ the first run.
 Look at every image before reporting. For a PR, convert a few to JPEG on the host
 (`sips -s format jpeg -s formatOptions 78 in.png --out docs/images/<topic>/name.jpg`, about
 150 KB each), commit them, and reference them in the PR body by the commit that adds them:
-`https://raw.githubusercontent.com/Torqa-Indoor-Cycling/Torqa/<commit>/docs/images/<topic>/name.jpg`. A
+`https://raw.githubusercontent.com/ORQWA/ORQWA/<commit>/docs/images/<topic>/name.jpg`. A
 commit link keeps working after the branch is deleted and after docs refreshes remove images no
 doc uses (#79); a branch link does not.

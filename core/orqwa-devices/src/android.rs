@@ -1,6 +1,6 @@
 //! Bluetooth on Android (ADR 0024): btleplug reaches Android's Bluetooth through Java classes
 //! packed into the APK, and finds them only through the Java environment of a thread that
-//! Android started with the app's class loader. That thread is the one loading Torqa's library,
+//! Android started with the app's class loader. That thread is the one loading ORQWA's library,
 //! so the library's `JNI_OnLoad` (in orqwa-gd) hands its Java VM to [`init`].
 #![allow(unsafe_code)] // JNI and Android's log are C interfaces; each use says why it is sound
 
@@ -35,12 +35,12 @@ unsafe extern "C" {
     fn __android_log_write(priority: c_int, tag: *const c_char, text: *const c_char) -> c_int;
 }
 
-/// Writes `message` to Android's log (`adb logcat -s Torqa`), where nothing else reaches before
+/// Writes `message` to Android's log (`adb logcat -s ORQWA`), where nothing else reaches before
 /// Godot's own log is up.
 pub fn log(message: &str) {
     /// Android's `ANDROID_LOG_INFO`.
     const INFO: c_int = 4;
     let text = CString::new(message.replace('\0', " ")).unwrap_or_default();
     // SAFETY: both strings are NUL-terminated and outlive the call.
-    unsafe { __android_log_write(INFO, c"Torqa".as_ptr(), text.as_ptr()) };
+    unsafe { __android_log_write(INFO, c"ORQWA".as_ptr(), text.as_ptr()) };
 }

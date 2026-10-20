@@ -9,7 +9,7 @@
 //! ```
 //!
 //! A course's world is found by the [fingerprint](crate::course::fingerprint) of what it is
-//! built from. It stays kept across updates of Torqa: one of another
+//! built from. It stays kept across updates of ORQWA: one of another
 //! [format](orqwa_world::stored::FORMAT) cannot be read and is built again, one of an older
 //! [generator](orqwa_world::GENERATOR) is ridden as it is until the rider has it built again.
 
@@ -63,7 +63,7 @@ impl KeptWorlds {
     }
 
     /// The version of the [generator](orqwa_world::GENERATOR) that built the kept world of the
-    /// course with `fingerprint`; `None` if none is kept that this Torqa can read.
+    /// course with `fingerprint`; `None` if none is kept that this ORQWA can read.
     #[must_use]
     pub fn generator(&self, fingerprint: &str) -> Option<u32> {
         let file = File::open(self.file(fingerprint)).ok()?;
@@ -157,7 +157,7 @@ impl KeptWorlds {
     }
 
     /// Drops the worlds of courses not among `fingerprints`, e.g. the library's: a course
-    /// deleted or replaced, also on another computer sharing the data. Worlds this Torqa cannot
+    /// deleted or replaced, also on another computer sharing the data. Worlds this ORQWA cannot
     /// read go too: they would only be built again.
     ///
     /// # Errors
@@ -355,7 +355,7 @@ mod tests {
         }
         let writing = kept.file("f4").with_extension("world.part");
         std::fs::write(&writing, b"half").unwrap();
-        // One this Torqa cannot read, e.g. of another format: it would only be built again.
+        // One this ORQWA cannot read, e.g. of another format: it would only be built again.
         std::fs::write(kept.file("f5"), b"unreadable").unwrap();
 
         // f2's course was deleted.

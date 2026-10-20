@@ -266,7 +266,7 @@ func _init() -> void:
 	scroll.add_child(_gallery)
 	add_child(scroll)
 
-	_file_dialog.title = tr("Open a GPX route, video or Torqa course")
+	_file_dialog.title = tr("Open a GPX route, video or ORQWA course")
 	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	var videos: PackedStringArray = PackedStringArray()
@@ -283,7 +283,7 @@ func _init() -> void:
 					tr("Videos with GPS, route videos (Incyclist .xml, Tacx .rlv)")
 				]
 			),
-			"*.tqc ; " + tr("Torqa courses"),
+			"*.tqc ; " + tr("ORQWA courses"),
 		]
 	)
 	_file_dialog.use_native_dialog = true

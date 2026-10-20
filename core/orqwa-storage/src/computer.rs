@@ -28,7 +28,7 @@ struct ComputerFile {
     graphics: BTreeMap<String, String>,
     /// The phone remote (#228).
     remote: PhoneRemote,
-    /// Whether Torqa looks for a newer version at start-up (R99); on unless turned off.
+    /// Whether ORQWA looks for a newer version at start-up (R99); on unless turned off.
     check_updates: Option<bool>,
     /// Whether the courses' built worlds are kept (R101); off unless turned on.
     keep_worlds: Option<bool>,
@@ -146,13 +146,13 @@ pub fn set_fullscreen(file: &Path, fullscreen: bool) -> Result<(), ProfileError>
     save(file, &computer)
 }
 
-/// Whether this computer looks for a newer Torqa at start-up (R99): yes until turned off.
+/// Whether this computer looks for a newer ORQWA at start-up (R99): yes until turned off.
 #[must_use]
 pub fn check_updates(file: &Path) -> bool {
     read(file).check_updates.unwrap_or(true)
 }
 
-/// Turns looking for a newer Torqa at start-up on or off.
+/// Turns looking for a newer ORQWA at start-up on or off.
 ///
 /// # Errors
 /// [`ProfileError`] if the file cannot be written.

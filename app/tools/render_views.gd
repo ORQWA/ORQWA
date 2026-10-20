@@ -1,5 +1,5 @@
 extends SceneTree
-## Renders Torqa's standard views — fixed shots on the fixture routes — into $OUT_DIR/<view>.png,
+## Renders ORQWA's standard views — fixed shots on the fixture routes — into $OUT_DIR/<view>.png,
 ## so every visual change can be compared before and after against the same pictures (ADR 0011).
 ## One run covers the views of route $ROUTE; scripts/render-views.sh runs all routes, and $VIEWS
 ## (space-separated names) limits it to some. A $ROUTE ending in .gpx is any route's file, shot

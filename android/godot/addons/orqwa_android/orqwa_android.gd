@@ -1,6 +1,6 @@
 @tool
 extends EditorPlugin
-## Puts Torqa's Android plugin (android/plugin, built by scripts/build-android.sh) into Android
+## Puts ORQWA's Android plugin (android/plugin, built by scripts/build-android.sh) into Android
 ## exports (ADR 0024). Copied into the Android build's copy of the project only.
 
 var _export: OrqwaAndroidExport

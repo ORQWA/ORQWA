@@ -13,8 +13,8 @@ import org.godotengine.godot.plugin.GodotPlugin;
 import org.godotengine.godot.plugin.UsedByGodot;
 
 /**
- * Readies Torqa on Android (ADR 0024). Godot creates its plugins before it opens its
- * extensions, on the app's main thread: loading Torqa's library here runs its JNI_OnLoad with
+ * Readies ORQWA on Android (ADR 0024). Godot creates its plugins before it opens its
+ * extensions, on the app's main thread: loading ORQWA's library here runs its JNI_OnLoad with
  * the app's class loader, the one moment btleplug can find its Java classes. Then it hands the
  * app's context to HTTPS's certificate checks and asks for Bluetooth, which Android grants only
  * at run time.
@@ -44,7 +44,7 @@ public class OrqwaAndroid extends GodotPlugin {
     }
 
     /**
-     * Shows Torqa in a small window on top of other apps, shaped like its content of `width` by
+     * Shows ORQWA in a small window on top of other apps, shaped like its content of `width` by
      * `height` (the ride's HUD, as the overlay on a computer, R55). Android allows shapes between
      * 1:2.39 and 2.39:1 only.
      */
@@ -62,7 +62,7 @@ public class OrqwaAndroid extends GodotPlugin {
         activity.runOnUiThread(() -> activity.enterPictureInPictureMode(params));
     }
 
-    /** Whether Torqa shows in the small window now; the rider may have opened it again. */
+    /** Whether ORQWA shows in the small window now; the rider may have opened it again. */
     @UsedByGodot
     public boolean isInPictureInPicture() {
         Activity activity = getActivity();

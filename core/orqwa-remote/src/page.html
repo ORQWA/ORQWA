@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0f1217">
-<title>Torqa</title>
+<title>ORQWA</title>
 <style>
 :root {
   color-scheme: dark;
@@ -24,7 +24,7 @@ body {
 header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 28px; }
 .brand { display: flex; align-items: center; gap: 6px; }
 .brand .mark { height: 28px; width: auto; }
-.brand .wordmark { height: 17px; width: auto; }
+.brand .wordmark { height: 15px; width: auto; }
 #status { flex: 1; color: var(--muted); font-size: 15px; text-align: right; }
 #status.offline { color: var(--warning); }
 #status.gone { color: var(--danger); }
@@ -106,7 +106,7 @@ main { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0;
 </head>
 <body class="idle">
 <header>
-  <div class="brand" role="img" aria-label="Torqa">{{MARK}}{{WORDMARK}}</div>
+  <div class="brand" role="img" aria-label="ORQWA">{{MARK}}{{WORDMARK}}</div>
   <span id="status"></span>
   <button id="finish" hidden><span class="fill"></span><span data-word="finish_ride"></span></button>
 </header>
@@ -168,7 +168,7 @@ function flash(button) {
   setTimeout(() => button.classList.remove("pressed"), 150);
 }
 
-// The pad steps through Torqa's screens; an arrow held keeps stepping, as a key does.
+// The pad steps through ORQWA's screens; an arrow held keeps stepping, as a key does.
 for (const button of document.querySelectorAll("#pad button")) {
   let repeat = null;
   const stop = () => {
@@ -221,7 +221,7 @@ let hint = "";
 }
 
 let state = { riding: false, paused: false, gear: null, gears: null, workout: false, buttons: [] };
-// "online", "offline" (Torqa out of reach: the browser tries again) or "gone" (a new link).
+// "online", "offline" (ORQWA out of reach: the browser tries again) or "gone" (a new link).
 let connection = "offline";
 let shown = "";
 
@@ -317,12 +317,12 @@ events.onmessage = (event) => {
   show();
 };
 events.onerror = () => {
-  // Closed for good when Torqa answered, but not with the ride: the link was renewed.
+  // Closed for good when ORQWA answered, but not with the ride: the link was renewed.
   connection = events.readyState === EventSource.CLOSED ? "gone" : "offline";
   show();
 };
 
-// The screen stays on while the page shows. Over plain http, as Torqa serves it, the browser
+// The screen stays on while the page shows. Over plain http, as ORQWA serves it, the browser
 // has no wake lock to give, so the page plays a silent clip unseen, for which phones keep the
 // screen on as for any video: Chrome for a muted one that covers the screen, Firefox for a muted
 // one with a sound track, Safari only for one that may sound and does not loop, so there it
@@ -355,7 +355,7 @@ function keepAwake() {
   );
 }
 for (const type of ["touchend", "click"]) document.addEventListener(type, keepAwake);
-// Torqa counts the phone gone once it stops hearing this, e.g. when its screen locks. The clip
+// ORQWA counts the phone gone once it stops hearing this, e.g. when its screen locks. The clip
 // starts again too if the phone stopped it, say for a call.
 setInterval(() => {
   if (document.visibilityState === "visible") {

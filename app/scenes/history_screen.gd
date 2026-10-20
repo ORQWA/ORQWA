@@ -673,7 +673,7 @@ func _on_upload_failed(path: String, platform: String, message: String, reconnec
 		tr("%s no longer accepts the account: connect it again.") % _platform_name(platform),
 		UiTheme.DANGER
 	)
-	# The platform no longer lets Torqa in: connect again, then upload. Not for automatic
+	# The platform no longer lets ORQWA in: connect again, then upload. Not for automatic
 	# uploads, which may end while the rider is elsewhere.
 	if not started_here or not is_visible_in_tree():
 		return

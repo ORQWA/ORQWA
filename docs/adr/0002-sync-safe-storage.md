@@ -56,7 +56,7 @@ it then is), and rows of files that are gone are dropped. What a session has rea
 in memory too, so the history, the records and the analysis, which all go through the same
 list, cost one `stat` per ride after the first look.
 
-Staleness is by size and modification time, not content hashes: every write Torqa makes to a
+Staleness is by size and modification time, not content hashes: every write ORQWA makes to a
 metadata file (a name, an upload, a rebuild) changes at least the time, and a sync client
 that replaces a file sets a new one. An index of another layout (`PRAGMA user_version`) or
 missing is built afresh; a rider may delete it at any time. Without a usable index the

@@ -1,14 +1,14 @@
-# ADR 0023 — A Windows installer, and updates from within Torqa
+# ADR 0023 — A Windows installer, and updates from within ORQWA
 
 - Status: accepted
 - Date: 2026-10-19
 
 ## Context
 
-Torqa for Windows ships as a zip holding `Torqa.exe` and `orqwa_gd.dll`. A rider unpacks it
+ORQWA for Windows ships as a zip holding `ORQWA.exe` and `orqwa_gd.dll`. A rider unpacks it
 somewhere, finds it again to start it, and replaces both files by hand for every release. A
 rider who wants the newest version for every real ride needs more than that: an install into
-Program Files, a Start-menu entry, an uninstaller, and in the end Torqa telling them about a new
+Program Files, a Start-menu entry, an uninstaller, and in the end ORQWA telling them about a new
 version and installing it.
 
 Options considered:
@@ -23,9 +23,9 @@ Options considered:
 
 ## Decision
 
-- **Installer.** The `windows` CI job builds `Torqa-windows-x86_64.msi` with **WiX v7** from
-  `scripts/release/Torqa.wxs`, next to the zip, and every release carries it.
-  - **Install.** Per machine into `Program Files\Torqa`, with an advertised Start-menu shortcut,
+- **Installer.** The `windows` CI job builds `ORQWA-windows-x86_64.msi` with **WiX v7** from
+  `scripts/release/ORQWA.wxs`, next to the zip, and every release carries it.
+  - **Install.** Per machine into `Program Files\ORQWA`, with an advertised Start-menu shortcut,
     the app's icon under Installed apps, and a fixed upgrade code. A newer MSI, or the same
     version again, replaces the installed one; an older one refuses to downgrade.
   - **Version.** The MSI's version is the `.exe`'s (`a.b.c.0`, kept in step with
@@ -37,19 +37,19 @@ Options considered:
 - **WiX's terms.** WiX's source is under the Microsoft Reciprocal License. Since v7 its
   binaries come with the [Open Source Maintenance Fee EULA](https://github.com/wixtoolset/wix/blob/main/OSMFEULA.txt),
   which every build accepts (`wix build -acceptEula wix7`). The fee applies only to users that
-  earn at least US$10,000 a year with it; Torqa earns nothing. WiX builds the installer only,
-  and none of it ships inside Torqa.
+  earn at least US$10,000 a year with it; ORQWA earns nothing. WiX builds the installer only,
+  and none of it ships inside ORQWA.
 - **Unsigned for now.** Like the `.exe`, the MSI is not code-signed, so Windows' SmartScreen
   warns once per new version ("More info → Run anyway"). Signing (SignPath for open-source
   projects, or Azure Trusted Signing) can follow without changing the installer.
-- **Updates.** Torqa will look for a newer release once at start-up, never during a
+- **Updates.** ORQWA will look for a newer release once at start-up, never during a
   ride, behind a setting that turns it off. It will offer to download the new MSI and install it
   over the running version. The servers it contacts will be added to the wiki's internet list
   with that change.
 
 ## Consequences
 
-- Windows riders install, update and remove Torqa like any other app, and their data survives
+- Windows riders install, update and remove ORQWA like any other app, and their data survives
   all three.
 - Releases carry one more asset, and the Windows job takes about a minute longer.
 - The project depends on WiX's EULA terms staying free for projects without revenue. If they
@@ -59,7 +59,7 @@ Options considered:
 ## Amendment 2026-10-19: the update function
 
 - **Where.** A crate of its own, `orqwa-update`: GitHub's latest release
-  (`api.github.com/repos/Torqa-Indoor-Cycling/Torqa/releases/latest`), its version against the
+  (`api.github.com/repos/ORQWA/ORQWA/releases/latest`), its version against the
   running one, and the installer asset downloaded and started. `orqwa-app` runs it in the
   background like its other online work, and the front end only shows what it finds.
 - **When.** Once at start-up in released builds, unless this computer turned it off
@@ -70,10 +70,10 @@ Options considered:
 - **Versions.** Tags are `v<major>.<minor>.<patch>`. A release counts only when its numbers are
   higher than the running version's. A pre-release, which is never GitHub's "latest" anyway, and
   a development build's version are never offered.
-- **Installing (Windows).** The MSI is downloaded into the cache (`updates/Torqa-<version>.msi`)
-  and kept only when complete. Torqa then starts `msiexec /i … /passive` through a hidden
-  `cmd` that waits about three seconds, so Torqa has quit before its files are replaced, and
-  starts Torqa again afterwards. Torqa quits at once. Windows asks for permission, because the
+- **Installing (Windows).** The MSI is downloaded into the cache (`updates/ORQWA-<version>.msi`)
+  and kept only when complete. ORQWA then starts `msiexec /i … /passive` through a hidden
+  `cmd` that waits about three seconds, so ORQWA has quit before its files are replaced, and
+  starts ORQWA again afterwards. ORQWA quits at once. Windows asks for permission, because the
   installation is per machine.
 - **Elsewhere.** macOS and Linux have no installer yet. The offer opens the release page instead.
 - **Servers.** `api.github.com` for the check, and `github.com` with

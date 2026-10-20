@@ -48,7 +48,7 @@ func _init() -> void:
 	_drivetrain.add_item(tr("Cassette: shift on the bike"))
 	_drivetrain.add_item(tr("Single cog: virtual gears"))
 	_drivetrain.tooltip_text = tr(
-		"On a single cog such as the Zwift Cog, Torqa shifts 24 virtual gears: ↑ and ↓ while riding"
+		"On a single cog such as the Zwift Cog, ORQWA shifts 24 virtual gears: ↑ and ↓ while riding"
 	)
 	_drivetrain.item_selected.connect(func(_index: int) -> void: _show_teeth())
 	# Language names stay in their own language; only "System language" is translated.

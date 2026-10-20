@@ -5,7 +5,7 @@
 
 ## Context
 
-Torqa needs human-editable configuration and machine-written data/metadata, readable from Rust and,
+ORQWA needs human-editable configuration and machine-written data/metadata, readable from Rust and,
 for some data, from Godot. YAML was considered for configuration.
 
 ## Decision

@@ -12,12 +12,12 @@ locked (R59), so neither helps. Most riders have a phone or a tablet at hand any
 
 A native companion app means a second code base (Swift and Kotlin, or a cross-platform
 toolkit), an Apple developer account, review in two stores, and keeping its protocol in step
-with every Torqa version. Torqa has no server of its own (R3) to pair the two through.
+with every ORQWA version. ORQWA has no server of its own (R3) to pair the two through.
 
 ## Decision
 
-**A page Torqa serves on the local network** (`orqwa-remote`, R86), opened in the browser of
-a phone or tablet ("the phone" below stands for either). The Torqa a rider runs serves the page
+**A page ORQWA serves on the local network** (`orqwa-remote`, R86), opened in the browser of
+a phone or tablet ("the phone" below stands for either). The ORQWA a rider runs serves the page
 too, so the two never disagree, and any phone, tablet or computer works.
 
 - **A shift input with assignable buttons.** `orqwa_remote::Remote` implements `ShiftInput`.
@@ -65,7 +65,7 @@ too, so the two never disagree, and any phone, tablet or computer works.
   server or a warning in the browser.
 - Not a secure context, so the browser offers no Wake Lock: the page asks the rider to turn
   the phone's auto-lock off. There is no installable web app (service worker) either.
-- macOS and Windows ask once whether Torqa may accept connections. Guest networks that keep
+- macOS and Windows ask once whether ORQWA may accept connections. Guest networks that keep
   devices apart, and phones on mobile data, cannot reach the page.
 - A touch screen has no feel of a button, and a web page cannot use the phone's volume keys.
   A Bluetooth shifter stays the better choice where there is one.

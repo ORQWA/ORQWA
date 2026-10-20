@@ -68,7 +68,7 @@ keeps the 3D world of a library course once it is built (R101):
   unreadable one is built (and kept) again, which the rider sees only as the usual wait.
 - **Gone.** Deleting a course, or its disappearing from the library (also deleted on another
   computer), deletes its world when the worlds are tidied, at start and after keeping one, as
-  are worlds this Torqa cannot read; turning the setting off deletes all.
+  are worlds this ORQWA cannot read; turning the setting off deletes all.
 
 ## Consequences
 

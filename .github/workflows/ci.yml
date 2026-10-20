@@ -155,12 +155,12 @@ jobs:
           # (godotengine/godot#123723), but only after .godot/ has been seeded; warm runs work.
           "$godot" --headless --path app --import || echo "Cold import crashed (known 4.7.2 issue), continuing"
           test -d app/.godot
-          "$godot" --headless --path app --export-release "macOS" "$PWD/dist/Torqa-macos-arm64.zip"
-          test -s dist/Torqa-macos-arm64.zip
+          "$godot" --headless --path app --export-release "macOS" "$PWD/dist/ORQWA-macos-arm64.zip"
+          test -s dist/ORQWA-macos-arm64.zip
       # Both files are archives already; upload them as-is instead of zipping them again.
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/Torqa-macos-arm64.zip
+          path: dist/ORQWA-macos-arm64.zip
           archive: false
       - uses: actions/upload-artifact@v7
         with:
@@ -252,53 +252,75 @@ jobs:
         run: |
           $godot = "$PWD\godot\Godot_v$env:GODOT_VERSION-stable_win64_console.exe"
           & $godot --headless --path app --import
-          New-Item -ItemType Directory -Force dist\Torqa | Out-Null
-          & $godot --headless --path app --export-release "Windows Desktop" "$PWD\dist\Torqa\Torqa.exe"
-          if (-not (Test-Path dist\Torqa\Torqa.exe) -or -not (Test-Path dist\Torqa\orqwa_gd.dll)) {
-            Get-ChildItem dist\Torqa
-            throw "export is missing Torqa.exe or orqwa_gd.dll"
+          New-Item -ItemType Directory -Force dist\ORQWA | Out-Null
+          & $godot --headless --path app --export-release "Windows Desktop" "$PWD\dist\ORQWA\ORQWA.exe"
+          if (-not (Test-Path dist\ORQWA\ORQWA.exe) -or -not (Test-Path dist\ORQWA\orqwa_gd.dll)) {
+            Get-ChildItem dist\ORQWA
+            throw "export is missing ORQWA.exe or orqwa_gd.dll"
           }
           # The icon and these details are written together; without them the .exe keeps the
           # template's, which Windows shows on the taskbar and in Explorer.
-          $info = (Get-Item dist\Torqa\Torqa.exe).VersionInfo
-          if ($info.ProductName -ne 'Torqa') {
+          $info = (Get-Item dist\ORQWA\ORQWA.exe).VersionInfo
+          if ($info.ProductName -ne 'ORQWA') {
             $info | Format-List
-            throw "Torqa.exe kept the template's icon and details"
+            throw "ORQWA.exe kept the template's icon and details"
           }
-          Compress-Archive dist\Torqa\* dist\Torqa-windows-x86_64.zip
+          Compress-Archive dist\ORQWA\* dist\ORQWA-windows-x86_64.zip
       # The installer (ADR 0023), from the same export. WiX v7 asks each build to accept its
       # Open Source Maintenance Fee EULA; the fee applies only to users earning at least
-      # US$10,000 a year, which Torqa does not.
+      # US$10,000 a year, which ORQWA does not.
       - name: Build installer
         run: |
           dotnet tool install --global wix --version 7.0.0
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $version = (Get-Item dist\Torqa\Torqa.exe).VersionInfo.ProductVersion
-          wix build -acceptEula wix7 -arch x64 -d "Version=$version" -d "AppDir=dist\Torqa" `
-            scripts\release\Torqa.wxs -o dist\Torqa-windows-x86_64.msi
+          $version = (Get-Item dist\ORQWA\ORQWA.exe).VersionInfo.ProductVersion
+          wix build -acceptEula wix7 -arch x64 -d "Version=$version" -d "AppDir=dist\ORQWA" `
+            scripts\release\ORQWA.wxs -o dist\ORQWA-windows-x86_64.msi
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       # Installs, checks what a rider gets and uninstalls again: a broken installer fails here,
       # not on a rider's computer.
       - name: Check installer
         run: |
-          $msi = "$PWD\dist\Torqa-windows-x86_64.msi"
-          $installed = "$env:ProgramFiles\Torqa"
-          $shortcut = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Torqa.lnk"
+          $msi = "$PWD\dist\ORQWA-windows-x86_64.msi"
+          $installed = "$env:ProgramFiles\ORQWA"
+          $shortcut = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\ORQWA.lnk"
           $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', 'install.log'
           if ($run.ExitCode) { Get-Content install.log -Tail 40; throw "install failed: $($run.ExitCode)" }
-          foreach ($path in "$installed\Torqa.exe", "$installed\orqwa_gd.dll", $shortcut) {
+          foreach ($path in "$installed\ORQWA.exe", "$installed\orqwa_gd.dll", $shortcut) {
             if (-not (Test-Path $path)) { throw "not installed: $path" }
           }
           $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/x', "`"$msi`"", '/qn'
           if ($run.ExitCode) { throw "uninstall failed: $($run.ExitCode)" }
-          if (Test-Path "$installed\Torqa.exe") { throw "uninstall left Torqa.exe" }
+          if (Test-Path "$installed\ORQWA.exe") { throw "uninstall left ORQWA.exe" }
+      # A rider on Torqa 0.5.0 gets ORQWA as an upgrade of the same installation (ADR 0026): the
+      # installer keeps Torqa's UpgradeCode, so it replaces Torqa's folder and Start-menu entry.
+      - name: Check the upgrade from Torqa
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.5.0 --repo "${{ github.repository }}" --pattern Torqa-windows-x86_64.msi --dir torqa
+          $old = "$PWD\torqa\Torqa-windows-x86_64.msi"
+          $msi = "$PWD\dist\ORQWA-windows-x86_64.msi"
+          $menu = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs"
+          $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/i', "`"$old`"", '/qn'
+          if ($run.ExitCode) { throw "Torqa install failed: $($run.ExitCode)" }
+          if (-not (Test-Path "$env:ProgramFiles\Torqa\Torqa.exe")) { throw "Torqa not installed" }
+          $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/i', "`"$msi`"", '/qn', '/l*v', 'upgrade.log'
+          if ($run.ExitCode) { Get-Content upgrade.log -Tail 40; throw "upgrade failed: $($run.ExitCode)" }
+          if (Test-Path "$env:ProgramFiles\Torqa") { throw "the upgrade left Torqa's folder" }
+          if (Test-Path "$menu\Torqa.lnk") { throw "the upgrade left Torqa's Start-menu entry" }
+          foreach ($path in "$env:ProgramFiles\ORQWA\ORQWA.exe", "$menu\ORQWA.lnk") {
+            if (-not (Test-Path $path)) { throw "not installed by the upgrade: $path" }
+          }
+          $run = Start-Process msiexec -Wait -PassThru -ArgumentList '/x', "`"$msi`"", '/qn'
+          if ($run.ExitCode) { throw "uninstall failed: $($run.ExitCode)" }
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/Torqa-windows-x86_64.zip
+          path: dist/ORQWA-windows-x86_64.zip
           archive: false
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/Torqa-windows-x86_64.msi
+          path: dist/ORQWA-windows-x86_64.msi
           archive: false
       - uses: actions/upload-artifact@v7
         with:
@@ -369,12 +391,12 @@ jobs:
       - name: Export app
         run: |
           ./godot --headless --path app --import
-          mkdir -p dist/Torqa
+          mkdir -p dist/ORQWA
           ./godot --headless --path app --export-release "${{ matrix.preset }}" \
-            "$PWD/dist/Torqa/Torqa.${{ matrix.arch }}"
-          test -x "dist/Torqa/Torqa.${{ matrix.arch }}"
-          test -s dist/Torqa/liborqwa_gd.so
-          tar -czf "dist/Torqa-linux-${{ matrix.arch }}.tar.gz" -C dist Torqa
+            "$PWD/dist/ORQWA/ORQWA.${{ matrix.arch }}"
+          test -x "dist/ORQWA/ORQWA.${{ matrix.arch }}"
+          test -s dist/ORQWA/liborqwa_gd.so
+          tar -czf "dist/ORQWA-linux-${{ matrix.arch }}.tar.gz" -C dist ORQWA
       # The exported app itself, not the editor: it must start, load the extension and run the
       # main scene without errors on the oldest glibc it is built for.
       - name: Smoke test the exported app
@@ -382,28 +404,28 @@ jobs:
           # Captured first, shown whatever happens: with `set -e` a crash would otherwise end
           # the step before its output, and its cause, is seen.
           set +e
-          output="$(dist/Torqa/Torqa.${{ matrix.arch }} --headless --quit-after 10 2>&1)"
+          output="$(dist/ORQWA/ORQWA.${{ matrix.arch }} --headless --quit-after 10 2>&1)"
           status=$?
           set -e
           echo "$output"
           if [ "$status" -ne 0 ]; then
-            echo "Torqa exited with status $status" >&2
+            echo "ORQWA exited with status $status" >&2
             if [ "$status" -gt 128 ]; then
               # A signal: run it again under gdb for the backtrace.
               sudo apt-get install -y --no-install-recommends gdb >/dev/null
-              gdb -q -batch -ex run -ex bt -ex 'info sharedlibrary'                 --args "dist/Torqa/Torqa.${{ matrix.arch }}" --headless --quit-after 10 2>&1                 | tail -n 80
+              gdb -q -batch -ex run -ex bt -ex 'info sharedlibrary'                 --args "dist/ORQWA/ORQWA.${{ matrix.arch }}" --headless --quit-after 10 2>&1                 | tail -n 80
             fi
             exit 1
           fi
           if echo "$output" | grep -q "SCRIPT ERROR\|SHADER ERROR\|^ERROR:"; then
-            echo "Torqa reported errors" >&2
+            echo "ORQWA reported errors" >&2
             exit 1
           fi
-          echo "$output" | grep -q "^Torqa "
+          echo "$output" | grep -q "^ORQWA "
           core/target/release/orqwa-cli --help >/dev/null
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/Torqa-linux-${{ matrix.arch }}.tar.gz
+          path: dist/ORQWA-linux-${{ matrix.arch }}.tar.gz
           archive: false
       - uses: actions/upload-artifact@v7
         with:
@@ -488,7 +510,7 @@ jobs:
         run: sudo chown -R "$(id -u):$(id -g)" core/target ~/.cargo/registry ~/.gradle dist
       - uses: actions/upload-artifact@v7
         with:
-          path: dist/Torqa-android-arm64.apk
+          path: dist/ORQWA-android-arm64.apk
           archive: false
 
   # A tag changes no version: the release must come from a commit already naming the tag's.

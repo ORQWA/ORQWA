@@ -61,7 +61,7 @@ impl App {
         orqwa_remote::qr_code(&self.phone_remote().address?)
     }
 
-    /// Starts the phone remote if the rider left it on, as when Torqa starts.
+    /// Starts the phone remote if the rider left it on, as when ORQWA starts.
     ///
     /// # Errors
     /// [`AppError::Reported`] if it cannot listen on its port, e.g. another program has it.

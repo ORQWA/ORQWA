@@ -535,7 +535,7 @@ pub fn gpx_from_track(name: &str, track: &[TimedGps]) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;");
     let mut gpx = format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\" creator=\"Torqa\" \
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\" creator=\"ORQWA\" \
          xmlns=\"http://www.topografix.com/GPX/1/1\">\n<trk><name>{escaped}</name><trkseg>\n"
     );
     for sample in track {

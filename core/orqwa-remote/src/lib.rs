@@ -1,4 +1,4 @@
-//! The phone remote (#228): Torqa serves a page on the local network, and a phone, tablet or
+//! The phone remote (#228): ORQWA serves a page on the local network, and a phone, tablet or
 //! second computer that opens it in a browser shifts the virtual gears and works the ride's
 //! other controls, seeing the gear and whether the ride is paused. Its ten buttons do what the
 //! rider gave them, as a shifter's do (#139, R84). Nothing to install, nothing from the
@@ -6,7 +6,7 @@
 //!
 //! The rider turns it on. It listens on all of this computer's addresses at a fixed port, so
 //! a bookmarked address keeps working, and every address starts with a secret token that only
-//! the QR code and the address Torqa shows carry: without it, neither others on the network
+//! the QR code and the address ORQWA shows carry: without it, neither others on the network
 //! nor a website open in the rider's browser can press for them (ADR 0019).
 
 mod http;
@@ -72,8 +72,8 @@ const QUIET: Duration = Duration::from_secs(25);
 
 const PAGE: &str = include_str!("page.html");
 /// The app's own logo for the page's header: the mark and the wordmark.
-const MARK: &str = include_str!("../../../app/assets/brand/torqa-logo-dark.svg");
-const WORDMARK: &str = include_str!("../../../app/assets/brand/torqa-wordmark-dark.svg");
+const MARK: &str = include_str!("../../../app/assets/brand/orqwa-logo-dark.svg");
+const WORDMARK: &str = include_str!("../../../app/assets/brand/orqwa-wordmark-dark.svg");
 /// The silent clip the page plays to keep the phone's screen on, made by
 /// `art/remote/keep_awake.py`. Embedded rather than served: Safari asks for a video in byte
 /// ranges, which this server does not answer.
@@ -428,7 +428,7 @@ fn base64(bytes: &[u8]) -> String {
 }
 
 /// A logo `svg` as a decoration in the header with the class `class`: the header already says
-/// "Torqa", so the logo's own title would say it again.
+/// "ORQWA", so the logo's own title would say it again.
 fn decoration(svg: &str, class: &str) -> String {
     let svg = svg.replace(
         r#"role="img" aria-labelledby="title""#,

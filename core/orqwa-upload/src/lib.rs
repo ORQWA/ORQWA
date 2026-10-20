@@ -30,9 +30,9 @@ pub fn platforms() -> Vec<Arc<dyn ActivityUploader>> {
 fn client() -> Result<reqwest::Client, UploadError> {
     reqwest::Client::builder()
         .user_agent(concat!(
-            "Torqa/",
+            "ORQWA/",
             env!("CARGO_PKG_VERSION"),
-            " (+https://github.com/Torqa-Indoor-Cycling/Torqa)"
+            " (+https://github.com/ORQWA/ORQWA)"
         ))
         .timeout(Duration::from_secs(60))
         .build()
@@ -246,8 +246,8 @@ mod tests {
     #[test]
     fn query_values_are_percent_encoded() {
         assert_eq!(
-            query(&[("name", "Zone 2 & more/ä"), ("external_id", "torqa-1")]),
-            "name=Zone%202%20%26%20more%2F%C3%A4&external_id=torqa-1"
+            query(&[("name", "Zone 2 & more/ä"), ("external_id", "orqwa-1")]),
+            "name=Zone%202%20%26%20more%2F%C3%A4&external_id=orqwa-1"
         );
     }
 

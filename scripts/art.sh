@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Runs a command in the Torqa art container (headless Blender, ADR 0009). Example, to rebuild
+# Runs a command in the ORQWA art container (headless Blender, ADR 0009). Example, to rebuild
 # the building models: scripts/art.sh blender --background --factory-startup --python art/buildings/build.py
 set -eu
 

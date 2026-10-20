@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-gd"
-description = "Godot GDExtension bindings exposing the Torqa core"
+description = "Godot GDExtension bindings exposing the ORQWA core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
