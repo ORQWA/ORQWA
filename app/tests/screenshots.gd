@@ -151,6 +151,12 @@ func _run() -> void:
 			await create_timer(0.5).timeout
 			root.get_texture().get_image().save_png(out_dir.path_join("ride-devices.png"))
 			print("saved ride devices")
+			# The rider's profile, changed during the ride (R98).
+			var profile: Node = settings_dialog.find_children("*", "RideProfile", true, false)[0]
+			tabs.current_tab = profile.get_parent().get_index()
+			await create_timer(0.5).timeout
+			root.get_texture().get_image().save_png(out_dir.path_join("ride-profile.png"))
+			print("saved ride profile")
 			settings_dialog.hide()
 
 	# The ride's summary (R42), then the history.

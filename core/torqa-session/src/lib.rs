@@ -330,11 +330,20 @@ impl Ride {
         }
     }
 
-    /// Changes the drivetrain during the ride (R98): virtual gears start again from the gear
-    /// nearest the real one, and the trainer feels the change on the next tick.
-    pub fn change_gears(&mut self, gears: Option<VirtualGears>) {
+    /// The rider changed their profile during the ride (R98): their weight moves them from
+    /// now on, a structured workout's powers follow the new FTP, and the drivetrain shifts at
+    /// once. Switched to virtual gears, the ride starts from the gear nearest the real one;
+    /// other teeth keep the gear it is in, as the virtual gears stay the same. The trainer
+    /// feels it on the next tick.
+    pub fn change_rider(&mut self, setup: RiderSetup, gears: Option<VirtualGears>, ftp: Watts) {
+        self.config.setup = setup;
+        if self.config.gears.is_none() {
+            self.gear = gears.map_or(0, |gears| gears.neutral());
+        }
         self.config.gears = gears;
-        self.gear = gears.map_or(0, |gears| gears.neutral());
+        if let Some(workout) = &mut self.workout {
+            workout.change_ftp(ftp);
+        }
         self.last_control = None;
     }
 
@@ -516,7 +525,7 @@ mod tests {
     use torqa_devices::fake::{self, FakeHeart, FakeRider, SimulatedHeart};
     use torqa_domain::profile::Profile;
 
-    use torqa_domain::units::{BeatsPerMinute, Rpm};
+    use torqa_domain::units::{BeatsPerMinute, Kilograms, Rpm};
     use torqa_domain::workout::{Cue, Intensity, Plan, Step, Target};
     use workout::{EffortTest, HeartRateHold, RampTest};
 
@@ -1209,14 +1218,18 @@ mod tests {
             difficulty: Percent(100.0),
             ..RideConfig::default()
         };
+        let setup = config.setup;
         let mut ride = Ride::new(route(&[4.0], 3000.0).await, config);
         let road = pedal(&mut ride, 200.0, 5);
 
-        ride.change_gears(Some(VirtualGears::new(50, 14)));
+        ride.change_rider(setup, Some(VirtualGears::new(50, 14)), Watts(200.0));
         let geared = ride.state().gear.expect("virtual gears now");
         ride.shift(Shift::To(1));
         let easiest = pedal(&mut ride, 200.0, 1);
-        ride.change_gears(None);
+        ride.change_rider(setup, Some(VirtualGears::new(34, 14)), Watts(200.0));
+        let smaller = pedal(&mut ride, 200.0, 1);
+        let kept = ride.state().gear.unwrap();
+        ride.change_rider(setup, None, Watts(200.0));
         let back = pedal(&mut ride, 200.0, 1);
 
         assert!(
@@ -1227,11 +1240,63 @@ mod tests {
             grade_of(&easiest[0]) < grade_of(&road[0]) * 0.4,
             "the shifts reach the trainer: {easiest:?}"
         );
+        assert_eq!(kept.number, 1, "other teeth keep the gear");
+        // The same virtual gear over a smaller real one: the trainer brakes that much more.
+        assert!(
+            (grade_of(&smaller[0]) / grade_of(&easiest[0]) - 50.0 / 34.0).abs() < 0.01,
+            "{smaller:?} {easiest:?}"
+        );
         assert_eq!(ride.state().gear, None);
         assert_eq!(back.len(), 1, "the trainer hears of the cassette at once");
         assert!(
             (grade_of(&back[0]) - grade_of(&road[0])).abs() < 1e-9,
             "the road again: {back:?} {road:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_new_weight_moves_the_rider_at_once() {
+        let route = route(&[6.0], 3000.0).await;
+        let mut same = Ride::new(route.clone(), RideConfig::default());
+        let mut heavier = Ride::new(route, RideConfig::default());
+        pedal(&mut same, 250.0, 60);
+        pedal(&mut heavier, 250.0, 60);
+
+        let setup = RiderSetup {
+            mass: Kilograms(103.0),
+            ..RiderSetup::default()
+        };
+        heavier.change_rider(setup, None, Watts(200.0));
+        pedal(&mut same, 250.0, 60);
+        pedal(&mut heavier, 250.0, 60);
+
+        let (slower, unchanged) = (heavier.state().speed.0, same.state().speed.0);
+        assert!(slower < unchanged * 0.9, "{slower} m/s, not {unchanged}");
+    }
+
+    #[test]
+    fn a_structured_workout_follows_a_new_ftp_from_where_it_is() {
+        let workout = Workout::Structured {
+            plan: plan(),
+            ftp: Watts(240.0),
+        };
+        let mut ride = Ride::workout(workout, RideConfig::default());
+        let before = pedal(&mut ride, 150.0, 10);
+
+        ride.change_rider(RiderSetup::default(), None, Watts(300.0));
+        let after = pedal(&mut ride, 150.0, 1);
+
+        assert_eq!(before[0], TrainerControl::TargetPower(Watts(120.0)));
+        assert_eq!(
+            after,
+            [TrainerControl::TargetPower(Watts(150.0))],
+            "half of the new FTP, at once"
+        );
+        let progress = ride.state().workout.and_then(|w| w.progress).unwrap();
+        assert_eq!(
+            (progress.step, progress.step_left),
+            (0, Duration::from_secs(49)),
+            "where it was"
         );
     }
 

@@ -2360,6 +2360,7 @@ impl TorqaApp {
 
     /// Saves a rider (a new one if `id` is empty) from a dictionary shaped like `profile()`
     /// and makes it active; returns its id, or an empty string on failure (emits `failed`).
+    /// Saved during a ride, the ride follows the rider's weight, drivetrain and FTP (R98).
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn save_profile(&mut self, id: GString, data: VarDictionary) -> GString {
@@ -2455,30 +2456,6 @@ impl TorqaApp {
                 self.report_failure(&Failure::from(error));
                 GString::new()
             }
-        }
-    }
-
-    /// Changes the rider's drivetrain, also during a ride (R98): `"cassette"` or
-    /// `"single_cog"` with its chainring's and cog's teeth. Emits `profile_changed`, or
-    /// `failed` if the profile cannot be saved.
-    #[func]
-    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
-    fn set_drivetrain(&mut self, drivetrain: GString, chainring: i64, cog: i64) {
-        let teeth = |n: i64| u8::try_from(n.clamp(1, 99)).unwrap_or(1);
-        let drivetrain = if drivetrain == "single_cog" {
-            Drivetrain::SingleCog {
-                chainring: teeth(chainring),
-                cog: teeth(cog),
-            }
-        } else {
-            Drivetrain::Cassette
-        };
-        let Some(app) = self.app.as_mut() else {
-            return;
-        };
-        match app.set_drivetrain(drivetrain) {
-            Ok(()) => self.signals().profile_changed().emit(),
-            Err(error) => self.report_failure(&Failure::from(error)),
         }
     }
 

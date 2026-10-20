@@ -817,10 +817,11 @@ impl App {
 
     /// Saves a profile (a new one if `id` is `None`) and makes it the active one; returns its id.
     /// A new rider starts with the devices of the rider before (R82), so nothing connected is
-    /// let go.
+    /// let go. The ride under way follows the riding rider's changes at once (R98): their
+    /// weight, drivetrain and FTP.
     ///
     /// # Errors
-    /// [`AppError::Reported`] if it cannot be written.
+    /// [`AppError::Reported`] if it cannot be written; nothing changes then.
     pub fn save_profile(&mut self, id: Option<&str>, profile: Profile) -> Result<String, AppError> {
         let new = id.is_none();
         let id = id.map_or_else(
@@ -842,6 +843,13 @@ impl App {
         };
         if switched {
             self.take_riders_devices();
+        } else {
+            let (setup, profile) = (self.rider_setup(), &self.profile.profile);
+            if let Some(active) = &mut self.ride {
+                active
+                    .ride
+                    .change_rider(setup, virtual_gears(profile.drivetrain), profile.ftp);
+            }
         }
         Ok(id)
     }
@@ -2733,21 +2741,6 @@ impl App {
         }
     }
 
-    /// Changes the rider's drivetrain, also during a ride (R98): the current ride shifts with
-    /// it at once, and the profile keeps it.
-    ///
-    /// # Errors
-    /// [`AppError::Reported`] if the profile cannot be written; the ride changes anyway.
-    pub fn set_drivetrain(&mut self, drivetrain: Drivetrain) -> Result<(), AppError> {
-        if let Some(active) = &mut self.ride {
-            active.ride.change_gears(virtual_gears(drivetrain));
-        }
-        let mut profile = self.profile.profile.clone();
-        profile.drivetrain = drivetrain;
-        let id = self.profile.id.clone();
-        self.save_profile(Some(&id), profile).map(drop)
-    }
-
     /// A shift key was pressed (R7); the ride shifts on the next update.
     pub fn shift(&mut self, shift: Shift) {
         self.keys.press(shift);
@@ -4065,6 +4058,7 @@ fn virtual_gears(drivetrain: Drivetrain) -> Option<VirtualGears> {
         Drivetrain::Cassette => None,
     }
 }
+
 #[cfg(test)]
 mod tests {
     use std::fmt::Write as _;
@@ -4599,10 +4593,16 @@ mod tests {
     }
 
     #[test]
-    fn the_drivetrain_changes_during_a_ride_and_stays() {
-        let dir = temp_dir("drivetrain");
+    fn the_ride_follows_the_profile_changed_during_it_and_the_profile_keeps_it() {
+        let dir = temp_dir("ride-profile");
         let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
-        app.set_drivetrain(Drivetrain::Cassette).unwrap();
+        let change = |app: &mut App, drivetrain: Drivetrain| {
+            let mut profile = app.profile().profile.clone();
+            profile.drivetrain = drivetrain;
+            let id = app.profile().id.clone();
+            app.save_profile(Some(&id), profile).unwrap();
+        };
+        change(&mut app, Drivetrain::Cassette);
         app.load_route(write_route(&dir), true);
         run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
         app.connect_trainer(TrainerChoice::Fake(FakeRider {
@@ -4619,7 +4619,7 @@ mod tests {
             chainring: 50,
             cog: 14,
         };
-        app.set_drivetrain(single_cog).unwrap();
+        change(&mut app, single_cog);
         let before = app.ride_state().unwrap().gear.unwrap().number;
         app.shift(Shift::Up);
         app.update(Duration::from_millis(16));

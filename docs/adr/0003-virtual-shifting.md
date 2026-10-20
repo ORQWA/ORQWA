@@ -204,8 +204,10 @@ A new rider starts on a single cog (50 × 14) instead of a cassette. With a cass
 default, a Zwift Click connected for a first ride did nothing: its presses only shift virtual
 gears, and nothing said why. Riders with a cassette choose it once in the profile; profiles
 saved before keep the drivetrain they had. The drivetrain can now also be changed during a
-ride, under the ride settings' Devices: the ride takes the new gears at once (virtual gears
-start again from the gear nearest the real one), and the profile keeps them.
+ride, with the rest of the profile on the ride settings' Profile tab: the profile keeps it, and
+the ride takes the new gears at once. Switched from a cassette to virtual gears, the ride starts
+from the gear nearest the real one. Other teeth keep the gear ridden: the 24 virtual ratios do
+not depend on the real gear, only how much the trainer scales the road for them does.
 
 Checked on a KICKR CORE the same day (`torqa-cli gear-check`, Zwift Click v1 shifting): the
 trainer follows the scaled Crr and Cw as well as the grade. On the flat, gear 24 held 18.5 km/h

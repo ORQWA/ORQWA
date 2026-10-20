@@ -241,8 +241,10 @@ Built in rideable steps:
     written from the community's drivers and checked on a pair (R96): the left pod relays the
     right pod's buttons, which count once
   - [x] Virtual gears by default (R98): a new rider starts on a single cog (50 × 14), so a
-    connected Click shifts from the first ride; the drivetrain also changes during a ride
-    (ride settings → Devices), at once and kept in the profile
+    connected Click shifts from the first ride; the whole profile also changes during a ride
+    (ride settings → Profile), kept in the profile and followed by the ride at once: weight,
+    drivetrain, FTP of a structured workout, zones, units, map, language; pausing opens the
+    ride settings
   - [x] The remote (R86, #228, ADR 0019): a page on the local network (`torqa-remote`)
     that a phone's or tablet's browser opens from a QR code, its ten buttons (two big) doing what the
     rider gave them behind a pen like a shifter's, showing the gear and the pause under the
