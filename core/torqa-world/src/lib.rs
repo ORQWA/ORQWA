@@ -20,6 +20,7 @@ mod props;
 mod railways;
 mod road;
 mod roundabouts;
+pub mod stored;
 mod streets;
 mod structures;
 mod vegetation;
@@ -39,6 +40,12 @@ pub use minimap::{FlatMap, MapFeature, minimap};
 pub use props::{Label, Props};
 use road::RoadIndex;
 pub use vegetation::Trees;
+
+/// What worlds look like. Raise it whenever a change makes the same course come out
+/// differently: a world kept with an older one is still ridden, and its course offers to build
+/// it again (R101). A change that also makes kept worlds unreadable raises
+/// [`stored::FORMAT`] instead or as well.
+pub const GENERATOR: u32 = 1;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;

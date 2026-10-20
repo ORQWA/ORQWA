@@ -142,6 +142,9 @@ msgstr "Ein virtueller Fahrer auf der Strecke: deine Bestzeit, ein Tempomacher o
 msgid "A recorded activity…"
 msgstr "Eine aufgezeichnete Fahrt …"
 
+msgid "A world takes about 10 MB per kilometre of route."
+msgstr "Eine Welt belegt etwa 10 MB pro Kilometer Route."
+
 msgid "API key"
 msgstr "API-Schlüssel"
 
@@ -183,6 +186,9 @@ msgstr "Video hinzufügen …"
 
 msgid "Added to your workouts."
 msgstr "Zu deinen Trainings hinzugefügt."
+
+msgid "After an update that changes how worlds look, a course's page offers to regenerate it."
+msgstr "Ändert ein Update das Aussehen der Welten, bietet die Seite einer Route an, ihre Welt neu zu erstellen."
 
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"
@@ -430,6 +436,9 @@ msgstr "Alle Geräte suchen"
 msgid "The devices used last connect by themselves. Search beside a row to find one of that kind."
 msgstr "Zuletzt genutzte Geräte verbinden sich von selbst. Suche neben einer Zeile nach einem Gerät dieser Art."
 
+msgid "The kept worlds take %s."
+msgstr "Die behaltenen Welten belegen %s."
+
 msgid "Reconnecting…"
 msgstr "Verbinde erneut…"
 
@@ -660,6 +669,9 @@ msgstr "Drohne"
 
 msgid "Duration"
 msgstr "Dauer"
+
+msgid "Each course's 3D world is kept on this computer once built: the next ride starts at once."
+msgstr "Die 3D-Welt jeder Route bleibt nach dem Erstellen auf diesem Computer: Die nächste Fahrt startet sofort."
 
 msgid "Easy for 10 minutes"
 msgstr "10 Minuten locker"
@@ -925,6 +937,9 @@ msgstr "Intensitätsfaktor"
 msgid "Intervals"
 msgstr "Intervalle"
 
+msgid "Its 3D world was kept from an older Torqa: build it with this one"
+msgstr "Die 3D-Welt stammt von einer älteren Torqa-Version: Erstelle sie mit dieser neu"
+
 msgid "Its file is deleted from your workouts."
 msgstr "Die Trainingsdatei wird aus deiner Bibliothek gelöscht."
 
@@ -942,6 +957,9 @@ msgstr "Jun."
 
 msgid "Keep both"
 msgstr "Beide behalten"
+
+msgid "Keep courses ready to ride"
+msgstr "Routen fahrbereit behalten"
 
 msgid "Language"
 msgstr "Sprache"
@@ -1988,6 +2006,9 @@ msgstr "Ein"
 
 msgid "Reflections on water"
 msgstr "Spiegelungen auf Wasser"
+
+msgid "Regenerate world"
+msgstr "Welt neu erstellen"
 
 msgid "Render scale"
 msgstr "Renderauflösung"

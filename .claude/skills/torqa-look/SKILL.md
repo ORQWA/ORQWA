@@ -81,6 +81,10 @@ Blender Python; its header shows how to run it).
   instance colour multiplies a neutral albedo; distance fades fine detail to avoid shimmer.
 - **Light and sky:** one `DirectionalLight3D` (`light.sun`), soft shadows, SSAO from Medium up,
   a physical sky, fog by time of day and weather.
+- **Kept worlds** (R101): a change to what `core/torqa-world` builds raises
+  `torqa_world::GENERATOR`, so courses whose worlds are kept offer to regenerate them; shader-
+  or model-only changes need nothing. Changing what the shaders read from world data (vertex
+  colours, instance buffers) raises `torqa_world::stored::FORMAT`.
 
 ## Reviewing a render
 

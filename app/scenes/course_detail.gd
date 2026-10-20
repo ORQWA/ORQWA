@@ -25,6 +25,9 @@ var _path: String = ""
 ## Waiting for this course's route, or for its world after Ride.
 var _loading_route: bool = false
 var _building: bool = false
+## Building the world again in place of one kept from an older Torqa (R101), not to ride yet.
+var _regenerating: bool = false
+var _regenerate: Button = Button.new()
 var _title: EditableTitle = EditableTitle.new(tr("Edit the course's name and video"), false)
 var _figures: VBoxContainer = VBoxContainer.new()
 var _path_card: PathCard = PathCard.new()
@@ -62,6 +65,8 @@ func open(course: Dictionary) -> void:
 	_course = course
 	_path = course["path"]
 	_building = false
+	_regenerating = false
+	_regenerate.hide()
 	_title.text = course["name"]
 	_show_figures()
 	var track: PackedVector2Array = course.get("track", PackedVector2Array())
@@ -108,6 +113,19 @@ func build() -> void:
 		ready_to_ride.emit()
 		return
 	_building = true
+	_show_building()
+
+
+## Builds the world kept from an older Torqa again with this one (R101); the rider rides after.
+func _regenerate_world() -> void:
+	if not _torqa.regenerate_world():
+		return
+	_regenerating = true
+	_regenerate.hide()
+	_show_building()
+
+
+func _show_building() -> void:
 	_ride_button.disabled = true
 	_loading_bar.value = 0.0
 	_loading_bar.show()
@@ -178,6 +196,15 @@ func _init() -> void:
 	_loading_bar.max_value = 1.0
 	_loading_bar.show_percentage = false
 	_loading_bar.custom_minimum_size = Vector2(0, 8)
+	# A world kept from an older Torqa is ridden as it is until the rider has it built again.
+	_regenerate.text = tr("Regenerate world")
+	_regenerate.tooltip_text = tr(
+		"Its 3D world was kept from an older Torqa: build it with this one"
+	)
+	_regenerate.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_regenerate.pressed.connect(_regenerate_world)
+	_regenerate.hide()
+	right.add_child(_regenerate)
 	right.add_child(_log)
 	right.add_child(_loading_bar)
 	var status_row: HBoxContainer = HBoxContainer.new()
@@ -290,7 +317,8 @@ func _show_route() -> void:
 		_status.text = ""
 	_loading_route = false
 	_spinner.hide()
-	_ride_button.disabled = false
+	_ride_button.disabled = _regenerating
+	_regenerate.visible = not _regenerating and _torqa.kept_world_outdated(_path)
 	_show_option_groups()
 	_show_figures()
 	var climbs: Dictionary = _torqa.climbs()
@@ -317,7 +345,7 @@ func _show_route() -> void:
 
 
 func _on_loading_progress(step: String, unit: String, done: int, total: int) -> void:
-	if not _building:
+	if not (_building or _regenerating):
 		return
 	_loading_bar.value = float(done) / float(maxi(total, 1))
 	_log.step(step, unit, done, total)
@@ -325,14 +353,17 @@ func _on_loading_progress(step: String, unit: String, done: int, total: int) -> 
 
 
 func _on_world_ready(_info: Dictionary) -> void:
-	if not _building:
+	if not (_building or _regenerating):
 		return
+	var riding: bool = _building
 	_building = false
+	_regenerating = false
 	_loading_bar.hide()
 	_log.finish()
 	_status.text = ""
 	_ride_button.disabled = false
-	ready_to_ride.emit()
+	if riding:
+		ready_to_ride.emit()
 
 
 ## A course without a map of its whole land, from before #203, gets one from the map loaded
@@ -350,9 +381,10 @@ func _keep_preview() -> void:
 
 
 func _on_failed(message: String) -> void:
-	if visible and (_loading_route or _building):
+	if visible and (_loading_route or _building or _regenerating):
 		_loading_route = false
 		_building = false
+		_regenerating = false
 		_spinner.hide()
 		_loading_bar.hide()
 		_status.text = message

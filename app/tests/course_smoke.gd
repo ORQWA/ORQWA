@@ -229,6 +229,9 @@ func _course_loading() -> void:
 			not spinner.visible and ride.disabled and status.text == failures[-1],
 			"attempt %d: the spinner stops, the reason shows: %s" % [attempt, status.text]
 		)
+	# Only a world kept from an older Torqa offers to be built again (R101).
+	var regenerate: Button = page.get("_regenerate")
+	_check(not regenerate.visible, "no Regenerate world without a kept world")
 	page.free()
 	torqa.free()
 

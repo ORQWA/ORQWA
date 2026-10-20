@@ -15,6 +15,7 @@
 
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Component, Path, PathBuf};
 
@@ -378,6 +379,30 @@ pub fn preview_outdated(path: &Path) -> bool {
         .is_none_or(|zip| zip.index_for_name(PREVIEW).is_none())
 }
 
+/// What the 3D world of the course at `path` is built from (#237), as a short text: its track
+/// and data files, by their checksums in the file's directory, so nothing is unpacked. The
+/// manifest and the map picture are left out: renaming the course or finding its countries
+/// rewrites them, not its world. Two files from the same inputs have the same fingerprint in
+/// the same build of Torqa; another build may hash differently, but its worlds are its own.
+///
+/// # Errors
+/// An I/O or zip error.
+pub fn fingerprint(path: &Path) -> Result<String, CourseError> {
+    let mut zip = ZipArchive::new(BufReader::new(File::open(path)?))?;
+    let mut inputs = Vec::new();
+    for index in 0..zip.len() {
+        let entry = zip.by_index_raw(index)?;
+        let name = entry.name()?.into_owned();
+        if name == ROUTE || name.starts_with(DATA) {
+            inputs.push((name, entry.crc32(), entry.size()));
+        }
+    }
+    inputs.sort();
+    let mut hasher = std::hash::DefaultHasher::new();
+    inputs.hash(&mut hasher);
+    Ok(format!("{:016x}", hasher.finish()))
+}
+
 /// Puts the course's map picture `png` into its file, in place of an earlier one (#192).
 ///
 /// # Errors
@@ -502,6 +527,62 @@ mod tests {
         found.countries = Some(Vec::new());
         rewrite_manifest(&course, &found).unwrap();
         assert_eq!(read_manifest(&course).unwrap().countries, Some(Vec::new()));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_fingerprint_follows_what_the_world_is_built_from() {
+        let dir = temp_dir("fingerprint");
+        let data = dir.join("data");
+        std::fs::create_dir_all(data.join("terrain")).unwrap();
+        let tile = data.join("terrain/12_2134_1445.webp");
+        std::fs::write(&tile, b"tile").unwrap();
+        let course = dir.join("lake.tqc");
+        write(
+            &course,
+            &manifest(),
+            "<gpx>route</gpx>",
+            &data,
+            std::slice::from_ref(&tile),
+        )
+        .unwrap();
+        let first = fingerprint(&course).unwrap();
+
+        // A new name, its countries or a new map picture change nothing it is built from.
+        let mut renamed = manifest();
+        renamed.name = "Bielersee".to_owned();
+        renamed.countries = Some(Vec::new());
+        rewrite_manifest(&course, &renamed).unwrap();
+        set_preview(&course, b"PNG").unwrap();
+        assert_eq!(fingerprint(&course).unwrap(), first);
+        // Another file with the same inputs, prepared at another time.
+        let copy = dir.join("copy.tqc");
+        let mut later = manifest();
+        later.created_unix_s += 3600;
+        write(
+            &copy,
+            &later,
+            "<gpx>route</gpx>",
+            &data,
+            std::slice::from_ref(&tile),
+        )
+        .unwrap();
+        assert_eq!(fingerprint(&copy).unwrap(), first);
+
+        // Other terrain, or another track, build another world.
+        std::fs::write(&tile, b"newer tile").unwrap();
+        write(
+            &copy,
+            &manifest(),
+            "<gpx>route</gpx>",
+            &data,
+            std::slice::from_ref(&tile),
+        )
+        .unwrap();
+        assert_ne!(fingerprint(&copy).unwrap(), first);
+        write(&copy, &manifest(), "<gpx>other</gpx>", &data, &[]).unwrap();
+        assert_ne!(fingerprint(&copy).unwrap(), first);
+        assert!(fingerprint(&dir.join("missing.tqc")).is_err());
         std::fs::remove_dir_all(dir).unwrap();
     }
 

@@ -2635,6 +2635,7 @@ dependencies = [
  "thiserror",
  "toml",
  "torqa-domain",
+ "torqa-world",
  "zip",
 ]
 

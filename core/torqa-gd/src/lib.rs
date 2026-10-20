@@ -175,6 +175,9 @@ impl INode for TorqaApp {
         // Courses from before Torqa knew countries, or prepared offline, learn them (#230).
         if let Some(app) = self.app.as_mut() {
             app.fill_in_countries(false);
+            // Courses deleted on another computer, or an update, may leave kept worlds no
+            // course needs (R101).
+            app.tidy_kept_worlds();
         }
     }
 
@@ -641,6 +644,24 @@ impl TorqaApp {
     #[func]
     fn build_world(&mut self) -> bool {
         self.app.as_mut().is_some_and(App::build_world)
+    }
+
+    /// Builds the loaded course's world again with this Torqa, in place of the one kept from an
+    /// older one (R101); emits `world_ready` like `build_world`. False if no library course is
+    /// loaded.
+    #[func]
+    fn regenerate_world(&mut self) -> bool {
+        self.app.as_mut().is_some_and(App::regenerate_world)
+    }
+
+    /// Whether the course at `path` has a world kept that an older Torqa built, which
+    /// `regenerate_world` builds again (R101).
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn kept_world_outdated(&self, path: GString) -> bool {
+        self.app
+            .as_ref()
+            .is_some_and(|app| app.kept_world_outdated(Path::new(&path.to_string())))
     }
 
     /// The course file of the loaded route; empty if it is not one (yet).
@@ -1614,6 +1635,28 @@ impl TorqaApp {
     #[func]
     fn set_checks_for_updates(&mut self, on: bool) {
         self.command(|app| app.set_checks_for_updates(on));
+    }
+
+    /// Whether this computer keeps the courses' worlds once built, so that riding one again
+    /// starts at once (R101).
+    #[func]
+    fn keeps_worlds(&self) -> bool {
+        self.app.as_ref().is_some_and(App::keeps_worlds)
+    }
+
+    /// Turns keeping the courses' worlds on (the world loaded is kept at once) or off (every
+    /// kept world is deleted) for this computer.
+    #[func]
+    fn set_keeps_worlds(&mut self, on: bool) {
+        self.command(|app| app.set_keeps_worlds(on));
+    }
+
+    /// How many bytes the kept worlds take on this computer.
+    #[func]
+    fn kept_worlds_size(&self) -> i64 {
+        self.app.as_ref().map_or(0, |app| {
+            i64::try_from(app.kept_worlds_size()).unwrap_or(i64::MAX)
+        })
     }
 
     /// Looks for a newer Torqa in the background (R99): at start-up (`asked` false) only if

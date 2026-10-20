@@ -1,6 +1,6 @@
 //! Storage for Torqa: recorded rides as FIT activities (R28), course files (R32–R35), rider
-//! profiles (R22) and their accounts on training platforms (R29), and the history index that
-//! spares reading every ride's metadata (R79).
+//! profiles (R22) and their accounts on training platforms (R29), the history index that
+//! spares reading every ride's metadata (R79) and the 3D worlds a computer keeps (R101).
 
 pub mod accounts;
 pub mod computer;
@@ -8,6 +8,7 @@ pub mod course;
 pub mod index;
 pub mod profiles;
 pub mod rides;
+pub mod worlds;
 
 /// A file-name-safe form of `name`: lowercase letters and digits joined by single hyphens, or
 /// `fallback` if nothing remains.
