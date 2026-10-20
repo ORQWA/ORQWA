@@ -410,6 +410,87 @@ jobs:
           path: dist/torqa-cli-linux-${{ matrix.arch }}.tar.gz
           archive: false
 
+  android:
+    name: Android app (arm64)
+    # Built in the Android image (ADR 0024): the dev image plus the SDK, NDK and Java, kept apart so
+    # the dev image and the checks stay small. Runs beside the other builds.
+    needs: image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ${{ needs.image.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      # The Android image is about 11 GB; the runner's own Android SDK, .NET and Haskell make room.
+      - name: Free disk space
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.gradle
+            core/target
+          key: android-${{ hashFiles('.devcontainer/Dockerfile', 'scripts/build-ffmpeg.sh', 'android/Dockerfile') }}-${{ hashFiles('core/Cargo.lock', 'core/Cargo.toml') }}
+          restore-keys: |
+            android-${{ hashFiles('.devcontainer/Dockerfile', 'scripts/build-ffmpeg.sh', 'android/Dockerfile') }}-
+      # One Android image per dev image and Android Dockerfile, like the dev image: built the first
+      # time that pair is seen, pulled after. A fork PR builds its own and pushes nothing.
+      - name: Pull the Android image, or build it
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUSH: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          hash="$(printf '%s' "$IMAGE" | cat - android/Dockerfile | sha256sum | cut -c1-16)"
+          tag="ghcr.io/$owner/torqa-android:$hash"
+          echo "ANDROID_IMAGE=$tag" >> "$GITHUB_ENV"
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin || true
+          if docker pull "$tag"; then exit 0; fi
+          docker pull "$IMAGE" || docker build -f .devcontainer/Dockerfile -t "$IMAGE" .
+          docker build -f android/Dockerfile --build-arg "BASE=$IMAGE" -t "$tag" .
+          if [ "$PUSH" = true ]; then docker push "$tag"; fi
+      # Only a tagged release is signed with the release key (ADR 0024); every other build gets a
+      # debug key of its own. The key exists on the runner only for this step.
+      - name: Build the APK
+        env:
+          RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p ~/.cargo/registry ~/.gradle core/target
+          signing=""
+          if [ "$RELEASE" = true ]; then
+            if [ -z "$KEYSTORE" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+              echo "A release needs the ANDROID_KEYSTORE and ANDROID_KEYSTORE_PASSWORD secrets" >&2
+              exit 1
+            fi
+            keys="$(mktemp -d)"
+            trap 'rm -rf "$keys"' EXIT
+            printf '%s' "$KEYSTORE" | base64 -d > "$keys/release.keystore"
+            signing="-v $keys:/keys:ro -e TORQA_RELEASE_KEYSTORE=/keys/release.keystore"
+            signing="$signing -e TORQA_RELEASE_KEYSTORE_PASSWORD"
+          fi
+          export TORQA_RELEASE_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD"
+          # shellcheck disable=SC2086 # signing is a list of docker options, or empty
+          docker run --rm \
+            -e CARGO_INCREMENTAL=0 \
+            $signing \
+            -v "$PWD:/workspaces/torqa" \
+            -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \
+            -v "$HOME/.gradle:/root/.gradle" \
+            -w /workspaces/torqa \
+            "$ANDROID_IMAGE" scripts/build-android.sh release
+      - name: Hand the build directories back to the runner's user
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" core/target ~/.cargo/registry ~/.gradle dist
+      - uses: actions/upload-artifact@v7
+        with:
+          path: dist/Torqa-android-arm64.apk
+          archive: false
+
   # A tag changes no version: the release must come from a commit already naming the tag's.
   # Fails in seconds, beside the builds rather than before them, so branch runs wait for nothing.
   version:
@@ -424,7 +505,7 @@ jobs:
   release:
     name: Publish tagged release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [version, checks, macos, windows, linux]
+    needs: [version, checks, macos, windows, linux, android]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

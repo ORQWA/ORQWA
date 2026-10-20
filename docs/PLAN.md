@@ -38,6 +38,7 @@ core/                      Rust workspace (tokio + tracing)
                            rides
 app/                       Godot 4 project: scenes/ (screens, 3D world, video view), ui/ (shared
                            controls and theme), shaders/, translations/, tests/ (smoke tests)
+android/                   the Android APK's image, Godot plugin and export additions (ADR 0024)
 art/                       Blender Python scripts for the 3D models: buildings, vegetation,
                            clouds, riders and bikes; third-party bases in art/sources/ (ADR 0009)
 docs/                      requirements, plan, ADRs, development guides and shared images
@@ -585,6 +586,29 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   three-parameter critical power, else 95 % of 20 min) offered, never applied
 - **Exit:** a season of real rides shows where the rider got stronger, and how fit and fresh
   they are, without leaving Torqa
+
+### Phase 12 — Android tablets (R100, [ADR 0024](adr/0024-android.md))
+- [x] A — trial: a separate Android image, the core for `aarch64-linux-android`, a Godot
+  Android plugin that readies btleplug through `JNI_OnLoad`, the project staged so `app/` stays
+  untouched; on a Galaxy Tab S7 (Android 16) the KICKR's power and the Click's shifting work;
+  the core's log in Android's log; picked files copied from `content://` addresses
+- [x] B — an `android` CI job beside the others, building the APK on every pull request (its
+  own image cached in GHCR like the dev image); on releases only with D
+- [x] C — fitting Android, tried on the Tab S7 on 2026-10-20:
+  - [x] profiles, rides and courses in the app's `files` folder, not the cache Android may clear
+  - [x] saving to places picked in Android's save dialog (ride export), as opening already does
+  - [x] Low graphics by default (the mobile renderer has no SSAO or screen-space reflections
+    anyway), smooth on the Tab S7
+  - [x] HTTPS through Android's certificate checks (rustls-platform-verifier's Java part from its
+    own archive, set up with the app's context): a course imported on the tablet fetched its tiles
+  - [x] the overlay (R55) as picture-in-picture: the ride's HUD in a small window over other
+    apps, scaled to it, the world not drawn behind it. Music control says it is not supported;
+    the update check offers the release page
+  - [x] touch: Godot turns taps into clicks, enough to ride
+- [x] D — a release-signed APK as a release asset (tags only, the key from the repository
+  secrets; version code from Torqa's version), the wiki (installing, permissions, updates,
+  picture-in-picture); the internet list is unchanged
+- **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ## Risks
 

@@ -1,0 +1,31 @@
+// Torqa's Godot Android plugin (ADR 0024): loads Torqa's library early so Bluetooth can find
+// btleplug's Java classes, which are compiled in from the btleplug crate's own sources
+// (`-Pbtleplug=<their directory>`, set by scripts/build-android.sh), and asks for Bluetooth.
+// Godot's own Android build uses the same Android Gradle Plugin, so one download serves both.
+plugins {
+    id 'com.android.library' version '8.6.1'
+}
+
+android {
+    namespace 'org.torqa.android'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 24
+        // Kept in release builds: btleplug's Java is reached only from Rust, which R8 cannot see.
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.java.srcDirs += [providers.gradleProperty('btleplug').get()]
+    }
+}
+
+dependencies {
+    compileOnly 'org.godotengine:godot:4.7.2.stable'
+}

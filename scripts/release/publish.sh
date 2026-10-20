@@ -14,7 +14,8 @@ set -- \
     dist/Torqa-linux-x86_64.tar.gz \
     dist/torqa-cli-linux-x86_64.tar.gz \
     dist/Torqa-linux-arm64.tar.gz \
-    dist/torqa-cli-linux-arm64.tar.gz
+    dist/torqa-cli-linux-arm64.tar.gz \
+    dist/Torqa-android-arm64.apk
 
 # A missing upload must not turn a successful build into an incomplete release.
 for asset do

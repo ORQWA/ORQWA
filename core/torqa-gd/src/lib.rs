@@ -3823,3 +3823,41 @@ mod sample_course_tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+/// Android loads Torqa's library from Java first (ADR 0024: the APK's plugin does, before Godot
+/// opens it as an extension), on a thread with the app's class loader: the one moment Bluetooth
+/// can find btleplug's Java classes.
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)] // the name Android looks for
+#[unsafe(no_mangle)]
+pub extern "system" fn JNI_OnLoad(
+    vm: *mut torqa_devices::android::sys::JavaVM,
+    _reserved: *mut std::ffi::c_void,
+) -> torqa_devices::android::sys::jint {
+    // SAFETY: Android passes its Java VM to JNI_OnLoad.
+    match unsafe { torqa_devices::android::init(vm) } {
+        Ok(()) => torqa_devices::android::log("Bluetooth ready"),
+        Err(error) => torqa_devices::android::log(&format!("Bluetooth not ready: {error}")),
+    }
+    torqa_devices::android::sys::JNI_VERSION_1_6
+}
+
+/// Called once by the APK's plugin with the app's context (ADR 0024): HTTPS checks certificates
+/// through Android, which needs it before the first download (map tiles, uploads, updates).
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_torqa_android_TorqaAndroid_initTls<'caller>(
+    mut env: torqa_devices::android::jni::EnvUnowned<'caller>,
+    _class: torqa_devices::android::jni::objects::JClass<'caller>,
+    context: torqa_devices::android::jni::objects::JObject<'caller>,
+) {
+    use torqa_devices::android::jni::Outcome;
+    let outcome = env
+        .with_env(|env| rustls_platform_verifier::android::init_with_env(env, context))
+        .into_outcome();
+    torqa_devices::android::log(&match outcome {
+        Outcome::Ok(()) => "HTTPS ready".to_owned(),
+        Outcome::Err(error) => format!("HTTPS not ready: {error}"),
+        Outcome::Panic(_) => "HTTPS not ready: the set-up panicked".to_owned(),
+    });
+}

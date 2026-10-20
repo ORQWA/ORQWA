@@ -706,7 +706,8 @@ static func _select(option: OptionButton, choice: String) -> void:
 			return
 
 
-func _on_file_selected(path: String) -> void:
+func _on_file_selected(picked: String) -> void:
+	var path: String = PickedFile.local_path(picked)
 	_status.hide()
 	var extension: String = path.get_extension().to_lower()
 	if not extension in ["tqc", "gpx", "xml", "rlv"]:

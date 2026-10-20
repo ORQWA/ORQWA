@@ -115,10 +115,15 @@ Then push the tag `v<version>` on the merged commit, for example `git tag v0.2.1
 released: the `version` job fails any other, such as `v0.2.0` on a commit saying 0.2.1, and
 the release needs it. Branch and PR builds only produce workflow artifacts.
 The tag's commit must contain this workflow. A tag push runs the container checks and the
-native macOS, Windows and both Linux builds. After all succeed, the `release` job verifies
-all eight nonempty app/CLI archives, creates a draft with generated release notes, uploads
-the archives and publishes it. Only that job has `contents: write`, using the automatic
-`GITHUB_TOKEN`; no release secret is needed.
+native macOS, Windows and both Linux builds, and the Android build. After all succeed, the
+`release` job verifies every nonempty app/CLI archive (the Android APK among them), creates a
+draft with generated release notes, uploads the archives and publishes it. Only that job has
+`contents: write`, using the automatic `GITHUB_TOKEN`.
+
+The APK of a tag is signed with Torqa's release key, from the repository secrets
+`ANDROID_KEYSTORE` (the keystore, base64) and `ANDROID_KEYSTORE_PASSWORD` (alias `torqa`); the
+build fails without them. Every Android update must carry the same key, so its owner keeps a
+copy outside GitHub. Other builds are signed with a debug key.
 
 Build jobs upload each archive as a single file (`archive: false`). The release download
 uses `skip-decompress: true` to keep those files intact: without it the download action
@@ -133,6 +138,22 @@ before announcing it; merging the workflow PR alone does not create a release.
 A workflow fix does not change an existing tag's CI run. For a failure caused by the workflow
 itself, merge the fix with a new version and tag that rather than rerunning the old
 workflow.
+
+### Android
+
+The APK comes from a container of its own ([ADR 0024](adr/0024-android.md)), built on the dev
+image only when needed. `app/` is never changed: the build works on a copy.
+
+```sh
+scripts/android.sh scripts/build-android.sh release   # → dist/Torqa-android-arm64.apk
+```
+
+Install it on a tablet with adb over USB or wireless debugging (`adb install -r …`) and read
+Torqa's log with `adb logcat -s Torqa godot`. Local builds are signed with a debug key made once
+in the `torqa-gradle` volume; `TORQA_RELEASE_KEYSTORE` and `TORQA_RELEASE_KEYSTORE_PASSWORD`
+sign with a release key instead, as CI does for releases. The APK's version is Torqa's
+(`version/code` 500 for 0.5.0). [android/README.md](../android/README.md) lists
+the parts and how to remove Android support again.
 
 ## More
 

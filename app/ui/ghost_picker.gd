@@ -86,6 +86,7 @@ func _set_value(low: float, high: float, step: float, suffix: String, value: flo
 	_value.value = value
 
 
-func _on_file_selected(path: String) -> void:
+func _on_file_selected(picked: String) -> void:
+	var path: String = PickedFile.local_path(picked)
 	_activity = path
 	_option.set_item_text(Ghost.ACTIVITY, tr("Activity: %s") % path.get_file())

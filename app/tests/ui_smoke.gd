@@ -16,6 +16,7 @@ func _run() -> void:
 	_ride_settings()
 	_workout_settings()
 	_workout_editor()
+	_picked_files()
 	_course_cards()
 	await _rider_switch()
 	_ride_bar()
@@ -300,6 +301,21 @@ func _workout_editor() -> void:
 	var fresh: Array = editor.workout()["steps"]
 	_check(fresh.size() == 3, "a new workout starts with a warm-up, a block and a cool-down")
 	editor.free()
+
+
+## Picked files (ADR 0024): paths pass through as they are; Android's content addresses are
+## named by the file they end in.
+func _picked_files() -> void:
+	var path: String = "/home/rider/Rides/Ride.gpx"
+	_check(PickedFile.local_path(path) == path, "a picked path is opened as it is")
+	_check(PickedFile.save_path(path) == path, "and saved as it is")
+	_check(PickedFile.save(path, path), "with nothing to copy")
+	var address: String = (
+		"content://com.android.externalstorage.documents/document/"
+		+ "primary%3ADownload%2FRide.gpx"
+	)
+	_check(PickedFile.name_of(address) == "Ride.gpx", "a content address shows its file name")
+	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in Torqa's folder")
 
 
 ## The captions of a three-column options grid whose rows show.

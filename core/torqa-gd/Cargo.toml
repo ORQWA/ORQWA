@@ -22,5 +22,8 @@ torqa-world.workspace = true
 godot.workspace = true
 tracing.workspace = true
 
+[target.'cfg(target_os = "android")'.dependencies]
+rustls-platform-verifier.workspace = true
+
 [lints]
 workspace = true
