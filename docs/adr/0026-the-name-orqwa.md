@@ -11,7 +11,7 @@ riders an installation and an update check that names the old repository and ins
 
 ## Decision
 
-The app is **ORQWA**, orca and watt (R102):
+The app is **ORQWA**, orca, torque and watt (R102):
 
 - **Spelling.** ORQWA in capitals wherever a name shows or names a product file: the window,
   About, docs, wiki, `ORQWA.exe`, `ORQWA.app` and the release files. Code follows its
@@ -20,6 +20,8 @@ The app is **ORQWA**, orca and watt (R102):
 - **Brand.** The orca on a chainring stays the mark. The wordmark is new: rounded capitals with
   the mark's blue crescent inside the Q. `scripts/brand/wordmark.py` draws it and the lockups
   in `docs/brand/` from measurements of the design.
+  The wiki's welcome and naming story also use the cycling-orca illustration supplied by
+  the project owner (`docs/images/cycling-orca.png`, credited in `docs/CREDITS.md`).
 - **Repository.** `ORQWA/ORQWA` on GitHub. Links to `Torqa-Indoor-Cycling/Torqa` redirect,
   including the API address the update check of 0.5.0 asks.
 - **Riders' data.** On its first start ORQWA moves Torqa's folders to its own names
