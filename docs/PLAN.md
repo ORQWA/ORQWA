@@ -611,12 +611,14 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
-"Torqa" is taken by another registered app; the project becomes ORQWA (orca and watt).
+"Torqa" is taken by another registered app; the project becomes ORQWA (orca, torque and watt).
 - [x] Code identifiers: crates `orqwa-*`, `OrqwaApp` and the extension `orqwa_gd`, `ORQWA_*`
   variables, the Android plugin, the dev image and volumes, the skills
 - [x] The app named ORQWA: the wordmark (`scripts/brand/wordmark.py`), Torqa's folders moved to
   ORQWA's on the first start, installer, `org.orqwa.bike`, release files, docs, wiki and
   screenshots
+- [x] Welcome and naming story on the wiki homepage, with the "orqward" joke, the supplied
+  cycling-orca illustration, sidebar navigation and a link from the README
 - [ ] Drop the release asset `Torqa-windows-x86_64.msi` (`scripts/release/publish.sh`) once
   riders have moved past Torqa 0.5.0
 
