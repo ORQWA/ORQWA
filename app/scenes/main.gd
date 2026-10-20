@@ -18,6 +18,7 @@ var _update: UpdateDialog = UpdateDialog.new()
 var _pending_update: Array = []
 ## On Android: the ride's HUD shows in a small window on top of other apps.
 var _picture_in_picture: bool = false
+var _clear_color: Color = Color()
 
 @onready var _torqa: TorqaApp = $Torqa
 @onready var _world: RideWorld = $World
@@ -145,6 +146,12 @@ func _set_picture_in_picture(on: bool) -> void:
 	_ride.set_overlay(on)
 	# Only the HUD shows, so the world is not drawn behind it, as in the overlay window.
 	get_window().disable_3d = on
+	# Around the HUD, the window is the panels' colour: Godot's grey would frame them.
+	if on:
+		_clear_color = RenderingServer.get_default_clear_color()
+		RenderingServer.set_default_clear_color(Color(UiTheme.PANEL, 1.0))
+	else:
+		RenderingServer.set_default_clear_color(_clear_color)
 	_video.visible = not on and _ride.visible and _torqa.riding_along_video()
 	if on:
 		# One frame for the overlay's content to take its size.
