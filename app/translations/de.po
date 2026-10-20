@@ -2162,6 +2162,9 @@ msgstr "ORQWA %s ist verfügbar."
 msgid "ORQWA %s is available; you have %s."
 msgstr "ORQWA %s ist verfügbar; du hast %s."
 
+msgid "ORQWA downloads and installs it; then open ORQWA again."
+msgstr "ORQWA lädt sie herunter und installiert sie; öffne ORQWA danach wieder."
+
 msgid "ORQWA downloads it, closes and installs it, then starts again."
 msgstr "ORQWA lädt sie herunter, schliesst sich, installiert sie und startet dann neu."
 

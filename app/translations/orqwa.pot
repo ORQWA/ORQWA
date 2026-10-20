@@ -1716,6 +1716,10 @@ msgid "ORQWA courses"
 msgstr ""
 
 #: app/ui/update_dialog.gd
+msgid "ORQWA downloads and installs it; then open ORQWA again."
+msgstr ""
+
+#: app/ui/update_dialog.gd
 msgid "ORQWA downloads it, closes and installs it, then starts again."
 msgstr ""
 

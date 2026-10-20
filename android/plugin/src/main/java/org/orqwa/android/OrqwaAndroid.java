@@ -2,14 +2,30 @@ package org.orqwa.android;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.PendingIntent;
 import android.app.PictureInPictureParams;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageInstaller;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import android.util.Rational;
 import android.view.View;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Collections;
+import java.util.Set;
+
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
+import org.godotengine.godot.plugin.SignalInfo;
 import org.godotengine.godot.plugin.UsedByGodot;
 
 /**
@@ -17,9 +33,16 @@ import org.godotengine.godot.plugin.UsedByGodot;
  * extensions, on the app's main thread: loading ORQWA's library here runs its JNI_OnLoad with
  * the app's class loader, the one moment btleplug can find its Java classes. Then it hands the
  * app's context to HTTPS's certificate checks and asks for Bluetooth, which Android grants only
- * at run time.
+ * at run time. It also installs ORQWA's updates (R99): the APK the core downloaded, handed to
+ * Android's installer.
  */
 public class OrqwaAndroid extends GodotPlugin {
+    /** Android tells how an update's installation went with this broadcast, to ORQWA only. */
+    private static final String UPDATE_STATUS = "org.orqwa.android.UPDATE_STATUS";
+
+    /** An update waiting for the rider to allow ORQWA to install apps. */
+    private String pendingUpdate;
+
     public OrqwaAndroid(Godot godot) {
         super(godot);
         System.loadLibrary("orqwa_gd");
@@ -34,8 +57,20 @@ public class OrqwaAndroid extends GodotPlugin {
     }
 
     @Override
+    public Set<SignalInfo> getPluginSignals() {
+        return Collections.singleton(new SignalInfo("update_failed", String.class));
+    }
+
+    @Override
     public View onMainCreate(Activity activity) {
         initTls(activity.getApplicationContext());
+        IntentFilter status = new IntentFilter(UPDATE_STATUS);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            activity.getApplicationContext()
+                    .registerReceiver(updateStatus, status, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            activity.getApplicationContext().registerReceiver(updateStatus, status);
+        }
         String[] bluetooth = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
                 ? new String[] {Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT}
                 : new String[] {Manifest.permission.ACCESS_FINE_LOCATION};
@@ -69,5 +104,98 @@ public class OrqwaAndroid extends GodotPlugin {
         return activity != null
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
                 && activity.isInPictureInPictureMode();
+    }
+
+    /**
+     * Installs the update at `path` over ORQWA, which Android then closes. From Android 12 an app
+     * updating itself may do so without asking; where Android asks anyway, it shows its prompt.
+     * The first time, the rider allows ORQWA to install apps; the update goes on when they come
+     * back from that setting.
+     */
+    @UsedByGodot
+    public void installUpdate(String path) {
+        Activity activity = getActivity();
+        if (activity == null) {
+            emitSignal("update_failed", "ORQWA is not open");
+            return;
+        }
+        if (!activity.getPackageManager().canRequestPackageInstalls()) {
+            pendingUpdate = path;
+            Uri orqwa = Uri.parse("package:" + activity.getPackageName());
+            activity.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, orqwa));
+            return;
+        }
+        // A whole APK is copied: not on the main thread.
+        new Thread(() -> install(activity, path)).start();
+    }
+
+    @Override
+    public void onMainResume() {
+        String path = pendingUpdate;
+        Activity activity = getActivity();
+        if (path == null || activity == null) {
+            return;
+        }
+        pendingUpdate = null;
+        if (activity.getPackageManager().canRequestPackageInstalls()) {
+            new Thread(() -> install(activity, path)).start();
+        } else {
+            emitSignal("update_failed", "ORQWA may not install apps");
+        }
+    }
+
+    private void install(Activity activity, String path) {
+        PackageInstaller installer = activity.getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params =
+                new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(activity.getPackageName());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+        }
+        File apk = new File(path);
+        try {
+            int id = installer.createSession(params);
+            try (PackageInstaller.Session session = installer.openSession(id)) {
+                try (InputStream in = new FileInputStream(apk);
+                        OutputStream out = session.openWrite("orqwa.apk", 0, apk.length())) {
+                    byte[] buffer = new byte[1 << 16];
+                    int read;
+                    while ((read = in.read(buffer)) > 0) {
+                        out.write(buffer, 0, read);
+                    }
+                    session.fsync(out);
+                }
+                Intent status = new Intent(UPDATE_STATUS).setPackage(activity.getPackageName());
+                // Mutable: Android fills in the result.
+                int flags = PendingIntent.FLAG_UPDATE_CURRENT
+                        | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0);
+                session.commit(PendingIntent.getBroadcast(activity, id, status, flags).getIntentSender());
+            }
+        } catch (IOException | RuntimeException e) {
+            emitSignal("update_failed", e.toString());
+        }
+    }
+
+    private final BroadcastReceiver updateStatus = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
+            if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                Intent confirm = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        ? intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class)
+                        : legacyIntent(intent);
+                if (confirm != null) {
+                    context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                }
+            } else if (status != PackageInstaller.STATUS_SUCCESS) {
+                String message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+                emitSignal("update_failed", message == null ? "installation failed" : message);
+            }
+        }
+    };
+
+    @SuppressWarnings("deprecation")
+    private static Intent legacyIntent(Intent intent) {
+        return intent.getParcelableExtra(Intent.EXTRA_INTENT);
     }
 }
