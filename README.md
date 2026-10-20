@@ -22,9 +22,6 @@
 A modern, offline-first, open-source and free indoor cycling app. Import a GPX route or a ride video and
 ride it on your smart trainer, through a generated 3D world or along the video.
 
-We know it sounds a little **orqward**, but unfortunately Torqa was already taken.
-**Orca + torque + watt = ORQWA** — [meet our cycling orca in the wiki](https://github.com/ORQWA/ORQWA/wiki/Home#why-orqwa).
-
 <table>
   <tr>
     <td colspan="2" align="center">
