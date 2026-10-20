@@ -443,6 +443,10 @@ msgstr ""
 msgid "Chase"
 msgstr ""
 
+#: app/ui/about_page.gd
+msgid "Check for updates"
+msgstr ""
+
 #: app/scenes/account_dialog.gd
 msgid "Checking…"
 msgstr ""
@@ -624,6 +628,10 @@ msgid "Could not delete the workout."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs
+msgid "Could not download the update."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs
 msgid "Could not export to %s."
 msgstr ""
 
@@ -645,6 +653,10 @@ msgstr ""
 
 #: core/torqa-app/src/failure.rs
 msgid "Could not load the workout."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs
+msgid "Could not look for a newer version of Torqa."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs
@@ -721,6 +733,10 @@ msgstr ""
 
 #: core/torqa-app/src/failure.rs
 msgid "Could not start the remote on port %s. Another program may use it: choose another port."
+msgstr ""
+
+#: core/torqa-app/src/failure.rs
+msgid "Could not start the update's installer."
 msgstr ""
 
 #: core/torqa-app/src/failure.rs
@@ -865,6 +881,14 @@ msgstr ""
 
 #: app/scenes/button_dialog.gd
 msgid "Down (left pod)"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Download it from its release page."
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Downloading Torqa %s…"
 msgstr ""
 
 #: core/torqa-app/src/import.rs
@@ -1267,6 +1291,10 @@ msgstr ""
 msgid "In between, the video follows your distance evenly."
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "Installing Torqa %s…"
+msgstr ""
+
 #: app/scenes/history_screen.gd core/torqa-app/src/hud.rs
 msgid "Intensity"
 msgstr ""
@@ -1331,6 +1359,10 @@ msgstr ""
 msgid "Last ridden"
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "Later"
+msgstr ""
+
 #: app/scenes/button_dialog.gd
 msgid "Left (left pod)"
 msgstr ""
@@ -1357,6 +1389,14 @@ msgstr ""
 
 #: app/scenes/account_dialog.gd
 msgid "Log in to %s in your browser and let Torqa upload your rides. Then come back here."
+msgstr ""
+
+#: app/ui/about_page.gd
+msgid "Look for updates when Torqa starts"
+msgstr ""
+
+#: app/ui/about_page.gd
+msgid "Looking for updates…"
 msgstr ""
 
 #: app/ui/ride_devices.gd
@@ -1681,6 +1721,10 @@ msgstr ""
 
 #: app/scenes/account_dialog.gd
 msgid "Open the login again"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Open the release page"
 msgstr ""
 
 #: app/ui/fitness_chart.gd
@@ -2367,6 +2411,14 @@ msgstr ""
 msgid "To go"
 msgstr ""
 
+#: app/ui/about_page.gd
+msgid "Torqa %s is available."
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Torqa %s is available; you have %s."
+msgstr ""
+
 #: app/scenes/account_dialog.gd
 msgid "Torqa could not connect. Go back to Torqa to try again."
 msgstr ""
@@ -2379,12 +2431,20 @@ msgstr ""
 msgid "Torqa courses"
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "Torqa downloads it, closes and installs it, then starts again."
+msgstr ""
+
 #: app/scenes/account_dialog.gd
 msgid "Torqa is connected. You can close this page."
 msgstr ""
 
 #: app/ui/about_page.gd
 msgid "Torqa is free software under the GNU General Public License, version 3:"
+msgstr ""
+
+#: app/ui/about_page.gd
+msgid "Torqa is up to date."
 msgstr ""
 
 #: app/scenes/remote_dialog.gd
@@ -2445,6 +2505,14 @@ msgstr ""
 
 #: app/scenes/button_dialog.gd
 msgid "Up (left pod)"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Update available"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Update now"
 msgstr ""
 
 #: app/scenes/history_screen.gd
@@ -2599,6 +2667,10 @@ msgstr ""
 msgid "What the remote's buttons do"
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "What's new"
+msgstr ""
+
 #: app/scenes/workouts_tab.gd
 msgid "Where"
 msgstr ""
@@ -2681,6 +2753,10 @@ msgstr ""
 
 #: app/scenes/history_screen.gd
 msgid "Your rides"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "Your rides and settings stay as they are."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd

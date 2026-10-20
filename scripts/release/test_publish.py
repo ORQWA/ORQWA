@@ -13,6 +13,7 @@ ASSETS = (
     "Torqa-macos-arm64.zip",
     "torqa-cli-macos-arm64.tar.gz",
     "Torqa-windows-x86_64.zip",
+    "Torqa-windows-x86_64.msi",
     "torqa-cli-windows-x86_64.zip",
     "Torqa-linux-x86_64.tar.gz",
     "torqa-cli-linux-x86_64.tar.gz",

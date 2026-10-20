@@ -24,6 +24,7 @@ func _run() -> void:
 	var torqa: TorqaApp = main.get_node("Torqa")
 	await _graphics(torqa, dialog)
 	_about(dialog)
+	_updates(torqa, dialog, main)
 	await _in_german(dialog)
 	dialog.hide()
 	main.free()
@@ -155,6 +156,36 @@ func _about(dialog: SettingsDialog) -> void:
 		parts.select(index)
 		parts.item_selected.emit(index)
 		_check(notice.text.contains(text), "%s: %s" % [titles[index], text])
+
+
+## Looking for updates (R99): on at start-up until this computer turns it off; a newer
+## version is offered on the start page, or once a ride is over, never during it.
+func _updates(torqa: TorqaApp, dialog: SettingsDialog, main: Control) -> void:
+	var about: AboutPage = dialog.get("_about")
+	var at_start: CheckBox = about.get("_check_at_start")
+	_check(at_start.button_pressed and torqa.checks_for_updates(), "looks for updates at start")
+	at_start.button_pressed = false
+	_check(not torqa.checks_for_updates(), "turned off for this computer")
+	at_start.button_pressed = true
+	_check(torqa.checks_for_updates(), "and on again")
+	var offer: UpdateDialog = main.get("_update")
+	torqa.update_available.emit("99.0.0", "https://example.org/v99.0.0", false)
+	var status: Label = about.get("_update_status")
+	_check(status.text.contains("99.0.0"), "the About tab tells: %s" % status.text)
+	_check(offer.visible and offer.dialog_text.contains("99.0.0"), "offered on the start page")
+	_check(offer.dialog_text.contains(TorqaCore.version()), "beside the running version")
+	_check(offer.ok_button_text == "Open the release page", "elsewhere, its page")
+	offer.hide()
+	offer.offer("99.0.0", "https://example.org/v99.0.0", true)
+	_check(offer.ok_button_text == "Update now", "on Windows, installed by Torqa")
+	offer.hide()
+	var start: StartPage = main.get_node("StartPage")
+	start.hide()
+	torqa.update_available.emit("99.0.0", "https://example.org/v99.0.0", false)
+	_check(not offer.visible, "not during a ride")
+	main.call("_back_home")
+	_check(offer.visible, "once the ride is over")
+	offer.hide()
 
 
 ## Built in English before the rider's language is known, as the start page builds it.

@@ -295,6 +295,23 @@ impl TorqaApp {
     #[signal]
     fn open_url(url: GString);
 
+    /// Torqa `version` was released, its notes at `page` (R99); `installable` when
+    /// `download_update` and `install_update` can put it in place, else the rider gets the page.
+    #[signal]
+    fn update_available(version: GString, page: GString, installable: bool);
+
+    /// The rider asked, and Torqa is the newest version.
+    #[signal]
+    fn up_to_date();
+
+    /// The update is downloaded: `install_update` installs it.
+    #[signal]
+    fn update_downloaded();
+
+    /// Looking for or downloading an update failed, for the reason in `message`.
+    #[signal]
+    fn update_failed(message: GString);
+
     /// The ride in `path` is on `platform`, its page at `url` (R29).
     #[signal]
     fn upload_finished(path: GString, platform: GString, url: GString);
@@ -1585,6 +1602,42 @@ impl TorqaApp {
     #[func]
     fn set_fullscreen(&mut self, fullscreen: bool) {
         self.command(|app| app.set_fullscreen(fullscreen));
+    }
+
+    /// Whether this computer looks for a newer Torqa at start-up (R99).
+    #[func]
+    fn checks_for_updates(&self) -> bool {
+        self.app.as_ref().is_some_and(App::checks_for_updates)
+    }
+
+    /// Turns looking for a newer Torqa at start-up on or off for this computer.
+    #[func]
+    fn set_checks_for_updates(&mut self, on: bool) {
+        self.command(|app| app.set_checks_for_updates(on));
+    }
+
+    /// Looks for a newer Torqa in the background (R99): at start-up (`asked` false) only if
+    /// this computer does, telling only a newer version; when the rider `asked`, also
+    /// `up_to_date` or `update_failed`. Never during a ride. Whether it looks.
+    #[func]
+    fn check_for_updates(&mut self, asked: bool) -> bool {
+        self.app
+            .as_mut()
+            .is_some_and(|app| app.check_for_updates(asked))
+    }
+
+    /// Downloads the newer release's installer (emits `update_downloaded` or
+    /// `update_failed`); whether it does.
+    #[func]
+    fn download_update(&mut self) -> bool {
+        self.app.as_mut().is_some_and(App::download_update)
+    }
+
+    /// Starts installing the downloaded update; on success the app must quit at once, so the
+    /// installer can replace it. Reports a failure and returns false otherwise.
+    #[func]
+    fn install_update(&mut self) -> bool {
+        self.command(App::install_update)
     }
 
     /// How the phone remote (#228) is set and doing: `{on, port, address ("" while off or
@@ -2903,6 +2956,30 @@ impl TorqaApp {
             .collect()
     }
 
+    /// Signals what was found out about updates (R99).
+    fn emit_update(&mut self, event: AppEvent) {
+        match event {
+            AppEvent::UpdateAvailable {
+                version,
+                page,
+                installable,
+            } => {
+                self.signals().update_available().emit(
+                    &GString::from(version.as_str()),
+                    &GString::from(page.as_str()),
+                    installable,
+                );
+            }
+            AppEvent::UpToDate => self.signals().up_to_date().emit(),
+            AppEvent::UpdateDownloaded => self.signals().update_downloaded().emit(),
+            AppEvent::UpdateFailed(failure) => {
+                let summary = self.record_failure(&failure);
+                self.signals().update_failed().emit(&summary);
+            }
+            _ => {}
+        }
+    }
+
     /// Signals the outcome of upload work (R29).
     fn emit_upload(&mut self, event: AppEvent) {
         match event {
@@ -2971,6 +3048,8 @@ impl TorqaApp {
         }
     }
 
+    // One arm per event, the bigger groups already handed to helpers.
+    #[allow(clippy::too_many_lines)]
     fn emit(&mut self, event: AppEvent) {
         match event {
             AppEvent::DevicesFound(devices) => {
@@ -3025,6 +3104,10 @@ impl TorqaApp {
             | AppEvent::UploadFailed { .. }
             | AppEvent::PlannedWorkouts { .. }
             | AppEvent::PlannedWorkoutsFailed { .. }) => self.emit_upload(event),
+            event @ (AppEvent::UpdateAvailable { .. }
+            | AppEvent::UpToDate
+            | AppEvent::UpdateDownloaded
+            | AppEvent::UpdateFailed(_)) => self.emit_update(event),
             AppEvent::CourseAdded(path) => {
                 let path = path.display().to_string();
                 self.signals()

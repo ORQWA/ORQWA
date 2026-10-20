@@ -12,6 +12,7 @@ pub mod library;
 pub mod media;
 pub mod paths;
 pub mod remote;
+pub mod updates;
 pub mod uploads;
 pub mod video;
 pub mod view;
@@ -390,6 +391,21 @@ pub enum AppEvent {
     },
     /// A page to show the rider in their browser, e.g. a platform's login.
     OpenUrl(String),
+    /// A newer Torqa was released (R99).
+    UpdateAvailable {
+        /// Its version, e.g. `0.5.0`.
+        version: String,
+        /// Its release page, with what changed.
+        page: String,
+        /// Whether Torqa can download and install it itself; else the rider gets the page.
+        installable: bool,
+    },
+    /// The rider asked, and Torqa is the newest version.
+    UpToDate,
+    /// The update's installer is downloaded, ready to install.
+    UpdateDownloaded,
+    /// Looking for, or downloading, an update failed.
+    UpdateFailed(Failure),
     /// Uploading a ride failed.
     UploadFailed {
         /// The ride's FIT file.
@@ -442,6 +458,7 @@ enum JobResult {
     /// The course at the first path has its own copy of its video at the second (#165).
     VideoKept(PathBuf, PathBuf),
     Upload(Box<uploads::Done>),
+    Update(updates::Done),
     /// The countries of the course at the path, prepared at the given time, were found
     /// (#230); `None` once the lookup is over.
     Countries(Option<(PathBuf, u64, Vec<CourseCountry>)>),
@@ -666,6 +683,7 @@ pub struct App {
     profile: StoredProfile,
     /// The training platforms rides can be uploaded to and the uploads under way (R29).
     uploads: uploads::UploadState,
+    updates: updates::UpdateState,
     data_dir: PathBuf,
     cache_dir: PathBuf,
     /// This computer's own settings (R78), next to the cache: never synced with the data.
@@ -752,6 +770,7 @@ impl App {
             })),
             profile,
             uploads: uploads::UploadState::new(uploads::platforms()),
+            updates: updates::UpdateState::default(),
             data_dir,
             cache_dir,
             computer,
@@ -3574,6 +3593,7 @@ impl App {
                     }
                 }
                 JobResult::Upload(done) => events.push(self.upload_work_done(*done)),
+                JobResult::Update(done) => events.extend(self.update_done(done)),
                 JobResult::Countries(found) => self.countries_found(found, events),
                 JobResult::Scan(Err(message)) => self.scan_failed(message, events),
                 JobResult::Route(_, Err(message))
