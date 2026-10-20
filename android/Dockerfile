@@ -53,9 +53,3 @@ RUN curl -fsSL -o /tmp/templates.tpz \
         templates/android_debug.apk templates/android_release.apk \
         templates/android_source.zip templates/version.txt \
     && rm /tmp/templates.tpz
-
-# A debug keystore, as Android Studio would make one: APKs from this image install on a device
-# in developer mode. Release signing comes with phase D.
-RUN keytool -genkeypair -v -keystore /root/debug.keystore -storepass android \
-        -alias androiddebugkey -keypass android -keyalg RSA -validity 10000 \
-        -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1

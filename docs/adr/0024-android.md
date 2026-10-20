@@ -31,7 +31,8 @@ build image. That is too much for the dev image, which every check pulls.
     Android build expects.
   - NDK r30, the newest stable one.
   - FFmpeg for Android, through `scripts/build-ffmpeg.sh android` (API 24).
-  - Godot's Android templates and a debug keystore.
+  - Godot's Android templates. The debug key is not in the image: it is made once in the Gradle
+    volume, so a rebuilt image still signs alike and an update installs over the last APK.
   - It is built only when an APK is wanted: `scripts/android.sh`, with Gradle's downloads in a
     volume of their own.
 - **The project stays as it is.** `scripts/build-android.sh` builds the core for

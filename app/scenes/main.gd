@@ -143,6 +143,8 @@ func _set_picture_in_picture(on: bool) -> void:
 		return
 	_picture_in_picture = on
 	_ride.set_overlay(on)
+	# Only the HUD shows, so the world is not drawn behind it, as in the overlay window.
+	get_window().disable_3d = on
 	_video.visible = not on and _ride.visible and _torqa.riding_along_video()
 	if on:
 		# One frame for the overlay's content to take its size.

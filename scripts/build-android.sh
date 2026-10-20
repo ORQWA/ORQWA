@@ -69,7 +69,13 @@ godot --headless --path "$stage/app" --import >/dev/null 2>&1 || true
 mkdir -p "$root/dist"
 apk="$root/dist/Torqa-android-arm64.apk"
 rm -f "$apk"
-GODOT_ANDROID_KEYSTORE_DEBUG_PATH=/root/debug.keystore \
+# The debug key, as Android Studio keeps one per developer: in the Gradle volume, not the image,
+# so a rebuilt image still signs alike and an update installs over the APK already on a device.
+keystore=/root/.gradle/torqa-debug.keystore
+test -s "$keystore" || keytool -genkeypair -keystore "$keystore" -storepass android \
+    -alias androiddebugkey -keypass android -keyalg RSA -validity 10000 \
+    -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
+GODOT_ANDROID_KEYSTORE_DEBUG_PATH="$keystore" \
     GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey \
     GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android \
     godot --headless --path "$stage/app" --export-debug "Android" "$apk"
