@@ -44,10 +44,13 @@ The 3D models are Blender scripts in `art/` (see [art/README.md](../art/README.m
 gallery of every model); Blender runs in its own container on the host:
 `scripts/art.sh blender --background --factory-startup --python art/<group>/build.py`.
 
-With **Keep courses ready to ride** on (R101, [ADR 0025](adr/0025-kept-worlds.md)), a library
-course rides the world its commit built, also after uncommitted changes to the world generator:
-turn it off while working on `core/torqa-world`. Renders and screenshots prepare GPX routes,
-which always build.
+Worlds can be kept across updates (R101, [ADR 0025](adr/0025-kept-worlds.md)): a change that
+makes courses come out differently raises `torqa_world::GENERATOR`, so their pages offer to
+regenerate them; one that kept worlds could no longer be read or drawn with raises
+`torqa_world::stored::FORMAT` and writes the stored sample again
+(`TORQA_WRITE_STORED_WORLD=1 cargo test -p torqa-world stored`). With **Keep courses ready to
+ride** on, a library course rides the world kept before your change: turn it off while working
+on the generator. Renders and screenshots prepare GPX routes, which always build.
 
 ## Builds
 

@@ -31,6 +31,10 @@ Blender references. Use them for any visual or model work.
   data logic in GDScript.
 - New capabilities go behind the plugin traits (`RouteImporter`, `TrainerDriver`, `SensorDriver`,
   `ShiftInput`, `ActivityUploader`, `WorkoutParser`) so implementations stay swappable.
+- Riders may keep built worlds across updates (R101, ADR 0025). A change that makes courses come
+  out differently raises `torqa_world::GENERATOR`; one that changes the stored world's layout or
+  what the app makes of it (fields, instance buffers, model names) raises
+  `torqa_world::stored::FORMAT`.
 
 ## Rust conventions
 

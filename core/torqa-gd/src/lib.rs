@@ -152,10 +152,6 @@ impl INode for TorqaApp {
             // Set once per process; a second node keeps the first one's.
             let _ = tracing::subscriber::set_global_default(log::StderrLog);
             App::new(paths::data_dir(), paths::cache_dir())
-                .map(|mut app| {
-                    app.set_commit(COMMIT);
-                    app
-                })
                 .inspect(|app| {
                     if let Err(error) = app.add_sample_course(SAMPLE_COURSE_FILE, SAMPLE_COURSE) {
                         tracing::warn!(%error, "cannot add the sample course");
@@ -179,7 +175,8 @@ impl INode for TorqaApp {
         // Courses from before Torqa knew countries, or prepared offline, learn them (#230).
         if let Some(app) = self.app.as_mut() {
             app.fill_in_countries(false);
-            // An update leaves the worlds the build before kept (R101).
+            // Courses deleted on another computer, or an update, may leave kept worlds no
+            // course needs (R101).
             app.tidy_kept_worlds();
         }
     }
@@ -647,6 +644,24 @@ impl TorqaApp {
     #[func]
     fn build_world(&mut self) -> bool {
         self.app.as_mut().is_some_and(App::build_world)
+    }
+
+    /// Builds the loaded course's world again with this Torqa, in place of the one kept from an
+    /// older one (R101); emits `world_ready` like `build_world`. False if no library course is
+    /// loaded.
+    #[func]
+    fn regenerate_world(&mut self) -> bool {
+        self.app.as_mut().is_some_and(App::regenerate_world)
+    }
+
+    /// Whether the course at `path` has a world kept that an older Torqa built, which
+    /// `regenerate_world` builds again (R101).
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn kept_world_outdated(&self, path: GString) -> bool {
+        self.app
+            .as_ref()
+            .is_some_and(|app| app.kept_world_outdated(Path::new(&path.to_string())))
     }
 
     /// The course file of the loaded route; empty if it is not one (yet).

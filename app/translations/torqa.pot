@@ -239,6 +239,10 @@ msgstr ""
 msgid "Added to your workouts."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "After an update that changes how worlds look, a course's page offers to regenerate it."
+msgstr ""
+
 #: app/scenes/analysis_tab.gd
 msgid "Against all time"
 msgstr ""
@@ -1311,6 +1315,10 @@ msgstr ""
 msgid "Intervals"
 msgstr ""
 
+#: app/scenes/course_detail.gd
+msgid "Its 3D world was kept from an older Torqa: build it with this one"
+msgstr ""
+
 #: app/ui/workout_editor.gd
 msgid "Its file is deleted from your workouts."
 msgstr ""
@@ -1941,6 +1949,10 @@ msgstr ""
 
 #: app/ui/graphics_settings.gd
 msgid "Reflections on water"
+msgstr ""
+
+#: app/scenes/course_detail.gd
+msgid "Regenerate world"
 msgstr ""
 
 #: app/scenes/remote_dialog.gd core/torqa-remote/src/lib.rs

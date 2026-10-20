@@ -1,6 +1,8 @@
 //! The courses' worlds this computer keeps (R101, ADR 0025): once a library course's world is
 //! built it is kept in the cache, and **Ride** reads it instead of building it again. Off until
-//! the rider turns it on, as a world takes about 10 MB per kilometre of route.
+//! the rider turns it on, as a world takes about 10 MB per kilometre of route. A kept world
+//! stays across updates; one an older generator built is ridden until the rider has it built
+//! again ([`App::regenerate_world`]).
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -9,7 +11,7 @@ use std::sync::Arc;
 use torqa_storage::computer;
 use torqa_storage::course;
 use torqa_storage::worlds::KeptWorlds;
-use torqa_world::World;
+use torqa_world::{GENERATOR, World};
 use tracing::{info, warn};
 
 use crate::failure::{Failure, Kind};
@@ -17,9 +19,9 @@ use crate::{App, AppError};
 
 /// What the cache holds of a course's world.
 pub(crate) enum Found {
-    /// Its world, kept.
-    World(Box<World>),
-    /// None yet: one built is kept under this fingerprint.
+    /// Its world, kept, and the version of the generator that built it.
+    World(Box<World>, u32),
+    /// None to ride: one built is kept under this fingerprint.
     Missing(String),
     /// Nothing that can be told: the course file cannot be read.
     Unknown,
@@ -27,7 +29,6 @@ pub(crate) enum Found {
 
 /// Where kept worlds are: the cache, the setting to check once one is written (it may have
 /// been turned off meanwhile) and the library whose courses' worlds stay.
-#[derive(Clone)]
 pub(crate) struct Keeper {
     kept: KeptWorlds,
     computer: PathBuf,
@@ -35,8 +36,8 @@ pub(crate) struct Keeper {
 }
 
 impl Keeper {
-    /// The kept world of the library course at `course`, if there is one. A damaged one is
-    /// built again.
+    /// The kept world of the library course at `course`, if there is one. One damaged or of
+    /// another format is built again.
     pub(crate) fn find(&self, course: &Path) -> Found {
         let fingerprint = match course::fingerprint(course) {
             Ok(fingerprint) => fingerprint,
@@ -46,27 +47,39 @@ impl Keeper {
             }
         };
         match self.kept.read(&fingerprint) {
-            Ok(Some(world)) => {
-                info!(chunks = world.chunks.len(), "riding the kept world");
-                Found::World(Box::new(world))
+            Ok(Some((world, generator))) => {
+                info!(
+                    chunks = world.chunks.len(),
+                    generator, "riding the kept world"
+                );
+                Found::World(Box::new(world), generator)
             }
             Ok(None) => Found::Missing(fingerprint),
             Err(error) => {
-                warn!(%error, "the kept world is damaged; building it again");
+                warn!(%error, "the kept world cannot be read; building it again");
                 Found::Missing(fingerprint)
             }
         }
     }
 
-    /// Keeps `world` as that of the course at `course`, found by `fingerprint` (that of a
-    /// world just built, not kept yet) or else by the file, and drops the worlds no course of
-    /// the library has any more. Blocks for seconds: the world is deflated.
-    pub(crate) fn keep(&self, course: &Path, world: &World, fingerprint: Option<String>) {
+    /// Keeps `world`, built by the generator of version `generator`, as that of the course at
+    /// `course`, found by `fingerprint` (that of a world just built) or else by the file, and
+    /// drops the worlds no course of the library has any more. Blocks for seconds: the world is
+    /// deflated.
+    pub(crate) fn keep(
+        &self,
+        course: &Path,
+        world: &World,
+        generator: u32,
+        fingerprint: Option<String>,
+    ) {
         let fingerprint = match fingerprint {
             Some(fingerprint) => fingerprint,
             None => match course::fingerprint(course) {
                 // Turned on again while it is still kept: writing it again only costs time.
-                Ok(fingerprint) if self.kept.has(&fingerprint) => return self.tidy(),
+                Ok(fingerprint) if self.kept.generator(&fingerprint) == Some(generator) => {
+                    return self.tidy();
+                }
                 Ok(fingerprint) => fingerprint,
                 Err(error) => {
                     warn!(%error, course = %course.display(), "cannot keep the course's world");
@@ -74,14 +87,14 @@ impl Keeper {
                 }
             },
         };
-        if let Err(error) = self.kept.write(&fingerprint, world) {
+        if let Err(error) = self.kept.write(&fingerprint, world, generator) {
             warn!(%error, "cannot keep the course's world");
         }
         self.tidy();
     }
 
-    /// Drops the worlds of other builds and of courses gone from the library, or all of them
-    /// once keeping them is turned off.
+    /// Drops the worlds of courses gone from the library and those this Torqa cannot read, or
+    /// all of them once keeping them is turned off.
     pub(crate) fn tidy(&self) {
         let tidied = if computer::keep_worlds(&self.computer) {
             self.kept.keep_only(&library_fingerprints(&self.library))
@@ -136,18 +149,42 @@ impl App {
         self.keeper().kept.size()
     }
 
-    /// Names the commit this build is made from (R83): a world is kept by the build that made
-    /// it, as another may build it differently.
-    pub fn set_commit(&mut self, commit: &str) {
-        self.build = if commit.is_empty() {
-            torqa_domain::version().to_owned()
-        } else {
-            format!("{}-{commit}", torqa_domain::version())
-        };
+    /// Whether the course at `course` has a world kept that an older generator built, which
+    /// [`App::regenerate_world`] builds again. Courses with a video are ridden along it and
+    /// never asked.
+    #[must_use]
+    pub fn kept_world_outdated(&self, course: &Path) -> bool {
+        self.keeps_worlds()
+            && course::read_manifest(course).is_ok_and(|manifest| manifest.video.is_none())
+            && course::fingerprint(course).is_ok_and(|fingerprint| {
+                self.keeper()
+                    .kept
+                    .generator(&fingerprint)
+                    .is_some_and(|generator| generator < GENERATOR)
+            })
     }
 
-    /// Drops, in the background, the kept worlds of other builds and of courses gone from the
-    /// library (also on another computer sharing it), or all once keeping them is off.
+    /// Builds the world of the course loaded again with this Torqa's generator, in place of the
+    /// one kept (R101): the kept one is deleted, and the course opened anew and its world built
+    /// and kept as for a ride, reported by [`AppEvent::WorldReady`](crate::AppEvent::WorldReady).
+    /// False if no library course is loaded.
+    pub fn regenerate_world(&mut self) -> bool {
+        let Some(course) = self.course.clone() else {
+            return false;
+        };
+        if let Ok(fingerprint) = course::fingerprint(&course)
+            && let Err(error) = self.keeper().kept.remove(&fingerprint)
+        {
+            warn!(%error, "cannot delete the kept world");
+        }
+        self.open_course(course);
+        self.build_world();
+        true
+    }
+
+    /// Drops, in the background, the kept worlds of courses gone from the library (also on
+    /// another computer sharing it) and those this Torqa cannot read, or all once keeping them
+    /// is off.
     pub fn tidy_kept_worlds(&self) {
         let keeper = self.keeper();
         self.runtime.spawn_blocking(move || keeper.tidy());
@@ -155,13 +192,13 @@ impl App {
 
     pub(crate) fn keeper(&self) -> Keeper {
         Keeper {
-            kept: KeptWorlds::new(&self.cache_dir, &self.build),
+            kept: KeptWorlds::new(&self.cache_dir),
             computer: self.computer.clone(),
             library: self.courses_dir(),
         }
     }
 
-    /// Keeps `world` as that of the library course at `course`, in the background.
+    /// Keeps the loaded `world` as that of the library course at `course`, in the background.
     pub(crate) fn keep_world(
         &self,
         course: PathBuf,
@@ -169,8 +206,9 @@ impl App {
         fingerprint: Option<String>,
     ) {
         let keeper = self.keeper();
+        let generator = self.world_generator;
         self.runtime
-            .spawn_blocking(move || keeper.keep(&course, &world, fingerprint));
+            .spawn_blocking(move || keeper.keep(&course, &world, generator, fingerprint));
     }
 }
 
@@ -220,11 +258,12 @@ mod tests {
 
     const MARK: usize = 424_242;
 
-    /// Marks the kept world of the course with `fingerprint`.
-    fn mark(keeper: &Keeper, fingerprint: &str) {
-        let mut world = keeper.kept.read(fingerprint).unwrap().expect("kept");
+    /// Marks the kept world of the course with `fingerprint`, as built by the generator of
+    /// version `generator`.
+    fn mark(keeper: &Keeper, fingerprint: &str, generator: u32) {
+        let (mut world, _) = keeper.kept.read(fingerprint).unwrap().expect("kept");
         world.fallback_samples = MARK;
-        keeper.kept.write(fingerprint, &world).unwrap();
+        keeper.kept.write(fingerprint, &world, generator).unwrap();
     }
 
     #[test]
@@ -238,9 +277,10 @@ mod tests {
         let keeper = app.keeper();
         let fingerprint = course::fingerprint(&course).unwrap();
         wait_for(&mut app, |_| keeper.kept.has(&fingerprint));
-        mark(&keeper, &fingerprint);
+        mark(&keeper, &fingerprint, GENERATOR);
 
         assert_eq!(ride(&mut app, &course), MARK, "ridden from the kept world");
+        assert!(!app.kept_world_outdated(&course), "built by this generator");
         // Renamed, it is still the same world.
         app.rename_course(&course, "Evening loop").unwrap();
         assert_eq!(ride(&mut app, &course), MARK);
@@ -280,36 +320,72 @@ mod tests {
     }
 
     #[test]
-    fn a_damaged_world_or_one_of_another_build_is_built_again() {
-        let dir = temp_dir("kept-again");
+    fn an_older_generators_world_is_ridden_until_the_rider_has_it_built_again() {
+        let dir = temp_dir("kept-older");
         let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
-        app.set_commit("1111111");
         app.set_keeps_worlds(true).unwrap();
         let course = prepare(&mut app, &dir);
-        let older = app.keeper();
-        let fingerprint = course::fingerprint(&course).unwrap();
-        wait_for(&mut app, |_| older.kept.has(&fingerprint));
-        mark(&older, &fingerprint);
-
-        // Another build may build it differently: it builds its own, and the older goes.
-        app.set_commit("2222222");
         let keeper = app.keeper();
-        assert_ne!(ride(&mut app, &course), MARK);
-        wait_for(&mut app, |_| {
-            keeper.kept.has(&fingerprint) && !older.kept.has(&fingerprint)
-        });
+        let fingerprint = course::fingerprint(&course).unwrap();
+        wait_for(&mut app, |_| keeper.kept.has(&fingerprint));
+        assert!(!app.kept_world_outdated(&course));
+        // Kept before an update that changed how worlds look.
+        mark(&keeper, &fingerprint, GENERATOR - 1);
+        assert!(
+            app.kept_world_outdated(&course),
+            "the course offers to build it again"
+        );
 
-        // A damaged file is no error to the rider: the world is built and kept again.
-        let file = std::fs::read_dir(dir.join("cache/worlds"))
-            .unwrap()
-            .flat_map(|shelf| std::fs::read_dir(shelf.unwrap().path()).unwrap())
-            .map(|entry| entry.unwrap().path())
-            .find(|path| path.extension().is_some_and(|e| e == "world"))
-            .expect("the kept world");
+        assert_eq!(
+            ride(&mut app, &course),
+            MARK,
+            "still ridden at once, as it is"
+        );
+        // Turned off and on again, the world loaded is kept as the older generator built it.
+        app.set_keeps_worlds(false).unwrap();
+        wait_for(&mut app, |app| app.kept_worlds_size() == 0);
+        app.set_keeps_worlds(true).unwrap();
+        wait_for(&mut app, |_| keeper.kept.has(&fingerprint));
+        assert!(app.kept_world_outdated(&course));
+
+        assert!(app.regenerate_world());
+        let events = run_until(&mut app, |e| {
+            matches!(e, AppEvent::WorldReady { .. } | AppEvent::Error(_))
+        });
+        assert!(
+            matches!(events.last(), Some(AppEvent::WorldReady { fallback_samples, .. }) if *fallback_samples != MARK),
+            "built anew: {events:?}"
+        );
+        wait_for(&mut app, |_| {
+            keeper.kept.generator(&fingerprint) == Some(GENERATOR)
+        });
+        assert!(!app.kept_world_outdated(&course));
+        assert_ne!(
+            ride(&mut app, &course),
+            MARK,
+            "and kept in place of the older"
+        );
+        app.shutdown();
+    }
+
+    #[test]
+    fn a_damaged_kept_world_is_built_again() {
+        let dir = temp_dir("kept-damaged");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        app.set_keeps_worlds(true).unwrap();
+        let course = prepare(&mut app, &dir);
+        let keeper = app.keeper();
+        let fingerprint = course::fingerprint(&course).unwrap();
+        wait_for(&mut app, |_| keeper.kept.has(&fingerprint));
+        mark(&keeper, &fingerprint, GENERATOR);
+
+        // No error to the rider: the world is built and kept again.
+        let file = dir.join(format!("cache/worlds/{fingerprint}.world"));
         std::fs::write(&file, b"damaged").unwrap();
+        assert!(!app.kept_world_outdated(&course), "nothing to offer");
         assert_ne!(ride(&mut app, &course), MARK);
         wait_for(&mut app, |_| {
-            keeper.kept.read(&fingerprint).is_ok_and(|w| w.is_some())
+            keeper.kept.generator(&fingerprint) == Some(GENERATOR)
         });
         app.shutdown();
     }

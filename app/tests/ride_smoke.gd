@@ -37,6 +37,11 @@ func _run() -> void:
 	var flat_s: float = flat_estimate["time_s"]
 	_check(flat_s >= estimated_s, "flat descents: %s" % flat_estimate)
 	await _wait_for(_torqa.world_ready)
+	# A world kept from an older Torqa may name models this one no longer has (R101).
+	var unknown: Array = [
+		BuildingModels.mesh("gone"), VegetationModels.mesh("gone"), PropModels.mesh("gone")
+	]
+	_check(unknown == [null, null, null], "unknown models are left out")
 
 	_check(_torqa.save_course(), "course saving started")
 	var added: Array = await _wait_for(_torqa.course_added)

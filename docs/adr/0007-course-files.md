@@ -125,5 +125,5 @@ prepared again only when a new course format makes it unreadable.
 Building the world while the course's page is open (amendment of 2026-10-15) is replaced: a
 computer may keep a course's built world in its cache (R101, [ADR 0025](0025-kept-worlds.md)),
 opt-in, as a world is 10–40 times its course file. Format 1 stays final and the course file
-unchanged; a kept world belongs to the build that made it, so every course is still ridden in
-the current generator's world.
+unchanged. R35's promise to rebuild from the stored inputs holds: a kept world from an older
+generator is ridden until the rider has it built again.

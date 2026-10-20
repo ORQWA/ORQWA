@@ -4,13 +4,14 @@
 //! Layout, in the cache directory, so nothing of it syncs with the data:
 //!
 //! ```text
-//! worlds/<build>/<fingerprint>.world   one zip per course: `whole`, the parts built whole,
-//!                                      and `chunks/<n>` for each chunk, deflated
+//! worlds/<fingerprint>.world   one zip per course: `whole`, the parts built whole, and
+//!                              `chunks/<n>` for each chunk, deflated
 //! ```
 //!
-//! A world is the work of the build that made it, so each build keeps its own and drops the
-//! others' ([`KeptWorlds::keep_only`]); within one, a course's world is found by the
-//! [fingerprint](crate::course::fingerprint) of what it is built from.
+//! A course's world is found by the [fingerprint](crate::course::fingerprint) of what it is
+//! built from. It stays kept across updates of Torqa: one of another
+//! [format](torqa_world::stored::FORMAT) cannot be read and is built again, one of an older
+//! [generator](torqa_world::GENERATOR) is ridden as it is until the rider has it built again.
 
 use std::collections::HashSet;
 use std::fs::File;
@@ -36,24 +37,23 @@ const ABANDONED: Duration = Duration::from_secs(600);
 /// Numbers the writes, so two of the same world at once do not write into one file.
 static WRITES: AtomicU64 = AtomicU64::new(0);
 
-/// The worlds this build of Torqa keeps.
+/// The worlds this computer keeps.
 #[derive(Debug, Clone)]
 pub struct KeptWorlds {
     root: PathBuf,
-    shelf: PathBuf,
 }
 
 impl KeptWorlds {
-    /// The worlds kept under `cache_dir` by `build`, e.g. its version and commit.
+    /// The worlds kept under `cache_dir`.
     #[must_use]
-    pub fn new(cache_dir: &Path, build: &str) -> Self {
-        let root = cache_dir.join(DIR);
-        let shelf = root.join(crate::slug(build, "unknown"));
-        Self { root, shelf }
+    pub fn new(cache_dir: &Path) -> Self {
+        Self {
+            root: cache_dir.join(DIR),
+        }
     }
 
     fn file(&self, fingerprint: &str) -> PathBuf {
-        self.shelf.join(format!("{fingerprint}.{EXTENSION}"))
+        self.root.join(format!("{fingerprint}.{EXTENSION}"))
     }
 
     /// Whether the world of the course with `fingerprint` is kept.
@@ -62,12 +62,23 @@ impl KeptWorlds {
         self.file(fingerprint).is_file()
     }
 
-    /// The kept world of the course with `fingerprint`; `None` if there is none. Its chunks are
-    /// read on all cores.
+    /// The version of the [generator](torqa_world::GENERATOR) that built the kept world of the
+    /// course with `fingerprint`; `None` if none is kept that this Torqa can read.
+    #[must_use]
+    pub fn generator(&self, fingerprint: &str) -> Option<u32> {
+        let file = File::open(self.file(fingerprint)).ok()?;
+        let mut zip = ZipArchive::new(BufReader::new(file)).ok()?;
+        let whole = zip.by_name(WHOLE).ok()?;
+        stored::read_generator(&mut BufReader::new(whole)).ok()
+    }
+
+    /// The kept world of the course with `fingerprint` and the version of the generator that
+    /// built it; `None` if there is none. Its chunks are read on all cores.
     ///
     /// # Errors
-    /// On I/O errors, and if the file is damaged.
-    pub fn read(&self, fingerprint: &str) -> io::Result<Option<World>> {
+    /// On I/O errors, and if the file is damaged or of another
+    /// [format](torqa_world::stored::FORMAT).
+    pub fn read(&self, fingerprint: &str) -> io::Result<Option<(World, u32)>> {
         let path = self.file(fingerprint);
         let file = match File::open(&path) {
             Ok(file) => file,
@@ -75,7 +86,7 @@ impl KeptWorlds {
             Err(e) => return Err(e),
         };
         let mut zip = ZipArchive::new(BufReader::new(file))?;
-        let mut world = stored::read_whole(&mut BufReader::new(zip.by_name(WHOLE)?))?;
+        let (mut world, generator) = stored::read_whole(&mut BufReader::new(zip.by_name(WHOLE)?))?;
         let count = zip.len() - 1;
         let threads = std::thread::available_parallelism()
             .map_or(1, NonZeroUsize::get)
@@ -114,45 +125,52 @@ impl KeptWorlds {
                 .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "chunk missing"))?;
             world.chunks.push(chunk);
         }
-        Ok(Some(world))
+        Ok(Some((world, generator)))
     }
 
-    /// Keeps `world` as that of the course with `fingerprint`, in place of one kept before.
-    /// The file appears whole or not at all.
+    /// Keeps `world`, built by the [generator](torqa_world::GENERATOR) of version
+    /// `generator`, as that of the course with `fingerprint`, in place of one kept before. The
+    /// file appears whole or not at all.
     ///
     /// # Errors
     /// On I/O errors.
-    pub fn write(&self, fingerprint: &str, world: &World) -> io::Result<()> {
-        std::fs::create_dir_all(&self.shelf)?;
+    pub fn write(&self, fingerprint: &str, world: &World, generator: u32) -> io::Result<()> {
+        std::fs::create_dir_all(&self.root)?;
         let path = self.file(fingerprint);
         let write = WRITES.fetch_add(1, Ordering::Relaxed);
         let partial =
             path.with_extension(format!("{EXTENSION}.{}-{write}.part", std::process::id()));
-        let written = write_to(&partial, world).and_then(|()| std::fs::rename(&partial, &path));
+        let written =
+            write_to(&partial, world, generator).and_then(|()| std::fs::rename(&partial, &path));
         if written.is_err() {
             let _ = std::fs::remove_file(&partial);
         }
         written
     }
 
-    /// Drops the worlds of other builds and those of courses not among `fingerprints`, e.g. the
-    /// library's: a course deleted or replaced, also on another computer sharing the data.
+    /// Drops the kept world of the course with `fingerprint`, if there is one.
+    ///
+    /// # Errors
+    /// On I/O errors.
+    pub fn remove(&self, fingerprint: &str) -> io::Result<()> {
+        remove(&self.file(fingerprint))
+    }
+
+    /// Drops the worlds of courses not among `fingerprints`, e.g. the library's: a course
+    /// deleted or replaced, also on another computer sharing the data. Worlds this Torqa cannot
+    /// read go too: they would only be built again.
     ///
     /// # Errors
     /// On I/O errors.
     pub fn keep_only(&self, fingerprints: &HashSet<String>) -> io::Result<()> {
         for entry in read_dir(&self.root)? {
             let path = entry.path();
-            if path != self.shelf {
-                remove(&path)?;
-            }
-        }
-        for entry in read_dir(&self.shelf)? {
-            let path = entry.path();
             let name = entry.file_name().to_string_lossy().into_owned();
             let live = name
                 .strip_suffix(&format!(".{EXTENSION}"))
-                .is_some_and(|fingerprint| fingerprints.contains(fingerprint));
+                .is_some_and(|fingerprint| {
+                    fingerprints.contains(fingerprint) && self.generator(fingerprint).is_some()
+                });
             // A world being written is left to its writer, unless that was long ago.
             let writing = path.extension().is_some_and(|e| e == "part")
                 && entry
@@ -166,7 +184,7 @@ impl KeptWorlds {
         Ok(())
     }
 
-    /// Drops every kept world, of every build.
+    /// Drops every kept world.
     ///
     /// # Errors
     /// On I/O errors.
@@ -174,7 +192,7 @@ impl KeptWorlds {
         remove(&self.root)
     }
 
-    /// How many bytes the kept worlds take on disk, of every build.
+    /// How many bytes the kept worlds take on disk.
     #[must_use]
     pub fn size(&self) -> u64 {
         fn size_of(path: &Path) -> u64 {
@@ -192,7 +210,7 @@ impl KeptWorlds {
     }
 }
 
-fn write_to(path: &Path, world: &World) -> io::Result<()> {
+fn write_to(path: &Path, world: &World, generator: u32) -> io::Result<()> {
     let mut zip = ZipWriter::new(BufWriter::new(File::create(path)?));
     let options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Deflated)
@@ -204,7 +222,7 @@ fn write_to(path: &Path, world: &World) -> io::Result<()> {
         out.flush()
     };
     entry(WHOLE.to_owned(), &|mut out| {
-        stored::write_whole(world, &mut out)
+        stored::write_whole(world, generator, &mut out)
     })?;
     for (index, chunk) in world.chunks.iter().enumerate() {
         entry(format!("{CHUNKS}{index}"), &|mut out| {
@@ -289,19 +307,26 @@ mod tests {
     #[test]
     fn a_kept_world_reads_back_whole_and_in_order() {
         let cache = temp_dir("kept");
-        let kept = KeptWorlds::new(&cache, "0.4.0-abc1234");
+        let kept = KeptWorlds::new(&cache);
         assert!(!kept.has("f1"));
         assert_eq!(kept.read("f1").unwrap(), None);
+        assert_eq!(kept.generator("f1"), None);
         // More chunks than cores, so that every worker reads several.
         let built = world(100);
-        kept.write("f1", &built).unwrap();
+        kept.write("f1", &built, 3).unwrap();
         assert!(kept.has("f1"));
-        assert_eq!(kept.read("f1").unwrap(), Some(built));
+        assert_eq!(kept.read("f1").unwrap(), Some((built, 3)));
+        assert_eq!(
+            kept.generator("f1"),
+            Some(3),
+            "told without reading the world"
+        );
         // Another course's world is its own; a world kept again replaces the first.
-        kept.write("f2", &world(0)).unwrap();
-        kept.write("f1", &world(2)).unwrap();
-        assert_eq!(kept.read("f1").unwrap(), Some(world(2)));
-        assert_eq!(kept.read("f2").unwrap(), Some(world(0)));
+        kept.write("f2", &world(0), 3).unwrap();
+        kept.write("f1", &world(2), 4).unwrap();
+        assert_eq!(kept.read("f1").unwrap(), Some((world(2), 4)));
+        assert_eq!(kept.generator("f1"), Some(4));
+        assert_eq!(kept.read("f2").unwrap(), Some((world(0), 3)));
         assert!(kept.size() > 0);
         std::fs::remove_dir_all(cache).unwrap();
     }
@@ -309,37 +334,36 @@ mod tests {
     #[test]
     fn a_damaged_world_is_an_error_not_a_world() {
         let cache = temp_dir("damaged");
-        let kept = KeptWorlds::new(&cache, "build");
-        kept.write("f", &world(5)).unwrap();
+        let kept = KeptWorlds::new(&cache);
+        kept.write("f", &world(5), 1).unwrap();
         let file = kept.file("f");
         let bytes = std::fs::read(&file).unwrap();
         std::fs::write(&file, &bytes[..bytes.len() / 2]).unwrap();
         assert!(kept.read("f").is_err());
         std::fs::write(&file, b"not a zip").unwrap();
         assert!(kept.read("f").is_err());
+        assert_eq!(kept.generator("f"), None);
         std::fs::remove_dir_all(cache).unwrap();
     }
 
     #[test]
-    fn each_build_keeps_its_own_worlds_and_only_the_courses_still_there() {
+    fn only_the_worlds_of_courses_still_there_are_kept() {
         let cache = temp_dir("sweep");
-        let older = KeptWorlds::new(&cache, "0.3.0-1111111");
-        older.write("f1", &world(1)).unwrap();
-        let kept = KeptWorlds::new(&cache, "0.4.0-2222222");
-        // A build does not ride another's world: the generator may have changed.
-        assert!(!kept.has("f1"));
-        for fingerprint in ["f1", "f2", "f3"] {
-            kept.write(fingerprint, &world(1)).unwrap();
+        let kept = KeptWorlds::new(&cache);
+        for fingerprint in ["f1", "f2", "f3", "f5"] {
+            kept.write(fingerprint, &world(1), 1).unwrap();
         }
         let writing = kept.file("f4").with_extension("world.part");
         std::fs::write(&writing, b"half").unwrap();
+        // One this Torqa cannot read, e.g. of another format: it would only be built again.
+        std::fs::write(kept.file("f5"), b"unreadable").unwrap();
 
         // f2's course was deleted.
-        kept.keep_only(&HashSet::from(["f1".to_owned(), "f3".to_owned()]))
-            .unwrap();
+        let library = ["f1", "f3", "f5"].map(ToOwned::to_owned);
+        kept.keep_only(&HashSet::from(library)).unwrap();
         assert!(kept.has("f1") && kept.has("f3"));
         assert!(!kept.has("f2"));
-        assert!(!older.has("f1"), "the older build's worlds are gone");
+        assert!(!kept.has("f5"), "the unreadable one is gone");
         assert!(writing.exists(), "a world being written stays");
 
         kept.clear().unwrap();

@@ -53,6 +53,10 @@ func _translate() -> void:
 		)
 		+ " "
 		+ tr("A world takes about 10 MB per kilometre of route.")
+		+ " "
+		+ tr(
+			"After an update that changes how worlds look, a course's page offers to regenerate it."
+		)
 	)
 	# Turned off, they are being deleted.
 	if _torqa != null and _keep.button_pressed:

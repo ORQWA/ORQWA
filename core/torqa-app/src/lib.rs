@@ -451,8 +451,9 @@ enum JobResult {
     // Loading results carry the load they belong to; those of an abandoned load are dropped.
     Route(u64, Result<Box<Imported>, Failure>),
     Video(u64, Result<Box<(Imported, video::VideoSource)>, Failure>),
-    /// A world, and the fingerprint to keep it under once built for a library course (R101).
-    World(u64, Arc<World>, Option<String>),
+    /// A world, the version of the generator that built it, and the fingerprint to keep it
+    /// under once built for a library course (R101).
+    World(u64, Arc<World>, u32, Option<String>),
     Progress(u64, LoadStage, usize, usize),
     CourseAdded(Result<PathBuf, Failure>),
     /// The loaded route was saved as this course.
@@ -690,8 +691,9 @@ pub struct App {
     cache_dir: PathBuf,
     /// This computer's own settings (R78), next to the cache: never synced with the data.
     computer: PathBuf,
-    /// The build of Torqa running, which keeps worlds of its own (R101): version and commit.
-    build: String,
+    /// The version of the generator that built the loaded world: an older one when it was
+    /// kept from before (R101).
+    world_generator: u32,
     /// The rides' metadata read once and kept (R79); `None` if the cache cannot hold it, when
     /// the history reads every ride's file as before.
     index: Mutex<Option<HistoryIndex>>,
@@ -778,7 +780,7 @@ impl App {
             data_dir,
             cache_dir,
             computer,
-            build: torqa_domain::version().to_owned(),
+            world_generator: torqa_world::GENERATOR,
             index: Mutex::new(index),
         })
     }
@@ -1385,7 +1387,7 @@ impl App {
             .world
             .clone()
             .filter(|_| self.keeps_worlds())
-            .map(|world| (world, self.keeper()));
+            .map(|world| (world, self.world_generator, self.keeper()));
         self.runtime.spawn_blocking(move || {
             let result = std::fs::create_dir_all(&library)
                 .map_err(course::CourseError::from)
@@ -1412,8 +1414,8 @@ impl App {
                 .map_err(|e| Failure::new(Kind::SaveCourse, e));
             let saved = result.as_ref().ok().cloned();
             let _ = tx.send(JobResult::CourseSaved(result));
-            if let (Some(course), Some((world, keeper))) = (saved, keep) {
-                keeper.keep(&course, &world, None);
+            if let (Some(course), Some((world, generator, keeper))) = (saved, keep) {
+                keeper.keep(&course, &world, generator, None);
             }
         });
         Ok(())
@@ -1924,8 +1926,8 @@ impl App {
                 reporter.report(LoadStage::World, 0, 1);
                 let found = tokio::task::spawn_blocking(move || keeper.find(&course)).await;
                 match found {
-                    Ok(kept::Found::World(world)) => {
-                        let _ = tx.send(JobResult::World(load, Arc::from(world), None));
+                    Ok(kept::Found::World(world, generator)) => {
+                        let _ = tx.send(JobResult::World(load, Arc::from(world), generator, None));
                         return;
                     }
                     Ok(kept::Found::Missing(fingerprint)) => keep_as = Some(fingerprint),
@@ -1938,7 +1940,8 @@ impl App {
                 })
                 .await;
             world.horizon = torqa_world::horizon(&route, &mut distant).await;
-            let _ = tx.send(JobResult::World(load, Arc::new(world), keep_as));
+            let generator = torqa_world::GENERATOR;
+            let _ = tx.send(JobResult::World(load, Arc::new(world), generator, keep_as));
         });
     }
 
@@ -3593,11 +3596,12 @@ impl App {
                 JobResult::Progress(_, stage, done, total) => {
                     events.push(AppEvent::LoadProgress { stage, done, total });
                 }
-                JobResult::World(_, world, keep_as) => {
+                JobResult::World(_, world, generator, keep_as) => {
                     events.push(AppEvent::WorldReady {
                         chunks: world.chunks.len(),
                         fallback_samples: world.fallback_samples,
                     });
+                    self.world_generator = generator;
                     if let (Some(fingerprint), Some(course)) = (keep_as, &self.course)
                         && self.keeps_worlds()
                     {

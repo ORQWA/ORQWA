@@ -1,25 +1,33 @@
 //! A built [`World`] as bytes (#237), so a computer can keep the worlds of its courses and ride
-//! them without building them again.
+//! them without building them again (R101).
 //!
 //! Little-endian, field after field in the order the types declare them; a list is its length
 //! (`u32`) followed by its items. The chunks and the parts built whole go apart, so a keeper can
-//! store and read the chunks side by side. Only the same build of Torqa reads what it wrote:
-//! worlds are kept by the build that made them, so the format needs no versions of its own and
-//! changes with the types.
+//! store and read the chunks side by side. The parts built whole begin with the [`FORMAT`] and
+//! the [`GENERATOR`](crate::GENERATOR) version: a world of another format is refused, one of
+//! another generator only looks as that one built it.
 
 use std::collections::BTreeMap;
 use std::io::{self, Read, Write};
 
 use crate::{BuildingCell, Horizon, Label, MeshData, Props, TerrainChunk, Trees, World};
 
-/// The first bytes of a world's parts built whole.
-const MAGIC: &[u8; 8] = b"TQWORLD1";
+/// What a stored world needs to be read and drawn. Raise it whenever a world stored before
+/// would be misread or misdrawn: a field added, removed or reordered (the test of
+/// `tests/data/stored-world-<FORMAT>.bin` fails then), or a change in what the app makes of the
+/// data, such as a model renamed or removed or another layout of an instance buffer. Worlds of
+/// another format are built again.
+pub const FORMAT: u32 = 1;
 
-/// Writes the parts of `world` built whole, everything but its chunks, to `out`.
+/// The first bytes of a world's parts built whole.
+const MAGIC: &[u8; 8] = b"TQWORLD\0";
+
+/// Writes the parts of `world` built whole, everything but its chunks, to `out`, with the
+/// version of the generator that built it (usually [`GENERATOR`](crate::GENERATOR)).
 ///
 /// # Errors
 /// On write errors, and if a list is longer than `u32::MAX` items.
-pub fn write_whole(world: &World, out: &mut impl Write) -> io::Result<()> {
+pub fn write_whole(world: &World, generator: u32, out: &mut impl Write) -> io::Result<()> {
     let World {
         chunks: _,
         road,
@@ -30,23 +38,23 @@ pub fn write_whole(world: &World, out: &mut impl Write) -> io::Result<()> {
     } = world;
     let mut out = Writer(out);
     out.0.write_all(MAGIC)?;
+    out.0.write_all(&FORMAT.to_le_bytes())?;
+    out.0.write_all(&generator.to_le_bytes())?;
     for mesh in [road, structures, railways, ground, water] {
         out.mesh(mesh)?;
     }
     out.len(*fallback_samples)
 }
 
-/// Reads what [`write_whole`] wrote: a world without chunks.
+/// Reads what [`write_whole`] wrote: a world without chunks, and the version of the generator
+/// that built it.
 ///
 /// # Errors
-/// On read errors, and [`io::ErrorKind::InvalidData`] if the bytes are not a stored world.
-pub fn read_whole(input: &mut impl Read) -> io::Result<World> {
+/// On read errors, and [`io::ErrorKind::InvalidData`] if the bytes are not a stored world of
+/// this [`FORMAT`].
+pub fn read_whole(input: &mut impl Read) -> io::Result<(World, u32)> {
     let mut input = Reader(input);
-    let mut magic = [0; MAGIC.len()];
-    input.0.read_exact(&mut magic)?;
-    if &magic != MAGIC {
-        return Err(invalid("not a stored world"));
-    }
+    let generator = input.header()?;
     let world = World {
         chunks: Vec::new(),
         road: input.mesh()?,
@@ -59,7 +67,17 @@ pub fn read_whole(input: &mut impl Read) -> io::Result<World> {
         fallback_samples: input.len()?,
     };
     input.end()?;
-    Ok(world)
+    Ok((world, generator))
+}
+
+/// The version of the generator that built a world [`write_whole`] wrote, reading only the
+/// beginning.
+///
+/// # Errors
+/// On read errors, and [`io::ErrorKind::InvalidData`] if the bytes are not a stored world of
+/// this [`FORMAT`].
+pub fn read_generator(input: &mut impl Read) -> io::Result<u32> {
+    Reader(input).header()
 }
 
 /// Writes one chunk of a world to `out`.
@@ -180,6 +198,22 @@ impl<W: Write> Writer<'_, W> {
 struct Reader<'a, R: Read>(&'a mut R);
 
 impl<R: Read> Reader<'_, R> {
+    /// The beginning of a world's parts built whole: its generator's version.
+    fn header(&mut self) -> io::Result<u32> {
+        let mut magic = [0; MAGIC.len()];
+        self.0.read_exact(&mut magic)?;
+        if &magic != MAGIC {
+            return Err(invalid("not a stored world"));
+        }
+        let mut word = [0; 4];
+        self.0.read_exact(&mut word)?;
+        if u32::from_le_bytes(word) != FORMAT {
+            return Err(invalid("a world stored in another format"));
+        }
+        self.0.read_exact(&mut word)?;
+        Ok(u32::from_le_bytes(word))
+    }
+
     /// Fails unless everything was read: bytes left over mean another layout.
     fn end(&mut self) -> io::Result<()> {
         if self.0.read(&mut [0])? == 0 {
@@ -372,9 +406,12 @@ mod tests {
         }
     }
 
+    /// The generator version the samples are stored with.
+    const BUILT_BY: u32 = 7;
+
     fn stored(world: &World) -> (Vec<u8>, Vec<Vec<u8>>) {
         let mut whole = Vec::new();
-        write_whole(world, &mut whole).expect("written");
+        write_whole(world, BUILT_BY, &mut whole).expect("written");
         let chunks = world
             .chunks
             .iter()
@@ -388,7 +425,8 @@ mod tests {
     }
 
     fn read_back((whole, chunks): &(Vec<u8>, Vec<Vec<u8>>)) -> World {
-        let mut world = read_whole(&mut whole.as_slice()).expect("read");
+        let (mut world, generator) = read_whole(&mut whole.as_slice()).expect("read");
+        assert_eq!(generator, BUILT_BY);
         for bytes in chunks {
             world
                 .chunks
@@ -398,18 +436,65 @@ mod tests {
     }
 
     #[test]
-    fn a_stored_world_reads_back_the_same() {
+    fn a_stored_world_reads_back_the_same_with_its_generator() {
         let world = sample();
-        assert_eq!(read_back(&stored(&world)), world);
+        let stored = stored(&world);
+        assert_eq!(read_back(&stored), world);
+        assert_eq!(read_generator(&mut stored.0.as_slice()).unwrap(), BUILT_BY);
         let empty = World::default();
-        assert_eq!(read_back(&stored(&empty)), empty);
+        assert_eq!(read_back(&self::stored(&empty)), empty);
+    }
+
+    /// The sample as this format stores it, kept in the repository: a world stored by an
+    /// earlier build must still read back, until the format is raised.
+    #[test]
+    fn worlds_stored_before_read_back_until_the_format_is_raised() {
+        let file = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("tests/data/stored-world-{FORMAT}.bin"));
+        let (whole, chunks) = stored(&sample());
+        if std::env::var_os("TORQA_WRITE_STORED_WORLD").is_some() {
+            let mut bytes = Vec::new();
+            for part in std::iter::once(&whole).chain(&chunks) {
+                let len = u32::try_from(part.len()).unwrap();
+                bytes.extend(len.to_le_bytes());
+                bytes.extend(part);
+            }
+            std::fs::write(&file, bytes).unwrap();
+        }
+        let raise = "the stored layout changed: raise stored::FORMAT, then write the new sample \
+            with TORQA_WRITE_STORED_WORLD=1 cargo test -p torqa-world stored";
+        let bytes = std::fs::read(&file).unwrap_or_else(|_| panic!("{}: {raise}", file.display()));
+        let mut parts = Vec::new();
+        let mut rest = bytes.as_slice();
+        while let [a, b, c, d, tail @ ..] = rest {
+            let len = u32::from_le_bytes([*a, *b, *c, *d]) as usize;
+            let (part, tail) = tail.split_at(len.min(tail.len()));
+            parts.push(part.to_vec());
+            rest = tail;
+        }
+        let read = || -> io::Result<World> {
+            let (whole, chunks) = parts.split_first().ok_or(io::ErrorKind::UnexpectedEof)?;
+            let (mut world, _) = read_whole(&mut whole.as_slice())?;
+            for chunk in chunks {
+                world.chunks.push(read_chunk(&mut chunk.as_slice())?);
+            }
+            Ok(world)
+        };
+        assert!(read().is_ok_and(|world| world == sample()), "{raise}");
     }
 
     #[test]
     fn a_cut_off_or_foreign_file_is_refused() {
         let (whole, chunks) = stored(&sample());
         let chunk = &chunks[0];
-        for end in [0, 5, MAGIC.len() + 2, whole.len() / 2, whole.len() - 1] {
+        for end in [
+            0,
+            5,
+            MAGIC.len() + 2,
+            MAGIC.len() + 6,
+            whole.len() / 2,
+            whole.len() - 1,
+        ] {
             assert!(read_whole(&mut &whole[..end]).is_err(), "read {end} bytes");
         }
         for end in [0, 3, chunk.len() / 2, chunk.len() - 1] {
@@ -418,10 +503,19 @@ mod tests {
         let longer = |bytes: &[u8]| [bytes, &[0]].concat();
         assert!(read_whole(&mut longer(&whole).as_slice()).is_err());
         assert!(read_chunk(&mut longer(chunk).as_slice()).is_err());
-        let mut foreign = whole;
+        let mut foreign = whole.clone();
         foreign[0] = b'X';
         let error = read_whole(&mut foreign.as_slice()).expect_err("refused");
         assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        // Another format is refused before anything is read as this one.
+        let mut other = whole;
+        other[MAGIC.len()..MAGIC.len() + 4].copy_from_slice(&(FORMAT + 1).to_le_bytes());
+        for error in [
+            read_whole(&mut other.as_slice()).expect_err("refused"),
+            read_generator(&mut other.as_slice()).expect_err("refused"),
+        ] {
+            assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        }
     }
 
     #[test]

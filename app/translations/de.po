@@ -187,6 +187,9 @@ msgstr "Video hinzufügen …"
 msgid "Added to your workouts."
 msgstr "Zu deinen Trainings hinzugefügt."
 
+msgid "After an update that changes how worlds look, a course's page offers to regenerate it."
+msgstr "Ändert ein Update das Aussehen der Welten, bietet die Seite einer Route an, ihre Welt neu zu erstellen."
+
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"
 
@@ -933,6 +936,9 @@ msgstr "Intensitätsfaktor"
 
 msgid "Intervals"
 msgstr "Intervalle"
+
+msgid "Its 3D world was kept from an older Torqa: build it with this one"
+msgstr "Die 3D-Welt stammt von einer älteren Torqa-Version: Erstelle sie mit dieser neu"
 
 msgid "Its file is deleted from your workouts."
 msgstr "Die Trainingsdatei wird aus deiner Bibliothek gelöscht."
@@ -2000,6 +2006,9 @@ msgstr "Ein"
 
 msgid "Reflections on water"
 msgstr "Spiegelungen auf Wasser"
+
+msgid "Regenerate world"
+msgstr "Welt neu erstellen"
 
 msgid "Render scale"
 msgstr "Renderauflösung"
