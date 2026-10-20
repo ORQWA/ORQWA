@@ -51,9 +51,10 @@ func bind(torqa: TorqaApp) -> void:
 	_settings.bind(torqa)
 
 
-## Back from a ride: records, history and courses may have changed.
+## Back from a ride: records, history, courses and the rider's profile (R98) may have changed.
 func refresh() -> void:
 	_courses.refresh()
+	_profile.refresh()
 	_workouts.refresh()
 	_detail.refresh_records()
 	if _tabs.current_tab == Tab.HISTORY:

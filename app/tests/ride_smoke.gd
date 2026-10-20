@@ -200,11 +200,25 @@ func _run() -> void:
 	_check(
 		first_gear > 0 and second_gear == first_gear + 1, "shifted up: %s → %s" % [gear, shifted]
 	)
+	# The profile changes during the ride: the ride follows at once, the profile keeps it (R98).
+	on_cog["drivetrain"] = "cassette"
+	_torqa.save_profile(id, on_cog)
+	var no_gear: bool = _torqa.ride_state().get("gear") == null
+	_check(no_gear, "a cassette during the ride")
+	var kept: String = _torqa.profile()["drivetrain"]
+	_check(kept == "cassette", "kept in the profile")
+	on_cog["drivetrain"] = "single_cog"
+	_torqa.save_profile(id, on_cog)
+	var again: Dictionary = _torqa.ride_state().get("gear", {})
+	var again_number: int = again.get("number", 0)
+	_check(again_number == first_gear, "virtual gears again, from the real gear")
 	_torqa.abort_ride()
 	_torqa.save_profile(id, rider)
 
 	# Riders can be deleted (R22); the app switches to one left.
 	var guest: String = _torqa.save_profile("", {"name": "Guest"})
+	var guest_drivetrain: String = _torqa.profile()["drivetrain"]
+	_check(guest_drivetrain == "single_cog", "a new rider shifts virtual gears (R98)")
 	_check(_torqa.delete_profile(guest), "a rider is deleted")
 	var active: String = _torqa.profile()["id"]
 	var gone: bool = _torqa.profiles().all(func(p: Dictionary) -> bool: return p["id"] != guest)

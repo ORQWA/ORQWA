@@ -4,6 +4,9 @@ extends VBoxContainer
 ## 1–5 as shares of the maximum heart rate, the upper bound of each adjustable, with the watts
 ## or beats it comes to beside it. Bounds keep their order: moving one pushes its neighbours.
 
+## The rider moved a bound, or reset the zones; read them with `power_pct()` and `heart_pct()`.
+signal changed
+
 ## The standard zones: Coggan's power zones and the usual heart-rate zones, in percent.
 const DEFAULT_POWER: PackedFloat64Array = [55.0, 75.0, 90.0, 105.0, 120.0, 150.0]
 const DEFAULT_HEART: PackedFloat64Array = [60.0, 70.0, 80.0, 90.0]
@@ -34,7 +37,11 @@ func _init() -> void:
 	reset.text = tr("Standard zones")
 	reset.tooltip_text = tr("Coggan's power zones and the usual heart-rate zones")
 	reset.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	reset.pressed.connect(func() -> void: edit(DEFAULT_POWER, DEFAULT_HEART, _ftp_w, _max_hr))
+	reset.pressed.connect(
+		func() -> void:
+			edit(DEFAULT_POWER, DEFAULT_HEART, _ftp_w, _max_hr)
+			changed.emit()
+	)
 	add_child(reset)
 
 
@@ -126,6 +133,7 @@ func _on_bound(spins: Array[SpinBox], index: int) -> void:
 		if spins[j].value <= value + float(j - index) - 1.0:
 			spins[j].set_value_no_signal(value + float(j - index))
 	_show_values()
+	changed.emit()
 
 
 func _fill(spins: Array[SpinBox], pct: PackedFloat64Array) -> void:

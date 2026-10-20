@@ -817,10 +817,11 @@ impl App {
 
     /// Saves a profile (a new one if `id` is `None`) and makes it the active one; returns its id.
     /// A new rider starts with the devices of the rider before (R82), so nothing connected is
-    /// let go.
+    /// let go. The ride under way follows the riding rider's changes at once (R98): their
+    /// weight, drivetrain and FTP.
     ///
     /// # Errors
-    /// [`AppError::Reported`] if it cannot be written.
+    /// [`AppError::Reported`] if it cannot be written; nothing changes then.
     pub fn save_profile(&mut self, id: Option<&str>, profile: Profile) -> Result<String, AppError> {
         let new = id.is_none();
         let id = id.map_or_else(
@@ -842,6 +843,13 @@ impl App {
         };
         if switched {
             self.take_riders_devices();
+        } else {
+            let (setup, profile) = (self.rider_setup(), &self.profile.profile);
+            if let Some(active) = &mut self.ride {
+                active
+                    .ride
+                    .change_rider(setup, virtual_gears(profile.drivetrain), profile.ftp);
+            }
         }
         Ok(id)
     }
@@ -2728,10 +2736,7 @@ impl App {
             setup: self.rider_setup(),
             difficulty,
             descent,
-            gears: match self.profile.profile.drivetrain {
-                Drivetrain::SingleCog { chainring, cog } => Some(VirtualGears::new(chainring, cog)),
-                Drivetrain::Cassette => None,
-            },
+            gears: virtual_gears(self.profile.profile.drivetrain),
             cadence: self.cadence_source(),
         }
     }
@@ -4046,6 +4051,14 @@ fn unique_course_path(library: &Path, name: &str) -> PathBuf {
     path
 }
 
+/// The virtual gears a drivetrain shifts (R9): none with a cassette.
+fn virtual_gears(drivetrain: Drivetrain) -> Option<VirtualGears> {
+    match drivetrain {
+        Drivetrain::SingleCog { chainring, cog } => Some(VirtualGears::new(chainring, cog)),
+        Drivetrain::Cassette => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fmt::Write as _;
@@ -4577,6 +4590,51 @@ mod tests {
 
         assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
         app.shutdown();
+    }
+
+    #[test]
+    fn the_ride_follows_the_profile_changed_during_it_and_the_profile_keeps_it() {
+        let dir = temp_dir("ride-profile");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let change = |app: &mut App, drivetrain: Drivetrain| {
+            let mut profile = app.profile().profile.clone();
+            profile.drivetrain = drivetrain;
+            let id = app.profile().id.clone();
+            app.save_profile(Some(&id), profile).unwrap();
+        };
+        change(&mut app, Drivetrain::Cassette);
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(200.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+        app.start_ride(Percent(50.0), DescentMode::Coast, &GhostChoice::None)
+            .unwrap();
+        assert_eq!(app.ride_state().unwrap().gear, None, "a cassette");
+
+        let single_cog = Drivetrain::SingleCog {
+            chainring: 50,
+            cog: 14,
+        };
+        change(&mut app, single_cog);
+        let before = app.ride_state().unwrap().gear.unwrap().number;
+        app.shift(Shift::Up);
+        app.update(Duration::from_millis(16));
+
+        assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
+        let id = app.profile().id.clone();
+        app.shutdown();
+        let mut reopened = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        assert_eq!(reopened.profile().id, id);
+        assert_eq!(
+            reopened.profile().profile.drivetrain,
+            single_cog,
+            "the profile keeps it"
+        );
+        reopened.shutdown();
     }
 
     /// A shifter that shifts and asks for controls as told, and is connected or not.

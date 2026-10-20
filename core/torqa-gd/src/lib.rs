@@ -2360,6 +2360,7 @@ impl TorqaApp {
 
     /// Saves a rider (a new one if `id` is empty) from a dictionary shaped like `profile()`
     /// and makes it active; returns its id, or an empty string on failure (emits `failed`).
+    /// Saved during a ride, the ride follows the rider's weight, drivetrain and FTP (R98).
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
     fn save_profile(&mut self, id: GString, data: VarDictionary) -> GString {
@@ -2418,22 +2419,27 @@ impl TorqaApp {
             } else {
                 MapStyle::Coloured
             },
-            drivetrain: if data
+            // A rider saved without one, such as a new one, starts on the default (R98).
+            drivetrain: match data
                 .get("drivetrain")
                 .and_then(|v| v.try_to::<GString>().ok())
-                .is_some_and(|d| d == "single_cog")
+                .map(|d| d.to_string())
+                .as_deref()
             {
-                let teeth = |key: &str, default: f64| {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // clamped
-                    let teeth = number(key, default).round().clamp(1.0, 99.0) as u8;
-                    teeth
-                };
-                Drivetrain::SingleCog {
-                    chainring: teeth("chainring", 50.0),
-                    cog: teeth("cog", 14.0),
+                Some("cassette") => Drivetrain::Cassette,
+                Some("single_cog") => {
+                    let teeth = |key: &str, default: f64| {
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                        // clamped
+                        let teeth = number(key, default).round().clamp(1.0, 99.0) as u8;
+                        teeth
+                    };
+                    Drivetrain::SingleCog {
+                        chainring: teeth("chainring", 50.0),
+                        cog: teeth("cog", 14.0),
+                    }
                 }
-            } else {
-                Drivetrain::Cassette
+                _ => Drivetrain::default(),
             },
         };
         let id = id.to_string();

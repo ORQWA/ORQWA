@@ -8,7 +8,7 @@ files
 tiles
 points
 chunks
-# Language choice in the rider settings (ProfileDialog.LANGUAGES); other language names stay
+# Language choice in the rider settings (ProfileForm.LANGUAGES); other language names stay
 # in their own language.
 System language
 # Why a device could not be connected (torqa-devices DeviceError), shown beside its row (R80).

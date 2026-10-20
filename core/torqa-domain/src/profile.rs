@@ -33,10 +33,9 @@ pub enum MapStyle {
 }
 
 /// What the rider shifts with on the trainer (R9, ADR 0003).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Drivetrain {
     /// A cassette: the rider shifts on the bike and the trainer follows the road.
-    #[default]
     Cassette,
     /// A single cog (e.g. the Zwift Cog): Torqa shifts virtual gears.
     SingleCog {
@@ -45,6 +44,17 @@ pub enum Drivetrain {
         /// Teeth of the cog on the trainer.
         cog: u8,
     },
+}
+
+impl Default for Drivetrain {
+    /// Virtual gears on a 50-tooth chainring over a 14-tooth cog (R98): a shifter such as
+    /// the Zwift Click then shifts from the first ride, where a cassette left it doing nothing.
+    fn default() -> Self {
+        Self::SingleCog {
+            chainring: 50,
+            cog: 14,
+        }
+    }
 }
 
 /// One rider of an installation; several riders can share it.
@@ -92,7 +102,7 @@ impl Default for Profile {
             language: String::new(),
             avatar: Avatar::Female,
             map_style: MapStyle::Coloured,
-            drivetrain: Drivetrain::Cassette,
+            drivetrain: Drivetrain::default(),
             power_zones: POWER_ZONES,
             heart_rate_zones: HEART_RATE_ZONES,
             default_difficulty: Percent(50.0),
