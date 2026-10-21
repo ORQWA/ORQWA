@@ -59,6 +59,52 @@ sample is committed alongside format 1. Cached format-1 worlds rebuild on their 
 files keep their existing format. Format-2 worlds from generator 4 offer regeneration to
 add the more regular city benches.
 
+## Refreshing screenshots
+
+The current [screenshot gallery](screenshots.md) links the app screens and standard route
+views; [Art](../art/README.md#gallery) contains the model galleries. Run captures separately
+from checks. For a documentation refresh, isolate the generated sample rides from your own
+profile by setting `XDG_DATA_HOME` inside the container:
+
+```sh
+scripts/dev.sh sh -c 'XDG_DATA_HOME=$PWD/screenshots/refresh-data SCREENSHOT_DIR=$PWD/screenshots/refresh/app scripts/screenshots.sh'
+scripts/dev.sh sh -c 'XDG_DATA_HOME=$PWD/screenshots/refresh-data OUT_DIR=$PWD/screenshots/refresh/views scripts/render-views.sh'
+scripts/dev.sh sh -c 'OUT_DIR=$PWD/screenshots/refresh/models GALLERY=$PWD/screenshots/refresh/gallery scripts/render-models.sh'
+scripts/dev.sh sh -c 'OUT_DIR=$PWD/screenshots/refresh/riders GALLERY=$PWD/screenshots/refresh/gallery scripts/render-riders.sh'
+```
+
+The software-rendering runners select FXAA instead of MSAA and disable glow, which otherwise
+produces bright halos under lavapipe. They wait for route preparation and streamed chunks;
+the route views pause the rider at fixed positions. The graphics settings in the app are
+unchanged. Both app and route runners check their capture script compiles before rendering.
+
+Additional UI fixtures use the same real controls without hardware or account credentials:
+
+```sh
+scripts/dev.sh sh -c 'XDG_DATA_HOME=$PWD/screenshots/refresh-data SCREENSHOT_DIR=$PWD/screenshots/refresh/app timeout 240 xvfb-run -a godot --path app --resolution 1600x900 -s res://tools/capture_details.gd'
+```
+
+`capture_details.gd` captures device readings, connection failures, planned workouts and
+expanded error details in English and German. Capture `app/video-course.png` from a real
+ride using locally supplied licensed footage and its Incyclist XML/GPX. Keep that source
+outside app assets and preserve its attribution in [Credits](CREDITS.md) and the displayed
+documentation. The exporter expects this video image alongside the standard app captures.
+
+Review every capture before copying it into documentation. `contact_sheets.gd` recursively
+builds sheets and a filename index using image I/O only:
+
+```sh
+scripts/dev.sh sh -c 'INPUT_DIR=$PWD/screenshots/refresh/app CONTACT_DIR=$PWD/screenshots/review/app godot --headless --path app -s res://tools/contact_sheets.gd'
+scripts/dev.sh sh -c 'REFRESH_ROOT=$PWD/screenshots/refresh godot --headless --path app -s res://tools/export_screenshots.gd'
+```
+
+Repeat the review for `views`, `models` and `riders`; open full-size images where a thumbnail
+cannot establish quality. The exporter replaces the stable app/wiki image paths and writes
+the route gallery to `docs/images/views/`. Copy the reviewed model JPEGs from the scratch
+gallery into `docs/images/models/`. Historical comparison baselines stay with their original
+reviews. Phone-remote browser screenshots require a separate browser capture; these helpers
+do not replace them.
+
 ## Builds
 
 Tagged builds of the app and CLI are available on the

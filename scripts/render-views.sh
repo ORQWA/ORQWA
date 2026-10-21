@@ -14,7 +14,7 @@ mkdir -p "$out"
 "$root/scripts/build-gdext.sh" debug >/dev/null
 godot --headless --path "$root/app" --import >/dev/null 2>&1 || true
 # A script that does not compile leaves Godot waiting for the world forever: find out now.
-errors="$(godot --headless --path "$root/app" --quit-after 2 2>&1 \
+errors="$(godot --headless --path "$root/app" --check-only -s res://tools/render_views.gd 2>&1 \
     | grep -A3 "SCRIPT ERROR\|SHADER ERROR" || true)"
 if [ -n "$errors" ]; then
     echo "$errors" >&2
@@ -28,7 +28,7 @@ if [ -n "${GPX:-}" ]; then
 fi
 for route in $routes; do
     # A script error leaves Godot waiting for the world forever, hence the timeout.
-    output="$(ROUTE="$route" OUT_DIR="$out" timeout 1800 xvfb-run -a -s "-screen 0 1600x900x24" \
+    output="$(ROUTE="$route" OUT_DIR="$out" ORQWA_RENDER_SOFTWARE=1 timeout 1800 xvfb-run -a -s "-screen 0 1600x900x24" \
         godot --path "$root/app" --rendering-driver vulkan --resolution 1280x720 \
         -s res://tools/render_views.gd 2>&1)" || status=1
     echo "$output" | grep -E "^saved" || true

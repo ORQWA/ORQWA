@@ -58,6 +58,6 @@ under other licences; each is listed here with its own.
 - `docs/images/cycling-orca.png`, the cycling-orca illustration on the wiki homepage, was
   supplied by the project owner for the welcome and naming story.
 - `docs/images/readme/video-course.jpg` shows a frame of
-  [“Le petit Menglonnais”](https://cycling.vangestel.online) by **Fred Van Gestel**,
+  [“Le petit Menglonnais”](https://cycling.vangestel.online/indoor/videos/france/le-petit-menglonnais/) by **Fred Van Gestel**,
   **CC BY-NC-SA 4.0** ([licence](https://creativecommons.org/licenses/by-nc-sa/4.0/)). The
   screenshot is under the same licence.

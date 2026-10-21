@@ -24,6 +24,9 @@ scripts/dev.sh sh -c 'GROUPS="vegetation" scripts/render-models.sh'
 ```
 
 After a change to the models, refresh the [gallery](#gallery) below as well.
+The app and route captures are collected in the [screenshot gallery](../docs/screenshots.md);
+the [refresh workflow](../docs/development.md#refreshing-screenshots) includes reviewing every
+model and rider capture before replacing these gallery images.
 
 For quick looks while working, the build scripts of buildings and vegetation render
 Cycles previews of their own materials instead of exporting (`art/preview.py`; four views per
