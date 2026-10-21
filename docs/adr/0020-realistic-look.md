@@ -83,3 +83,14 @@ Decisions (user, 2026-10-18):
   (R46).
 - Until a group is restyled it keeps its faceted look; mixed screenshots are expected in
   between.
+
+### Forest density (2026-10-21, R103)
+
+Mapped woods use a separate, jittered 4 m candidate grid near the route instead of the
+7 m grid for scattered plants on open land. Beyond 300 m they thin to an equivalent 10 m
+spacing instead of 20 m, retaining a visible canopy. Mapped forest takes precedence over
+rocks inferred from steepness; mapped rock, water, clearings and infrastructure exclusions
+still apply. Generator 2 lets riders regenerate kept worlds for this change (ADR 0025).
+
+The Gurten hairpin at the same position: [before](../images/issues/forest-gurten-before.jpg)
+and [after](../images/issues/forest-gurten-after.jpg).

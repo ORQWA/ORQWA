@@ -145,6 +145,11 @@ sides, lit through from behind; trees sway in the wind, leaves flutter). `models
 each model's `kind` and `height`; the world (`core/orqwa-world/src/vegetation.rs`) picks one
 model of the kind it wants per plant. Every plant is in the [gallery](#vegetation).
 
+Mapped forests use jittered 4 m candidate spacing within 300 m of the road and thin to
+an equivalent 10 m spacing beyond it (R103). Wooded hillsides keep their trees even on steep
+ground; open land keeps sparse plants on its separate 7 m grid. Roads, railways, water,
+buildings and mapped clearings stay clear. The graphics preset controls the draw distance.
+
 ## Props (`props/`)
 
 `build.py` makes what stands by the road ridden (R92) into `app/assets/models/props/`:

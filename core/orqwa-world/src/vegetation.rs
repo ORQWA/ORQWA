@@ -20,8 +20,10 @@ const MANIFEST: &str = include_str!("../../../app/assets/models/vegetation/model
 
 /// Plant spacing close to the road, where they are seen up close.
 const NEAR_SPACING: f64 = 7.0;
-/// Tree spacing further away, where the forest colour on the ground does most of the work.
-const FAR_SPACING: f64 = 20.0;
+/// Forest crowns should overlap into woodland rather than look like solitary trees (R103).
+const FOREST_SPACING: f64 = 4.0;
+/// Distant woodland still needs enough crowns to read as forest against the horizon.
+const FAR_SPACING: f64 = 10.0;
 /// Within this distance of the road trees use the near spacing, and other plants grow at all.
 const NEAR_DISTANCE: f64 = 300.0;
 /// Bushes grow under the trees within this distance of the road.
@@ -292,31 +294,35 @@ pub(crate) fn place(
         ..
     } = *ground;
     let mut trees = Trees::default();
-    let mut north = origin.1;
-    // Rows use the near spacing and thin out far from the road, keeping placement
-    // deterministic for a position regardless of chunk boundaries.
-    while north < origin.1 + size {
-        let mut east = origin.0;
-        while east < origin.0 + size {
-            let seed = cell_seed(east, north);
-            let (e, n) = (
-                east + (crate::hash(seed) - 0.5) * NEAR_SPACING,
-                north + (crate::hash(seed ^ 0x5bd1) - 0.5) * NEAR_SPACING,
-            );
-            east += NEAR_SPACING;
-            let cover = land.cover_at(e, n);
-            let road_distance = road.nearest(e, n, NEAR_DISTANCE).map(|(d, _, _)| d);
-            let Some(kind) = choose(cover, road_distance, heights.at(e, n), seed, ground, e, n)
-            else {
-                continue;
-            };
-            let too_close = road_distance.is_some_and(|d| d < kind.clearance());
-            if too_close || streets.blocked(e, n, 2.0) || ground.by_building(e, n, 2.0) {
-                continue;
+    // Give mapped woods their own denser grid without filling meadows and gardens too.
+    for (spacing, forest) in [(FOREST_SPACING, true), (NEAR_SPACING, false)] {
+        let mut north = origin.1;
+        while north < origin.1 + size {
+            let mut east = origin.0;
+            while east < origin.0 + size {
+                let seed = cell_seed(east, north, spacing);
+                let (e, n) = (
+                    east + (crate::hash(seed) - 0.5) * spacing,
+                    north + (crate::hash(seed ^ 0x5bd1) - 0.5) * spacing,
+                );
+                east += spacing;
+                let cover = land.cover_at(e, n);
+                if (cover == Some(LandCover::Forest)) != forest {
+                    continue;
+                }
+                let road_distance = road.nearest(e, n, NEAR_DISTANCE).map(|(d, _, _)| d);
+                let Some(kind) = choose(cover, road_distance, heights.at(e, n), seed, ground, e, n)
+                else {
+                    continue;
+                };
+                let too_close = road_distance.is_some_and(|d| d < kind.clearance());
+                if too_close || streets.blocked(e, n, 2.0) || ground.by_building(e, n, 2.0) {
+                    continue;
+                }
+                trees.add(kind, [e, heights.at(e, n), n], seed, chunk_origin);
             }
-            trees.add(kind, [e, heights.at(e, n), n], seed, chunk_origin);
+            north += spacing;
         }
-        north += NEAR_SPACING;
     }
     trees
 }
@@ -338,7 +344,11 @@ fn choose(
     }
     let tropical = ground.climate.tropical_at(height);
     let near = road_distance.is_some();
-    if near && (cover == Some(LandCover::Rock) || ground.slope(east, north) > ROCKY_SLOPE) {
+    // A mapped wooded hillside stays wooded; slope alone cannot turn it into scree.
+    if near
+        && (cover == Some(LandCover::Rock)
+            || (cover != Some(LandCover::Forest) && ground.slope(east, north) > ROCKY_SLOPE))
+    {
         let share = if cover == Some(LandCover::Rock) {
             0.2
         } else {
@@ -355,7 +365,7 @@ fn choose(
                     Plant::Bush
                 });
             }
-            let keep = (NEAR_SPACING / FAR_SPACING).powi(2);
+            let keep = (FOREST_SPACING / FAR_SPACING).powi(2);
             if !near && dice(0x9e37) > keep {
                 return None;
             }
@@ -502,11 +512,11 @@ fn grass_seed(east: f64, north: f64) -> i64 {
 }
 
 /// A stable seed per grid cell.
-fn cell_seed(east: f64, north: f64) -> i64 {
+fn cell_seed(east: f64, north: f64, spacing: f64) -> i64 {
     #[allow(clippy::cast_possible_truncation)] // cell indices are small
     let (e, n) = (
-        (east / NEAR_SPACING).round() as i64,
-        (north / NEAR_SPACING).round() as i64,
+        (east / spacing).round() as i64,
+        (north / spacing).round() as i64,
     );
     e.wrapping_mul(73_856_093) ^ n.wrapping_mul(19_349_663)
 }
