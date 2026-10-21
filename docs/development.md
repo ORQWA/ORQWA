@@ -120,11 +120,15 @@ Music control (R26, #260) uses `osascript` on macOS, Windows `SendInput` through
 PowerShell helper, and `playerctl` on Linux. No new library dependency is needed. macOS
 checks bundle IDs and compiles only the running player's command: compiling a `tell`
 statement for an absent Spotify can otherwise fail before the Apple Music fallback runs.
+Even a literal bundle ID can fail compilation when its app is absent, so running checks
+resolve IDs through a variable and treat a missing application as stopped.
 Windows sends a virtual media key down and up; `SendKeys([char]179)` would type a character.
 
-The macOS and Windows CI jobs run `cargo test -p orqwa-app media::tests --locked` after
-building the CLI (with `--manifest-path core/Cargo.toml` from the repository root). The macOS
-test executes all three commands with nonexistent player IDs and expects the no-player
+The macOS and Windows CI jobs compile and run the tests in
+`core/orqwa-app/src/media/commands.rs` directly with `rustc --test` before building the app.
+This is the production module, which needs only Rust's standard library; native script
+checks need not build the rest of the app or FFmpeg first. The macOS test executes all three
+commands with nonexistent player IDs and expects the no-player
 runtime error, catching premature dictionary lookup. Windows compiles the real helper and
 checks the `INPUT` size and the key-down/key-up events without injecting keys into the
 runner's desktop. Container tests check command mappings; none of these confirms playback.

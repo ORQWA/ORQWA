@@ -114,6 +114,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      - name: Check native music-control scripts
+        run: |
+          rustc --edition=2024 --test -D warnings core/orqwa-app/src/media/commands.rs -o "$RUNNER_TEMP/music-tests"
+          "$RUNNER_TEMP/music-tests"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
@@ -138,8 +142,6 @@ jobs:
           mkdir -p dist
           # Artifacts drop the executable bit; a tarball keeps it.
           tar -czf dist/orqwa-cli-macos-arm64.tar.gz -C core/target/release orqwa-cli
-      - name: Check native music-control scripts
-        run: cargo test --manifest-path core/Cargo.toml -p orqwa-app media::tests --locked
       - name: Install Godot and export templates
         run: |
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
@@ -185,6 +187,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      - name: Check native music-key helper
+        run: |
+          rustc --edition=2024 --test -D warnings core/orqwa-app/src/media/commands.rs -o "$env:RUNNER_TEMP\music-tests.exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & "$env:RUNNER_TEMP\music-tests.exe"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
@@ -234,8 +241,6 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive core/target/release/orqwa-cli.exe dist/orqwa-cli-windows-x86_64.zip
-      - name: Check native music-key helper
-        run: cargo test --manifest-path core/Cargo.toml -p orqwa-app media::tests --locked
       - name: Install Godot and export templates
         run: |
           $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION-stable"
