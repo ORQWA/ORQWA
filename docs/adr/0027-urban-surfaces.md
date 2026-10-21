@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Requirements: R105, R89, R101
+- Requirements: R105, R106, R89, R101
 
 ## Context
 
@@ -37,22 +37,30 @@ course offline, without another data provider, and leave parks and suburban gard
   Wet surfaces darken and show puddles with the existing weather settings.
 - Godot stays presentation only: `UrbanSurfaces` supplies shared materials and draws the
   mesh; `WorldMeshes` converts the core's mesh arrays.
+- City bench candidates recur every 120 m, alternating sidewalks and trying the other side
+  or a nearby spot on the block when blocked. Reuse the wooden bench and bin models at the
+  sidewalk's height. Require a continuous, nearly level surface for both; leave entrances,
+  junctions and the inner walking
+  strip open. A complete pair uses the terrain chunk containing its feet, avoiding coarse
+  height samples across a boundary. No extra benches on rural stretches, bridges or tunnels.
 
 ## Kept worlds
 
-Generator **4**, stored format **2**. Each chunk gains an `urban` mesh and terrain colour
+Generator **5**, stored format **2**. Each chunk gains an `urban` mesh and terrain colour
 codes gain urban/commercial kinds. Older kept worlds rebuild on the next ride, as required
 for an incompatible layout (ADR 0025); course files and their format are unchanged. The new
-stored-world fixture records the layout. Later placement-only changes raise the generator.
+stored-world fixture records the layout. The bench placement raises the generator from 4
+to 5 without changing the stored format; a format-2 world offers regeneration.
 
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,
 garden walls, parks in dense districts, suburban lawns, vegetation exclusion, and rural/bridge
-exclusions. Review images compare the same street and overview on the Bern fixture, with MSAA
-and bloom disabled in both software-rendered views to avoid lavapipe artifacts. Native M1
-performance remains a manual check (R43).
+exclusions. Bench tests cover regular seating, paired bins, sidewalk height and trying the
+opposite side while keeping access clear. Review images compare the same street and overview
+on the Bern fixture, with MSAA and bloom disabled in both software-rendered views to avoid
+lavapipe artifacts. Native M1 performance remains a manual check (R43).
 
 Only geometry supplied by the current tiles is authoritative. Inferred access and low walls
-can differ from the real property. Pedestrian-only spaces, extra street furniture and
+can differ from the real property. Pedestrian-only spaces, further street furniture and
 neighbourhood-specific styles remain separate work.

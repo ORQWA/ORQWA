@@ -385,6 +385,65 @@ impl Urban {
         }
     }
 
+    /// Height above terrain of a clear sidewalk, excluding entrance paths through it.
+    pub(crate) fn sidewalk_lift(
+        &self,
+        point: Point,
+        land: &LandIndex,
+        clearance: &Clearance,
+        road: &RoadIndex,
+    ) -> Option<f64> {
+        self.patch_cells
+            .get(&cell(point, CELL))?
+            .iter()
+            .map(|&index| &self.patches[index])
+            .filter(|patch| {
+                patch.curb
+                    && contains(&patch.polygon, point)
+                    && !self.access_crosses(&patch.polygon, true)
+                    && self.patch_clear(patch, land, clearance, road)
+            })
+            .map(|patch| {
+                patch.lift
+                    - if self.access_crosses(&patch.polygon, false) {
+                        CURB_HEIGHT
+                    } else {
+                        0.0
+                    }
+            })
+            .max_by(f64::total_cmp)
+    }
+
+    fn patch_clear(
+        &self,
+        patch: &Patch,
+        land: &LandIndex,
+        clearance: &Clearance,
+        road: &RoadIndex,
+    ) -> bool {
+        let valid = |point: Point| {
+            !protected(point, land)
+                && !clearance.blocked_by(point.0, point.1, 0.02, |east, north| {
+                    // The ridden road is checked precisely below; its map line's padded
+                    // point samples otherwise swallow the sidewalk beside it.
+                    road.nearest(east, north, ROAD_HALF_WIDTH + 0.5).is_none()
+                })
+                && road
+                    .nearest(point.0, point.1, ROAD_HALF_WIDTH + 0.02)
+                    .is_none()
+                && !self.in_building(point)
+        };
+        // Furniture and mesh generation must agree about which sidewalk pieces exist.
+        valid(centroid(&patch.polygon))
+            && patch
+                .polygon
+                .iter()
+                .zip(patch.polygon.iter().cycle().skip(1))
+                .take(patch.polygon.len())
+                .flat_map(|(&a, &b)| drape::densify(&[a, b], 1.0))
+                .all(valid)
+    }
+
     pub(crate) fn mesh(
         &self,
         heights: &HeightGrid,
@@ -401,24 +460,9 @@ impl Urban {
             .flatten()
         {
             let patch = &self.patches[index];
-            let valid = |point: Point| {
-                !protected(point, land)
-                    && !clearance.blocked(point.0, point.1, 0.02)
-                    && road
-                        .nearest(point.0, point.1, ROAD_HALF_WIDTH + 0.02)
-                        .is_none()
-                    && !self.in_building(point)
-            };
             // Short pieces leave gaps at intersections and keep hard surfaces out of parks,
             // water and neighbouring buildings. Also check edges, not only their centre.
-            let middle = centroid(&patch.polygon);
-            let probes = patch
-                .polygon
-                .iter()
-                .zip(patch.polygon.iter().cycle().skip(1))
-                .take(patch.polygon.len())
-                .flat_map(|(&a, &b)| drape::densify(&[a, b], 1.0));
-            if !valid(middle) || probes.into_iter().any(|p| !valid(p)) {
+            if !self.patch_clear(patch, land, clearance, road) {
                 continue;
             }
             if patch.wall
@@ -436,7 +480,7 @@ impl Urban {
             {
                 continue;
             }
-            let access = patch.curb && self.access_crosses(&patch.polygon);
+            let access = patch.curb && self.access_crosses(&patch.polygon, false);
             let lift = patch.lift - if access { CURB_HEIGHT } else { 0.0 };
             let first = mesh.vertices.len();
             drape::drape_polygon(
@@ -506,12 +550,17 @@ impl Urban {
             })
     }
 
-    fn access_crosses(&self, polygon: &[Point]) -> bool {
+    fn access_crosses(&self, polygon: &[Point], entrances_only: bool) -> bool {
         cells(polygon, CELL, 0.0)
             .into_iter()
             .flat_map(|key| self.patch_cells.get(&key).into_iter().flatten())
             .map(|&index| &self.patches[index])
-            .any(|patch| !patch.curb && !patch.wall && overlaps(polygon, &patch.polygon))
+            .any(|patch| {
+                !patch.curb
+                    && !patch.wall
+                    && (!entrances_only || patch.ramp.is_some())
+                    && overlaps(polygon, &patch.polygon)
+            })
     }
 }
 

@@ -38,11 +38,12 @@ const MOUTH_CLEAR: f64 = 6.0;
 /// the other's), at the road's edge.
 const LAMP_SPACING: f64 = 60.0;
 const LAMP_OFFSET: f64 = ROAD_HALF_WIDTH + 0.7;
-/// Benches face the road from this far out, at about one place in `BENCH_SHARE` of every
-/// `TOWN_STEP`; a bin stands beside each, `BIN_ALONG` along the road.
+/// Bench candidates every 120 m, offset from lamps and bus stops, alternate sides. Their
+/// backs sit at the sidewalk's outer edge, leaving the inner part open for pedestrians.
 const TOWN_STEP: f64 = 10.0;
-const BENCH_OFFSET: f64 = ROAD_HALF_WIDTH + 2.2;
-const BENCH_SHARE: f64 = 0.035;
+const BENCH_SPACING: f64 = 120.0;
+const BENCH_PHASE: f64 = 20.0;
+const BENCH_OFFSET: f64 = ROAD_HALF_WIDTH + 1.55;
 const BIN_ALONG: f64 = 1.4;
 /// A bus stop's shelter every `SHELTER_SPACING` of road in town, on the right of travel, its
 /// front this far out.
@@ -143,11 +144,12 @@ pub(crate) struct Roadside<'a> {
     pub(crate) buildings: &'a [Footprint],
     /// Places' names and where they are (metres east/north).
     pub(crate) places: &'a [(String, (f64, f64))],
+    pub(crate) urban: &'a crate::urban::Urban,
 }
 
-/// Places the props whose road point lies in the square `[origin, origin + size]` (metres
-/// east/north). Each decision depends only on the road and the ground near its own point, so a
-/// prop is the same whichever chunk asks.
+/// Places props by their road point within `[origin, origin + size]` (metres east/north),
+/// except benches, which belong to the chunk containing their sidewalk. Each decision uses
+/// the road and ground near its own point, so neighbouring chunks agree about placement.
 pub(crate) fn place(
     origin: (f64, f64),
     size: f64,
@@ -159,6 +161,7 @@ pub(crate) fn place(
     rails(&mut props, low, high, roadside, chunk_origin);
     posts(&mut props, low, high, roadside, chunk_origin);
     town(&mut props, low, high, roadside, chunk_origin);
+    benches(&mut props, low, high, roadside, chunk_origin);
     fences(&mut props, low, high, roadside, chunk_origin);
     crosses(&mut props, low, high, roadside, chunk_origin);
     bales(&mut props, low, high, roadside, chunk_origin);
@@ -584,8 +587,8 @@ fn bales(
     }
 }
 
-/// In towns: street lamps staggered along both sides, now and then a bench facing the road with
-/// a bin beside it, and a bus shelter every `SHELTER_SPACING`; each only where it has room
+/// In towns: street lamps staggered along both sides and a bus shelter every
+/// `SHELTER_SPACING`; each only where it has room
 /// (clear of buildings, side streets and where streets join).
 fn town(
     props: &mut Props,
@@ -612,35 +615,130 @@ fn town(
             }
             continue;
         }
-        #[allow(clippy::cast_possible_truncation)] // whole metres along the route
-        let seed = station.distance.round() as i64;
-        if (station.distance / SHELTER_SPACING).fract().abs() < 1e-6 {
-            if let Some(at) = room(&station, 1.0, SHELTER_OFFSET, 2.5, roadside) {
-                push(props, "bus_shelter", at, &station, 1.0, 0.0, chunk_origin);
-            }
+        if (station.distance / SHELTER_SPACING).fract().abs() < 1e-6
+            && let Some(at) = room(&station, 1.0, SHELTER_OFFSET, 2.5, roadside)
+        {
+            push(props, "bus_shelter", at, &station, 1.0, 0.0, chunk_origin);
+        }
+    }
+}
+
+/// Seats belong to the chunk containing their sidewalk, rather than their road point: its
+/// refined terrain heights are the ones the pavement is drawn on, even beside a chunk border.
+fn benches(
+    props: &mut Props,
+    low: (f64, f64),
+    high: (f64, f64),
+    roadside: &Roadside,
+    chunk_origin: [f64; 3],
+) {
+    let reach = BENCH_OFFSET + 23.0;
+    let inside = |p: [f64; 3]| (low.0..high.0).contains(&p[0]) && (low.1..high.1).contains(&p[2]);
+    let stations = roadside.road.stations(
+        TOWN_STEP,
+        (low.0 - reach, low.1 - reach),
+        (high.0 + reach, high.1 + reach),
+    );
+    for anchor in &stations {
+        if (anchor.distance - BENCH_PHASE).rem_euclid(BENCH_SPACING) >= 1e-6 {
             continue;
         }
-        if crate::hash(seed ^ 0x6265_6e63) < BENCH_SHARE {
-            let side = if crate::hash(seed ^ 0x7369_6465) < 0.5 {
-                1.0
-            } else {
-                -1.0
+        let preferred = if (anchor.distance / BENCH_SPACING).floor() % 2.0 == 0.0 {
+            1.0
+        } else {
+            -1.0
+        };
+        // A little room along the block avoids losing a whole short city stretch to one
+        // entrance. These phases also stay away from the lamps' 30 m stations.
+        'candidate: for shift in [0.0, -10.0, 20.0] {
+            let Some(station) = stations
+                .iter()
+                .find(|s| (s.distance - anchor.distance - shift).abs() < 1e-6)
+            else {
+                continue;
             };
-            if let Some(at) = room(&station, side, BENCH_OFFSET, 1.2, roadside) {
-                push(props, "bench", at, &station, side, 0.0, chunk_origin);
-                let bin = Station {
-                    position: (
-                        station.position.0 + station.direction.0 * BIN_ALONG,
-                        station.position.1 + station.direction.1 * BIN_ALONG,
-                    ),
-                    ..station
-                };
-                if let Some(at) = room(&bin, side, BENCH_OFFSET, 0.3, roadside) {
-                    push(props, "bin", at, &bin, side, 0.0, chunk_origin);
+            if station.surface != Surface::Ground || !built_up(station, roadside) {
+                continue;
+            }
+            for side in [preferred, -preferred] {
+                if let Some(seating) = bench_spots(station, side, roadside) {
+                    if inside(seating.seat) && inside(seating.bin) && seating.level {
+                        push(
+                            props,
+                            "bench",
+                            seating.seat,
+                            station,
+                            side,
+                            0.0,
+                            chunk_origin,
+                        );
+                        push(props, "bin", seating.bin, station, side, 0.0, chunk_origin);
+                    }
+                    // The choice of side uses geometry alone, so neighbouring chunks make
+                    // the same decision and cannot each place their own copy of a seat.
+                    break 'candidate;
                 }
             }
         }
     }
+}
+
+struct Seating {
+    seat: [f64; 3],
+    bin: [f64; 3],
+    level: bool,
+}
+
+/// A bench and bin need a continuous, nearly level sidewalk outside entrances. Trying the
+/// other side before dropping a candidate keeps short city stretches from losing all seats.
+fn bench_spots(station: &Station, side: f64, roadside: &Roadside) -> Option<Seating> {
+    // The sidewalk queries check the long footprint; this radius clears its narrow depth.
+    let mut seat = room(station, side, BENCH_OFFSET, 0.3, roadside)?;
+    let bin_station = Station {
+        position: (
+            station.position.0 + station.direction.0 * BIN_ALONG,
+            station.position.1 + station.direction.1 * BIN_ALONG,
+        ),
+        ..*station
+    };
+    let mut bin = room(&bin_station, side, BENCH_OFFSET, 0.3, roadside)?;
+    let lift_at = |point| {
+        roadside
+            .urban
+            .sidewalk_lift(point, roadside.land, roadside.streets, roadside.road)
+    };
+    let (mut low, mut high) = (f64::MAX, f64::MIN);
+    let owner = (
+        (seat[0] / crate::CHUNK_SIZE).floor() * crate::CHUNK_SIZE,
+        (seat[2] / crate::CHUNK_SIZE).floor() * crate::CHUNK_SIZE,
+    );
+    for along in [-0.95, 0.0, 0.95, BIN_ALONG, BIN_ALONG + 0.3] {
+        for across in [-0.3, 0.32] {
+            let (east, north) = out(station, side, BENCH_OFFSET + across);
+            let point = (
+                east + station.direction.0 * along,
+                north + station.direction.1 * along,
+            );
+            let lift = lift_at(point)?;
+            // A pair crossing a chunk edge tries another spot; the complete footprint then
+            // samples one refined terrain grid. This decision is independent of the caller.
+            if !(owner.0..owner.0 + crate::CHUNK_SIZE).contains(&point.0)
+                || !(owner.1..owner.1 + crate::CHUNK_SIZE).contains(&point.1)
+            {
+                return None;
+            }
+            let height = roadside.heights.at(point.0, point.1) + lift;
+            low = low.min(height);
+            high = high.max(height);
+        }
+    }
+    seat[1] += lift_at((seat[0], seat[2]))?;
+    bin[1] += lift_at((bin[0], bin[2]))?;
+    Some(Seating {
+        seat,
+        bin,
+        level: high - low <= 0.12,
+    })
 }
 
 /// The spot `offset` metres out on `side`, on the ground, if something of `reach` metres

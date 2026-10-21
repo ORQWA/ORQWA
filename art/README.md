@@ -212,8 +212,12 @@ the edge lies 2 m or more below the road, with a start and an end span at each r
 where a street joins; delineator posts every 50 m on both sides of country roads; snow poles
 every 25 m above 1,300 m, behind the rails where there are any. Bridges and tunnels get
 none. Towns — built-up land on the map, or four buildings within 60 m where it maps none —
-get no posts but street lamps every 60 m on each side, staggered; now and then a bench facing
-the road with a bin beside it; and a bus shelter every 400 m on the right. Each stands only
+get no posts but street lamps every 60 m on each side, staggered; bench candidates every
+120 m on alternate sidewalks, facing the road with a bin beside each; and a bus shelter
+every 400 m on the right. Benches use the raised sidewalk height and need a continuous,
+nearly level surface outside entrances; a blocked candidate tries the opposite side and
+nearby spots within 20 m along the block.
+Their backs sit near the outer sidewalk edge, leaving the inner walking strip open. Each stands only
 where it has room: clear of the buildings' walls, side streets and where streets join. In the
 country, about a third of the 120 m stretches beside pasture or field (or open land the map
 leaves unmarked) are fenced, span by span, except where a rail stands; round bales lie in

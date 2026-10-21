@@ -44,6 +44,7 @@ fn urban_vertices(world: &World) -> impl Iterator<Item = ([f32; 3], [f32; 3], f3
 #[tokio::test]
 async fn sidewalks_have_raised_curbs_and_leave_roads_junctions_and_green_spaces_open() {
     let mut map = city();
+    map.roads.push(road_north());
     for (cover, east, north) in [
         (LandCover::Meadow, 30.0, 300.0),
         (LandCover::Water, -30.0, 700.0),
@@ -212,6 +213,7 @@ async fn dense_blocks_get_paving_but_parks_and_suburban_gardens_stay_green() {
 #[tokio::test]
 async fn countryside_and_structures_do_not_get_inferred_city_sidewalks() {
     let rural = world(&MapData::default()).await;
+    assert_eq!(props_of(&rural, "bench"), [] as [[f64; 3]; 0]);
     assert!(
         rural
             .chunks
@@ -234,4 +236,127 @@ async fn countryside_and_structures_do_not_get_inferred_city_sidewalks() {
             .any(|([x, _, z], _, _)| x.abs() < 6.0 && (-680.0..-320.0).contains(&z)),
         "sidewalk on a bridge"
     );
+    assert!(
+        !props_of(&urban, "bench")
+            .iter()
+            .any(|p| (320.0..680.0).contains(&p[2])),
+        "bench on a bridge"
+    );
+}
+
+#[tokio::test]
+async fn city_benches_use_free_sidewalks_without_blocking_entrances_or_junctions() {
+    let mut map = city();
+    map.roads.push(road_north());
+    map.buildings = vec![
+        house(201, -25.0, 140.0, 6.0),
+        house(202, -25.0, 260.0, 6.0),
+        house(203, 25.0, 260.0, 6.0),
+        Building {
+            id: 204,
+            outline: rectangle(12.0, 30.0, 5.0, 20.0),
+            height: None,
+            levels: Some(2.0),
+            color: None,
+        },
+    ];
+    map.shops.push(at(12.0, 30.0));
+    map.areas.push(Area {
+        cover: LandCover::Meadow,
+        outer: vec![square(8.0, 500.0, 5.0)],
+        inner: vec![],
+    });
+    map.roads.push(orqwa_osm::Road {
+        class: orqwa_osm::RoadClass::Street,
+        line: vec![at(-100.0, 620.0), at(100.0, 620.0)],
+        structure: None,
+    });
+    let world = world(&map).await;
+    let benches = props_of(&world, "bench");
+    let bins = props_of(&world, "bin");
+    assert!(benches.len() >= 4, "too little city seating: {benches:?}");
+    assert_eq!(benches.len(), bins.len());
+    assert!(
+        benches
+            .iter()
+            .any(|p| p[0] > 0.0 && (p[2] - 20.0).abs() < 0.1),
+        "a lowered shop frontage can hold a bench away from its entrance"
+    );
+    let mut along: Vec<_> = benches.iter().map(|p| p[2]).collect();
+    along.sort_by(f64::total_cmp);
+    assert!(
+        along.windows(2).all(|pair| pair[1] - pair[0] > 89.0),
+        "duplicate seating across chunks"
+    );
+    assert!(
+        benches
+            .iter()
+            .any(|p| p[0] > 0.0 && (p[2] - 140.0).abs() < 0.1),
+        "try the opposite sidewalk when an entrance blocks the preferred side"
+    );
+    assert!(
+        benches
+            .iter()
+            .any(|p| p[0] < 0.0 && (p[2] - 500.0).abs() < 0.1),
+        "try the opposite sidewalk beside a park"
+    );
+    assert!(
+        benches
+            .iter()
+            .all(|p| (p[2] - 260.0).abs() > 3.0 && (p[2] - 620.0).abs() > 8.0),
+        "leave both entrance paths and the junction clear: {benches:?}"
+    );
+    for [east, height, north] in benches.iter().chain(&bins) {
+        let sidewalk = height_on(&world, |chunk| &chunk.urban, *east as f32, -*north as f32)
+            .expect("furniture stands on a drawn sidewalk");
+        assert!(
+            (height - f64::from(sidewalk)).abs() < 0.01,
+            "furniture at {east}, {height}, {north}, sidewalk {sidewalk}"
+        );
+    }
+    for seat in &benches {
+        assert!(
+            bins.iter().any(|bin| {
+                (bin[0] - seat[0]).abs() < 0.01 && (bin[2] - seat[2] - 1.4).abs() < 0.01
+            }),
+            "no bin beside {seat:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn steep_city_sidewalks_do_not_get_benches() {
+    use std::fmt::Write as _;
+
+    struct Uphill;
+    impl ElevationModel for Uphill {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            _lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            std::future::ready(Ok(500.0 + (lat - 46.0) * METERS_PER_DEGREE * 0.12))
+        }
+    }
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for i in 0..=100 {
+        let north = f64::from(i) * 10.0;
+        let (lat, lon) = at(0.0, north);
+        let elevation = 500.0 + north * 0.12;
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let route = Route::from_gpx(&xml, None).await.unwrap();
+    let world = generate(&route, &mut Uphill, &city(), &mut |_, _| {}).await;
+    assert!(
+        world
+            .chunks
+            .iter()
+            .any(|chunk| !chunk.urban.vertices.is_empty())
+    );
+    assert_eq!(props_of(&world, "bench"), [] as [[f64; 3]; 0]);
+    assert_eq!(props_of(&world, "bin"), [] as [[f64; 3]; 0]);
 }

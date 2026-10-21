@@ -85,6 +85,8 @@ curbs and access openings from road height, plus an overview for garden/park pre
 Building paths, forecourts and low walls are inferred; keep their appearance plausible
 without claiming exact mapped property boundaries. Shared concrete/paver textures are baked
 by the art pipeline. Urban material codes are part of the stored world's format contract.
+City benches and paired bins (R106) stand at the raised sidewalk's height, near its outer
+edge. Keep entrances and the inner walking strip clear; review their ground contact close up.
 
 - **Models:** scripted Blender (skill `orqwa-art-pipeline`), smooth shading with sharp edges,
   UVs in metres so tileable textures keep their scale. Iterate with `--preview DIR`.
