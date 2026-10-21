@@ -422,6 +422,9 @@ func _apply_options_over_preset(options: Dictionary) -> void:
 	if levels.has(view_distance):
 		for key: String in ["distance", "model_range", "tree_range"]:
 			_quality[key] = QUALITY[view_distance][key]
+	var tree_density: String = options.get("tree_density", "auto")
+	if levels.has(tree_density):
+		_quality["tree_density"] = QUALITY[tree_density]["tree_density"]
 	# Grass as far as the presets above Low draw it.
 	var grass_presets: Dictionary[String, String] = {
 		"off": "low", "near": "medium", "medium": "high", "far": "ultra"

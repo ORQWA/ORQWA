@@ -130,6 +130,7 @@ func _build_details() -> void:
 		"reflections": "Reflections on water",
 		"bloom": "Bloom",
 		"view_distance": "View distance",
+		"tree_density": "Tree density",
 		"grass": "Grass",
 		"antialiasing": "Anti-aliasing",
 		"render_scale": "Render scale",

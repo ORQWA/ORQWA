@@ -169,7 +169,9 @@ ground; open land keeps sparse plants on its separate 7 m grid. Roads, railways,
 buildings and mapped clearings stay clear. Ultra draws the full tree population; Low,
 Medium and High upload stable subsets of about 12.5 %, 25 % and 50 % (R107). Tree ranges
 rise from 600 m on Low to 3,240 m on Ultra; View distance overrides range independently.
-Sampling happens before GPU upload and leaves kept worlds intact, without regeneration.
+The separate Tree density detail overrides the population independently of the preset;
+Auto follows it again (R108). Sampling happens before GPU upload and leaves kept worlds
+intact, without regeneration.
 
 ## Props (`props/`)
 

@@ -2507,6 +2507,10 @@ msgstr ""
 msgid "Transition"
 msgstr ""
 
+#: app/ui/graphics_settings.gd
+msgid "Tree density"
+msgstr ""
+
 #: app/ui/ui_theme.gd
 msgid "Tue"
 msgstr ""

@@ -25,6 +25,7 @@ func _run() -> void:
 	await _graphics(orqwa, dialog)
 	var world: RideWorld = main.get_node("World")
 	_tree_quality(world)
+	_tree_density_override(world)
 	_courses(orqwa, dialog)
 	_about(dialog)
 	_updates(orqwa, dialog, main)
@@ -115,9 +116,22 @@ func _details(orqwa: OrqwaApp, graphics: GraphicsSettings) -> void:
 	shadows.item_selected.emit(last)
 	_check(_shadows(orqwa) == "ultra", "the choice is kept")
 	_check(not orqwa.set_graphics_option("shadows", "extreme"), "unknown values refused")
+	var trees: OptionButton = details["tree_density"]
+	_check(trees.item_count == 5, "tree density offers Auto and all four levels")
+	var first_density: String = trees.get_item_metadata(0)
+	_check(first_density == "auto", "tree density follows the preset by default")
+	trees.select(1)
+	trees.item_selected.emit(1)
+	var chosen: Dictionary = orqwa.graphics_options()
+	var chosen_density: String = chosen["tree_density"]
+	_check(chosen_density == "low", "choosing a density stores it on this computer")
 	graphics.call("_reset_details")
 	_check(_shadows(orqwa) == "auto", "the reset follows the preset again")
 	_check(shadows.selected == 0, "and shows it")
+	_check(trees.selected == 0, "reset also returns tree density to Auto")
+	var reset: Dictionary = orqwa.graphics_options()
+	var reset_density: String = reset["tree_density"]
+	_check(reset_density == "auto", "reset removes the stored density override")
 
 
 ## R107: tree distance increases with quality, also for chunks uploaded before a ride;
@@ -173,6 +187,32 @@ func _tree_quality(world: RideWorld) -> void:
 	var next_chunk: int = world.get("_next_chunk")
 	_check(terrain.get_child_count() == 0, "old density is removed from the scene")
 	_check(next_chunk == 0, "a changed density restarts chunk uploads")
+	world.apply_quality("medium")
+
+
+## R108: density overrides only the uploaded population; distance and other effects stay
+## with their own settings, and Auto resumes following the current preset.
+func _tree_density_override(world: RideWorld) -> void:
+	var previous_density: float = 0.0
+	for level: String in ["low", "medium", "high", "ultra"]:
+		world.apply_quality("ultra", {"tree_density": level, "view_distance": "low"})
+		var quality: Dictionary = world.get("_quality")
+		var density: float = quality["tree_density"]
+		var tree_range: float = quality["tree_range"]
+		var shadow_distance: float = quality["shadow_distance"]
+		_check(density > previous_density, level + " raises the overridden density")
+		_check(tree_range == 600.0, "View distance stays independent from density")
+		_check(shadow_distance == 900.0, "Ultra shadows stay with the quality preset")
+		previous_density = density
+	world.apply_quality("low", {"tree_density": "ultra"})
+	var dense: Dictionary = world.get("_quality")
+	var dense_density: float = dense["tree_density"]
+	var nearby: float = dense["tree_range"]
+	_check(dense_density == 1.0 and nearby == 600.0, "dense trees can stay nearby on Low")
+	world.apply_quality("low", {"tree_density": "auto"})
+	var automatic: Dictionary = world.get("_quality")
+	var auto_density: float = automatic["tree_density"]
+	_check(auto_density == 0.125, "Auto follows Low again")
 	world.apply_quality("medium")
 
 

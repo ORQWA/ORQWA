@@ -113,6 +113,13 @@ The same woodland on [Low](../images/views/forest-low.jpg) and
 [Ultra](../images/views/forest-ultra.jpg). These software-rendered views verify appearance;
 60 fps on the reference M1 still needs measurement on its GPU.
 
+Tree density is also an independent Graphics detail (R108): Auto follows the quality
+preset; Low, Medium, High and Ultra choose the same population fractions above without
+changing range, shadows, grass or other effects. The setting lives in `computer.toml` and
+applies from the next ride. Resetting graphics details returns it to Auto. This enables
+comparing dense and sparse trees with otherwise identical rendering settings before
+retuning preset budgets; native GPU FPS remains the evidence for those changes.
+
 ### Woodland ferns (2026-10-21, R104)
 
 Two fern forms add low undergrowth: spreading and upright crowns with arching fronds and

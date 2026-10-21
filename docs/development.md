@@ -80,6 +80,10 @@ unchanged. Both app and route runners check their capture script compiles before
 
 Additional UI fixtures use the same real controls without hardware or account credentials:
 
+For a graphics/settings change, capture only the settings with
+`SCREENSHOT_SETTINGS_ONLY=1 scripts/screenshots.sh` in the container; this avoids building
+a course or populating sample rides. `SCREENSHOT_LOCALE=de` selects German for the same run.
+
 ```sh
 scripts/dev.sh sh -c 'XDG_DATA_HOME=$PWD/screenshots/refresh-data SCREENSHOT_DIR=$PWD/screenshots/refresh/app timeout 240 xvfb-run -a godot --path app --resolution 1600x900 -s res://tools/capture_details.gd'
 ```

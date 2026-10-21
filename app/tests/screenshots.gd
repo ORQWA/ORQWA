@@ -37,6 +37,10 @@ func _run() -> void:
 	var locale: String = OS.get_environment("SCREENSHOT_LOCALE")
 	if not locale.is_empty():
 		TranslationServer.set_locale(locale)
+	if OS.get_environment("SCREENSHOT_SETTINGS_ONLY") == "1":
+		await _settings_screens(start, out_dir)
+		quit(0)
+		return
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("start-courses.png"))
 	# Import the route as a new course, as the Courses tab's import does.
@@ -277,7 +281,13 @@ func _run() -> void:
 			root.get_texture().get_image().save_png(buttons_shot)
 			buttons_dialog.hide()
 			remote.button_pressed = false
-	# The settings from the cog at the top right (R83): Graphics, Courses, then About.
+	await _settings_screens(start, out_dir)
+	print("saved history")
+	await _workout_screens(orqwa, start)
+	quit(0)
+
+
+func _settings_screens(start: StartPage, out_dir: String) -> void:
 	var settings: SettingsDialog = start.get("_settings")
 	var settings_button: Button = start.get("_settings_button")
 	settings_button.pressed.emit()
@@ -288,10 +298,8 @@ func _run() -> void:
 		settings_tabs.current_tab = index
 		await create_timer(0.5).timeout
 		root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
+		print("saved ", file)
 	settings.hide()
-	print("saved history")
-	await _workout_screens(orqwa, start)
-	quit(0)
 
 
 func _software_render(world: RideWorld) -> void:
