@@ -1,8 +1,8 @@
 extends SceneTree
 ## Headless checks of the Devices tab: the shifter's buttons (#139, R75), how each row tells
 ## what its device is doing (R76), what stands beside it: the device's reading, or why
-## connecting failed (R80), that the devices are each rider's own (R82), and the phone remote
-## (#228).
+## connecting failed (R80), that the devices are each rider's own (R82), what a scan found
+## (R107), and the phone remote (#228).
 ## Run: godot --headless --path app -s res://tests/devices_smoke.gd
 
 var _failed: bool = false
@@ -16,6 +16,7 @@ func _run() -> void:
 	_shifter_buttons()
 	_device_states()
 	_missed_devices()
+	_found_devices()
 	await _rider_devices()
 	await _phone_remote()
 	if not _failed:
@@ -216,6 +217,43 @@ func _missed_devices() -> void:
 	tab._set_state("heart_rate", "")
 	tab._on_devices_found([others_strap])
 	_check(heart_rate.selected == 0, "a strap nearby is not chosen for the rider")
+	tab.free()
+
+
+## Hovering the scan's result lists what it found (R107): each device under its row's
+## caption with its signal, in the rows' order whatever order the scan heard them in.
+func _found_devices() -> void:
+	var tab: DevicesTab = DevicesTab.new()
+	root.add_child(tab)
+	var result: Label = tab._scan_label
+	_check(result.mouse_filter != Control.MOUSE_FILTER_IGNORE, "the result sees the mouse")
+	var strap: Dictionary = {
+		"index": 1,
+		"name": "Polar H9",
+		"kind": "heart_rate",
+		"model": null,
+		"rssi": -62,
+		"remembered": false,
+	}
+	var trainer: Dictionary = {
+		"index": 2,
+		"name": "KICKR CORE",
+		"kind": "trainer",
+		"model": null,
+		"rssi": null,
+		"remembered": false,
+	}
+	tab._on_devices_found([_click(), strap, trainer])
+	_check(result.text == "Found 3 device(s)", "how many: %s" % result.text)
+	_check(
+		(
+			result.tooltip_text
+			== "Trainer: KICKR CORE\nHeart rate: Polar H9  (-62 dBm)\nShifter: Zwift Click  (-50 dBm)"
+		),
+		"what was found: %s" % result.tooltip_text
+	)
+	tab._on_devices_found([])
+	_check(result.tooltip_text.is_empty(), "nothing to show when nothing was found")
 	tab.free()
 
 
