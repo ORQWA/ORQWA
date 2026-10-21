@@ -395,6 +395,15 @@ physically based materials and light, restyled group by group.
   equator below 1,200 m
 - [x] Quality presets Low–Ultra in settings, frame-time budget per preset (60 fps; a lower
   preset is suggested when a ride stays below)
+- [x] Trees follow graphics quality (R108): Low/Medium/High/Ultra upload about
+  12.5/25/50/100 % of the trees and draw them to 600/1,200/2,200/3,240 m. Stable subsets
+  keep existing trees as quality rises; View distance overrides their range. Kept worlds
+  work without regeneration; a changed density refreshes uploaded chunks for the next ride.
+- [x] Separate Tree density detail (R109): Auto or Low/Medium/High/Ultra independently of
+  View distance and the other effects, kept per computer and reset with the other details.
+- [x] Authored tree LODs (R43, R108): retain nearby detail and forest population, simplify
+  distant canopies and their shadows, with screen-size selection and bounded spatial batches;
+  verify native FPS and Low's rendering cost without changing kept worlds.
 - [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
   its own value, kept per computer

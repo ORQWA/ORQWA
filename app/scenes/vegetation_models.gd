@@ -20,6 +20,55 @@ static var _materials: Dictionary[String, ShaderMaterial] = {}
 static var _meshes: Dictionary[String, Mesh] = {}
 
 
+## Bound the closest tree used by Godot's batch-wide LOD selection. Low keeps its original
+## chunk-sized batches to avoid additional draw calls on weaker CPUs.
+static func add_to(
+	parent: Node3D,
+	name: String,
+	buffer: PackedFloat32Array,
+	tree_range: float,
+	small_range: float,
+	cell_m: float
+) -> void:
+	if buffer.is_empty():
+		return
+	if not _is_tree(name) or cell_m >= 480.0:
+		parent.add_child(instance(name, buffer, tree_range, small_range))
+		return
+	var cells: Dictionary[Vector2i, PackedFloat32Array] = {}
+	for offset: int in range(0, buffer.size(), 16):
+		var key: Vector2i = Vector2i(
+			floori(buffer[offset + 3] / cell_m), floori(buffer[offset + 11] / cell_m)
+		)
+		var values: PackedFloat32Array = cells.get(key, PackedFloat32Array())
+		values.append_array(buffer.slice(offset, offset + 16))
+		cells[key] = values
+	for values: PackedFloat32Array in cells.values():
+		parent.add_child(instance(name, values, tree_range, small_range))
+
+
+## One model's uploaded plants. Tree ranges follow the preset or View distance override;
+## smaller plants stay nearby. A short fade keeps Low from drawing well past its budget.
+static func instance(
+	name: String, buffer: PackedFloat32Array, tree_range: float, small_range: float
+) -> MultiMeshInstance3D:
+	var multimesh: MultiMesh = MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = true
+	multimesh.mesh = mesh(name)
+	multimesh.instance_count = buffer.size() / 16
+	multimesh.buffer = buffer
+	var placed: MultiMeshInstance3D = MultiMeshInstance3D.new()
+	placed.multimesh = multimesh
+	var tree: bool = _is_tree(name)
+	if tree:
+		placed.set_meta("tree", true)
+	placed.visibility_range_end = tree_range if tree else small_range
+	placed.visibility_range_end_margin = minf(tree_range * 0.15, 300.0) if tree else 100.0
+	placed.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	return placed
+
+
 ## The mesh of model `name` with its materials replaced by the shared looks.
 static func mesh(name: String) -> Mesh:
 	if _meshes.has(name):
@@ -33,11 +82,27 @@ static func mesh(name: String) -> Mesh:
 	var root: Node = scene.instantiate()
 	var found: ArrayMesh = _find_mesh(root).mesh
 	root.free()
+	if _is_tree(name):
+		var levels: Array[ArrayMesh] = []
+		for level: String in ["medium", "far"]:
+			var lod_path: String = DIRECTORY + "lods/%s_%s.glb" % [name, level]
+			if not ResourceLoader.exists(lod_path):
+				break
+			var lod_scene: PackedScene = load(lod_path)
+			var lod_root: Node = lod_scene.instantiate()
+			levels.append(_find_mesh(lod_root).mesh)
+			lod_root.free()
+		if levels.size() == 2:
+			found = TreeLodMesh.combine(found, levels)
 	for surface: int in found.get_surface_count():
 		var imported: Material = found.surface_get_material(surface)
 		found.surface_set_material(surface, material(imported.resource_name))
 	_meshes[name] = found
 	return found
+
+
+static func _is_tree(name: String) -> bool:
+	return name.get_slice("_", 0) in ["conifer", "broadleaf", "palm", "banana"]
 
 
 ## The shared material for a material name.

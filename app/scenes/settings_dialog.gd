@@ -37,4 +37,4 @@ func bind(orqwa: OrqwaApp) -> void:
 func open() -> void:
 	_tabs.current_tab = 0
 	_courses.refresh()
-	UiScale.popup(self, Vector2i(960, 640))
+	UiScale.popup(self, Vector2i(960, 700))

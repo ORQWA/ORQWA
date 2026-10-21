@@ -95,6 +95,49 @@ still apply. Generator 2 lets riders regenerate kept worlds for this change (ADR
 The Gurten hairpin at the same position: [before](../images/issues/forest-gurten-before.jpg)
 and [after](../images/issues/forest-gurten-after.jpg).
 
+### Tree quality budgets (2026-10-21, R108)
+
+The dense generated forest is Ultra's population. Low, Medium and High upload about
+12.5 %, 25 % and 50 % of its trees, sampled in Rust from their positions before copying
+buffers to Godot. Higher settings keep the lower setting's trees; bushes, ferns and rocks
+retain their populations. This reduces instance allocation and drawing on Low rather than
+only hiding a complete dense forest. No per-frame sampling is needed.
+
+Tree ranges are 600 / 1,200 / 2,200 / 3,240 m from Low to Ultra, with a fade margin of
+15 % capped at 300 m. View distance overrides the tree range independently of density.
+Presentation chunks refresh when density changes, including when a loaded course is ridden
+again. The generated and stored worlds stay complete and unchanged, so neither generator
+nor stored-format versions change; older kept worlds use the same rendering budgets.
+
+The same woodland on [Low](../images/views/forest-low.jpg) and
+[Ultra](../images/views/forest-ultra.jpg). These software-rendered views verify appearance;
+60 fps on the reference M1 still needs measurement on its GPU.
+
+Tree density is also an independent Graphics detail (R109): Auto follows the quality
+preset; Low, Medium, High and Ultra choose the same population fractions above without
+changing range, shadows, grass or other effects. The setting lives in `computer.toml` and
+applies from the next ride. Resetting graphics details returns it to Auto. This enables
+comparing dense and sparse trees with otherwise identical rendering settings before
+retuning preset budgets; native GPU FPS remains the evidence for those changes.
+
+### Authored tree LODs (2026-10-21, R43/R108)
+
+Disconnected foliage cards cannot be simplified into a coherent canopy by automatic mesh
+decimation alone. `art/vegetation/lods.py` authors medium and far forms for every tree,
+retaining species, crown volumes, origins and material names. These rendering assets live
+under `vegetation/lods/`, outside the placement catalogue. The original nearby models stay.
+
+`TreeLodMesh` combines their vertex attributes and index levels into Godot's mesh LODs;
+selection follows projected size, including viewport resolution, field of view and shadows.
+No per-frame instance filtering or buffer copying is needed. Medium through Ultra use
+160 m spatial batches so one close tree does not keep an entire 480 m chunk at full detail.
+Low retains chunk-sized batches to protect its CPU/draw-call budget. Density and view-distance
+controls retain their independent meanings. Neither generator nor stored format changes.
+
+Evaluate this against the same native GPU, course, camera and pixel dimensions; compare Low
+as well as dense forests. Smaller batches alone did not improve the tested valley scene,
+so a batch-only optimization is insufficient. The base M1 target still needs its own GPU test.
+
 ### Woodland ferns (2026-10-21, R104)
 
 Two fern forms add low undergrowth: spreading and upright crowns with arching fronds and

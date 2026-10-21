@@ -58,6 +58,7 @@ pub const GRAPHICS_OPTIONS: &[(&str, &[&str])] = &[
     ("reflections", &["off", "on"]),
     ("bloom", &["off", "on"]),
     ("view_distance", &["low", "medium", "high", "ultra"]),
+    ("tree_density", &["low", "medium", "high", "ultra"]),
     ("grass", &["off", "near", "medium", "far"]),
     ("antialiasing", &["off", "fxaa", "msaa_2x", "msaa_4x"]),
     ("render_scale", &["50", "67", "77", "85", "100"]),
@@ -311,6 +312,35 @@ mod tests {
             !graphics_options(&file).contains_key("shadows"),
             "auto follows the preset"
         );
+    }
+
+    #[test]
+    fn tree_density_is_kept_independently_of_quality_and_distance() {
+        let file = temp_file("tree-density");
+        assert!(!graphics_options(&file).contains_key("tree_density"));
+        set_graphics_option(&file, "view_distance", "high").unwrap();
+        for density in ["low", "medium", "high", "ultra"] {
+            assert!(set_graphics_option(&file, "tree_density", density).unwrap());
+            set_graphics_quality(&file, GraphicsQuality::Ultra).unwrap();
+            let options = graphics_options(&file);
+            assert_eq!(
+                options.get("tree_density").map(String::as_str),
+                Some(density)
+            );
+            assert_eq!(
+                options.get("view_distance").map(String::as_str),
+                Some("high")
+            );
+        }
+        assert!(!set_graphics_option(&file, "tree_density", "off").unwrap());
+        assert!(set_graphics_option(&file, "tree_density", AUTO).unwrap());
+        let options = graphics_options(&file);
+        assert!(!options.contains_key("tree_density"));
+        assert_eq!(
+            options.get("view_distance").map(String::as_str),
+            Some("high")
+        );
+        assert_eq!(graphics_quality(&file), GraphicsQuality::Ultra);
     }
 
     #[test]

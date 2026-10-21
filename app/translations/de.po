@@ -2179,3 +2179,6 @@ msgstr "Jetzt aktualisieren"
 
 msgid "What's new"
 msgstr "Was ist neu"
+
+msgid "Tree density"
+msgstr "Baumdichte"

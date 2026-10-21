@@ -2791,6 +2791,13 @@ impl OrqwaApp {
     /// `center`, in Godot coordinates (x east, y up, −z north, metres from the route start).
     #[func]
     fn world_chunk(&self, index: i64) -> VarDictionary {
+        self.world_chunk_with_tree_density(index, 1.0)
+    }
+
+    /// Like `world_chunk`, with only the requested share of trees uploaded (R108).
+    /// The world itself stays complete, so changing quality needs no regeneration.
+    #[func]
+    fn world_chunk_with_tree_density(&self, index: i64, tree_density: f64) -> VarDictionary {
         let chunk = self
             .app
             .as_ref()
@@ -2802,8 +2809,10 @@ impl OrqwaApp {
         };
         let [x, y, z] = chunk.center;
         let mut plants = VarDictionary::new();
-        for (name, buffer) in &chunk.trees.models {
-            plants.set(name.as_str(), &PackedFloat32Array::from(buffer.as_slice()));
+        for (name, buffer) in chunk.trees.models_for_density(tree_density) {
+            if !buffer.is_empty() {
+                plants.set(name, &PackedFloat32Array::from(buffer.as_ref()));
+            }
         }
         let mut props = VarDictionary::new();
         for (name, buffer) in &chunk.props.models {

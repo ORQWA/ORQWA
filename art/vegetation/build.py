@@ -588,4 +588,5 @@ def main():
         file.write("\n")
 
 
-main()
+if __name__ == "__main__":
+    main()
