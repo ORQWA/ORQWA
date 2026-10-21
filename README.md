@@ -17,8 +17,6 @@
   <img src="https://img.shields.io/badge/Godot-4-478CBF?logo=godotengine&logoColor=white" alt="Godot 4">
 </p>
 
-# ORQWA
-
 A modern, offline-first, open-source and free indoor cycling app. Import a GPX route or a ride video and
 ride it on your smart trainer, through a generated 3D world or along the video.
 
