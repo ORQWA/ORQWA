@@ -133,15 +133,21 @@ runtime error, catching premature dictionary lookup. Windows compiles the real h
 checks the `INPUT` size and the key-down/key-up events without injecting keys into the
 runner's desktop. Container tests check command mappings; none of these confirms playback.
 
-For the remaining native checks, use a downloaded app build, start a playlist in the player,
+For native playback checks, use a downloaded app build, start a playlist in the player,
 then focus ORQWA during a ride and press **M** twice, **.**, and **,**. Confirm pause/resume,
 next and previous in the player. On macOS try Apple Music with Spotify absent, Spotify
 alone, both running (Spotify takes priority), and neither running; verify the first
 permission prompt and the error if permission is denied. On Windows use Spotify or a
 browser tab that registers a system media session; successful input injection does not
 tell whether a player handled it. On Linux use an MPRIS player with `playerctl` installed,
-then try no player and a missing `playerctl`. Record the app build, OS, player and results
-on #260 before closing it. Run these manual checks separately from container checks.
+then try no player and a missing `playerctl`. For a regression report, record the app build,
+OS, player and results. Run these manual checks separately from container checks.
+
+For #260, the rider reported working music control on macOS with Music/Spotify open, on
+Windows, and on Ubuntu with VLC after installing `playerctl` and loading media
+(2026-10-21). These are manual playback reports; exact app/OS versions and every
+permission/error-path case were not specified. The rider guide now explains installation
+and how to distinguish a missing helper, no visible player and an empty VLC playlist.
 
 ## Builds
 
