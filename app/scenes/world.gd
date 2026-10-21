@@ -79,7 +79,7 @@ const FREE_TURN: float = 1.2
 ## A rider moving further than this between frames jumped: the camera follows at once.
 const JUMP_M: float = 50.0
 ## Graphics presets (R43): what each turns on. Medium holds 60 fps on a base M1; `distance`
-## scales terrain and details; trees have their own range and uploaded density (R107).
+## scales terrain and details; trees have their own range and uploaded density (R108).
 ## `rain` is the number of raindrops. MSAA stays
 ## at 2×: at 4× a few distant pixels broke and the glow spread them into bright blobs. Flat
 ## colours gain nothing from global illumination (SSIL, SDFGI) or volumetric fog, which only

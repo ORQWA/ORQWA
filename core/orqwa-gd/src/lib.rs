@@ -2794,7 +2794,7 @@ impl OrqwaApp {
         self.world_chunk_with_tree_density(index, 1.0)
     }
 
-    /// Like `world_chunk`, with only the requested share of trees uploaded (R107).
+    /// Like `world_chunk`, with only the requested share of trees uploaded (R108).
     /// The world itself stays complete, so changing quality needs no regeneration.
     #[func]
     fn world_chunk_with_tree_density(&self, index: i64, tree_density: f64) -> VarDictionary {

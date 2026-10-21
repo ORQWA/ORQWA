@@ -134,7 +134,7 @@ func _details(orqwa: OrqwaApp, graphics: GraphicsSettings) -> void:
 	_check(reset_density == "auto", "reset removes the stored density override")
 
 
-## R107: tree distance increases with quality, also for chunks uploaded before a ride;
+## R108: tree distance increases with quality, also for chunks uploaded before a ride;
 ## View distance changes range independently from the preset's tree density.
 func _tree_quality(world: RideWorld) -> void:
 	var terrain: Node3D = world.get_node("Terrain")
@@ -190,7 +190,7 @@ func _tree_quality(world: RideWorld) -> void:
 	world.apply_quality("medium")
 
 
-## R108: density overrides only the uploaded population; distance and other effects stay
+## R109: density overrides only the uploaded population; distance and other effects stay
 ## with their own settings, and Auto resumes following the current preset.
 func _tree_density_override(world: RideWorld) -> void:
 	var previous_density: float = 0.0

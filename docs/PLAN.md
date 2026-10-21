@@ -323,6 +323,8 @@ Built in rideable steps:
   rides; beside a failed one why the attempt failed, while the driver keeps trying (R80)
 - [x] Beside a connected device how full its battery is (R97): Bluetooth's Battery Service, and
   Zwift's battery message for the Click and each Click v2 pod; printed by the CLI too
+- [x] A scan's *Found n device(s)* is a link to a panel listing what it found, each device
+  under its row with its signal (R107)
 - [x] In-ride settings dialog (camera, difficulty, descents, time of day, weather, HUD) from
   one button or key S; finish & save or abort without saving after a confirmation (R48–R49)
 - [x] The same ride options on the course detail page (R48, with the start page)
@@ -393,11 +395,11 @@ physically based materials and light, restyled group by group.
   equator below 1,200 m
 - [x] Quality presets Low–Ultra in settings, frame-time budget per preset (60 fps; a lower
   preset is suggested when a ride stays below)
-- [x] Trees follow graphics quality (R107): Low/Medium/High/Ultra upload about
+- [x] Trees follow graphics quality (R108): Low/Medium/High/Ultra upload about
   12.5/25/50/100 % of the trees and draw them to 600/1,200/2,200/3,240 m. Stable subsets
   keep existing trees as quality rises; View distance overrides their range. Kept worlds
   work without regeneration; a changed density refreshes uploaded chunks for the next ride.
-- [x] Separate Tree density detail (R108): Auto or Low/Medium/High/Ultra independently of
+- [x] Separate Tree density detail (R109): Auto or Low/Medium/High/Ultra independently of
   View distance and the other effects, kept per computer and reset with the other details.
 - [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or

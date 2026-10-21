@@ -95,7 +95,7 @@ still apply. Generator 2 lets riders regenerate kept worlds for this change (ADR
 The Gurten hairpin at the same position: [before](../images/issues/forest-gurten-before.jpg)
 and [after](../images/issues/forest-gurten-after.jpg).
 
-### Tree quality budgets (2026-10-21, R107)
+### Tree quality budgets (2026-10-21, R108)
 
 The dense generated forest is Ultra's population. Low, Medium and High upload about
 12.5 %, 25 % and 50 % of its trees, sampled in Rust from their positions before copying
@@ -113,7 +113,7 @@ The same woodland on [Low](../images/views/forest-low.jpg) and
 [Ultra](../images/views/forest-ultra.jpg). These software-rendered views verify appearance;
 60 fps on the reference M1 still needs measurement on its GPU.
 
-Tree density is also an independent Graphics detail (R108): Auto follows the quality
+Tree density is also an independent Graphics detail (R109): Auto follows the quality
 preset; Low, Medium, High and Ultra choose the same population fractions above without
 changing range, shadows, grass or other effects. The setting lives in `computer.toml` and
 applies from the next ride. Resetting graphics details returns it to Auto. This enables

@@ -167,10 +167,10 @@ Mapped forests use jittered 4 m candidate spacing within 300 m of the road and t
 an equivalent 10 m spacing beyond it (R103). Wooded hillsides keep their trees even on steep
 ground; open land keeps sparse plants on its separate 7 m grid. Roads, railways, water,
 buildings and mapped clearings stay clear. Ultra draws the full tree population; Low,
-Medium and High upload stable subsets of about 12.5 %, 25 % and 50 % (R107). Tree ranges
+Medium and High upload stable subsets of about 12.5 %, 25 % and 50 % (R108). Tree ranges
 rise from 600 m on Low to 3,240 m on Ultra; View distance overrides range independently.
 The separate Tree density detail overrides the population independently of the preset;
-Auto follows it again (R108). Sampling happens before GPU upload and leaves kept worlds
+Auto follows it again (R109). Sampling happens before GPU upload and leaves kept worlds
 intact, without regeneration.
 
 ## Props (`props/`)

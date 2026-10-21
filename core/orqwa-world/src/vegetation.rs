@@ -149,7 +149,7 @@ pub struct Trees {
 }
 
 impl Trees {
-    /// Model buffers for drawing at a tree density in `[0, 1]` (R107). Smaller plants keep
+    /// Model buffers for drawing at a tree density in `[0, 1]` (R108). Smaller plants keep
     /// their population. Position-based sampling keeps the same trees as quality rises,
     /// including in worlds kept by older generators, without changing the stored world.
     pub fn models_for_density(
