@@ -414,6 +414,8 @@ physically based materials and light, restyled group by group.
 - [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
   its own value, kept per computer
+- [x] Default frame rate capped at 60 fps, including Auto at every quality preset (R111),
+  from startup; explicit frame rate limits and Unlimited remain available
 - [x] Asset pipeline: Blender 5.2 LTS in an x86-64 art container (`scripts/art.sh`), scripted
   models, an in-game preview renderer (`scripts/render-models.sh`), agent skills for the look,
   the pipeline and render review (`.claude/skills`)
