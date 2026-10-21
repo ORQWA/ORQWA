@@ -220,13 +220,15 @@ func _missed_devices() -> void:
 	tab.free()
 
 
-## Hovering the scan's result lists what it found (R107): each device under its row's
-## caption with its signal, in the rows' order whatever order the scan heard them in.
+## A scan's result lists what it found when clicked or tapped (R107): each device with its
+## signal, under its row's caption once, in the rows' order and as the scan heard them within
+## a row (the nearest first).
 func _found_devices() -> void:
 	var tab: DevicesTab = DevicesTab.new()
 	root.add_child(tab)
-	var result: Label = tab._scan_label
-	_check(result.mouse_filter != Control.MOUSE_FILTER_IGNORE, "the result sees the mouse")
+	var result: LinkButton = tab.find_children("*", "LinkButton", true, false)[0]
+	var panel: PopupPanel = tab.find_children("*", "PopupPanel", true, false)[0]
+	_check(not result.visible, "nothing to list before a scan")
 	var strap: Dictionary = {
 		"index": 1,
 		"name": "Polar H9",
@@ -235,25 +237,46 @@ func _found_devices() -> void:
 		"rssi": -62,
 		"remembered": false,
 	}
-	var trainer: Dictionary = {
+	var near_trainer: Dictionary = {
 		"index": 2,
 		"name": "KICKR CORE",
+		"kind": "trainer",
+		"model": null,
+		"rssi": -48,
+		"remembered": false,
+	}
+	var far_trainer: Dictionary = {
+		"index": 3,
+		"name": "Tacx Neo 2T",
 		"kind": "trainer",
 		"model": null,
 		"rssi": null,
 		"remembered": false,
 	}
-	tab._on_devices_found([_click(), strap, trainer])
-	_check(result.text == "Found 3 device(s)", "how many: %s" % result.text)
-	_check(
-		(
-			result.tooltip_text
-			== "Trainer: KICKR CORE\nHeart rate: Polar H9  (-62 dBm)\nShifter: Zwift Click  (-50 dBm)"
-		),
-		"what was found: %s" % result.tooltip_text
+	tab._on_devices_found([_click(), near_trainer, strap, far_trainer])
+	_check(result.visible and result.text == "Found 4 device(s)", "a link: %s" % result.text)
+	result.pressed.emit()
+	_check(panel.visible, "the link opens the list")
+	# Each line's caption, name and signal.
+	var cells: PackedStringArray = PackedStringArray()
+	for cell: Label in panel.find_children("*", "Label", true, false):
+		cells.append(cell.text)
+	var lines: PackedStringArray = PackedStringArray()
+	for i: int in range(0, cells.size(), 3):
+		lines.append(" | ".join(cells.slice(i, i + 3)))
+	var expected: PackedStringArray = PackedStringArray(
+		[
+			"Trainer | KICKR CORE | -48 dBm",
+			" | Tacx Neo 2T | ",
+			"Heart rate | Polar H9 | -62 dBm",
+			"Shifter | Zwift Click | -50 dBm",
+		]
 	)
+	_check(lines == expected, "what was found: %s" % lines)
+	panel.hide()
 	tab._on_devices_found([])
-	_check(result.tooltip_text.is_empty(), "nothing to show when nothing was found")
+	_check(not result.visible, "nothing to list when nothing was found")
+	_check(tab._scan_label.text == "Found 0 device(s)", "says so: %s" % tab._scan_label.text)
 	tab.free()
 
 

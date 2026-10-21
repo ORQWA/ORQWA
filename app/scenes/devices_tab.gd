@@ -1,8 +1,8 @@
 class_name DevicesTab
 extends VBoxContainer
 ## Trainer, power meter, cadence, heart-rate sensor and shifter — a Shimano Di2 or a Zwift
-## Click (R5, R7, R41, R71, R72, R75, R76): scanning (what a scan found shows on hovering its
-## result, R107), choosing, what the shifter's buttons do
+## Click (R5, R7, R41, R71, R72, R75, R76): scanning (its result lists what it found, R107),
+## choosing, what the shifter's buttons do
 ## (#139, in a dialog behind the pen beside its row), and the devices used last reconnecting
 ## at start. A device connects the moment it
 ## is chosen, and each row says how its device is doing: connecting, connected, reconnecting
@@ -71,6 +71,13 @@ var _orqwa: OrqwaApp
 var _rider: String = ""
 var _scan_button: Button = Button.new()
 var _scan_label: Label = Label.new()
+## A scan's result while it found devices: a click or tap lists them in [member _found_panel]
+## (R107), which touch screens without tooltips reach too.
+var _scan_result: LinkButton = LinkButton.new()
+var _found_panel: PopupPanel = PopupPanel.new()
+var _found_grid: GridContainer = GridContainer.new()
+## The devices the last scan found, as the core reported them.
+var _found: Array = []
 var _trainer: OptionButton = OptionButton.new()
 var _heart_rate: OptionButton = OptionButton.new()
 ## Power pedals or a crank power meter, whose power counts over the trainer's (R71).
@@ -230,11 +237,8 @@ func _init() -> void:
 	scan_row.add_child(_scan_button)
 	_scan_label.text = tr("Wake the devices first.")
 	_scan_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# Sees the mouse for its tooltip: what the last scan found (R107), by the devices' own
-	# names, which are never translated; the rows' captions are, in code.
-	_scan_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_scan_label.tooltip_auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	scan_row.add_child(_scan_label)
+	_add_scan_result(scan_row)
 	add_child(scan_row)
 	_trainer.item_selected.connect(func(_index: int) -> void: _choose_trainer())
 	_power_meter.tooltip_text = tr(
@@ -379,7 +383,10 @@ func _on_devices_found(devices: Array) -> void:
 		var index: int = device["index"]
 		if device["remembered"]:
 			remembered.append(index)
+		var label: String = device["name"]
 		_names[index] = device["name"]
+		if device["rssi"] != null:
+			label += "  (%d dBm)" % device["rssi"]
 		var kind: String = device["kind"]
 		var option: OptionButton = _heart_rate
 		if kind == "trainer":
@@ -391,11 +398,11 @@ func _on_devices_found(devices: Array) -> void:
 		elif kind == "controller":
 			option = _shifter
 			_shifter_models[index] = device["model"]
-		option.add_item(_device_label(device))
+		option.add_item(label)
 		option.set_item_metadata(option.item_count - 1, index)
 		if device["kind"] == "trainer":
 			trainers += 1
-	_show_scan(tr("Found %d device(s)") % devices.size(), _found_text(devices))
+	_show_scan(tr("Found %d device(s)") % devices.size(), devices)
 	# Prefer the devices used last, else a real trainer over the fake one. A power meter or a
 	# strap only when used last: pedals nearby may be on another bike, a strap on another
 	# rider (R82).
@@ -436,29 +443,72 @@ func _on_devices_found(devices: Array) -> void:
 		_set_state(searched, "missing")
 
 
-## A scanned device as its choice shows it: its name, and its signal where the scan heard one.
-static func _device_label(device: Dictionary) -> String:
-	var label: String = device["name"]
-	if device["rssi"] != null:
-		label += "  (%d dBm)" % device["rssi"]
-	return label
+## The scan's result as a link in the accent colour, and the panel it opens: a caption, a
+## name and a signal per device.
+func _add_scan_result(row: HBoxContainer) -> void:
+	_scan_result.underline = LinkButton.UNDERLINE_MODE_ON_HOVER
+	_scan_result.focus_mode = Control.FOCUS_NONE
+	_scan_result.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_scan_result.add_theme_color_override("font_color", UiTheme.ACCENT)
+	_scan_result.add_theme_color_override("font_hover_color", UiTheme.ACCENT.lightened(0.35))
+	_scan_result.add_theme_color_override("font_pressed_color", UiTheme.TEXT)
+	_scan_result.add_theme_color_override("font_hover_pressed_color", UiTheme.TEXT)
+	_scan_result.pressed.connect(_open_found)
+	_scan_result.hide()
+	row.add_child(_scan_result)
+	_found_grid.columns = 3
+	_found_grid.add_theme_constant_override("h_separation", 20)
+	_found_grid.add_theme_constant_override("v_separation", 8)
+	_found_panel.add_child(_found_grid)
+	add_child(_found_panel)
 
 
-## What a scan found (R107), a line per device under its row's caption: in the rows' order,
-## the nearest first within a row, as the scan lists them by signal.
-func _found_text(devices: Array) -> String:
-	var lines: PackedStringArray = PackedStringArray()
-	for role: String in CAPTIONS:
-		for device: Dictionary in devices:
-			if device["kind"] == READING_KINDS[role]:
-				lines.append("%s: %s" % [tr(CAPTIONS[role]), _device_label(device)])
-	return "\n".join(lines)
-
-
-## Says how the scan for all devices is doing; `found`, what a scan found, shows on hover.
-func _show_scan(text: String, found: String = "") -> void:
+## Says how the scan for all devices is doing; a result that `found` devices is a link to them.
+func _show_scan(text: String, found: Array = []) -> void:
+	_found = found
+	_found_panel.hide()
 	_scan_label.text = text
-	_scan_label.tooltip_text = found
+	_scan_label.visible = found.is_empty()
+	_scan_result.text = text
+	_scan_result.visible = not found.is_empty()
+
+
+## Lists what the last scan found (R107) under its result, or above it where the window has
+## no room below: in the rows' order, the nearest first within a row as the scan lists them
+## by signal, each row's caption once beside its first device.
+func _open_found() -> void:
+	for cell: Node in _found_grid.get_children():
+		_found_grid.remove_child(cell)
+		cell.queue_free()
+	for role: String in CAPTIONS:
+		var caption: String = tr(CAPTIONS[role])
+		for device: Dictionary in _found:
+			if device["kind"] == READING_KINDS[role]:
+				_add_found(caption, device)
+				caption = ""
+	var link: Rect2 = Rect2(_scan_result.get_screen_position(), _scan_result.size)
+	var wanted: Vector2 = _found_panel.get_contents_minimum_size()
+	var room: Rect2 = get_viewport_rect()
+	var left: float = minf(link.position.x, room.end.x - wanted.x)
+	var top: float = link.end.y + 6
+	if top + wanted.y > room.end.y:
+		top = link.position.y - 6 - wanted.y
+	_found_panel.popup(Rect2i(Vector2i(roundi(left), roundi(top)), Vector2i.ZERO))
+
+
+## A found device's line: its row's caption (or none, under the one before), its name and its
+## signal where the scan heard one. Device names are never translated; the captions are, here.
+func _add_found(caption: String, device: Dictionary) -> void:
+	var cells: Array[Label] = [Label.new(), Label.new(), Label.new()]
+	cells[0].text = caption
+	cells[0].add_theme_color_override("font_color", UiTheme.MUTED)
+	cells[1].text = device["name"]
+	cells[2].text = "" if device["rssi"] == null else "%d dBm" % device["rssi"]
+	cells[2].add_theme_color_override("font_color", UiTheme.MUTED)
+	cells[2].horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	for cell: Label in cells:
+		cell.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		_found_grid.add_child(cell)
 
 
 ## Whether the scan listed `device_name` among the role's choices.

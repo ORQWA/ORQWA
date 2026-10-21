@@ -323,8 +323,8 @@ Built in rideable steps:
   rides; beside a failed one why the attempt failed, while the driver keeps trying (R80)
 - [x] Beside a connected device how full its battery is (R97): Bluetooth's Battery Service, and
   Zwift's battery message for the Click and each Click v2 pod; printed by the CLI too
-- [x] Hovering a scan's *Found n device(s)* lists what it found, each device under its row with
-  its signal (R107)
+- [x] A scan's *Found n device(s)* is a link to a panel listing what it found, each device
+  under its row with its signal (R107)
 - [x] In-ride settings dialog (camera, difficulty, descents, time of day, weather, HUD) from
   one button or key S; finish & save or abort without saving after a confirmation (R48–R49)
 - [x] The same ride options on the course detail page (R48, with the start page)

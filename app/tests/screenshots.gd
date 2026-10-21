@@ -277,6 +277,7 @@ func _run() -> void:
 			root.get_texture().get_image().save_png(buttons_shot)
 			buttons_dialog.hide()
 			remote.button_pressed = false
+			await _found_devices(devices_tab, out_dir)
 	# The settings from the cog at the top right (R83): Graphics, Courses, then About.
 	var settings: SettingsDialog = start.get("_settings")
 	var settings_button: Button = start.get("_settings_button")
@@ -341,6 +342,29 @@ func _unfold_rider(start: StartPage) -> void:
 		if button.is_visible_in_tree() and button.tooltip_text == tr("All settings"):
 			button.pressed.emit()
 			return
+
+
+## What a scan found, behind its result (R107), as wiki/Devices-and-riding.md tells: made-up
+## devices, listed without connecting any, then the tab as it was.
+func _found_devices(devices_tab: DevicesTab, out_dir: String) -> void:
+	var found: Array = [
+		_scanned("KICKR CORE 2", "trainer", -52),
+		_scanned("Zwift Click", "controller", -55),
+		_scanned("Polar H9 A1B2C3D4", "heart_rate", -61),
+		_scanned("ASSIOMA34567L", "power_meter", -64),
+		_scanned("Venu 3", "heart_rate", -73),
+	]
+	devices_tab._show_scan(tr("Found %d device(s)") % found.size(), found)
+	# Laid out first, as before a click: the list opens under the result where it is drawn.
+	await process_frame
+	devices_tab._open_found()
+	await create_timer(0.5).timeout
+	root.get_texture().get_image().save_png(out_dir.path_join("start-devices-found.png"))
+	devices_tab._show_scan(tr("Wake the devices first."))
+
+
+static func _scanned(device_name: String, kind: String, rssi: int) -> Dictionary:
+	return {"name": device_name, "kind": kind, "rssi": rssi}
 
 
 ## Presses Connect… on the unfolded rider's account number `which`; the dialog it opens, if
