@@ -32,6 +32,10 @@ const VIEWS: Dictionary[String, Array] = {
 	"bridge-chase": ["kirchenfeldbruecke", 200.0, 0, "Midday", "Clear"],
 	"roundabout-drone": ["kirchenfeldbruecke", 170.0, 2, "Midday", "Clear"],
 	"bridge-side": ["kirchenfeldbruecke", 380.0, 0, "Midday", "Clear", Vector3(140.0, -22.0, 0.0)],
+	"city-street": ["kirchenfeldbruecke", 100.0, 0, "Midday", "Clear"],
+	"city-overview": ["kirchenfeldbruecke", 100.0, 2, "Midday", "Clear"],
+	"city-benches": ["kirchenfeldbruecke", 100.0, 0, "Midday", "Clear", "bench"],
+	"forest-floor": ["gurtenstrasse", 1840.0, 0, "Midday", "Clear", "fern"],
 	# The reference route (#167): a planner's file over a pass, its hard places.
 	"oberalp-tunnel-chase": ["oberalp", 3700.0, 0, "Midday", "Clear"],
 	"oberalp-railway-chase": ["oberalp", 4500.0, 0, "Midday", "Clear"],
@@ -41,7 +45,7 @@ const VIEWS: Dictionary[String, Array] = {
 	"oberalp-village-chase": ["oberalp", 24000.0, 0, "Midday", "Clear"],
 }
 ## Frames to let the world stream in around a new place; software rendering is slow.
-const SETTLE_FRAMES: int = 240
+const SETTLE_FRAMES: int = 16
 
 var _main: Control
 
@@ -81,16 +85,36 @@ func _run() -> void:
 	var world: RideWorld = _main.get_node("World")
 	var quality: String = OS.get_environment("QUALITY")
 	orqwa.set_graphics_quality(quality if not quality.is_empty() else "medium")
-	orqwa.load_route(gpx, true)
 	var built: Array[bool] = [false]
 	orqwa.world_ready.connect(
 		func(_info: Variant = null) -> void: built[0] = true, CONNECT_ONE_SHOT
 	)
-	while not built[0]:
+	var failure: Array[String] = [""]
+	orqwa.failed.connect(func(message: String) -> void: failure[0] = message)
+	orqwa.load_route(gpx, false)
+	var until: int = Time.get_ticks_msec() + 600000
+	while not built[0] and failure[0].is_empty() and Time.get_ticks_msec() < until:
+		await process_frame
+	if not built[0]:
+		push_error("Cannot prepare screenshot route: " + gpx + " " + failure[0])
+		quit(1)
+		return
+	# Upload chunks while the world is hidden, instead of rendering every intermediate batch.
+	while true:
+		var next_chunk: int = world.get("_next_chunk")
+		var chunk_count: int = world.get("_chunk_count")
+		if next_chunk >= chunk_count:
+			break
 		await process_frame
 	orqwa.connect_fake_trainer(150.0, 85.0)
 	orqwa.start_ride(50.0, false, {"kind": "none"})
 	start.ride_started.emit(start.ride_options())
+	orqwa.set_paused(true)
+	if OS.get_environment("ORQWA_RENDER_SOFTWARE") == "1":
+		root.msaa_3d = Viewport.MSAA_DISABLED
+		root.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+		var environment: Environment = world.get("_environment")
+		environment.glow_enabled = false
 	for view: String in views:
 		var spec: Array = specs[view]
 		var distance: float = spec[1]
@@ -98,11 +122,12 @@ func _run() -> void:
 		var time: String = spec[3]
 		var weather: String = spec[4]
 		orqwa.jump_to_distance(distance)
+		world.set("_free", false)
 		world.set_camera(camera)
+		world.set("_placed", false)
 		world.apply_conditions(time, weather)
-		if spec.size() > 5:
-			# A camera aside stands where the rider was just after the jump and stays there
-			# while the world settles; the rider rides on meanwhile.
+		if spec.size() > 5 and spec[5] is Vector3:
+			# Place the rider at the requested distance before positioning a camera aside.
 			for frame: int in range(10):
 				await process_frame
 			var aside: Vector3 = spec[5]
@@ -112,8 +137,57 @@ func _run() -> void:
 			camera_node.look_at_from_position(
 				rider.transform * aside, rider.position + Vector3.UP * 2.0, Vector3.UP
 			)
+		elif spec.size() > 5:
+			for frame: int in range(4):
+				await process_frame
+			var model: String = spec[5]
+			if not _focus_instance(orqwa, world, model):
+				push_error("No instance for screenshot: " + view)
+				quit(1)
+				return
 		for frame: int in range(SETTLE_FRAMES):
 			await process_frame
 		root.get_texture().get_image().save_png(out.path_join(view + ".png"))
 		print("saved %s" % view)
 	quit(0)
+
+
+func _focus_instance(orqwa: OrqwaApp, world: RideWorld, model: String) -> bool:
+	var rider: Node3D = world.get_node("Rider")
+	var nearest: float = INF
+	var at: Vector3 = Vector3.ZERO
+	var away: Vector3 = Vector3.RIGHT
+	for index: int in range(orqwa.world_chunk_count()):
+		var chunk: Dictionary = orqwa.world_chunk(index)
+		var center: Vector3 = chunk["center"]
+		var instances: Dictionary = chunk["plants" if model == "fern" else "props"]
+		for name: String in instances:
+			if not name.begins_with(model):
+				continue
+			var buffer: PackedFloat32Array = instances[name]
+			var stride: int = 16 if model == "fern" else 12
+			for offset: int in range(0, buffer.size(), stride):
+				var placed: Vector3 = (
+					center + Vector3(buffer[offset + 3], buffer[offset + 7], buffer[offset + 11])
+				)
+				var distance_m: float = placed.distance_to(rider.global_position)
+				if distance_m < nearest:
+					nearest = distance_m
+					at = placed
+					away = Vector3(buffer[offset], buffer[offset + 4], buffer[offset + 8])
+	if is_inf(nearest):
+		return false
+	world.set("_free", true)
+	var camera: Camera3D = world.get("_camera")
+	if model == "fern":
+		var toward: Vector3 = rider.global_position - at
+		toward.y = 0.0
+		camera.look_at_from_position(
+			at + toward.normalized() * 1.7 + Vector3.UP * 0.8, at + Vector3.UP * 0.3, Vector3.UP
+		)
+	else:
+		var along: Vector3 = Vector3(-away.z, 0.0, away.x)
+		camera.look_at_from_position(
+			at - away * 4.0 + along * 3.0 + Vector3.UP * 1.7, at + Vector3.UP * 0.55, Vector3.UP
+		)
+	return true

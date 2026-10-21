@@ -79,6 +79,15 @@ Blender Python; its header shows how to run it).
 
 ## How to get it
 
+Urban surfaces (R105, ADR 0027) distinguish dense-city paving, commercial/industrial asphalt
+and suburban lawns. Mapped parks and other natural land take precedence. Review sidewalk
+curbs and access openings from road height, plus an overview for garden/park preservation.
+Building paths, forecourts and low walls are inferred; keep their appearance plausible
+without claiming exact mapped property boundaries. Shared concrete/paver textures are baked
+by the art pipeline. Urban material codes are part of the stored world's format contract.
+City benches and paired bins (R106) stand at the raised sidewalk's height, near its outer
+edge. Keep entrances and the inner walking strip clear; review their ground contact close up.
+
 - **Models:** scripted Blender (skill `orqwa-art-pipeline`), smooth shading with sharp edges,
   UVs in metres so tileable textures keep their scale. Iterate with `--preview DIR`.
 - **Ground and roads (Rust-built meshes):** smooth vertex normals, UVs in world metres, land

@@ -37,7 +37,7 @@ ride it on your smart trainer, through a generated 3D world or along the video.
   </tr>
   <tr>
     <td colspan="2" align="center">
-      <img src="docs/images/readme/overlay.jpg" alt="ORQWA's overlay on top of a browser window"><br>
+      <img src="docs/images/readme/overlay.jpg" alt="ORQWA's compact overlay HUD"><br>
       <sub>Just your HUD, on top of any window</sub>
     </td>
   </tr>
@@ -45,6 +45,8 @@ ride it on your smart trainer, through a generated 3D world or along the video.
 
 <sub>Video: <a href="https://cycling.vangestel.online">“Le petit Menglonnais”</a> by Fred Van
 Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.</sub>
+
+[More screenshots: app, workouts, cities, forests and route scenery](docs/screenshots.md).
 
 > [!WARNING]
 > **Written by AI, ridden at your own risk.** Every line of ORQWA is written by AI. It comes

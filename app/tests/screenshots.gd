@@ -27,6 +27,7 @@ func _run() -> void:
 	var orqwa: OrqwaApp = _main.get_node("Orqwa")
 	var world: RideWorld = _main.get_node("World")
 	var start: StartPage = _main.get_node("StartPage")
+	_software_render(world)
 
 	var route: String = OS.get_environment("SCREENSHOT_ROUTE")
 	if route.is_empty():
@@ -40,6 +41,8 @@ func _run() -> void:
 	root.get_texture().get_image().save_png(out_dir.path_join("start-courses.png"))
 	# Import the route as a new course, as the Courses tab's import does.
 	var courses: CoursesTab = start.find_children("*", "CoursesTab", true, false)[0]
+	var prepared: Array[bool] = [false]
+	orqwa.course_added.connect(func(_path: String) -> void: prepared[0] = true, CONNECT_ONE_SHOT)
 	courses.call("_on_file_selected", route)
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("import-name.png"))
@@ -57,7 +60,10 @@ func _run() -> void:
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("rider-settings.png"))
 	dialog.hide()
-	await _wait_for(orqwa.course_added)
+	var until: int = Time.get_ticks_msec() + int(TIMEOUT_S * 1000.0)
+	while not prepared[0] and Time.get_ticks_msec() < until:
+		await process_frame
+	_check(prepared[0], "course prepared")
 	# The prepared course opens on its detail page.
 	await create_timer(1.0).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("course-detail.png"))
@@ -70,7 +76,11 @@ func _run() -> void:
 	var edit_dialog: Window = course_page.get("_edit_dialog")
 	edit_dialog.hide()
 	# Let the world stream its chunks in.
-	for i: int in range(240):
+	while true:
+		var next_chunk: int = world.get("_next_chunk")
+		var chunk_count: int = world.get("_chunk_count")
+		if next_chunk >= chunk_count:
+			break
 		await process_frame
 	# A custom HUD, e.g. SCREENSHOT_HUD=power_3s,speed,normalized_power,upcoming_grade
 	var hud: String = OS.get_environment("SCREENSHOT_HUD")
@@ -80,6 +90,7 @@ func _run() -> void:
 	var quality: String = OS.get_environment("SCREENSHOT_QUALITY")
 	if not quality.is_empty():
 		_check(orqwa.set_graphics_quality(quality), "graphics quality %s" % quality)
+	_software_render(world)
 	_check(orqwa.connect_fake_trainer(250.0, 90.0), "fake trainer")
 	# A pacer to race, e.g. SCREENSHOT_GHOST=300 (watts).
 	var ghost: Dictionary = {"kind": "none"}
@@ -88,6 +99,7 @@ func _run() -> void:
 		ghost = {"kind": "power", "watts": ghost_watts.to_float()}
 	_check(orqwa.start_ride(50.0, false, ghost), "ride started")
 	start.ride_started.emit(start.ride_options())
+	_software_render(world)
 	var time: String = OS.get_environment("SCREENSHOT_TIME")
 	var weather: String = OS.get_environment("SCREENSHOT_WEATHER")
 	if not time.is_empty() or not weather.is_empty():
@@ -282,6 +294,15 @@ func _run() -> void:
 	quit(0)
 
 
+func _software_render(world: RideWorld) -> void:
+	if OS.get_environment("ORQWA_RENDER_SOFTWARE") != "1":
+		return
+	root.msaa_3d = Viewport.MSAA_DISABLED
+	root.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+	var environment: Environment = world.get("_environment")
+	environment.glow_enabled = false
+
+
 ## The last six weeks against the six before, read off at 5 minutes, as wiki/Analysis.md shows.
 ## the power curve (R62).
 func _compare_periods(start: StartPage) -> void:
@@ -431,16 +452,6 @@ func _error_details(out_dir: String) -> void:
 		var file: String = "error-details-de.png" if locale == "de" else "error-details.png"
 		root.get_texture().get_image().save_png(out_dir.path_join(file))
 		print("saved " + file)
-
-
-func _wait_for(sig: Signal) -> void:
-	var received: Array[bool] = [false]
-	sig.connect(func(_arg: Variant) -> void: received[0] = true, CONNECT_ONE_SHOT)
-	var waited: float = 0.0
-	while not received[0] and waited < TIMEOUT_S:
-		await process_frame
-		waited += root.get_process_delta_time()
-	_check(received[0], "signal %s" % sig.get_name())
 
 
 func _check(condition: bool, what: String) -> void:

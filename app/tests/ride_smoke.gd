@@ -37,6 +37,8 @@ func _run() -> void:
 	var flat_s: float = flat_estimate["time_s"]
 	_check(flat_s >= estimated_s, "flat descents: %s" % flat_estimate)
 	await _wait_for(_orqwa.world_ready)
+	var chunk: Dictionary = _orqwa.world_chunk(0)
+	_check(chunk.has("urban"), "urban surface mesh exported by the core")
 	# A world kept from an older ORQWA may name models this one no longer has (R101).
 	var unknown: Array = [
 		BuildingModels.mesh("gone"), VegetationModels.mesh("gone"), PropModels.mesh("gone")

@@ -526,6 +526,11 @@ physically based materials and light, restyled group by group.
   - [x] Woodland ferns (R104): spreading and upright Blender models with paired leaflets,
     patchy undergrowth within 60 m of the road using the existing shrub budget and the
     short draw distance; generator 3 offers regeneration of kept worlds.
+  - [x] Urban surfaces (R105, ADR 0027): dense-city paving, commercial/industrial asphalt,
+    sidewalks and curbs, inferred building paths, forecourts and low garden walls; parks
+    and suburban lawns preserved, grass kept out of paving. Generator 5 / stored format 2.
+  - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
+    at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs
     tinted per building, walls darker at their foot, reflective glass; textured shells
   - [x] Light and sky: physically based atmosphere with sunlit clouds (the faceted cloud
@@ -625,6 +630,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   screenshots
 - [x] Welcome and naming story on the wiki homepage, with the "orqward" joke, the supplied
   cycling-orca illustration, sidebar navigation and a link from the README
+- [x] Refresh the app, video-course, route, model and rider screenshots after the city and
+  woodland changes; a screenshot gallery linked from the README and wiki navigation
 - [ ] Drop the release asset `Torqa-windows-x86_64.msi` (`scripts/release/publish.sh`) once
   riders have moved past Torqa 0.5.0
 

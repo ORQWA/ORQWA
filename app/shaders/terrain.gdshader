@@ -17,6 +17,10 @@ uniform sampler2D gravel_albedo : source_color, filter_linear_mipmap_anisotropic
 uniform sampler2D gravel_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D rock_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D rock_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D paving_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D paving_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D asphalt_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D asphalt_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 
 // The vertex colours of the covers (palette `ground.*`, sRGB): they identify, not colour.
 uniform vec3 cover_meadow = vec3(0.698, 0.757, 0.471);
@@ -26,6 +30,8 @@ uniform vec3 cover_forest = vec3(0.482, 0.498, 0.267);
 uniform vec3 cover_town = vec3(0.761, 0.769, 0.604);
 uniform vec3 cover_industrial = vec3(0.788, 0.765, 0.706);
 uniform vec3 cover_rock = vec3(0.765, 0.733, 0.706);
+uniform vec3 cover_urban = vec3(0.545, 0.553, 0.561);
+uniform vec3 cover_commercial = vec3(0.412, 0.424, 0.451);
 
 uniform vec3 snow_color : source_color = vec3(0.86, 0.88, 0.9);
 uniform float snow_line = 2400.0;
@@ -94,13 +100,16 @@ void fragment() {
 		min(distance2(colour, cover_town), distance2(colour, cover_farmland))),
 		min(min(distance2(colour, cover_forest), distance2(colour, cover_industrial)),
 		distance2(colour, cover_rock)));
+	nearest = min(nearest, min(distance2(colour, cover_urban), distance2(colour, cover_commercial)));
 	float w_meadow = weight(colour, cover_meadow, nearest) + weight(colour, cover_orchard, nearest)
 		+ weight(colour, cover_town, nearest);
 	float w_farmland = weight(colour, cover_farmland, nearest);
 	float w_forest = weight(colour, cover_forest, nearest);
 	float w_industrial = weight(colour, cover_industrial, nearest);
 	float w_rock = weight(colour, cover_rock, nearest);
-	float total = w_meadow + w_farmland + w_forest + w_industrial + w_rock;
+	float w_urban = weight(colour, cover_urban, nearest);
+	float w_commercial = weight(colour, cover_commercial, nearest);
+	float total = w_meadow + w_farmland + w_forest + w_industrial + w_rock + w_urban + w_commercial;
 
 	vec3 grass;
 	vec3 grass_n = from_above(grass_albedo, grass_normal, grass_tile, 0.8, grass);
@@ -110,6 +119,15 @@ void fragment() {
 	vec3 gravel_n = from_above(gravel_albedo, gravel_normal, gravel_tile, 1.0, gravel);
 	vec3 rock;
 	vec3 rock_n = rock_sides(rock);
+	vec3 paving = vec3(0.0);
+	vec3 asphalt = vec3(0.0);
+	vec3 paving_n = world_normal;
+	vec3 asphalt_n = world_normal;
+	// Rural fragments retain the existing texture budget.
+	if (w_urban + w_commercial + w_industrial > 0.01) {
+		paving_n = from_above(paving_albedo, paving_normal, 2.0, 1.0, paving);
+		asphalt_n = from_above(asphalt_albedo, asphalt_normal, 2.5, 1.0, asphalt);
+	}
 
 	// Grass as it grows here: a deep green. The texture is baked about three times too bright for
 	// grass in sunlight, a pale lime from afar.
@@ -131,9 +149,11 @@ void fragment() {
 		+ smoothstep(1700.0, 2300.0, world_position.y) * 0.6;
 	meadow = mix(meadow, meadow * vec3(1.25, 1.08, 0.62), clamp(dry, 0.0, 1.0));
 	vec3 albedo = (meadow * w_meadow + field * w_farmland + floor_colour * w_forest
-		+ gravel * w_industrial + rock * w_rock) / total;
+		+ mix(gravel, asphalt, 0.7) * w_industrial + rock * w_rock
+		+ paving * w_urban + mix(asphalt, paving, 0.2) * w_commercial) / total;
 	vec3 normal = normalize(grass_n * (w_meadow + w_farmland) + floor_normal * w_forest
-		+ gravel_n * w_industrial + rock_n * w_rock);
+		+ mix(gravel_n, asphalt_n, 0.7) * w_industrial + rock_n * w_rock
+		+ paving_n * w_urban + mix(asphalt_n, paving_n, 0.2) * w_commercial);
 	float roughness = 0.92;
 
 	// The bed under water: dark wet earth.

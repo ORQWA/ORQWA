@@ -21,6 +21,6 @@ if [ -n "$errors" ]; then
     echo "$errors" >&2
     exit 1
 fi
-OUT_DIR="$root/screenshots/models" timeout 1800 xvfb-run -a -s "-screen 0 1600x900x24" \
+OUT_DIR="${OUT_DIR:-$root/screenshots/models}" timeout 1800 xvfb-run -a -s "-screen 0 1600x900x24" \
     godot --path "$root/app" --rendering-driver vulkan --resolution 1280x720 \
     -s res://tools/render_models.gd

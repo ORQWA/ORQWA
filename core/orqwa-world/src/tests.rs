@@ -13,6 +13,9 @@ use orqwa_osm::{Area, Building, LandCover, Structure, StructureKind, Waterway};
 
 use super::*;
 
+#[path = "urban_tests.rs"]
+mod urban;
+
 const METERS_PER_DEGREE: f64 = 111_195.0;
 
 /// Terrain rising 10 % towards the east, 500 m at the route start.
@@ -4191,8 +4194,20 @@ async fn towns_get_lamps_benches_and_shelters_with_room_to_stand() {
         (1..=2).contains(&shelters.len()) && shelters.iter().all(|p| p[0] > 0.0),
         "a shelter every 400 m on the right: {shelters:?}"
     );
+    let benches = props_of(&world, "bench");
+    assert!(
+        (4..=7).contains(&benches.len()),
+        "regular seating along 800 m of town: {benches:?}"
+    );
+    assert!(benches.iter().any(|p| p[0] < 0.0) && benches.iter().any(|p| p[0] > 0.0));
+    for [east, height, north] in &benches {
+        let sidewalk = height_on(&world, |chunk| &chunk.urban, *east as f32, -*north as f32)
+            .expect("bench on a drawn sidewalk");
+        assert!((height - f64::from(sidewalk)).abs() < 0.01);
+        assert!(east.abs() > 4.4, "leave the inner sidewalk open");
+    }
     assert_eq!(
-        props_of(&world, "bench").len(),
+        benches.len(),
         props_of(&world, "bin").len(),
         "a bin beside every bench"
     );

@@ -260,6 +260,7 @@ pub(crate) struct Ground<'a> {
     pub(crate) streets: &'a Clearance,
     pub(crate) buildings: &'a [Footprint],
     pub(crate) climate: Climate,
+    pub(crate) urban: &'a crate::urban::Urban,
 }
 
 impl Ground<'_> {
@@ -314,6 +315,9 @@ pub(crate) fn place(
                 );
                 east += spacing;
                 let cover = land.cover_at(e, n);
+                if ground.urban.paved_at((e, n), land) {
+                    continue;
+                }
                 if (cover == Some(LandCover::Forest)) != forest {
                     continue;
                 }
@@ -481,6 +485,9 @@ pub(crate) fn place_grass(
                 continue;
             }
             let cover = land.cover_at(e, n);
+            if ground.urban.paved_at((e, n), land) {
+                continue;
+            }
             let (density, flowery) = match cover {
                 Some(LandCover::Water | LandCover::Rock) => (0.0, false),
                 // Yards and car parks: a little grass at the edges.
