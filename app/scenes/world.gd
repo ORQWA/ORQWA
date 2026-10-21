@@ -404,7 +404,9 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	if previous_density != _quality["tree_density"] or previous_cell != _quality["tree_cell"]:
 		_restart_chunks()
 	var fps_limit: String = options.get("fps_limit", "auto")
-	Engine.max_fps = 0 if fps_limit in ["auto", "unlimited"] else int(fps_limit)
+	Engine.max_fps = 60
+	if fps_limit != "auto":
+		Engine.max_fps = 0 if fps_limit == "unlimited" else int(fps_limit)
 	var vsync: String = options.get("vsync", "auto")
 	DisplayServer.window_set_vsync_mode(
 		DisplayServer.VSYNC_DISABLED if vsync == "off" else DisplayServer.VSYNC_ENABLED

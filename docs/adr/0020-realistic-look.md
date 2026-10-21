@@ -84,6 +84,12 @@ Decisions (user, 2026-10-18):
 - Until a group is restyled it keeps its faceted look; mixed screenshots are expected in
   between.
 
+### Default frame rate (2026-10-21, R111)
+
+Rendering is capped at 60 fps from startup and with the frame rate limit on Auto, at every
+quality preset, to avoid unnecessary power use on high-refresh displays. Explicit limits and
+Unlimited still apply when chosen; V-Sync remains enabled on Auto and may limit the rate further.
+
 ### Forest density (2026-10-21, R103)
 
 Mapped woods use a separate, jittered 4 m candidate grid near the route instead of the
