@@ -114,6 +114,41 @@ gallery into `docs/images/models/`. Historical comparison baselines stay with th
 reviews. Phone-remote browser screenshots require a separate browser capture; these helpers
 do not replace them.
 
+## Checking music controls
+
+Music control (R26, #260) uses `osascript` on macOS, Windows `SendInput` through a
+PowerShell helper, and `playerctl` on Linux. No new library dependency is needed. macOS
+checks bundle IDs and compiles only the running player's command: compiling a `tell`
+statement for an absent Spotify can otherwise fail before the Apple Music fallback runs.
+Even a literal bundle ID can fail compilation when its app is absent, so running checks
+resolve IDs through a variable and treat a missing application as stopped.
+Windows sends a virtual media key down and up; `SendKeys([char]179)` would type a character.
+
+The macOS and Windows CI jobs compile and run the tests in
+`core/orqwa-app/src/media/commands.rs` directly with `rustc --test` before building the app.
+This is the production module, which needs only Rust's standard library; native script
+checks need not build the rest of the app or FFmpeg first. The macOS test executes all three
+commands with nonexistent player IDs and expects the no-player
+runtime error, catching premature dictionary lookup. Windows compiles the real helper and
+checks the `INPUT` size and the key-down/key-up events without injecting keys into the
+runner's desktop. Container tests check command mappings; none of these confirms playback.
+
+For native playback checks, use a downloaded app build, start a playlist in the player,
+then focus ORQWA during a ride and press **M** twice, **.**, and **,**. Confirm pause/resume,
+next and previous in the player. On macOS try Apple Music with Spotify absent, Spotify
+alone, both running (Spotify takes priority), and neither running; verify the first
+permission prompt and the error if permission is denied. On Windows use Spotify or a
+browser tab that registers a system media session; successful input injection does not
+tell whether a player handled it. On Linux use an MPRIS player with `playerctl` installed,
+then try no player and a missing `playerctl`. For a regression report, record the app build,
+OS, player and results. Run these manual checks separately from container checks.
+
+For #260, the rider reported working music control on macOS with Music/Spotify open, on
+Windows, and on Ubuntu with VLC after installing `playerctl` and loading media
+(2026-10-21). These are manual playback reports; exact app/OS versions and every
+permission/error-path case were not specified. The rider guide now explains installation
+and how to distinguish a missing helper, no visible player and an empty VLC playlist.
+
 ## Builds
 
 Tagged builds of the app and CLI are available on the

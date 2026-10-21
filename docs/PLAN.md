@@ -192,6 +192,13 @@ Built in rideable steps:
 - [ ] Audio (R26): music app control ✅, original video sound ✅ (Phase 5); ambient sound
   dropped for now (synthesised version did not sound right), to return with convincing
   sounds (#259)
+  - [x] Music helpers (#260): macOS compiles only the running player's command, so Apple
+    Music works without Spotify installed; Windows sends media-key down/up events through
+    `SendInput`. Native CI checks cover missing macOS players and the Windows input ABI.
+  - [x] Real-player checks (#260): the rider reported working music control on macOS with
+    Music/Spotify open, on Windows, and on Ubuntu with VLC after installing `playerctl`
+    and loading media. The wiki explains Linux setup and the missing-helper, no-player
+    and no-media errors.
 - [x] i18n: all texts translatable, German translation, language per rider (R24)
 - [x] German reviewed text by text (#261): contextual translations and classified core errors
   with localized explanations, unchanged diagnostic details and session error history (R74)

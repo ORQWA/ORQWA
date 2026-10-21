@@ -114,6 +114,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      - name: Check native music-control scripts
+        run: |
+          rustc --edition=2024 --test -D warnings core/orqwa-app/src/media/commands.rs -o "$RUNNER_TEMP/music-tests"
+          "$RUNNER_TEMP/music-tests"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
@@ -183,6 +187,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+      - name: Check native music-key helper
+        run: |
+          rustc --edition=2024 --test -D warnings core/orqwa-app/src/media/commands.rs -o "$env:RUNNER_TEMP\music-tests.exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & "$env:RUNNER_TEMP\music-tests.exe"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
