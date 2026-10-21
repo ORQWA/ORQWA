@@ -32,6 +32,8 @@
     "forest": "#7b7f44",
     "town": "#c2c49a",
     "industrial": "#c9c3b4",
+    "commercial": "#696c73",
+    "urban": "#8b8d8f",
     "rock": "#c3bbb4",
     "snow": "#f2ebd9"
   },

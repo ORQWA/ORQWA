@@ -438,10 +438,36 @@ def slate(t):
     t.output(col, 0.6, height, 1.0, 0.02)
 
 
+def concrete(t):
+    # Fine aggregate and weathered slabs; 3 m per tile in the app, with narrow recessed joints.
+    u, v, pick = t.cells(4, 6)
+    grain = t.noise(110, detail=6, rough=0.65)
+    weather = t.noise(2, detail=5, rough=0.6, offset=3.0)
+    tone = t.ramp(pick, [(0.0, (0.28, 0.29, 0.28)), (1.0, (0.38, 0.39, 0.37))])
+    col = t.mix(tone, t.ramp(weather.outputs["Fac"], [(0.2, (0.65, 0.65, 0.62)), (0.8, (1.0, 1.0, 0.98))]), 0.35, "MULTIPLY")
+    joint = t.math("MAXIMUM", t.edge(u, 0.012), t.edge(v, 0.012))
+    col = t.mix(col, (0.09, 0.1, 0.09), joint)
+    height = t.math("SUBTRACT", t.math("MULTIPLY", grain.outputs["Fac"], 0.18), t.math("MULTIPLY", joint, 0.7))
+    t.output(col, 0.88, height, 0.65, 0.006)
+
+
+def paving(t):
+    # Staggered rectangular pavers, 25 by 50 cm when the tile spans 2 m.
+    u, v, pick = t.cells(8, 4, stagger=0.5)
+    grain = t.noise(65, detail=6, rough=0.7)
+    weather = t.noise(3, detail=5, rough=0.6, offset=8.0)
+    tone = t.ramp(pick, [(0.0, (0.22, 0.23, 0.22)), (0.5, (0.31, 0.3, 0.27)), (1.0, (0.39, 0.39, 0.36))])
+    col = t.mix(tone, t.ramp(weather.outputs["Fac"], [(0.2, (0.7, 0.72, 0.66)), (0.8, (1.0, 1.0, 1.0))]), 0.3, "MULTIPLY")
+    joint = t.math("MAXIMUM", t.edge(u, 0.035), t.edge(v, 0.02))
+    col = t.mix(col, (0.065, 0.07, 0.055), joint)
+    height = t.math("SUBTRACT", t.math("MULTIPLY", grain.outputs["Fac"], 0.2), t.math("MULTIPLY", joint, 0.8))
+    t.output(col, 0.9, height, 0.8, 0.012)
+
+
 MATERIALS = {
     "rock": rock, "grass": grass, "dirt": dirt, "sand": sand, "bark": bark, "asphalt": asphalt,
     "gravel": gravel, "plaster": plaster, "roof_tiles": roof_tiles, "planks": planks,
-    "masonry": masonry, "slate": slate,
+    "masonry": masonry, "slate": slate, "concrete": concrete, "paving": paving,
 }
 
 

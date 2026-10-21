@@ -2777,9 +2777,10 @@ impl OrqwaApp {
             })
     }
 
-    /// World chunk `index`: `{center, terrain, buildings, modelled, streets, tracks, water,
+    /// World chunk `index`: `{center, terrain, buildings, modelled, streets, tracks, urban, water,
     /// plants, props, labels, wires, grass, flowers}`. `terrain`, `buildings`, `streets`, `tracks` and `water`
     /// (lakes, rivers and streams) are mesh arrays (`{vertices, normals, uvs, colors, indices}`);
+    /// `urban` is another mesh array, with paving/concrete/asphalt/curb codes in its colours.
     /// `plants` maps vegetation model names (trees, bushes, ferns, rocks) to `MultiMesh` buffers
     /// (transform and colour), `props` maps roadside model names (guard rails, posts, poles) to
     /// transform buffers, `labels` lists the signs' text (`{text, transform}`), `wires` are the
@@ -2840,6 +2841,7 @@ impl OrqwaApp {
             "modelled" => &modelled,
             "streets" => &mesh_arrays(&chunk.streets),
             "tracks" => &mesh_arrays(&chunk.tracks),
+            "urban" => &mesh_arrays(&chunk.urban),
             "water" => &mesh_arrays(&chunk.water),
             "plants" => &plants,
             "props" => &props,

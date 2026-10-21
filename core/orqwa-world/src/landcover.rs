@@ -91,11 +91,11 @@ fn priority(cover: LandCover) -> u8 {
         LandCover::Water => 6,
         LandCover::Rock => 5,
         LandCover::Forest => 4,
-        LandCover::Orchard => 3,
+        LandCover::Orchard | LandCover::Meadow => 3,
         LandCover::Farmland => 2,
         LandCover::Residential | LandCover::Industrial | LandCover::Commercial => 1,
         // Schools' and hospitals' grounds are mostly lawns and yards.
-        LandCover::Meadow | LandCover::Public => 0,
+        LandCover::Public => 0,
     }
 }
 
@@ -126,6 +126,7 @@ struct Ground {
     orchard: [f32; 4],
     town: [f32; 4],
     industrial: [f32; 4],
+    commercial: [f32; 4],
     rock: [f32; 4],
     bed: [f32; 4],
 }
@@ -137,6 +138,7 @@ static GROUND: LazyLock<Ground> = LazyLock::new(|| Ground {
     orchard: palette::srgb("ground.orchard", 0.0),
     town: palette::srgb("ground.town", 0.0),
     industrial: palette::srgb("ground.industrial", 0.0),
+    commercial: palette::srgb("ground.commercial", 0.0),
     rock: palette::srgb("ground.rock", 0.0),
     bed: palette::srgb("water.bed", 1.0),
 });
@@ -150,7 +152,8 @@ pub(crate) fn color(cover: Option<LandCover>) -> [f32; 4] {
         Some(LandCover::Farmland) => ground.farmland,
         Some(LandCover::Orchard) => ground.orchard,
         Some(LandCover::Residential) => ground.town,
-        Some(LandCover::Industrial | LandCover::Commercial) => ground.industrial,
+        Some(LandCover::Industrial) => ground.industrial,
+        Some(LandCover::Commercial) => ground.commercial,
         Some(LandCover::Rock) => ground.rock,
         Some(LandCover::Water) => ground.bed,
     }

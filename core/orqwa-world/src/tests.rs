@@ -13,6 +13,9 @@ use orqwa_osm::{Area, Building, LandCover, Structure, StructureKind, Waterway};
 
 use super::*;
 
+#[path = "urban_tests.rs"]
+mod urban;
+
 const METERS_PER_DEGREE: f64 = 111_195.0;
 
 /// Terrain rising 10 % towards the east, 500 m at the route start.

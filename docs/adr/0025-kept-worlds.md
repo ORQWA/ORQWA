@@ -85,3 +85,9 @@ keeps the 3D world of a library course once it is built (R101):
   keep no worlds; streaming the world in remains possible later (#237).
 - The world in memory is as large as the stored one before deflating (the app holds 2.7 GB for
   a 100 km course), unchanged by this decision.
+
+## Amendment — 2026-10-21
+
+[Urban surfaces (ADR 0027)](0027-urban-surfaces.md) add a mesh to each chunk and new terrain
+cover codes, raising the stored format to 2 and generator to 4. Format-1 worlds rebuild when
+next ridden; the course-file format is unchanged.

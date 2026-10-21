@@ -23,6 +23,7 @@ mod roundabouts;
 pub mod stored;
 mod streets;
 mod structures;
+mod urban;
 mod vegetation;
 mod water;
 
@@ -45,7 +46,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 3;
+pub const GENERATOR: u32 = 4;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -179,6 +180,8 @@ pub struct TerrainChunk {
     pub streets: MeshData,
     /// Unpaved tracks and paths of the map, likewise.
     pub tracks: MeshData,
+    /// Sidewalks, curbs, building access and forecourts, with urban material codes in colours.
+    pub urban: MeshData,
     /// Lakes, ponds, rivers and streams of the map, likewise; they pass under streets and the
     /// road.
     pub water: MeshData,
@@ -274,6 +277,7 @@ pub async fn generate<M: ElevationModel>(
         hills: true,
     };
     let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
+    let urban = urban::Urban::build(buildings.values().flatten(), &ways.streets, &road, &land);
     let mut world = whole(&projection, (&shapers, &ways, &below), model).await;
     let mouths = streets::mouths(&ways.streets, &road);
     let places: Vec<(String, (f64, f64))> = map
@@ -292,6 +296,7 @@ pub async fn generate<M: ElevationModel>(
         ways: &ways,
         below: &below,
         buildings: &buildings,
+        urban: &urban,
         climate,
         mouths: &mouths,
         places: &places,
@@ -435,6 +440,7 @@ struct Corridor<'a> {
     ways: &'a Ways,
     below: &'a structures::Below<'a>,
     buildings: &'a HashMap<(i32, i32), Vec<buildings::Plot<'a>>>,
+    urban: &'a urban::Urban,
     climate: climate::Climate,
     /// Where streets join the road ridden.
     mouths: &'a [road::Mouth],
@@ -485,6 +491,7 @@ impl Corridor<'_> {
             streets: &self.ways.clearance,
             buildings: &footprints,
             climate: self.climate,
+            urban: self.urban,
         };
         let mut trees = vegetation::place(heights.origin, CHUNK_SIZE, &ground, origin);
         let roadside = props::Roadside {
@@ -513,13 +520,22 @@ impl Corridor<'_> {
             &heights,
             origin,
         ));
+        let mut mesh = heights.mesh(self.land, origin, self.shapers, &self.ways.islands);
+        self.urban.paint(&mut mesh, origin, self.land);
         let chunk = TerrainChunk {
             center,
-            mesh: heights.mesh(self.land, origin, self.shapers, &self.ways.islands),
+            mesh,
             buildings: chunk_buildings.shells,
             modelled: chunk_buildings.cells.into_values().collect(),
             streets: paved,
             tracks: unpaved,
+            urban: self.urban.mesh(
+                &heights,
+                self.land,
+                &self.ways.clearance,
+                self.shapers.road,
+                origin,
+            ),
             water: water::mesh(streams, pools, heights.origin, CHUNK_SIZE, &heights, origin),
             trees,
             props,

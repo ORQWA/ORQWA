@@ -293,6 +293,7 @@ mod tests {
                     modelled: Vec::new(),
                     streets: MeshData::default(),
                     tracks: MeshData::default(),
+                    urban: MeshData::default(),
                     water: MeshData::default(),
                     trees: orqwa_world::Trees::default(),
                     props: orqwa_world::Props::default(),

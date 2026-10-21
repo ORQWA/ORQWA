@@ -50,6 +50,14 @@ are committed (most materials need no roughness map). Pass names after `--` for 
 for another resolution (1024 by default) and `--out` to bake elsewhere, such as
 `screenshots/textures` while trying things out.
 
+Urban ground (R105, [ADR 0027](../docs/adr/0027-urban-surfaces.md)) adds `concrete` slabs
+and staggered rectangular `paving`, each with 1024 px albedo, normal and roughness maps.
+Concrete spans 3 m per tile (0.75 × 0.5 m slabs); paving spans 2 m (0.25 × 0.5 m blocks).
+The Rust generator drapes sidewalks, forecourts and building access over the terrain and
+builds curb and low-wall faces, using these shared materials in `app/shaders/urban.gdshader`.
+Terrain uses paving in dense districts and shared road asphalt for commercial/industrial
+land. Mapped green areas and low-density residential lawns retain their vegetation.
+
 ```sh
 scripts/art.sh blender --background --factory-startup --python art/textures/build.py -- --out screenshots/textures --size 512
 ```

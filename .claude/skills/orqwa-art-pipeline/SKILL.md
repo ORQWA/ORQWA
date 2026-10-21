@@ -116,6 +116,12 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
 
 ## Shading and budgets
 
+Urban materials (R105, ADR 0027): `concrete` and `paving` in `art/textures/build.py` bake
+1024 px albedo, normal and roughness maps. Concrete tiles over 3 m, paving over 2 m.
+`app/shaders/urban.gdshader` shares them across Rust-built sidewalks, curbs, access and
+front-garden walls; dense terrain also uses paving. Use VRAM compression and mipmaps on
+all maps, normal-map import on normals, and keep these six textures with their settings.
+
 - Realistic (ADR 0020, `orqwa-look`): smooth shading with sharp edges where the object
   has them (`use_smooth` on, shade auto smooth by angle or marked sharp edges); the exporter
   then splits normals only there. Vegetation writes its own normals per corner (smooth within a

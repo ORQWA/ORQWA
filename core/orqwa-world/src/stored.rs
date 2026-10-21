@@ -17,7 +17,7 @@ use crate::{BuildingCell, Horizon, Label, MeshData, Props, TerrainChunk, Trees, 
 /// `tests/data/stored-world-<FORMAT>.bin` fails then), or a change in what the app makes of the
 /// data, such as a model renamed or removed or another layout of an instance buffer. Worlds of
 /// another format are built again.
-pub const FORMAT: u32 = 1;
+pub const FORMAT: u32 = 2;
 
 /// The first bytes of a world's parts built whole.
 const MAGIC: &[u8; 8] = b"TQWORLD\0";
@@ -156,6 +156,7 @@ impl<W: Write> Writer<'_, W> {
             modelled,
             streets,
             tracks,
+            urban,
             water,
             trees:
                 Trees {
@@ -179,7 +180,7 @@ impl<W: Write> Writer<'_, W> {
             self.models(models)?;
             self.mesh(shells)?;
         }
-        for mesh in [streets, tracks, water] {
+        for mesh in [streets, tracks, urban, water] {
             self.mesh(mesh)?;
         }
         self.models(plants)?;
@@ -317,6 +318,7 @@ impl<R: Read> Reader<'_, R> {
         }
         let streets = self.mesh()?;
         let tracks = self.mesh()?;
+        let urban = self.mesh()?;
         let water = self.mesh()?;
         let trees = Trees {
             models: self.models()?,
@@ -339,6 +341,7 @@ impl<R: Read> Reader<'_, R> {
             modelled,
             streets,
             tracks,
+            urban,
             water,
             trees,
             props: Props {
@@ -378,6 +381,7 @@ mod tests {
             }],
             streets: mesh(seed + 3.0),
             tracks: mesh(seed + 4.0),
+            urban: mesh(seed + 9.0),
             water: mesh(seed + 5.0),
             trees: Trees {
                 models: models("pine"),
@@ -508,13 +512,15 @@ mod tests {
         let error = read_whole(&mut foreign.as_slice()).expect_err("refused");
         assert_eq!(error.kind(), io::ErrorKind::InvalidData);
         // Another format is refused before anything is read as this one.
-        let mut other = whole;
-        other[MAGIC.len()..MAGIC.len() + 4].copy_from_slice(&(FORMAT + 1).to_le_bytes());
-        for error in [
-            read_whole(&mut other.as_slice()).expect_err("refused"),
-            read_generator(&mut other.as_slice()).expect_err("refused"),
-        ] {
-            assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        for format in [FORMAT - 1, FORMAT + 1] {
+            let mut other = whole.clone();
+            other[MAGIC.len()..MAGIC.len() + 4].copy_from_slice(&format.to_le_bytes());
+            for error in [
+                read_whole(&mut other.as_slice()).expect_err("refused"),
+                read_generator(&mut other.as_slice()).expect_err("refused"),
+            ] {
+                assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+            }
         }
     }
 

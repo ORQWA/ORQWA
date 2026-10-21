@@ -341,6 +341,7 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 	_environment.fog_sun_scatter = LOW_SUN_SCATTER if elevation < 20.0 else 0.0
 	_apply_valley_fog()
 	var raining: float = 1.0 if weather == "Rain" else 0.0
+	UrbanSurfaces.set_conditions(raining, sky_horizon)
 	_rain.emitting = raining > 0.0
 	for material: ShaderMaterial in [_road_material, _street_material, _track_material]:
 		material.set_shader_parameter("wetness", raining)
@@ -451,12 +452,11 @@ func reset_view() -> void:
 
 
 func _ready() -> void:
-	# Ground and roads textured (ADR 0020); the rest keeps the flat palette colours of ADR 0011
-	# until restyled.
+	# Shared surface textures keep street and terrain materials consistent (ADR 0020).
 	_terrain_material.shader = preload("res://shaders/terrain.gdshader")
 	for material: String in ["grass", "dirt", "gravel", "rock"]:
 		_set_textures(_terrain_material, material, material)
-	# The land covers' vertex colours: the shader tells covers apart by them.
+	UrbanSurfaces.configure_terrain(_terrain_material)
 	for cover: String in ["meadow", "farmland", "orchard", "forest", "town", "industrial", "rock"]:
 		var colour: Color = Palette.color("ground." + cover)
 		_terrain_material.set_shader_parameter(
@@ -573,18 +573,18 @@ func _on_world_ready(_info: Dictionary) -> void:
 		chunk.queue_free()
 	_chunk_count = _orqwa.world_chunk_count()
 	_next_chunk = 0
-	_road.mesh = _mesh_from(_orqwa.road_mesh())
+	_road.mesh = WorldMeshes.from_arrays(_orqwa.road_mesh())
 	_road.material_override = _road_material
 	var land: Dictionary = _orqwa.horizon_meshes()
 	var ground: Dictionary = land["ground"]
 	var lakes: Dictionary = land["water"]
-	_horizon_ground.mesh = _mesh_from(ground)
+	_horizon_ground.mesh = WorldMeshes.from_arrays(ground)
 	_horizon_ground.material_override = _terrain_material
-	_horizon_water.mesh = _mesh_from(lakes)
+	_horizon_water.mesh = WorldMeshes.from_arrays(lakes)
 	_horizon_water.material_override = _water_material
-	_railways.mesh = _mesh_from(_orqwa.railways_mesh())
+	_railways.mesh = WorldMeshes.from_arrays(_orqwa.railways_mesh())
 	_railways.material_override = _rail_material
-	_structures.mesh = _mesh_from(_orqwa.structures_mesh())
+	_structures.mesh = WorldMeshes.from_arrays(_orqwa.structures_mesh())
 	_structures.material_override = _structure_material
 
 
@@ -615,6 +615,7 @@ func _build_some_chunks() -> void:
 				var way: MeshInstance3D = _mesh_instance(arrays, material)
 				way.visibility_range_end = VISIBILITY_RANGE * _distance
 				node.add_child(way)
+		UrbanSurfaces.add_to(node, chunk, DETAIL_RANGE * _distance)
 		var buildings: MeshInstance3D = _mesh_instance(building_arrays, _building_material)
 		buildings.visibility_range_end = DETAIL_RANGE * _distance
 		node.add_child(buildings)
@@ -680,7 +681,7 @@ func _add_modelled(node: Node3D, cell: Dictionary) -> void:
 
 func _mesh_instance(arrays: Dictionary, material: Material) -> MeshInstance3D:
 	var instance: MeshInstance3D = MeshInstance3D.new()
-	instance.mesh = _mesh_from(arrays)
+	instance.mesh = WorldMeshes.from_arrays(arrays)
 	instance.material_override = material
 	instance.visibility_range_end_margin = 300.0
 	instance.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
@@ -978,23 +979,3 @@ func _camera_target(rider: Transform3D) -> Transform3D:
 static func _set_textures(material: ShaderMaterial, texture_name: String, uniform: String) -> void:
 	material.set_shader_parameter(uniform + "_albedo", TEXTURES[texture_name + "_albedo"])
 	material.set_shader_parameter(uniform + "_normal", TEXTURES[texture_name + "_normal"])
-
-
-func _mesh_from(arrays: Dictionary) -> ArrayMesh:
-	var surface: Array = []
-	surface.resize(Mesh.ARRAY_MAX)
-	var vertices: PackedVector3Array = arrays["vertices"]
-	var normals: PackedVector3Array = arrays["normals"]
-	var uvs: PackedVector2Array = arrays["uvs"]
-	var colors: PackedColorArray = arrays["colors"]
-	var indices: PackedInt32Array = arrays["indices"]
-	surface[Mesh.ARRAY_VERTEX] = vertices
-	surface[Mesh.ARRAY_NORMAL] = normals
-	surface[Mesh.ARRAY_TEX_UV] = uvs
-	if not colors.is_empty():
-		surface[Mesh.ARRAY_COLOR] = colors
-	surface[Mesh.ARRAY_INDEX] = indices
-	var mesh: ArrayMesh = ArrayMesh.new()
-	if not vertices.is_empty():
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surface)
-	return mesh
