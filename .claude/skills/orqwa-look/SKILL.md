@@ -69,6 +69,13 @@ Blender Python; its header shows how to run it).
   between models rather than baking per model. No Git LFS below about 150 MB of textures.
 - **Frame time:** 60 fps on Medium on an M1 (R43). Check `scripts/render-views.sh` timing and a
   ride on the reference route after every group.
+- **Forest density (R103):** mapped woods have their own 4 m candidate grid within 300 m
+  of the route and thin to an equivalent 10 m spacing beyond it. Keep wooded slopes wooded
+  and clearings clear; scattered plants on open land use a separate 7 m grid. Check the
+  canopy from road height and the drone view when changing placement.
+- **Woodland floor (R104):** spreading and upright ferns grow in patches within 60 m of
+  the route, sharing the shrub budget. Keep their arching fronds and paired leaflets legible
+  at road height; use `plants.ferns`, the shared `frond` material and the short plant range.
 
 ## How to get it
 

@@ -3,7 +3,7 @@ shader_type spatial;
 global uniform float wind_time;
 // Trees, bushes and rocks from Blender (art/vegetation, R89, ADR 0020), by material:
 // 0 bark — the bark texture by the trunk's coordinates (metres around and up);
-// 2 fronds — solid palm and banana leaves, tinted per plant (COLOR, sRGB, chosen by the world
+// 2 fronds — solid palm, banana and fern leaves, tinted per plant (COLOR, sRGB, chosen by the world
 //   from the palette), lit through from behind;
 // 3 rock — the rock texture laid on from three sides, tinted per rock.
 // Foliage cards have their own shader (foliage.gdshader). Trees sway in the wind, more towards

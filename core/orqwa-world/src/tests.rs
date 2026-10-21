@@ -1401,7 +1401,8 @@ async fn forests_get_trees_but_not_on_the_road() {
     let trees = plants_of(&world, &["conifer", "broadleaf"]);
     let in_forest = |[x, _, z]: &[f32; 3]| (-610.0..=-390.0).contains(z) && x.abs() <= 110.0;
     let forest_trees = trees.iter().filter(|t| in_forest(t)).count();
-    assert!(forest_trees > 200, "{forest_trees} trees in the forest");
+    // At least one trunk per 25 m² makes the crowns read as continuous woodland (R103).
+    assert!(forest_trees > 1600, "{forest_trees} trees in the forest");
     // Outside it, in the meadows within 300 m of the road, only now and then a tree on its own.
     let lone = (trees.len() - forest_trees) as f64;
     let forest_density = forest_trees as f64 / (200.0 * 200.0);
@@ -1428,6 +1429,146 @@ async fn forests_get_trees_but_not_on_the_road() {
         .map(|plant| [plant[12], plant[13], plant[14]].map(f32::to_bits))
         .collect();
     assert!(colours.len() > 3, "trees vary in colour: {colours:?}");
+}
+
+#[tokio::test]
+async fn distant_forests_still_have_a_canopy_and_keep_their_clearings() {
+    let forest = Area {
+        cover: LandCover::Forest,
+        outer: vec![square(550.0, 500.0, 100.0)],
+        inner: vec![square(550.0, 500.0, 30.0)],
+    };
+    let world = world(&MapData {
+        areas: vec![forest],
+        ..MapData::default()
+    })
+    .await;
+    let trees = plants_of(&world, &["conifer", "broadleaf"]);
+    let distant: Vec<_> = trees
+        .iter()
+        .filter(|[x, _, z]| (450.0..650.0).contains(x) && (-600.0..-400.0).contains(z))
+        .collect();
+    // Even beyond the detailed roadside band, at least one trunk per 150 m² (R103).
+    assert!(distant.len() > 240, "{} distant trees", distant.len());
+    assert!(
+        distant
+            .iter()
+            .all(|[x, _, z]| { !(520.0..580.0).contains(x) || !(-530.0..-470.0).contains(z) })
+    );
+}
+
+#[tokio::test]
+async fn mapped_forests_stay_wooded_on_steep_hillsides() {
+    struct SteepSlope;
+    impl ElevationModel for SteepSlope {
+        fn elevation(
+            &mut self,
+            _lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46f64.to_radians().cos();
+            std::future::ready(Ok(500.0 + east))
+        }
+    }
+    let map = MapData {
+        areas: vec![Area {
+            cover: LandCover::Forest,
+            outer: vec![square(150.0, 500.0, 100.0)],
+            inner: vec![],
+        }],
+        ..MapData::default()
+    };
+    let world = generate(
+        &route_north(&[]).await,
+        &mut SteepSlope,
+        &map,
+        &mut |_, _| {},
+    )
+    .await;
+    let trees = plants_of(&world, &["conifer", "broadleaf"]);
+    let wooded_slope = trees
+        .iter()
+        .filter(|[x, _, z]| (50.0..250.0).contains(x) && (-600.0..-400.0).contains(z))
+        .count();
+    assert!(
+        wooded_slope > 1600,
+        "{wooded_slope} trees on the steep forest"
+    );
+}
+
+#[tokio::test]
+async fn ferns_grow_on_the_nearby_forest_floor_and_keep_clear_of_obstacles() {
+    let map = MapData {
+        areas: vec![
+            Area {
+                cover: LandCover::Forest,
+                outer: vec![square(0.0, 500.0, 100.0)],
+                inner: vec![square(30.0, 530.0, 15.0)],
+            },
+            Area {
+                cover: LandCover::Water,
+                outer: vec![square(-30.0, 470.0, 15.0)],
+                inner: vec![],
+            },
+            Area {
+                cover: LandCover::Forest,
+                outer: vec![square(550.0, 500.0, 100.0)],
+                inner: vec![],
+            },
+        ],
+        buildings: vec![Building {
+            id: 104,
+            outline: rectangle(30.0, 470.0, 8.0, 8.0),
+            height: None,
+            levels: Some(1.0),
+            color: None,
+        }],
+        roads: vec![orqwa_osm::Road {
+            class: orqwa_osm::RoadClass::Street,
+            line: vec![at(-100.0, 450.0), at(100.0, 450.0)],
+            structure: None,
+        }],
+        railways: vec![railway(&[(-100.0, 550.0), (100.0, 550.0)], None)],
+        ..MapData::default()
+    };
+    let world = world(&map).await;
+    let ferns = plants_of(&world, &["fern"]);
+    assert!(ferns.len() > 10, "{} woodland ferns", ferns.len());
+    for [x, y, z] in &ferns {
+        assert!(
+            (4.5..60.0).contains(&x.abs()),
+            "fern too far away or on the road: {x}"
+        );
+        assert!((-600.0..-400.0).contains(z), "fern outside the woods: {z}");
+        assert!(
+            (x - 30.0).abs() >= 15.0 || (z + 530.0).abs() >= 15.0,
+            "fern in a clearing"
+        );
+        assert!(
+            (x + 30.0).abs() >= 15.0 || (z + 470.0).abs() >= 15.0,
+            "fern in water"
+        );
+        assert!(
+            (x - 30.0).abs() >= 8.0 || (z + 470.0).abs() >= 8.0,
+            "fern in a building"
+        );
+        assert!((z + 450.0).abs() > 3.0, "fern on a street");
+        assert!((z + 550.0).abs() > 1.6, "fern on a railway");
+        let ground = ground_at(&world, *x, *z).expect("ground below the fern");
+        assert!(
+            (y - ground).abs() < 1.0,
+            "fern at {x}, {z}: base {y}, ground {ground}"
+        );
+    }
+    for name in ["fern_spreading", "fern_upright"] {
+        assert!(
+            world
+                .chunks
+                .iter()
+                .any(|chunk| chunk.trees.models.contains_key(name)),
+            "no {name}"
+        );
+    }
 }
 
 #[tokio::test]

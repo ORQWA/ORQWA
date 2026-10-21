@@ -1,9 +1,9 @@
 class_name VegetationModels
 extends RefCounted
-## The vegetation models made in Blender (art/vegetation, ADR 0020): trees, bushes and rocks.
+## The vegetation models made in Blender (art/vegetation, ADR 0020): trees, bushes, ferns and rocks.
 ## Loads them and gives each material name its look: bark textured on trunks
 ## (app/shaders/vegetation.gdshader), foliage cards of leaves or needles cut out and tinted per
-## plant (app/shaders/foliage.gdshader), palm fronds and rocks tinted per plant.
+## plant (app/shaders/foliage.gdshader), palm and fern fronds and rocks tinted per plant.
 
 const DIRECTORY: String = "res://assets/models/vegetation/"
 ## Per material name: shader, its `kind` (vegetation.gdshader), texture, texture size in metres,

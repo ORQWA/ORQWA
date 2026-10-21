@@ -31,6 +31,7 @@ const PLANT_COLOURS: Dictionary[String, String] = {
 	"conifer": "plants.conifers",
 	"broadleaf": "plants.broadleaves",
 	"bush": "plants.bushes",
+	"fern": "plants.ferns",
 	"rock": "plants.rocks",
 	"palm": "plants.palms",
 	"banana": "plants.tropical",

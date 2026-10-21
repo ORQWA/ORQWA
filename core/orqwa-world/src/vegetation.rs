@@ -1,5 +1,5 @@
-//! Trees, bushes and rocks (Blender models, `art/vegetation`), and grass and flowers along the
-//! road (R45, ADR 0011); in the subtropics palms, banana plants and tropical shrubs (#136).
+//! Trees, bushes, ferns and rocks (Blender models, `art/vegetation`), and grass and flowers
+//! along the road (R45, ADR 0011); in the subtropics palms, banana plants and tropical shrubs (#136).
 
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -20,12 +20,16 @@ const MANIFEST: &str = include_str!("../../../app/assets/models/vegetation/model
 
 /// Plant spacing close to the road, where they are seen up close.
 const NEAR_SPACING: f64 = 7.0;
-/// Tree spacing further away, where the forest colour on the ground does most of the work.
-const FAR_SPACING: f64 = 20.0;
+/// Forest crowns should overlap into woodland rather than look like solitary trees (R103).
+const FOREST_SPACING: f64 = 4.0;
+/// Distant woodland still needs enough crowns to read as forest against the horizon.
+const FAR_SPACING: f64 = 10.0;
 /// Within this distance of the road trees use the near spacing, and other plants grow at all.
 const NEAR_DISTANCE: f64 = 300.0;
-/// Bushes grow under the trees within this distance of the road.
+/// Bushes and ferns grow under the trees within this distance of the road.
 const UNDERSTOREY_DISTANCE: f64 = 60.0;
+/// Ferns share a patch decision across this much woodland floor, rather than isolated dots.
+const FERN_PATCH_SIZE: f64 = 24.0;
 /// A slope steeper than this (rise over run) shows rocks.
 const ROCKY_SLOPE: f64 = 0.7;
 /// Grass grows within this distance of the road centre, where riders see it up close.
@@ -49,6 +53,8 @@ pub(crate) enum Plant {
     Banana,
     /// Broadleaf shrubs of the tropics.
     TropicalBush,
+    /// Low, arching fronds on the woodland floor.
+    Fern,
 }
 
 impl Plant {
@@ -61,6 +67,7 @@ impl Plant {
             Self::Palm => "palm",
             Self::Banana => "banana",
             Self::TropicalBush => "tropical_bush",
+            Self::Fern => "fern",
         }
     }
 
@@ -72,6 +79,7 @@ impl Plant {
             Self::Rock => "plants.rocks",
             Self::Palm => "plants.palms",
             Self::Banana | Self::TropicalBush => "plants.tropical",
+            Self::Fern => "plants.ferns",
         }
     }
 
@@ -80,7 +88,7 @@ impl Plant {
         match self {
             Self::Conifer | Self::Broadleaf | Self::Palm => 8.0,
             Self::Bush | Self::Banana | Self::TropicalBush => 5.0,
-            Self::Rock => 4.5,
+            Self::Rock | Self::Fern => 4.5,
         }
     }
 
@@ -91,6 +99,7 @@ impl Plant {
             Self::Palm | Self::Banana => 0.8 + dice * 0.45,
             Self::Bush | Self::TropicalBush => 0.7 + dice * 0.7,
             Self::Rock => 0.6 + dice * 1.4,
+            Self::Fern => 0.75 + dice * 0.5,
         }
     }
 }
@@ -125,12 +134,12 @@ pub(crate) fn kind_of(model: &str) -> Option<&'static str> {
         .map(|(kind, _)| kind.as_str())
 }
 
-/// Plants of one chunk, relative to the chunk origin: trees, bushes and rocks as Godot
+/// Plants of one chunk, relative to the chunk origin: trees, bushes, ferns and rocks as Godot
 /// `MultiMesh` buffers per model (transform and colour, `PLANT_FLOATS` per plant), grass and
 /// flowers as transform buffers (12 floats each).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Trees {
-    /// Trees, bushes and rocks by vegetation model name.
+    /// Trees, bushes, ferns and rocks by vegetation model name.
     pub models: BTreeMap<String, Vec<f32>>,
     /// Grass tufts along the road.
     pub grass: Vec<f32>,
@@ -139,13 +148,13 @@ pub struct Trees {
 }
 
 impl Trees {
-    /// Number of trees, bushes and rocks (grass and flowers not counted).
+    /// Number of trees, bushes, ferns and rocks (grass and flowers not counted).
     #[must_use]
     pub fn len(&self) -> usize {
         self.models.values().map(Vec::len).sum::<usize>() / PLANT_FLOATS
     }
 
-    /// Whether there are no trees, bushes or rocks.
+    /// Whether there are no trees, bushes, ferns or rocks.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -272,10 +281,10 @@ impl Ground<'_> {
     }
 }
 
-/// Places trees, bushes and rocks within the square `[origin, origin + size]` (metres
+/// Places trees, bushes, ferns and rocks within the square `[origin, origin + size]` (metres
 /// east/north): forests of conifers and broadleaf trees (conifers higher up) with bushes under
-/// them near the road; near the road also a few solitary trees and bushes in meadows and
-/// gardens, and rocks on rocky ground and steep slopes. In the subtropical lowlands palms
+/// them and patches of ferns near the road; near the road also a few solitary trees and bushes
+/// in meadows and gardens, and rocks on rocky ground and steep slopes. In subtropical lowlands palms
 /// take the conifers' place, and banana plants and tropical shrubs the bushes'. Nothing on the
 /// road or streets, in water or in buildings.
 pub(crate) fn place(
@@ -292,31 +301,35 @@ pub(crate) fn place(
         ..
     } = *ground;
     let mut trees = Trees::default();
-    let mut north = origin.1;
-    // Rows use the near spacing and thin out far from the road, keeping placement
-    // deterministic for a position regardless of chunk boundaries.
-    while north < origin.1 + size {
-        let mut east = origin.0;
-        while east < origin.0 + size {
-            let seed = cell_seed(east, north);
-            let (e, n) = (
-                east + (crate::hash(seed) - 0.5) * NEAR_SPACING,
-                north + (crate::hash(seed ^ 0x5bd1) - 0.5) * NEAR_SPACING,
-            );
-            east += NEAR_SPACING;
-            let cover = land.cover_at(e, n);
-            let road_distance = road.nearest(e, n, NEAR_DISTANCE).map(|(d, _, _)| d);
-            let Some(kind) = choose(cover, road_distance, heights.at(e, n), seed, ground, e, n)
-            else {
-                continue;
-            };
-            let too_close = road_distance.is_some_and(|d| d < kind.clearance());
-            if too_close || streets.blocked(e, n, 2.0) || ground.by_building(e, n, 2.0) {
-                continue;
+    // Give mapped woods their own denser grid without filling meadows and gardens too.
+    for (spacing, forest) in [(FOREST_SPACING, true), (NEAR_SPACING, false)] {
+        let mut north = origin.1;
+        while north < origin.1 + size {
+            let mut east = origin.0;
+            while east < origin.0 + size {
+                let seed = cell_seed(east, north, spacing);
+                let (e, n) = (
+                    east + (crate::hash(seed) - 0.5) * spacing,
+                    north + (crate::hash(seed ^ 0x5bd1) - 0.5) * spacing,
+                );
+                east += spacing;
+                let cover = land.cover_at(e, n);
+                if (cover == Some(LandCover::Forest)) != forest {
+                    continue;
+                }
+                let road_distance = road.nearest(e, n, NEAR_DISTANCE).map(|(d, _, _)| d);
+                let Some(kind) = choose(cover, road_distance, heights.at(e, n), seed, ground, e, n)
+                else {
+                    continue;
+                };
+                let too_close = road_distance.is_some_and(|d| d < kind.clearance());
+                if too_close || streets.blocked(e, n, 2.0) || ground.by_building(e, n, 2.0) {
+                    continue;
+                }
+                trees.add(kind, [e, heights.at(e, n), n], seed, chunk_origin);
             }
-            trees.add(kind, [e, heights.at(e, n), n], seed, chunk_origin);
+            north += spacing;
         }
-        north += NEAR_SPACING;
     }
     trees
 }
@@ -338,7 +351,11 @@ fn choose(
     }
     let tropical = ground.climate.tropical_at(height);
     let near = road_distance.is_some();
-    if near && (cover == Some(LandCover::Rock) || ground.slope(east, north) > ROCKY_SLOPE) {
+    // A mapped wooded hillside stays wooded; slope alone cannot turn it into scree.
+    if near
+        && (cover == Some(LandCover::Rock)
+            || (cover != Some(LandCover::Forest) && ground.slope(east, north) > ROCKY_SLOPE))
+    {
         let share = if cover == Some(LandCover::Rock) {
             0.2
         } else {
@@ -349,13 +366,18 @@ fn choose(
     match cover {
         Some(LandCover::Forest) => {
             if road_distance.is_some_and(|d| d < UNDERSTOREY_DISTANCE) && dice(0x3b9a) < 0.12 {
+                // Shared patch seeds gather ferns into stretches of woodland floor (R104).
+                let patch = cell_seed(east, north, FERN_PATCH_SIZE);
+                if crate::hash(patch ^ 0x6fe2) < 0.65 {
+                    return Some(Plant::Fern);
+                }
                 return Some(if tropical {
                     tropical_shrub(dice(0x2d4f), 0.3)
                 } else {
                     Plant::Bush
                 });
             }
-            let keep = (NEAR_SPACING / FAR_SPACING).powi(2);
+            let keep = (FOREST_SPACING / FAR_SPACING).powi(2);
             if !near && dice(0x9e37) > keep {
                 return None;
             }
@@ -502,11 +524,11 @@ fn grass_seed(east: f64, north: f64) -> i64 {
 }
 
 /// A stable seed per grid cell.
-fn cell_seed(east: f64, north: f64) -> i64 {
+fn cell_seed(east: f64, north: f64, spacing: f64) -> i64 {
     #[allow(clippy::cast_possible_truncation)] // cell indices are small
     let (e, n) = (
-        (east / NEAR_SPACING).round() as i64,
-        (north / NEAR_SPACING).round() as i64,
+        (east / spacing).round() as i64,
+        (north / spacing).round() as i64,
     );
     e.wrapping_mul(73_856_093) ^ n.wrapping_mul(19_349_663)
 }
@@ -559,6 +581,7 @@ mod tests {
             Plant::Palm,
             Plant::Banana,
             Plant::TropicalBush,
+            Plant::Fern,
         ] {
             let models = MODELS.get(plant.kind()).map_or(&[][..], Vec::as_slice);
             assert!(!models.is_empty(), "no {} models", plant.kind());

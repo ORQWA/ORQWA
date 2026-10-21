@@ -1,4 +1,4 @@
-"""Builds the vegetation models — trees, a bush and rocks — and exports them for Godot
+"""Builds the vegetation models — trees, bushes, ferns and rocks — and exports them for Godot
 (ADR 0009, ADR 0011).
 
 Run in the art container:
@@ -418,6 +418,53 @@ def banana(spec):
     return mesh, max(v[2] for v in mesh.verts)
 
 
+def fern(spec):
+    """A crown of arching fronds, each with paired, tapered leaflets and a narrow rachis.
+    Leaflets have a raised midrib so their two sides catch the light differently."""
+    mesh = Mesh()
+    rng = random.Random(spec["seed"])
+    for k in range(spec["fronds"]):
+        heading = k * 2 * math.pi / spec["fronds"] + rng.uniform(-0.18, 0.18)
+        reach = spec["reach"] * rng.uniform(0.8, 1.1)
+        height = spec["height"] * rng.uniform(0.85, 1.1)
+        dx, dy = math.cos(heading), math.sin(heading)
+        sx, sy = -dy, dx
+
+        def spine(t):
+            return (dx * reach * t ** 1.35, dy * reach * t ** 1.35,
+                    -0.06 + height * math.sin(math.pi * 0.82 * t))
+
+        mesh.new_group()
+        for j in range(10):
+            t0, t1 = j / 10, (j + 1) / 10
+            a, b = spine(t0), spine(t1)
+            w0, w1 = 0.006 * (1 - 0.9 * t0), 0.006 * (1 - 0.9 * t1)
+            both_sides(mesh, [(a[0] - sx * w0, a[1] - sy * w0, a[2]),
+                              (a[0] + sx * w0, a[1] + sy * w0, a[2]),
+                              (b[0] + sx * w1, b[1] + sy * w1, b[2]),
+                              (b[0] - sx * w1, b[1] - sy * w1, b[2])], "frond")
+        for j in range(spec["pairs"]):
+            t = 0.18 + j * 0.78 / spec["pairs"]
+            length = spec["width"] * math.sin(math.pi * t) ** 0.8 * (1 - 0.35 * t)
+            for side in (-1, 1):
+                base = spine(t + side * 0.008)
+                angle = heading + side * rng.uniform(0.95, 1.25)
+                lx, ly = math.cos(angle), math.sin(angle)
+                cross = (-ly, lx)
+                tip = (base[0] + lx * length, base[1] + ly * length, base[2] - length * 0.12)
+                mid = (base[0] + lx * length * 0.4, base[1] + ly * length * 0.4,
+                       base[2] + length * 0.07)
+                half = length * 0.18
+                left = (mid[0] + cross[0] * half, mid[1] + cross[1] * half, mid[2] - half * 0.5)
+                right = (mid[0] - cross[0] * half, mid[1] - cross[1] * half, mid[2] - half * 0.5)
+                mesh.new_group()
+                both_sides(mesh, [base, left, mid], "frond")
+                both_sides(mesh, [left, tip, mid], "frond")
+                both_sides(mesh, [mid, tip, right], "frond")
+                both_sides(mesh, [base, mid, right], "frond")
+    return mesh, max(v[2] for v in mesh.verts)
+
+
 def tropical_bush(spec):
     """A broadleaf shrub of the tropics: a dense clump with big leaves fanning out of it."""
     mesh, height = bush(spec)
@@ -430,7 +477,7 @@ def tropical_bush(spec):
 
 
 KINDS = {"conifer": conifer, "broadleaf": broadleaf, "bush": bush, "rock": rock, "palm": palm,
-         "banana": banana, "tropical_bush": tropical_bush}
+         "banana": banana, "tropical_bush": tropical_bush, "fern": fern}
 
 CATALOGUE = [
     {"name": "conifer_tall", "kind": "conifer", "seed": 5, "height": 14.0, "crown_base": 1.6,
@@ -444,6 +491,10 @@ CATALOGUE = [
                 (0.1, -0.1, 6.9, 2.0, 0.9)]},
     {"name": "bush", "kind": "bush", "seed": 37,
      "clumps": [(0.0, 0.0, 0.55, 1.05, 0.75), (0.75, 0.45, 0.4, 0.8, 0.7)]},
+    {"name": "fern_spreading", "kind": "fern", "seed": 83, "fronds": 7, "pairs": 10,
+     "height": 0.55, "reach": 0.85, "width": 0.36},
+    {"name": "fern_upright", "kind": "fern", "seed": 89, "fronds": 8, "pairs": 9,
+     "height": 0.78, "reach": 0.6, "width": 0.3},
     {"name": "rock_block", "kind": "rock", "seed": 41,
      "blocks": [(0.0, 0.0, 0.25, 1.0, (1.3, 1.0, 0.75))]},
     {"name": "rock_pair", "kind": "rock", "seed": 53,

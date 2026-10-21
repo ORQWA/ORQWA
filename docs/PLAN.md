@@ -520,6 +520,12 @@ physically based materials and light, restyled group by group.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)
+  - [x] Denser mapped forests (R103): 4 m candidate spacing within 300 m of the road,
+    10 m equivalent spacing farther away; wooded slopes keep their trees, clearings and
+    other land retain their cover. Generator 2 offers regeneration of kept worlds.
+  - [x] Woodland ferns (R104): spreading and upright Blender models with paired leaflets,
+    patchy undergrowth within 60 m of the road using the existing shrub budget and the
+    short draw distance; generator 3 offers regeneration of kept worlds.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs
     tinted per building, walls darker at their foot, reflective glass; textured shells
   - [x] Light and sky: physically based atmosphere with sunlit clouds (the faceted cloud
