@@ -1,4 +1,4 @@
-//! Bluetooth LE discovery and drivers for FTMS trainers, power meters, cadence sensors,
+//! Bluetooth LE discovery and drivers for FTMS and Tacx trainers, power meters, cadence sensors,
 //! heart-rate sensors, Shimano Di2 shifters and the Zwift Click, original and v2.
 
 use std::time::{Duration, Instant};
@@ -25,6 +25,8 @@ use crate::ftms::{self, ControlResult, ResistanceRange};
 use crate::handle::{DeviceError, DeviceEvent, DeviceHandle, DriverChannels};
 use crate::heart_rate;
 use crate::speed_cadence;
+use crate::tacx;
+use crate::trainer::TrainerDriver;
 use crate::zwift_click;
 use crate::zwift_click_v2::{self, Answer, Side};
 
@@ -40,7 +42,7 @@ const BATTERY_TIMEOUT: Duration = Duration::from_secs(3);
 /// What a discovered device can do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DeviceKind {
-    /// A controllable trainer (FTMS).
+    /// A controllable trainer (FTMS or Tacx FE-C over Bluetooth).
     Trainer,
     /// A heart-rate sensor.
     HeartRateSensor,
@@ -129,8 +131,7 @@ impl Bluetooth {
                 .or(properties.advertisement_name.clone())
                 .unwrap_or_else(|| "Unnamed device".to_owned());
             // Trainers often offer the Cycling Power Service too: they stay trainers.
-            let (kind, model, side) = if properties.services.contains(&uuid_from_u16(ftms::SERVICE))
-            {
+            let (kind, model, side) = if is_trainer(&properties) {
                 (DeviceKind::Trainer, None, None)
             } else if properties
                 .services
@@ -186,6 +187,8 @@ impl Bluetooth {
                 channels,
                 last_control: None,
                 resistance_range: ResistanceRange::default(),
+                trainer: Box::new(ResistanceRange::default()),
+                tacx_controls: tacx::Controls::default(),
                 buttons: di2::Buttons::default(),
                 click: zwift_click::Buttons::default(),
                 click_v2: zwift_click_v2::Buttons::default(),
@@ -278,6 +281,8 @@ struct Driver {
     channels: DriverChannels,
     last_control: Option<TrainerControl>,
     resistance_range: ResistanceRange,
+    trainer: Box<dyn TrainerDriver>,
+    tacx_controls: tacx::Controls,
     /// Decodes a Di2 shifter's button indications.
     buttons: di2::Buttons,
     /// Decodes a Zwift Click's button states.
@@ -395,6 +400,7 @@ impl Driver {
         self.keepalive.clear();
         self.answered.clear();
         self.battery = Battery::default();
+        self.tacx_controls = tacx::Controls::default();
         let set_up = timeout(CONNECT_TIMEOUT, self.set_up(&peripheral)).await;
         let (mut notifications, control_point) = match set_up {
             Ok(Ok(set_up)) => set_up,
@@ -423,6 +429,8 @@ impl Driver {
         let mut keepalive = tokio::time::interval(zwift_click_v2::KEEPALIVE);
         // The first tick is at once, and the handshake was just written.
         keepalive.tick().await;
+        let mut trainer_tick = tokio::time::interval(tacx::CONTROL_INTERVAL);
+        trainer_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             tokio::select! {
                 notification = notifications.next() => {
@@ -451,8 +459,25 @@ impl Driver {
                     };
                     self.last_control = Some(control);
                     if let Some(control_point) = &control_point {
-                        let command = ftms::encode_control(&control, self.resistance_range);
-                        peripheral.write(control_point, &command, WriteType::WithResponse).await?;
+                        let commands = self.trainer.encode_control(&control);
+                        if self.tacx_controls.is_active() {
+                            self.tacx_controls.replace(commands);
+                        } else {
+                            for command in commands {
+                                peripheral.write(control_point, &command, WriteType::WithResponse).await?;
+                            }
+                        }
+                    }
+                }
+                _ = trainer_tick.tick(), if self.tacx_controls.is_active() => {
+                    if let Some(control_point) = &control_point {
+                        let command = self.tacx_controls.next();
+                        let write_type = if control_point.properties.contains(CharPropFlags::WRITE_WITHOUT_RESPONSE) {
+                            WriteType::WithoutResponse
+                        } else {
+                            WriteType::WithResponse
+                        };
+                        peripheral.write(control_point, command, write_type).await?;
                     }
                 }
                 _ = keepalive.tick(), if !self.keepalive.is_empty() => {
@@ -676,6 +701,35 @@ impl Driver {
         &mut self,
         peripheral: &Peripheral,
     ) -> Result<Characteristic, DeviceError> {
+        // Prefer FTMS on firmware offering both, just as discovery does.
+        if !peripheral
+            .characteristics()
+            .iter()
+            .any(|c| c.service_uuid == uuid_from_u16(ftms::SERVICE))
+        {
+            let characteristics = peripheral.characteristics();
+            let find = |uuid: &str| {
+                characteristics
+                    .iter()
+                    .find(|c| {
+                        c.service_uuid.to_string() == tacx::SERVICE && c.uuid.to_string() == uuid
+                    })
+                    .cloned()
+                    .ok_or(DeviceError::MissingService(tacx::SERVICE))
+            };
+            let data = find(tacx::DATA)?;
+            let control_point = find(tacx::CONTROL)?;
+            peripheral.subscribe(&data).await?;
+            self.trainer = Box::new(tacx::Tacx);
+            // No FTMS Request Control or Start command exists on the Tacx tunnel.
+            let control = self.last_control.unwrap_or(TrainerControl::Resistance(
+                orqwa_domain::units::Percent(0.0),
+            ));
+            self.tacx_controls
+                .replace(self.trainer.encode_control(&control));
+            return Ok(control_point);
+        }
+        self.resistance_range = ResistanceRange::default();
         let data = characteristic(peripheral, ftms::INDOOR_BIKE_DATA)?;
         let control_point = characteristic(peripheral, ftms::CONTROL_POINT)?;
 
@@ -686,6 +740,7 @@ impl Driver {
             }
         }
         debug!(device = %self.device.name, range = ?self.resistance_range, "resistance range");
+        self.trainer = Box::new(self.resistance_range);
 
         peripheral.subscribe(&data).await?;
         peripheral.subscribe(&control_point).await?;
@@ -724,6 +779,17 @@ impl Driver {
             ftms::parse_indoor_bike_data(value)
                 .inspect_err(|error| warn!(device = %name, %error, "invalid indoor bike data"))
                 .ok()
+                .map(DeviceEvent::Telemetry)
+        } else if uuid.to_string() == tacx::DATA {
+            let page = tacx::parse_page(value)
+                .inspect_err(|error| warn!(device = %name, %error, "invalid Tacx data"))
+                .ok()?;
+            if page[0] == 0x47 && matches!(page[3], 1..=3) {
+                warn!(device = %name, command = page[1], status = page[3], "Tacx control rejected");
+            }
+            tacx::parse_telemetry(value)
+                .ok()
+                .flatten()
                 .map(DeviceEvent::Telemetry)
         } else if uuid == uuid_from_u16(heart_rate::MEASUREMENT) {
             let heart_rate = heart_rate::parse_measurement(value)
@@ -834,6 +900,12 @@ impl Driver {
     }
 }
 
+fn is_trainer(properties: &PeripheralProperties) -> bool {
+    properties.services.iter().any(|service| {
+        *service == uuid_from_u16(ftms::SERVICE) || service.to_string() == tacx::SERVICE
+    })
+}
+
 /// Looks a device up again by its identifier after it dropped. The Bluetooth stack may have
 /// forgotten the old peripheral (macOS does at once), so connecting it again would fail
 /// forever: ask the system for it by identifier, else scan for it.
@@ -901,6 +973,22 @@ mod tests {
     use btleplug::api::CharPropFlags;
 
     use super::*;
+
+    #[test]
+    fn tacx_is_a_trainer_even_when_it_also_advertises_cycling_power() {
+        let mut properties = PeripheralProperties {
+            services: vec![
+                uuid_from_u16(cycling_power::SERVICE),
+                tacx::SERVICE.parse().unwrap(),
+            ],
+            ..PeripheralProperties::default()
+        };
+        assert!(is_trainer(&properties));
+        properties.services = vec![uuid_from_u16(ftms::SERVICE)];
+        assert!(is_trainer(&properties));
+        properties.services = vec![uuid_from_u16(cycling_power::SERVICE)];
+        assert!(!is_trainer(&properties));
+    }
 
     fn characteristic(service: &str, uuid: &str) -> Characteristic {
         Characteristic {

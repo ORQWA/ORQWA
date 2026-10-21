@@ -17,6 +17,8 @@ mod handle;
 pub mod heart_rate;
 pub mod shift;
 pub mod speed_cadence;
+pub mod tacx;
+pub mod trainer;
 pub mod zwift_click;
 pub mod zwift_click_v2;
 

@@ -12,7 +12,7 @@ renders and presents. Rationale in [ADR 0001](adr/0001-stack-godot-rust.md).
 core/                      Rust workspace (tokio + tracing)
   orqwa-domain/            newtype units (SI internally), profiles, plugin traits
   orqwa-physics/           speed integration, grade scaling, descent modes, virtual gears
-  orqwa-devices/           btleplug FTMS + HRM + Shimano Di2 (D-Fly), fake trainer
+  orqwa-devices/           btleplug FTMS + Tacx FE-C over BLE + sensors/shifters, fake trainer
   orqwa-routes/            GPX import, snapping to the map's roads, smoothing, DEM correction,
                            climb detection
   orqwa-terrain/           elevation tiles (Mapterhorn, AWS fallback), disk cache, height lookup
@@ -55,13 +55,18 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   `WorkoutParser` (ZWO, ERG/MRC, FIT) and `ActivityUploader` (intervals.icu, Strava;
   ADR 0013) exist, as does `ElevationModel`; the others
   are not introduced yet: today there is one implementation of each (or none), behind concrete
-  types, and each trait comes with its second implementation (e.g. a second trainer
-  protocol, a second importer).
+  types, and each trait comes with its second implementation. `TrainerDriver` now encodes
+  FTMS and Tacx controls behind one boundary in `orqwa-devices`; Bluetooth owns transport,
+  notifications and reconnection ([ADR 0028](adr/0028-tacx-bluetooth.md)).
   Ride modes are separate Godot views: the 3D world and the video view.
 - **FTMS**: service `0x1826`, Indoor Bike Data `0x2AD2`, Control Point `0x2AD9`
   (Request Control `0x00`, Set Target Resistance `0x04`, Set Target Power `0x05`,
   Set Indoor Bike Simulation `0x11`). Heart rate: `0x180D` / `0x2A37`.
   Grade updates throttled to ~1–2 Hz.
+- **Tacx FE-C over BLE**: the NEO 2 Smart's UART service `6e40fec1…`, notifications
+  `…fec2…`, controls `…fec3…`; ANT-framed FE-C pages over Bluetooth. Simulation alternates
+  wind and track pages at four writes per second; ERG and resistance repeat the latest target.
+  No ANT+ transport. FTMS is preferred when both services exist. Hardware check pending (R110).
 - **Physics**: `P·η = v·(m·g·(Crr·cosθ + sinθ) + ½·ρ·CdA·v_rel²) + m·v·dv/dt`, integrated per
   tick. The trainer receives `grade × difficulty` (descents per R15).
 - **Elevation**: Mapterhorn terrain tiles with AWS fallback, cached on disk
@@ -124,6 +129,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 
 ### Phase 1 — Devices
 - [x] FTMS driver (SIM / ERG / resistance), heart-rate sensor
+- [x] Tacx FE-C over Bluetooth driver (R110, ADR 0028): NEO 2 Smart discovery, power/cadence/
+  speed, SIM / ERG / resistance, latest control restored after reconnection; protocol tests
+- [ ] Confirm NEO 2 Smart discovery, readings, control modes and reconnection on hardware
 - [x] Fake trainer
 - [x] `orqwa-cli scan` / `orqwa-cli ride`
 - [x] macOS CLI artifact from CI
@@ -296,7 +304,7 @@ Built in rideable steps:
     turn, access revoked on disconnecting or deleting the rider
   - [x] Today's planned workouts from intervals.icu on the Workouts tab (R81, #187): read
     through the same account when the tab opens, chosen with a click, nothing stored
-  - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth FTMS only
+  - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth only; Tacx FE-C over BLE added by R110
 - [x] Windows and Linux builds from CI (Linux x86_64 and arm64 on Ubuntu 22.04, ADR 0012)
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
 - [x] Windows `.exe` with the app icon, ORQWA's name and version, as on macOS, rather than the

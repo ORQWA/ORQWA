@@ -60,7 +60,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 <table>
   <tr>
     <td width="50%">🚴 <b><a href="https://github.com/ORQWA/ORQWA/wiki/Devices-and-riding#devices">Smart trainers</a></b><br>
-      Bluetooth FTMS (SIM, ERG, resistance) and heart-rate straps; your devices reconnect at start and after dropouts</td>
+      Bluetooth FTMS and Tacx FE-C over Bluetooth (SIM, ERG, resistance; NEO 2 Smart hardware check pending), plus heart-rate straps; your devices reconnect at start and after dropouts</td>
     <td width="50%">🗺️ <b><a href="https://github.com/ORQWA/ORQWA/wiki/Courses#import-a-course">Any GPX in 3D</a></b><br>
       A stylized world from real terrain and OpenStreetMap, with weather and time of day</td>
   </tr>

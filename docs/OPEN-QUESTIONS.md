@@ -3,6 +3,15 @@
 Things to review or decide together. Newest first; remove entries once settled. Work that is
 decided but not done goes into a GitHub issue instead.
 
+## Tacx NEO 2 Smart hardware check (R110, 2026-10-21)
+
+The FE-C-over-Bluetooth driver is implemented from the documented protocol, without a NEO
+at hand. A friend's NEO 2 Smart needs to confirm that it appears in the trainer row, reports
+power/cadence/speed, follows climbs and descents, holds ERG targets, changes resistance,
+releases on pause and reconnects with its previous target after a drop. Also check virtual
+gears on flat roads (wind and rolling-resistance changes). Record its firmware and the
+`RUST_LOG=orqwa_devices=debug` log; see ADR 0028. Other Tacx models remain unverified too.
+
 ## Battery levels are unchecked on the devices (R97, 2026-10-19)
 
 The Devices tab tells a battery level wherever a device has Bluetooth's Battery Service or,
