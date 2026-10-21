@@ -80,14 +80,12 @@ const FREE_TURN: float = 1.2
 const JUMP_M: float = 50.0
 ## Graphics presets (R43): what each turns on. Medium holds 60 fps on a base M1; `distance`
 ## scales terrain and details; trees have their own range and uploaded density (R108).
-## `rain` is the number of raindrops. MSAA stays
-## at 2×: at 4× a few distant pixels broke and the glow spread them into bright blobs. Flat
-## colours gain nothing from global illumination (SSIL, SDFGI) or volumetric fog, which only
-## greyed them (#103); what they cost goes to grass, models and shadows further out.
+## MSAA stays at 2×; 4× previously caused bright distant pixels to spread through bloom.
 const QUALITY: Dictionary[String, Dictionary] = {
 	"low":
 	{
 		"tree_density": 0.125,
+		"tree_cell": 480.0,
 		"tree_range": 600.0,
 		"model_range": 200.0,
 		"grass_range": 0.0,
@@ -108,6 +106,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	"medium":
 	{
 		"tree_density": 0.25,
+		"tree_cell": 160.0,
 		"tree_range": 1200.0,
 		"model_range": 400.0,
 		"grass_range": 60.0,
@@ -128,6 +127,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	"high":
 	{
 		"tree_density": 0.5,
+		"tree_cell": 160.0,
 		"tree_range": 2200.0,
 		"model_range": 600.0,
 		"grass_range": 120.0,
@@ -148,6 +148,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	"ultra":
 	{
 		"tree_density": 1.0,
+		"tree_cell": 160.0,
 		"tree_range": 3240.0,
 		"model_range": 900.0,
 		"grass_range": 180.0,
@@ -363,6 +364,7 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 ## the preset).
 func apply_quality(name: String, options: Dictionary = {}) -> void:
 	var previous_density: float = _quality["tree_density"]
+	var previous_cell: float = _quality["tree_cell"]
 	var preset: Dictionary = QUALITY.get(name, QUALITY["medium"])
 	_quality = preset.duplicate()
 	_apply_options_over_preset(options)
@@ -399,7 +401,7 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	var distance: float = _quality["distance"]
 	_set_distance(distance)
 	# A course may already be uploaded when settings change before the next ride.
-	if previous_density != _quality["tree_density"]:
+	if previous_density != _quality["tree_density"] or previous_cell != _quality["tree_cell"]:
 		_restart_chunks()
 	var fps_limit: String = options.get("fps_limit", "auto")
 	Engine.max_fps = 0 if fps_limit in ["auto", "unlimited"] else int(fps_limit)
@@ -647,10 +649,11 @@ func _build_some_chunks() -> void:
 			_add_modelled(node, cell)
 		var plants: Dictionary = chunk.get("plants", {})
 		var tree_range: float = _quality["tree_range"]
+		var tree_cell: float = _quality["tree_cell"]
 		for model: String in plants:
 			var buffer: PackedFloat32Array = plants[model]
-			node.add_child(
-				VegetationModels.instance(model, buffer, tree_range, SMALL_PLANT_RANGE * _distance)
+			VegetationModels.add_to(
+				node, model, buffer, tree_range, SMALL_PLANT_RANGE * _distance, tree_cell
 			)
 		var props: Dictionary = chunk.get("props", {})
 		for model: String in props:

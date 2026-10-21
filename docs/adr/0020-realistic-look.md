@@ -120,6 +120,24 @@ applies from the next ride. Resetting graphics details returns it to Auto. This 
 comparing dense and sparse trees with otherwise identical rendering settings before
 retuning preset budgets; native GPU FPS remains the evidence for those changes.
 
+### Authored tree LODs (2026-10-21, R43/R108)
+
+Disconnected foliage cards cannot be simplified into a coherent canopy by automatic mesh
+decimation alone. `art/vegetation/lods.py` authors medium and far forms for every tree,
+retaining species, crown volumes, origins and material names. These rendering assets live
+under `vegetation/lods/`, outside the placement catalogue. The original nearby models stay.
+
+`TreeLodMesh` combines their vertex attributes and index levels into Godot's mesh LODs;
+selection follows projected size, including viewport resolution, field of view and shadows.
+No per-frame instance filtering or buffer copying is needed. Medium through Ultra use
+160 m spatial batches so one close tree does not keep an entire 480 m chunk at full detail.
+Low retains chunk-sized batches to protect its CPU/draw-call budget. Density and view-distance
+controls retain their independent meanings. Neither generator nor stored format changes.
+
+Evaluate this against the same native GPU, course, camera and pixel dimensions; compare Low
+as well as dense forests. Smaller batches alone did not improve the tested valley scene,
+so a batch-only optimization is insufficient. The base M1 target still needs its own GPU test.
+
 ### Woodland ferns (2026-10-21, R104)
 
 Two fern forms add low undergrowth: spreading and upright crowns with arching fronds and

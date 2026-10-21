@@ -148,7 +148,16 @@ grey on transparent ground into `app/assets/textures/` (the app tints them per p
 ```sh
 scripts/art.sh blender --background --factory-startup --python art/vegetation/foliage.py
 scripts/art.sh blender --background --factory-startup --python art/vegetation/build.py
+scripts/art.sh blender --background --factory-startup --python art/vegetation/lods.py
 ```
+
+Trees also have authored medium and far forms in `app/assets/models/vegetation/lods/`:
+fewer, broader sprays and leaf clusters, simpler trunks and fronds, with the same species,
+crown volumes and ground origins. They are rendering assets outside `models.json`.
+`TreeLodMesh` combines them with the original nearby geometry for Godot's automatic,
+screen-size-based LOD selection in the visible scene and shadows. No trees are removed by
+LOD. Medium–Ultra split tree instances into 160 m batches; Low keeps 480 m batches to avoid
+extra CPU and draw calls. Kept world files need no changes or regeneration.
 
 | Name | Used for |
 |---|---|
@@ -352,6 +361,23 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![castle_s](../docs/images/models/buildings/castle_s.jpg)<br>`castle_s` | ![lighthouse_l](../docs/images/models/buildings/lighthouse_l.jpg)<br>`lighthouse_l` | ![lighthouse_s](../docs/images/models/buildings/lighthouse_s.jpg)<br>`lighthouse_s` |
 | ![tropical_flat_1_m](../docs/images/models/buildings/tropical_flat_1_m.jpg)<br>`tropical_flat_1_m` | ![tropical_flat_2_l](../docs/images/models/buildings/tropical_flat_2_l.jpg)<br>`tropical_flat_2_l` | ![tropical_flat_2_m](../docs/images/models/buildings/tropical_flat_2_m.jpg)<br>`tropical_flat_2_m` |
 | ![tropical_hipped_1_m](../docs/images/models/buildings/tropical_hipped_1_m.jpg)<br>`tropical_hipped_1_m` | ![tropical_hipped_1_s](../docs/images/models/buildings/tropical_hipped_1_s.jpg)<br>`tropical_hipped_1_s` |  |
+
+### Tree detail levels
+
+Each comparison shows the unchanged nearby model, then its authored medium and far forms.
+The app switches by projected size, so the simpler forms are normally much smaller on screen.
+These are geometry references; [native forest measurements](../docs/benchmarks/tree-lods.md)
+and route screenshots check their cost and coverage in context.
+
+| Conifers | Broadleaf trees |
+|---|---|
+| ![Tall conifer detail levels](../docs/images/models/vegetation-lods/conifer_tall.jpg) | ![Round broadleaf detail levels](../docs/images/models/vegetation-lods/broadleaf_round.jpg) |
+| ![Broad conifer detail levels](../docs/images/models/vegetation-lods/conifer_broad.jpg) | ![Clustered broadleaf detail levels](../docs/images/models/vegetation-lods/broadleaf_cluster.jpg) |
+
+| Tropical trees | Tropical trees |
+|---|---|
+| ![Coconut palm detail levels](../docs/images/models/vegetation-lods/palm_coconut.jpg) | ![Short palm detail levels](../docs/images/models/vegetation-lods/palm_short.jpg) |
+| ![Fan palm detail levels](../docs/images/models/vegetation-lods/palm_fan.jpg) | ![Banana detail levels](../docs/images/models/vegetation-lods/banana.jpg) |
 
 ### Vegetation
 

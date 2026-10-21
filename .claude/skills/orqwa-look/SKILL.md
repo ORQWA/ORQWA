@@ -79,6 +79,11 @@ Blender Python; its header shows how to run it).
   View distance overrides range; Tree density overrides the population (R109), with Auto
   following the preset. Keep stored worlds complete
   so quality changes need no regeneration. Check Low as well as Ultra from the same camera.
+- **Tree LODs (R43/R108):** keep original nearby meshes and authored medium/far crowns from
+  `art/vegetation/lods.py`. Preserve species, crown volumes, materials and every chosen tree.
+  Godot selects by projected size for camera and shadow geometry; Medium–Ultra use 160 m
+  batches, Low keeps 480 m batches. Review forest coverage from chase and drone cameras,
+  check switching while moving, and compare native FPS with Low included.
 - **Woodland floor (R104):** spreading and upright ferns grow in patches within 60 m of
   the route, sharing the shrub budget. Keep their arching fronds and paired leaflets legible
   at road height; use `plants.ferns`, the shared `frond` material and the short plant range.

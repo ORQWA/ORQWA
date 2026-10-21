@@ -133,6 +133,15 @@ all maps, normal-map import on normals, and keep these six textures with their s
 - Exports are deterministic: rebuilding unchanged scripts must give byte-identical `.glb`s.
   If a rebuild changes files you did not touch, find out why before committing.
 
+## Tree LODs
+
+`art/vegetation/lods.py` exports medium/far forms of every tree to
+`app/assets/models/vegetation/lods/`, outside the world-placement manifest. Preserve crown
+volumes, ground origins and material names; retain fan palms' fans and banana leaves.
+Godot's `TreeLodMesh` combines these with the unchanged close geometry. Changing rendering
+LODs needs no world regeneration. Keep their `.import` files and compare native GPU views
+and frame rates; disconnected leaf cards need authored simplification beyond automatic LOD.
+
 ## Woodland ferns
 
 Woodland ferns (R104) are generated in `art/vegetation/build.py` as paired geometric

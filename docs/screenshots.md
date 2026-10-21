@@ -30,7 +30,8 @@ same licence; the footage is used only in documentation.
 
 ## Cities and woodland
 
-Graphics quality controls the forest's density and distance; these matching views show
+Graphics quality controls the forest's density and distance; automatic tree LODs retain
+nearby detail and use simpler distant canopies and shadows. These matching views show
 the lowest and highest presets. [Tree settings](https://github.com/ORQWA/ORQWA/wiki/Settings#trees-and-forests)
 apply from the next ride without regenerating the course.
 

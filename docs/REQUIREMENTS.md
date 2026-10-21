@@ -163,6 +163,11 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | R108 | Refines R43, R90 and R103 (2026-10-21): **tree density and draw distance follow graphics quality**: Ultra draws dense forests farther away, Low draws fewer trees nearby to retain smooth riding, and Medium and High step between them. Low reduces the number of tree instances uploaded and drawn, including for kept worlds; changing quality needs no world regeneration. The View distance detail overrides tree range while density follows the quality preset. Changes apply from the next ride, also on a course already loaded. |
 | R109 | Extends R90 and R108 (2026-10-21): **Tree density** is a separate Graphics detail with **Auto** (the quality preset), **Low**, **Medium**, **High** and **Ultra**. It changes the number of trees independently of their View distance and the other effects, so a rider can keep High or Ultra graphics with fewer trees. The choice stays on this computer, applies from the next ride including on an already loaded course, and needs no world regeneration. **All details as the preset** returns it to Auto. |
 
+Rendering implementation note (2026-10-21, R43/R108): trees retain their chosen population
+and placement while rendering simpler canopy and shadow geometry at smaller projected sizes.
+This automatic detail reduction also applies to kept worlds without regeneration; Low keeps
+its lower population and avoids extra spatial batches that would add CPU and draw-call cost.
+
 ## Workouts & overlay
 
 | ID | Requirement |

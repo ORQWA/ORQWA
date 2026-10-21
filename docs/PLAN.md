@@ -401,6 +401,9 @@ physically based materials and light, restyled group by group.
   work without regeneration; a changed density refreshes uploaded chunks for the next ride.
 - [x] Separate Tree density detail (R109): Auto or Low/Medium/High/Ultra independently of
   View distance and the other effects, kept per computer and reset with the other details.
+- [x] Authored tree LODs (R43, R108): retain nearby detail and forest population, simplify
+  distant canopies and their shadows, with screen-size selection and bounded spatial batches;
+  verify native FPS and Low's rendering cost without changing kept worlds.
 - [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
   its own value, kept per computer
