@@ -192,6 +192,11 @@ Built in rideable steps:
 - [ ] Audio (R26): music app control ✅, original video sound ✅ (Phase 5); ambient sound
   dropped for now (synthesised version did not sound right), to return with convincing
   sounds (#259)
+  - [x] Music helpers (#260): macOS compiles only the running player's command, so Apple
+    Music works without Spotify installed; Windows sends media-key down/up events through
+    `SendInput`. Native CI checks cover missing macOS players and the Windows input ABI.
+  - [ ] Verify **M**, **.**, **,** during a ride with real players on macOS, Windows and
+    Linux (#260); script checks alone do not confirm playback or macOS permission prompts.
 - [x] i18n: all texts translatable, German translation, language per rider (R24)
 - [x] German reviewed text by text (#261): contextual translations and classified core errors
   with localized explanations, unchanged diagnostic details and session error history (R74)

@@ -114,6 +114,31 @@ gallery into `docs/images/models/`. Historical comparison baselines stay with th
 reviews. Phone-remote browser screenshots require a separate browser capture; these helpers
 do not replace them.
 
+## Checking music controls
+
+Music control (R26, #260) uses `osascript` on macOS, Windows `SendInput` through a
+PowerShell helper, and `playerctl` on Linux. No new library dependency is needed. macOS
+checks bundle IDs and compiles only the running player's command: compiling a `tell`
+statement for an absent Spotify can otherwise fail before the Apple Music fallback runs.
+Windows sends a virtual media key down and up; `SendKeys([char]179)` would type a character.
+
+The macOS and Windows CI jobs run `cargo test -p orqwa-app media::tests --locked` after
+building the CLI (with `--manifest-path core/Cargo.toml` from the repository root). The macOS
+test executes all three commands with nonexistent player IDs and expects the no-player
+runtime error, catching premature dictionary lookup. Windows compiles the real helper and
+checks the `INPUT` size and the key-down/key-up events without injecting keys into the
+runner's desktop. Container tests check command mappings; none of these confirms playback.
+
+For the remaining native checks, use a downloaded app build, start a playlist in the player,
+then focus ORQWA during a ride and press **M** twice, **.**, and **,**. Confirm pause/resume,
+next and previous in the player. On macOS try Apple Music with Spotify absent, Spotify
+alone, both running (Spotify takes priority), and neither running; verify the first
+permission prompt and the error if permission is denied. On Windows use Spotify or a
+browser tab that registers a system media session; successful input injection does not
+tell whether a player handled it. On Linux use an MPRIS player with `playerctl` installed,
+then try no player and a missing `playerctl`. Record the app build, OS, player and results
+on #260 before closing it. Run these manual checks separately from container checks.
+
 ## Builds
 
 Tagged builds of the app and CLI are available on the

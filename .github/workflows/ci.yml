@@ -138,6 +138,8 @@ jobs:
           mkdir -p dist
           # Artifacts drop the executable bit; a tarball keeps it.
           tar -czf dist/orqwa-cli-macos-arm64.tar.gz -C core/target/release orqwa-cli
+      - name: Check native music-control scripts
+        run: cargo test --manifest-path core/Cargo.toml -p orqwa-app media::tests --locked
       - name: Install Godot and export templates
         run: |
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
@@ -232,6 +234,8 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive core/target/release/orqwa-cli.exe dist/orqwa-cli-windows-x86_64.zip
+      - name: Check native music-key helper
+        run: cargo test --manifest-path core/Cargo.toml -p orqwa-app media::tests --locked
       - name: Install Godot and export templates
         run: |
           $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION-stable"
