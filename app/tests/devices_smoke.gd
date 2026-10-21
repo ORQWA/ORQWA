@@ -1,8 +1,8 @@
 extends SceneTree
 ## Headless checks of the Devices tab: the shifter's buttons (#139, R75), how each row tells
 ## what its device is doing (R76), what stands beside it: the device's reading, or why
-## connecting failed (R80), that the devices are each rider's own (R82), and the phone remote
-## (#228).
+## connecting failed (R80), that the devices are each rider's own (R82), what a scan found
+## (R107), and the phone remote (#228).
 ## Run: godot --headless --path app -s res://tests/devices_smoke.gd
 
 var _failed: bool = false
@@ -16,6 +16,7 @@ func _run() -> void:
 	_shifter_buttons()
 	_device_states()
 	_missed_devices()
+	_found_devices()
 	await _rider_devices()
 	await _phone_remote()
 	if not _failed:
@@ -216,6 +217,66 @@ func _missed_devices() -> void:
 	tab._set_state("heart_rate", "")
 	tab._on_devices_found([others_strap])
 	_check(heart_rate.selected == 0, "a strap nearby is not chosen for the rider")
+	tab.free()
+
+
+## A scan's result lists what it found when clicked or tapped (R107): each device with its
+## signal, under its row's caption once, in the rows' order and as the scan heard them within
+## a row (the nearest first).
+func _found_devices() -> void:
+	var tab: DevicesTab = DevicesTab.new()
+	root.add_child(tab)
+	var result: LinkButton = tab.find_children("*", "LinkButton", true, false)[0]
+	var panel: PopupPanel = tab.find_children("*", "PopupPanel", true, false)[0]
+	_check(not result.visible, "nothing to list before a scan")
+	var strap: Dictionary = {
+		"index": 1,
+		"name": "Polar H9",
+		"kind": "heart_rate",
+		"model": null,
+		"rssi": -62,
+		"remembered": false,
+	}
+	var near_trainer: Dictionary = {
+		"index": 2,
+		"name": "KICKR CORE",
+		"kind": "trainer",
+		"model": null,
+		"rssi": -48,
+		"remembered": false,
+	}
+	var far_trainer: Dictionary = {
+		"index": 3,
+		"name": "Tacx Neo 2T",
+		"kind": "trainer",
+		"model": null,
+		"rssi": null,
+		"remembered": false,
+	}
+	tab._on_devices_found([_click(), near_trainer, strap, far_trainer])
+	_check(result.visible and result.text == "Found 4 device(s)", "a link: %s" % result.text)
+	result.pressed.emit()
+	_check(panel.visible, "the link opens the list")
+	# Each line's caption, name and signal.
+	var cells: PackedStringArray = PackedStringArray()
+	for cell: Label in panel.find_children("*", "Label", true, false):
+		cells.append(cell.text)
+	var lines: PackedStringArray = PackedStringArray()
+	for i: int in range(0, cells.size(), 3):
+		lines.append(" | ".join(cells.slice(i, i + 3)))
+	var expected: PackedStringArray = PackedStringArray(
+		[
+			"Trainer | KICKR CORE | -48 dBm",
+			" | Tacx Neo 2T | ",
+			"Heart rate | Polar H9 | -62 dBm",
+			"Shifter | Zwift Click | -50 dBm",
+		]
+	)
+	_check(lines == expected, "what was found: %s" % lines)
+	panel.hide()
+	tab._on_devices_found([])
+	_check(not result.visible, "nothing to list when nothing was found")
+	_check(tab._scan_label.text == "Found 0 device(s)", "says so: %s" % tab._scan_label.text)
 	tab.free()
 
 
