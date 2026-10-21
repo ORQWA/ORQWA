@@ -94,3 +94,13 @@ still apply. Generator 2 lets riders regenerate kept worlds for this change (ADR
 
 The Gurten hairpin at the same position: [before](../images/issues/forest-gurten-before.jpg)
 and [after](../images/issues/forest-gurten-after.jpg).
+
+### Woodland ferns (2026-10-21, R104)
+
+Two fern forms add low undergrowth: spreading and upright crowns with arching fronds and
+paired geometric leaflets, about 1,400–1,500 triangles each. They reuse the solid `frond`
+material, tinted from `plants.ferns`; no texture or third-party asset is added. Shared seeds
+over 24 m patches choose ferns within the existing undergrowth budget, under mapped woods
+within 60 m of the route. Small-plant draw distance limits their rendering cost. Generator 3
+offers regeneration; existing model names and instance buffers stay compatible with kept
+worlds, so the stored format remains 1.

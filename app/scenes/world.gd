@@ -688,7 +688,7 @@ func _mesh_instance(arrays: Dictionary, material: Material) -> MeshInstance3D:
 
 
 ## Trees, bushes or rocks of one model in a chunk (`world_chunk()["plants"]`: transform and
-## colour per plant). Bushes and rocks are small: they are drawn less far than trees.
+## colour per plant). Bushes, ferns and rocks are drawn less far than trees.
 func _vegetation(model: String, buffer: PackedFloat32Array) -> MultiMeshInstance3D:
 	var multimesh: MultiMesh = MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
@@ -698,7 +698,7 @@ func _vegetation(model: String, buffer: PackedFloat32Array) -> MultiMeshInstance
 	multimesh.buffer = buffer
 	var instance: MultiMeshInstance3D = MultiMeshInstance3D.new()
 	instance.multimesh = multimesh
-	var small: bool = model.begins_with("bush") or model.begins_with("rock")
+	var small: bool = model.get_slice("_", 0) in ["bush", "rock", "fern"]
 	instance.visibility_range_end = (SMALL_PLANT_RANGE if small else DETAIL_RANGE) * _distance
 	instance.visibility_range_end_margin = 100.0 if small else 300.0
 	instance.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF

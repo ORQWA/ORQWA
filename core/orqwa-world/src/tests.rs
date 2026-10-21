@@ -1497,6 +1497,81 @@ async fn mapped_forests_stay_wooded_on_steep_hillsides() {
 }
 
 #[tokio::test]
+async fn ferns_grow_on_the_nearby_forest_floor_and_keep_clear_of_obstacles() {
+    let map = MapData {
+        areas: vec![
+            Area {
+                cover: LandCover::Forest,
+                outer: vec![square(0.0, 500.0, 100.0)],
+                inner: vec![square(30.0, 530.0, 15.0)],
+            },
+            Area {
+                cover: LandCover::Water,
+                outer: vec![square(-30.0, 470.0, 15.0)],
+                inner: vec![],
+            },
+            Area {
+                cover: LandCover::Forest,
+                outer: vec![square(550.0, 500.0, 100.0)],
+                inner: vec![],
+            },
+        ],
+        buildings: vec![Building {
+            id: 104,
+            outline: rectangle(30.0, 470.0, 8.0, 8.0),
+            height: None,
+            levels: Some(1.0),
+            color: None,
+        }],
+        roads: vec![orqwa_osm::Road {
+            class: orqwa_osm::RoadClass::Street,
+            line: vec![at(-100.0, 450.0), at(100.0, 450.0)],
+            structure: None,
+        }],
+        railways: vec![railway(&[(-100.0, 550.0), (100.0, 550.0)], None)],
+        ..MapData::default()
+    };
+    let world = world(&map).await;
+    let ferns = plants_of(&world, &["fern"]);
+    assert!(ferns.len() > 10, "{} woodland ferns", ferns.len());
+    for [x, y, z] in &ferns {
+        assert!(
+            (4.5..60.0).contains(&x.abs()),
+            "fern too far away or on the road: {x}"
+        );
+        assert!((-600.0..-400.0).contains(z), "fern outside the woods: {z}");
+        assert!(
+            (x - 30.0).abs() >= 15.0 || (z + 530.0).abs() >= 15.0,
+            "fern in a clearing"
+        );
+        assert!(
+            (x + 30.0).abs() >= 15.0 || (z + 470.0).abs() >= 15.0,
+            "fern in water"
+        );
+        assert!(
+            (x - 30.0).abs() >= 8.0 || (z + 470.0).abs() >= 8.0,
+            "fern in a building"
+        );
+        assert!((z + 450.0).abs() > 3.0, "fern on a street");
+        assert!((z + 550.0).abs() > 1.6, "fern on a railway");
+        let ground = ground_at(&world, *x, *z).expect("ground below the fern");
+        assert!(
+            (y - ground).abs() < 1.0,
+            "fern at {x}, {z}: base {y}, ground {ground}"
+        );
+    }
+    for name in ["fern_spreading", "fern_upright"] {
+        assert!(
+            world
+                .chunks
+                .iter()
+                .any(|chunk| chunk.trees.models.contains_key(name)),
+            "no {name}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn rocks_lie_on_rocky_ground_off_the_road_and_out_of_buildings() {
     // Scree beside the road, a house on it; the gentle slope elsewhere has no rocks.
     let scree = Area {

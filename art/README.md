@@ -124,6 +124,13 @@ normals pointing out of the crown so it is lit as one soft volume. Trees are 300
 triangles, rocks 320–640, palms up to about 1,000; random shapes use fixed seeds, so rebuilds
 give the same files.
 
+`fern` has spreading and upright crowns of arching fronds, each with paired, tapered
+leaflets and raised midribs. These are solid geometry seen from both sides, about
+1,400–1,500 triangles per plant, with no extra texture. The world varies their size, heading
+and colour (`plants.ferns`) and places them in patches under mapped woods within 60 m of the
+road. They share the existing undergrowth budget and use the short small-plant draw distance
+(R104), with the same exclusions as other undergrowth.
+
 `foliage.py` draws the two foliage cards, `leaves_albedo.webp` and `needles_albedo.webp`, in
 grey on transparent ground into `app/assets/textures/` (the app tints them per plant).
 
@@ -135,7 +142,7 @@ scripts/art.sh blender --background --factory-startup --python art/vegetation/bu
 | Name | Used for |
 |---|---|
 | `leaves`, `needles` | foliage cards of broadleaf trees and bushes, and of conifers; tinted per plant (palette `plants.conifers`, `plants.broadleaves`, `plants.bushes`, `plants.tropical`) |
-| `frond` | solid leaves of palms and banana plants, tinted per plant (`plants.palms`, `plants.tropical`) |
+| `frond` | solid leaves of palms, banana plants and ferns, tinted per plant (`plants.palms`, `plants.tropical`, `plants.ferns`) |
 | `trunk` | trunks and limbs, the bark texture by coordinates in metres around and up |
 | `rock` | rocks, the rock texture laid on from three sides, tinted per rock (`plants.rocks`) |
 
@@ -334,6 +341,7 @@ scripts/dev.sh sh -c 'GALLERY=docs/images/models scripts/render-riders.sh'
 | ![broadleaf_round](../docs/images/models/vegetation/broadleaf_round.jpg)<br>`broadleaf_round` | ![bush](../docs/images/models/vegetation/bush.jpg)<br>`bush` | ![rock_block](../docs/images/models/vegetation/rock_block.jpg)<br>`rock_block` |
 | ![rock_pair](../docs/images/models/vegetation/rock_pair.jpg)<br>`rock_pair` | ![palm_coconut](../docs/images/models/vegetation/palm_coconut.jpg)<br>`palm_coconut` | ![palm_fan](../docs/images/models/vegetation/palm_fan.jpg)<br>`palm_fan` |
 | ![palm_short](../docs/images/models/vegetation/palm_short.jpg)<br>`palm_short` | ![banana](../docs/images/models/vegetation/banana.jpg)<br>`banana` | ![tropical_bush](../docs/images/models/vegetation/tropical_bush.jpg)<br>`tropical_bush` |
+| ![fern_spreading](../docs/images/models/vegetation/fern_spreading.jpg)<br>`fern_spreading` | ![fern_upright](../docs/images/models/vegetation/fern_upright.jpg)<br>`fern_upright` | |
 
 ### Props
 

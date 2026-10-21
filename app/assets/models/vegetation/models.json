@@ -24,6 +24,14 @@
    "kind": "conifer",
    "height": 14.0
   },
+  "fern_spreading": {
+   "kind": "fern",
+   "height": 0.56
+  },
+  "fern_upright": {
+   "kind": "fern",
+   "height": 0.81
+  },
   "palm_coconut": {
    "kind": "palm",
    "height": 10.85

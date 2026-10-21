@@ -127,6 +127,13 @@ ground; walls reach 3 m below ground for slopes. glTF/Godot turn Blender's y int
 - Exports are deterministic: rebuilding unchanged scripts must give byte-identical `.glb`s.
   If a rebuild changes files you did not touch, find out why before committing.
 
+## Woodland ferns
+
+Woodland ferns (R104) are generated in `art/vegetation/build.py` as paired geometric
+leaflets on arching fronds, using the existing `frond` material and `plants.ferns` palette.
+Keep each below about 1,500 triangles, preserve both spreading and upright forms, and
+refresh their model gallery and a woodland close-up after shape or placement changes.
+
 ## Props (`art/props`)
 
 - What stands by the road (R92). Each model's +x points away from the road, its length along
