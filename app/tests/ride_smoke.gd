@@ -39,6 +39,17 @@ func _run() -> void:
 	await _wait_for(_orqwa.world_ready)
 	var chunk: Dictionary = _orqwa.world_chunk(0)
 	_check(chunk.has("urban"), "urban surface mesh exported by the core")
+	var treeless: Dictionary = _orqwa.world_chunk_with_tree_density(0, 0.0)
+	var remaining_plants: Dictionary = treeless["plants"]
+	for model: String in remaining_plants:
+		_check(
+			model.get_slice("_", 0) not in ["conifer", "broadleaf", "palm", "banana"],
+			"tree filtering happens before upload: " + model
+		)
+	var unchanged: Dictionary = _orqwa.world_chunk(0)
+	var original_plants: Dictionary = chunk["plants"]
+	var unchanged_plants: Dictionary = unchanged["plants"]
+	_check(original_plants == unchanged_plants, "tree quality preserves the complete world")
 	# A world kept from an older ORQWA may name models this one no longer has (R101).
 	var unknown: Array = [
 		BuildingModels.mesh("gone"), VegetationModels.mesh("gone"), PropModels.mesh("gone")

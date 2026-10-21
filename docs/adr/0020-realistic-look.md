@@ -95,6 +95,24 @@ still apply. Generator 2 lets riders regenerate kept worlds for this change (ADR
 The Gurten hairpin at the same position: [before](../images/issues/forest-gurten-before.jpg)
 and [after](../images/issues/forest-gurten-after.jpg).
 
+### Tree quality budgets (2026-10-21, R107)
+
+The dense generated forest is Ultra's population. Low, Medium and High upload about
+12.5 %, 25 % and 50 % of its trees, sampled in Rust from their positions before copying
+buffers to Godot. Higher settings keep the lower setting's trees; bushes, ferns and rocks
+retain their populations. This reduces instance allocation and drawing on Low rather than
+only hiding a complete dense forest. No per-frame sampling is needed.
+
+Tree ranges are 600 / 1,200 / 2,200 / 3,240 m from Low to Ultra, with a fade margin of
+15 % capped at 300 m. View distance overrides the tree range independently of density.
+Presentation chunks refresh when density changes, including when a loaded course is ridden
+again. The generated and stored worlds stay complete and unchanged, so neither generator
+nor stored-format versions change; older kept worlds use the same rendering budgets.
+
+The same woodland on [Low](../images/views/forest-low.jpg) and
+[Ultra](../images/views/forest-ultra.jpg). These software-rendered views verify appearance;
+60 fps on the reference M1 still needs measurement on its GPU.
+
 ### Woodland ferns (2026-10-21, R104)
 
 Two fern forms add low undergrowth: spreading and upright crowns with arching fronds and

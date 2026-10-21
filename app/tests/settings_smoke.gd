@@ -23,6 +23,8 @@ func _run() -> void:
 	var dialog: SettingsDialog = start.get("_settings")
 	var orqwa: OrqwaApp = main.get_node("Orqwa")
 	await _graphics(orqwa, dialog)
+	var world: RideWorld = main.get_node("World")
+	_tree_quality(world)
 	_courses(orqwa, dialog)
 	_about(dialog)
 	_updates(orqwa, dialog, main)
@@ -116,6 +118,62 @@ func _details(orqwa: OrqwaApp, graphics: GraphicsSettings) -> void:
 	graphics.call("_reset_details")
 	_check(_shadows(orqwa) == "auto", "the reset follows the preset again")
 	_check(shadows.selected == 0, "and shows it")
+
+
+## R107: tree distance increases with quality, also for chunks uploaded before a ride;
+## View distance changes range independently from the preset's tree density.
+func _tree_quality(world: RideWorld) -> void:
+	var terrain: Node3D = world.get_node("Terrain")
+	var buffer: PackedFloat32Array = PackedFloat32Array(
+		[1.0, 0.0, 0.0, 20.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 30.0, 1.0, 1.0, 1.0, 1.0]
+	)
+	var previous_range: float = 0.0
+	var previous_density: float = 0.0
+	for preset: String in ["low", "medium", "high", "ultra"]:
+		world.apply_quality(preset)
+		var quality: Dictionary = world.get("_quality")
+		var density: float = quality["tree_density"]
+		var tree_range: float = quality["tree_range"]
+		var tree: MultiMeshInstance3D = VegetationModels.instance(
+			"conifer_tall", buffer, tree_range, 1.0
+		)
+		_check(tree.visibility_range_end > previous_range, preset + " draws trees farther")
+		_check(density > previous_density, preset + " draws more trees")
+		previous_range = tree.visibility_range_end
+		previous_density = density
+		tree.free()
+	# Range changes alone update uploaded trees without rebuilding the chunks.
+	world.apply_quality("low")
+	var low_quality: Dictionary = world.get("_quality")
+	var low_density: float = low_quality["tree_density"]
+	var low_range: float = low_quality["tree_range"]
+	var tree: MultiMeshInstance3D = VegetationModels.instance(
+		"conifer_tall", buffer, low_range, 1.0
+	)
+	terrain.add_child(tree)
+	_check(low_range <= 600.0, "Low keeps trees close")
+	_check(tree.visibility_range_end_margin <= low_range * 0.2, "Low keeps the fade short")
+	world.apply_quality("low", {"view_distance": "ultra"})
+	var overridden: Dictionary = world.get("_quality")
+	var overridden_density: float = overridden["tree_density"]
+	_check(tree.visibility_range_end == previous_range, "View distance controls tree range")
+	_check(overridden_density == low_density, "density stays with Low")
+	world.apply_quality("low", {"view_distance": "low"})
+	_check(tree.visibility_range_end == low_range, "range returns without accumulating scaling")
+	terrain.remove_child(tree)
+	tree.free()
+	world.apply_quality("ultra", {"view_distance": "low"})
+	var dense_nearby: Dictionary = world.get("_quality")
+	var dense_range: float = dense_nearby["tree_range"]
+	_check(dense_range == low_range, "a short range also works with dense trees")
+	# Changing density discards already uploaded chunks so the next ride uses fewer trees.
+	terrain.add_child(Node3D.new())
+	world.set("_next_chunk", 1)
+	world.apply_quality("low")
+	var next_chunk: int = world.get("_next_chunk")
+	_check(terrain.get_child_count() == 0, "old density is removed from the scene")
+	_check(next_chunk == 0, "a changed density restarts chunk uploads")
+	world.apply_quality("medium")
 
 
 func _shadows(orqwa: OrqwaApp) -> String:

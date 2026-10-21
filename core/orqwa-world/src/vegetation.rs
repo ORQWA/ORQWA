@@ -1,6 +1,7 @@
 //! Trees, bushes, ferns and rocks (Blender models, `art/vegetation`), and grass and flowers
 //! along the road (R45, ADR 0011); in the subtropics palms, banana plants and tropical shrubs (#136).
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
@@ -148,6 +149,40 @@ pub struct Trees {
 }
 
 impl Trees {
+    /// Model buffers for drawing at a tree density in `[0, 1]` (R107). Smaller plants keep
+    /// their population. Position-based sampling keeps the same trees as quality rises,
+    /// including in worlds kept by older generators, without changing the stored world.
+    pub fn models_for_density(
+        &self,
+        tree_density: f64,
+    ) -> impl Iterator<Item = (&str, Cow<'_, [f32]>)> {
+        self.models.iter().map(move |(name, buffer)| {
+            let tree = matches!(
+                name.split('_').next(),
+                Some("conifer" | "broadleaf" | "palm" | "banana")
+            );
+            let buffer = if tree && tree_density < 1.0 {
+                Cow::Owned(
+                    buffer
+                        .as_chunks::<PLANT_FLOATS>()
+                        .0
+                        .iter()
+                        .filter(|plant| {
+                            let seed = i64::from(plant[3].to_bits())
+                                | (i64::from(plant[11].to_bits()) << 32);
+                            crate::hash(seed) < tree_density
+                        })
+                        .flatten()
+                        .copied()
+                        .collect(),
+                )
+            } else {
+                Cow::Borrowed(buffer.as_slice())
+            };
+            (name.as_str(), buffer)
+        })
+    }
+
     /// Number of trees, bushes, ferns and rocks (grass and flowers not counted).
     #[must_use]
     pub fn len(&self) -> usize {
@@ -575,6 +610,91 @@ mod tests {
     use std::path::Path;
 
     use super::*;
+
+    #[test]
+    fn quality_thins_trees_in_stable_nested_subsets_without_changing_the_world() {
+        let mut trees = Trees::default();
+        for (index, kind) in [Plant::Conifer, Plant::Broadleaf, Plant::Palm, Plant::Banana]
+            .into_iter()
+            .enumerate()
+        {
+            for seed in 0..2000 {
+                #[allow(clippy::cast_precision_loss)] // four fixture species
+                let north = f64::from(seed / 100) * 7.0 + index as f64 * 200.0;
+                trees.add(
+                    kind,
+                    [f64::from(seed % 100) * 7.0, 0.0, north],
+                    seed.into(),
+                    [0.0; 3],
+                );
+            }
+        }
+        let original = trees.clone();
+        let mut previous: BTreeMap<String, Vec<f32>> = BTreeMap::new();
+        for density in [0.0, 0.125, 0.25, 0.5, 1.0] {
+            let current: BTreeMap<String, Vec<f32>> = trees
+                .models_for_density(density)
+                .map(|(name, buffer)| (name.to_owned(), buffer.into_owned()))
+                .collect();
+            let count = current.values().map(Vec::len).sum::<usize>() / PLANT_FLOATS;
+            #[allow(clippy::cast_precision_loss)] // small fixture counts
+            let expected = trees.len() as f64 * density;
+            #[allow(clippy::cast_precision_loss)] // small fixture counts
+            let actual = count as f64;
+            assert!(
+                (actual - expected).abs() <= expected * 0.12,
+                "density {density}: {actual} trees, expected about {expected}"
+            );
+            for (name, before) in &previous {
+                let after = current[name].as_chunks::<PLANT_FLOATS>().0;
+                for plant in before.as_chunks::<PLANT_FLOATS>().0 {
+                    assert!(after.contains(plant), "higher quality keeps existing trees");
+                }
+            }
+            let repeated: BTreeMap<String, Vec<f32>> = trees
+                .models_for_density(density)
+                .map(|(name, buffer)| (name.to_owned(), buffer.into_owned()))
+                .collect();
+            assert_eq!(current, repeated);
+            previous = current;
+        }
+        assert_eq!(previous, original.models, "Ultra keeps every tree");
+        assert_eq!(trees, original, "quality never changes the kept world");
+    }
+
+    #[test]
+    fn tree_quality_keeps_undergrowth_and_rocks_and_samples_by_position() {
+        let mut trees = Trees::default();
+        for kind in [Plant::Bush, Plant::Rock, Plant::Fern, Plant::TropicalBush] {
+            trees.add(kind, [12.0, 0.0, 20.0], 0, [0.0; 3]);
+        }
+        for (name, buffer) in trees.models_for_density(0.0) {
+            assert!(matches!(buffer, Cow::Borrowed(_)));
+            assert_eq!(buffer.as_ref(), trees.models[name]);
+        }
+        for seed in 0..500 {
+            trees.add(
+                Plant::Conifer,
+                [f64::from(seed), 0.0, 10.0],
+                seed.into(),
+                [0.0; 3],
+            );
+        }
+        let selected: BTreeMap<String, Vec<f32>> = trees
+            .models_for_density(0.25)
+            .map(|(name, buffer)| (name.to_owned(), buffer.into_owned()))
+            .collect();
+        for buffer in trees.models.values_mut() {
+            let mut plants = buffer.as_chunks::<PLANT_FLOATS>().0.to_vec();
+            plants.reverse();
+            *buffer = plants.into_iter().flatten().collect();
+        }
+        for (name, buffer) in trees.models_for_density(0.25) {
+            let mut before = selected[name].as_chunks::<PLANT_FLOATS>().0.to_vec();
+            before.reverse();
+            assert_eq!(buffer.as_ref(), before.concat());
+        }
+    }
 
     #[test]
     fn every_plant_has_models_with_files_and_palette_colours() {

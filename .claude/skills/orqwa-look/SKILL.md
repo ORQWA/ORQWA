@@ -73,6 +73,11 @@ Blender Python; its header shows how to run it).
   of the route and thin to an equivalent 10 m spacing beyond it. Keep wooded slopes wooded
   and clearings clear; scattered plants on open land use a separate 7 m grid. Check the
   canopy from road height and the drone view when changing placement.
+- **Tree quality (R107):** the generated forest is Ultra's full population. Upload stable
+  position-based subsets before GPU allocation: Low 12.5 %, Medium 25 %, High 50 %.
+  Tree ranges are 600 / 1,200 / 2,200 / 3,240 m, with a 15 % fade capped at 300 m.
+  View distance overrides range; density follows the preset. Keep stored worlds complete
+  so quality changes need no regeneration. Check Low as well as Ultra from the same camera.
 - **Woodland floor (R104):** spreading and upright ferns grow in patches within 60 m of
   the route, sharing the shrub budget. Keep their arching fronds and paired leaflets legible
   at road height; use `plants.ferns`, the shared `frond` material and the short plant range.

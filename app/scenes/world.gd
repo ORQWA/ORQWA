@@ -64,7 +64,7 @@ const VISIBILITY_RANGE: float = 4500.0
 const HORIZON_RANGE: float = 14000.0
 ## Buildings switch between their models and their shells over this distance.
 const MODEL_FADE: float = 40.0
-## Trees and buildings are small; beyond this the land-cover colours carry the scene.
+## Buildings are small; beyond this the land-cover colours carry the scene.
 const DETAIL_RANGE: float = 1800.0
 ## Bushes and rocks are smaller still.
 const SMALL_PLANT_RANGE: float = 600.0
@@ -79,13 +79,16 @@ const FREE_TURN: float = 1.2
 ## A rider moving further than this between frames jumped: the camera follows at once.
 const JUMP_M: float = 50.0
 ## Graphics presets (R43): what each turns on. Medium holds 60 fps on a base M1; `distance`
-## scales how far terrain and details are drawn, `rain` is the number of raindrops. MSAA stays
+## scales terrain and details; trees have their own range and uploaded density (R107).
+## `rain` is the number of raindrops. MSAA stays
 ## at 2×: at 4× a few distant pixels broke and the glow spread them into bright blobs. Flat
 ## colours gain nothing from global illumination (SSIL, SDFGI) or volumetric fog, which only
 ## greyed them (#103); what they cost goes to grass, models and shadows further out.
 const QUALITY: Dictionary[String, Dictionary] = {
 	"low":
 	{
+		"tree_density": 0.125,
+		"tree_range": 600.0,
 		"model_range": 200.0,
 		"grass_range": 0.0,
 		"grass_shadows": false,
@@ -104,6 +107,8 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	},
 	"medium":
 	{
+		"tree_density": 0.25,
+		"tree_range": 1200.0,
 		"model_range": 400.0,
 		"grass_range": 60.0,
 		"grass_shadows": false,
@@ -122,6 +127,8 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	},
 	"high":
 	{
+		"tree_density": 0.5,
+		"tree_range": 2200.0,
 		"model_range": 600.0,
 		"grass_range": 120.0,
 		"grass_shadows": true,
@@ -140,6 +147,8 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	},
 	"ultra":
 	{
+		"tree_density": 1.0,
+		"tree_range": 3240.0,
 		"model_range": 900.0,
 		"grass_range": 180.0,
 		"grass_shadows": true,
@@ -353,6 +362,7 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 ## options set apart from it (R90, as `OrqwaApp.graphics_options()` gives them; "auto" follows
 ## the preset).
 func apply_quality(name: String, options: Dictionary = {}) -> void:
+	var previous_density: float = _quality["tree_density"]
 	var preset: Dictionary = QUALITY.get(name, QUALITY["medium"])
 	_quality = preset.duplicate()
 	_apply_options_over_preset(options)
@@ -388,6 +398,9 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	)
 	var distance: float = _quality["distance"]
 	_set_distance(distance)
+	# A course may already be uploaded when settings change before the next ride.
+	if previous_density != _quality["tree_density"]:
+		_restart_chunks()
 	var fps_limit: String = options.get("fps_limit", "auto")
 	Engine.max_fps = 0 if fps_limit in ["auto", "unlimited"] else int(fps_limit)
 	var vsync: String = options.get("vsync", "auto")
@@ -407,7 +420,7 @@ func _apply_options_over_preset(options: Dictionary) -> void:
 			_quality[key] = QUALITY[shadows][key]
 	var view_distance: String = options.get("view_distance", "auto")
 	if levels.has(view_distance):
-		for key: String in ["distance", "model_range"]:
+		for key: String in ["distance", "model_range", "tree_range"]:
 			_quality[key] = QUALITY[view_distance][key]
 	# Grass as far as the presets above Low draw it.
 	var grass_presets: Dictionary[String, String] = {
@@ -567,12 +580,11 @@ func _apply_rider() -> void:
 
 
 func _on_world_ready(_info: Dictionary) -> void:
+	apply_quality(_orqwa.graphics_quality(), _orqwa.graphics_options())
 	_find_low_ground()
 	_apply_rider()
-	for chunk: Node in _terrain.get_children():
-		chunk.queue_free()
+	_restart_chunks()
 	_chunk_count = _orqwa.world_chunk_count()
-	_next_chunk = 0
 	_road.mesh = WorldMeshes.from_arrays(_orqwa.road_mesh())
 	_road.material_override = _road_material
 	var land: Dictionary = _orqwa.horizon_meshes()
@@ -588,10 +600,18 @@ func _on_world_ready(_info: Dictionary) -> void:
 	_structures.material_override = _structure_material
 
 
+func _restart_chunks() -> void:
+	for chunk: Node in _terrain.get_children():
+		_terrain.remove_child(chunk)
+		chunk.queue_free()
+	_next_chunk = 0
+
+
 func _build_some_chunks() -> void:
 	var built: int = 0
 	while _next_chunk < _chunk_count and built < CHUNKS_PER_FRAME:
-		var chunk: Dictionary = _orqwa.world_chunk(_next_chunk)
+		var density: float = _quality["tree_density"]
+		var chunk: Dictionary = _orqwa.world_chunk_with_tree_density(_next_chunk, density)
 		# Another course was opened meanwhile: its world replaces this one when ready.
 		if chunk.is_empty():
 			_chunk_count = 0
@@ -623,9 +643,12 @@ func _build_some_chunks() -> void:
 		for cell: Dictionary in modelled:
 			_add_modelled(node, cell)
 		var plants: Dictionary = chunk.get("plants", {})
+		var tree_range: float = _quality["tree_range"]
 		for model: String in plants:
 			var buffer: PackedFloat32Array = plants[model]
-			node.add_child(_vegetation(model, buffer))
+			node.add_child(
+				VegetationModels.instance(model, buffer, tree_range, SMALL_PLANT_RANGE * _distance)
+			)
 		var props: Dictionary = chunk.get("props", {})
 		for model: String in props:
 			var buffer: PackedFloat32Array = props[model]
@@ -684,24 +707,6 @@ func _mesh_instance(arrays: Dictionary, material: Material) -> MeshInstance3D:
 	instance.mesh = WorldMeshes.from_arrays(arrays)
 	instance.material_override = material
 	instance.visibility_range_end_margin = 300.0
-	instance.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	return instance
-
-
-## Trees, bushes or rocks of one model in a chunk (`world_chunk()["plants"]`: transform and
-## colour per plant). Bushes, ferns and rocks are drawn less far than trees.
-func _vegetation(model: String, buffer: PackedFloat32Array) -> MultiMeshInstance3D:
-	var multimesh: MultiMesh = MultiMesh.new()
-	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	multimesh.use_colors = true
-	multimesh.mesh = VegetationModels.mesh(model)
-	multimesh.instance_count = buffer.size() / 16
-	multimesh.buffer = buffer
-	var instance: MultiMeshInstance3D = MultiMeshInstance3D.new()
-	instance.multimesh = multimesh
-	var small: bool = model.get_slice("_", 0) in ["bush", "rock", "fern"]
-	instance.visibility_range_end = (SMALL_PLANT_RANGE if small else DETAIL_RANGE) * _distance
-	instance.visibility_range_end_margin = 100.0 if small else 300.0
 	instance.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	return instance
 
@@ -909,7 +914,11 @@ func _set_distance(factor: float) -> void:
 	_distance = factor
 	for node: Node in _terrain.find_children("*", "GeometryInstance3D", true, false):
 		var geometry: GeometryInstance3D = node as GeometryInstance3D
-		if geometry.visibility_range_end > 0.0:
+		if geometry.has_meta("tree"):
+			var tree_range: float = _quality["tree_range"]
+			geometry.visibility_range_end = tree_range
+			geometry.visibility_range_end_margin = minf(tree_range * 0.15, 300.0)
+		elif geometry.visibility_range_end > 0.0:
 			geometry.visibility_range_end *= change
 	_camera.far = maxf(VISIBILITY_RANGE * factor * 1.6, HORIZON_RANGE)
 

@@ -20,6 +20,28 @@ static var _materials: Dictionary[String, ShaderMaterial] = {}
 static var _meshes: Dictionary[String, Mesh] = {}
 
 
+## One model's uploaded plants. Tree ranges follow the preset or View distance override;
+## smaller plants stay nearby. A short fade keeps Low from drawing well past its budget.
+static func instance(
+	name: String, buffer: PackedFloat32Array, tree_range: float, small_range: float
+) -> MultiMeshInstance3D:
+	var multimesh: MultiMesh = MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = true
+	multimesh.mesh = mesh(name)
+	multimesh.instance_count = buffer.size() / 16
+	multimesh.buffer = buffer
+	var placed: MultiMeshInstance3D = MultiMeshInstance3D.new()
+	placed.multimesh = multimesh
+	var tree: bool = name.get_slice("_", 0) in ["conifer", "broadleaf", "palm", "banana"]
+	if tree:
+		placed.set_meta("tree", true)
+	placed.visibility_range_end = tree_range if tree else small_range
+	placed.visibility_range_end_margin = minf(tree_range * 0.15, 300.0) if tree else 100.0
+	placed.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	return placed
+
+
 ## The mesh of model `name` with its materials replaced by the shared looks.
 static func mesh(name: String) -> Mesh:
 	if _meshes.has(name):

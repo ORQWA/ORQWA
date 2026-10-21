@@ -166,7 +166,10 @@ model of the kind it wants per plant. Every plant is in the [gallery](#vegetatio
 Mapped forests use jittered 4 m candidate spacing within 300 m of the road and thin to
 an equivalent 10 m spacing beyond it (R103). Wooded hillsides keep their trees even on steep
 ground; open land keeps sparse plants on its separate 7 m grid. Roads, railways, water,
-buildings and mapped clearings stay clear. The graphics preset controls the draw distance.
+buildings and mapped clearings stay clear. Ultra draws the full tree population; Low,
+Medium and High upload stable subsets of about 12.5 %, 25 % and 50 % (R107). Tree ranges
+rise from 600 m on Low to 3,240 m on Ultra; View distance overrides range independently.
+Sampling happens before GPU upload and leaves kept worlds intact, without regeneration.
 
 ## Props (`props/`)
 
