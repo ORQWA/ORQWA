@@ -1287,6 +1287,10 @@ msgstr ""
 msgid "How do you want to ride?"
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "If Advanced Protection is on, turn it off in Android's settings."
+msgstr ""
+
 #: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Imperial (mi, lb)"
 msgstr ""
@@ -1317,6 +1321,10 @@ msgstr ""
 
 #: app/ui/workout_editor.gd
 msgid "Intervals"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "It is under Security & privacy; then check for updates again."
 msgstr ""
 
 #: app/scenes/course_detail.gd
@@ -1717,6 +1725,10 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "ORQWA courses"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "ORQWA downloads and installs it; then open ORQWA again."
 msgstr ""
 
 #: app/ui/update_dialog.gd
@@ -2429,6 +2441,10 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "This course needs its video because it has no geographic route."
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "This device lets no app install apps, so ORQWA cannot update itself."
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs

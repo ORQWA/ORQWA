@@ -1,6 +1,6 @@
 //! Finding a newer ORQWA release and installing it (R99, ADR 0023): GitHub's latest release,
-//! its version against the running one, and on Windows its installer, downloaded and run over
-//! the installed ORQWA.
+//! its version against the running one, and on Windows and Android its installer, downloaded
+//! and installed over the running ORQWA (on Android by ORQWA's Android plugin, ADR 0024).
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -11,8 +11,13 @@ use tokio::io::AsyncWriteExt;
 /// GitHub's latest published release of ORQWA; drafts and pre-releases are never "latest".
 pub const LATEST_RELEASE: &str = "https://api.github.com/repos/ORQWA/ORQWA/releases/latest";
 
-/// The release asset that installs ORQWA on Windows.
-pub const INSTALLER: &str = "ORQWA-windows-x86_64.msi";
+/// The release asset that installs ORQWA on this system: the APK on Android, the installer
+/// (`.msi`) elsewhere, which only Windows runs.
+pub const INSTALLER: &str = if cfg!(target_os = "android") {
+    "ORQWA-android-arm64.apk"
+} else {
+    "ORQWA-windows-x86_64.msi"
+};
 
 /// Something went wrong looking for, downloading or installing an update.
 #[derive(Debug, thiserror::Error)]
@@ -70,7 +75,7 @@ pub struct Release {
     pub version: Version,
     /// The release's page, with its notes.
     pub page: String,
-    /// The Windows installer, when the release carries one.
+    /// This system's installer ([`INSTALLER`]), when the release carries one.
     pub installer: Option<Installer>,
 }
 
@@ -206,7 +211,14 @@ pub async fn download(
 /// Whether this system can install an update itself; elsewhere the rider downloads it.
 #[must_use]
 pub const fn can_install() -> bool {
-    cfg!(windows)
+    cfg!(any(windows, target_os = "android"))
+}
+
+/// The name a downloaded installer of `version` is saved as, ending as [`INSTALLER`] does.
+#[must_use]
+pub fn download_name(version: Version) -> String {
+    let extension = INSTALLER.rsplit('.').next().unwrap_or_default();
+    format!("ORQWA-{version}.{extension}")
 }
 
 /// Starts installing `msi` over the running ORQWA and then starting `app` again; the caller
@@ -214,7 +226,8 @@ pub const fn can_install() -> bool {
 /// ORQWA is installed for all users.
 ///
 /// # Errors
-/// [`UpdateError::Install`] if the installer cannot be started, or on another system.
+/// [`UpdateError::Install`] if the installer cannot be started, or on another system: on
+/// Android, ORQWA's Android plugin installs the APK.
 pub fn install(msi: &Path, app: &Path) -> Result<(), UpdateError> {
     #[cfg(windows)]
     {
@@ -333,6 +346,28 @@ mod tests {
                 size: 130_000_000
             })
         );
+    }
+
+    #[test]
+    fn each_system_takes_its_own_installer() {
+        let json = release_json(
+            "v0.5.1",
+            &[
+                asset("ORQWA-android-arm64.apk", "https://x/apk", 160_000_000),
+                asset("ORQWA-windows-x86_64.msi", "https://x/msi", 220_000_000),
+            ]
+            .join(","),
+        );
+
+        let installer = parse_release(&json).unwrap().installer.unwrap();
+
+        let (url, name) = if cfg!(target_os = "android") {
+            ("https://x/apk", "ORQWA-0.5.1.apk")
+        } else {
+            ("https://x/msi", "ORQWA-0.5.1.msi")
+        };
+        assert_eq!(installer.url, url);
+        assert_eq!(download_name(Version::parse("0.5.1").unwrap()), name);
     }
 
     #[test]
