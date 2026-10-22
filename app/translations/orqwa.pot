@@ -444,7 +444,7 @@ msgid "Cat 4"
 msgstr ""
 
 #: app/ui/ride_options.gd
-msgid "Chain and freewheel volume; 0 mutes them"
+msgid "Chain, freewheel and gear shift volume; 0 mutes them"
 msgstr ""
 
 #: app/ui/profile_form.gd

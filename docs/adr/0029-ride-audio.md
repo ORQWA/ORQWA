@@ -40,3 +40,17 @@ volume sliders in the shared ride options; zero mutes a layer.
 - Recorded cadence and wheel speed were not calibrated. Playback reference rates are
   documented listening choices. Rain currently strengthens the breeze; this does not add a
   separate rain recording or location-specific birds, traffic or water.
+
+## Amendment — 2026-10-22: recorded shifting sound (R113)
+
+A fourth CC0 recording supplies a 300 ms gear-change one-shot. The shared Rust shift-input
+handler compares the accepted gear before and after every input, so keyboard, BLE and
+remote shifts all trigger once, including opposing changes in one poll. Unchanged/limit
+requests and profile edits produce no sound; a physical cassette reports no gear changes.
+
+One-shots share bicycle volume and use brief edge fades plus subtle pitch and level
+variation. Four bounded voices let fast changes overlap; another rapid shift replaces an
+old voice rather than leaving a long queue. A non-playing ride cannot queue a shift, and
+restarting the audio queue discards old voices. The listening preview includes separate
+shifts and a rapid pair; signal and application tests cover timing, silence, limits,
+pause, mute and cassette behavior. Existing controls and screenshots remain accurate.

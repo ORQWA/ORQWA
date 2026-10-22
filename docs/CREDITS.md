@@ -38,6 +38,7 @@ pages. Bundled excerpts are mixed to mono, filtered, resampled to 24 kHz and lev
 - `core/orqwa-app/audio/wind.pcm`: **ecfike**, [Wind and Leaves.wav](https://freesound.org/people/ecfike/sounds/183496/), seconds 12–48 of the HQ preview.
 - `core/orqwa-app/audio/chain.pcm`: **dawidwmika**, [bicycle forward movement](https://freesound.org/people/dawidwmika/sounds/380288/), seconds 8–24 of the HQ preview.
 - `core/orqwa-app/audio/freewheel.pcm`: **yurkobb**, [bike-wheel-free-looped.flac](https://freesound.org/people/yurkobb/sounds/274481/), first 2 seconds of the HQ preview.
+- `core/orqwa-app/audio/shift.pcm`: **ChemiCatz**, [bike_gear_shift.wav](https://freesound.org/people/ChemiCatz/sounds/267910/), seconds 0.08–0.38 of the HQ preview, one mechanical gear change.
 
 [Processing and reproduction](../core/orqwa-app/audio/README.md) use the existing Rust audio
 decoder. The live wind model and texture mixer are ORQWA's own work (GPL-3.0). These sources

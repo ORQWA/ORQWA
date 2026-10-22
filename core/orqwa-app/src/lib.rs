@@ -498,7 +498,7 @@ fn drive_shift_input(
 ) {
     for shift in input.poll() {
         if let Some(active) = ride {
-            active.ride.shift(shift);
+            active.shift(shift);
         }
     }
     // Taken either way, so that presses between rides do not act in the next one.
@@ -553,6 +553,24 @@ struct ActiveRide {
     paused: bool,
     /// Sped up or jumped: its times are not real, so it counts towards no records.
     simulated: bool,
+}
+
+impl ActiveRide {
+    fn shift(&mut self, shift: Shift) {
+        let before = self.ride.state().gear;
+        self.ride.shift(shift);
+        let after = self.ride.state().gear;
+        if before.map(|gear| gear.number) != after.map(|gear| gear.number)
+            && self.started.is_some()
+            && !self.paused
+            && !self.finished
+            && self.player.is_none()
+            && self.ride.route().is_some()
+            && self.ambient_settings.bike > 0.0
+        {
+            self.ambient.shift();
+        }
+    }
 }
 
 /// The name the rider gave the course being imported.
@@ -4695,6 +4713,105 @@ mod tests {
         app.update(Duration::from_millis(16));
 
         assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
+        app.shutdown();
+    }
+
+    #[test]
+    fn only_successful_live_virtual_shifts_make_a_sound() {
+        let dir = temp_dir("shift-sound");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let mut profile = app.profile().profile.clone();
+        profile.drivetrain = Drivetrain::SingleCog {
+            chainring: 50,
+            cog: 14,
+        };
+        let id = app.profile().id.clone();
+        app.save_profile(Some(&id), profile.clone()).unwrap();
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(200.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+        run_until(&mut app, |e| matches!(e, AppEvent::Connected(_)));
+        app.start_ride(Percent(50.0), DescentMode::Coast, &GhostChoice::None)
+            .unwrap();
+
+        // Compare with the same soundscape without a shift, keeping natural noise out of
+        // the assertion. Drive the shared input path so keyboard, BLE and phone all count.
+        let hear = |app: &mut App, shifts: &[Shift]| {
+            app.ride.as_mut().unwrap().ambient = ambient::Sound::new(259);
+            for &shift in shifts {
+                app.shift(shift);
+            }
+            app.update(Duration::ZERO);
+            let active = app.ride.as_mut().unwrap();
+            let state = active.ride.state();
+            let motion = ambient::Motion {
+                speed: state.speed,
+                cadence: state.telemetry.cadence,
+                power: state.telemetry.power,
+            };
+            let heard = active
+                .ambient
+                .render(12_000, motion, active.ambient_settings);
+            let plain = ambient::Sound::new(259).render(12_000, motion, active.ambient_settings);
+            heard != plain
+        };
+        assert!(!hear(&mut app, &[]), "starting a ride is silent");
+        assert!(
+            hear(&mut app, &[Shift::Up]),
+            "an accepted harder gear clicks"
+        );
+        assert!(
+            hear(&mut app, &[Shift::Down]),
+            "an accepted easier gear clicks"
+        );
+        assert!(
+            hear(&mut app, &[Shift::Up, Shift::Down]),
+            "two changes in one poll are not lost"
+        );
+        assert!(hear(&mut app, &[Shift::To(1)]));
+        assert!(
+            !hear(&mut app, &[Shift::Down]),
+            "the easiest gear cannot shift down"
+        );
+        assert!(
+            !hear(&mut app, &[Shift::To(1)]),
+            "selecting the current gear is silent"
+        );
+        assert!(hear(&mut app, &[Shift::To(24)]));
+        assert!(
+            !hear(&mut app, &[Shift::Up]),
+            "the hardest gear cannot shift up"
+        );
+        app.set_paused(true);
+        assert!(
+            !hear(&mut app, &[Shift::Down]),
+            "paused shifts must not be queued"
+        );
+        app.set_paused(false);
+        assert!(
+            !hear(&mut app, &[]),
+            "resume does not replay paused requests"
+        );
+        app.set_ambient_sound(ambient::Settings {
+            bike: 0.0,
+            ..ambient::Settings::default()
+        });
+        assert!(
+            !hear(&mut app, &[Shift::Down]),
+            "muting bicycle sound includes shifts"
+        );
+        app.set_ambient_sound(ambient::Settings::default());
+        profile.drivetrain = Drivetrain::Cassette;
+        app.save_profile(Some(&id), profile).unwrap();
+        assert!(
+            !hear(&mut app, &[Shift::Up]),
+            "cassette button presses do not invent a shift"
+        );
         app.shutdown();
     }
 

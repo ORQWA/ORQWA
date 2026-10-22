@@ -1,5 +1,5 @@
 //! Continuous riding sound (R112): recorded textures with non-repeating grains, turbulent
-//! airflow, and independent pedal / freewheel rates. No sound-track clock or looping player.
+//! airflow, independent pedal / freewheel rates, and recorded shift one-shots (R113).
 
 use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 
@@ -13,6 +13,7 @@ const DT: f32 = 1.0 / RATE_F32;
 const WIND: &[u8] = include_bytes!("../audio/wind.pcm");
 const CHAIN: &[u8] = include_bytes!("../audio/chain.pcm");
 const FREEWHEEL: &[u8] = include_bytes!("../audio/freewheel.pcm");
+const SHIFT: &[u8] = include_bytes!("../audio/shift.pcm");
 
 /// Weather affects the soundscape, without changing the simulation's wind or resistance.
 #[derive(Clone, Copy, Debug, Default)]
@@ -114,6 +115,8 @@ pub struct Sound {
     coasting: f32,
     crank: f32,
     breeze: f32,
+    shifts: [Option<ShiftVoice>; 4],
+    next_shift: usize,
 }
 
 impl Sound {
@@ -136,12 +139,26 @@ impl Sound {
             coasting: 0.0,
             crank: 0.0,
             breeze: Weather::Clear.breeze(),
+            shifts: [None; 4],
+            next_shift: 0,
         }
     }
 
     /// Fade in the next output after playback was stopped and its queue discarded.
     pub fn restart(&mut self) {
         self.volume = [0.0; 2];
+        self.shifts.fill(None);
+    }
+
+    /// Play one recorded mechanical shift. Bounded voices let rapid changes overlap without
+    /// building a backlog; tiny pitch and level variations avoid an identical repeated click.
+    pub fn shift(&mut self) {
+        self.shifts[self.next_shift] = Some(ShiftVoice {
+            position: 0.0,
+            rate: 0.96 + self.random.unit() * 0.08,
+            gain: 0.9 + self.random.unit() * 0.2,
+        });
+        self.next_shift = (self.next_shift + 1) % self.shifts.len();
     }
 
     /// Render stereo PCM, with smoothed controls to avoid clicks at telemetry updates.
@@ -195,7 +212,19 @@ impl Sound {
             let stroke = ((self.crank * 2.0).fract() - 0.5).abs() * 2.0;
             let chain_gain =
                 self.pedal * (0.16 + 0.12 * (power / 350.0).min(1.0)) * (0.85 + 0.15 * stroke);
-            let bike = chain * chain_gain + freewheel * self.coasting * 0.25;
+            let mut shift = 0.0;
+            for voice in &mut self.shifts {
+                if let Some(active) = voice {
+                    if let Some(sample) = active.next() {
+                        shift += sample;
+                    } else {
+                        *voice = None;
+                    }
+                }
+            }
+            let bike = chain * chain_gain
+                + freewheel * self.coasting * 0.25
+                + shift * (0.3 + 0.15 * (power / 350.0).min(1.0));
             let mut stereo = [0.0; 2];
             for (channel, sample) in stereo.iter_mut().enumerate() {
                 let noise = self.random.unit() * 2.0 - 1.0;
@@ -268,7 +297,7 @@ impl Texture {
             let phase = self.ages[voice];
             let triangle = 1.0 - (phase * 2.0 - 1.0).abs();
             let window = triangle * triangle * (3.0 - 2.0 * triangle);
-            sample += self.at(self.starts[voice]) * window;
+            sample += pcm_at(self.pcm, self.starts[voice]) * window;
             // Integrate the read cursor: changing rate must not jump within a live grain.
             self.starts[voice] += rate * TEXTURE_STEP;
             self.ages[voice] += 1.0 / self.length;
@@ -279,17 +308,40 @@ impl Texture {
         }
         sample
     }
+}
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // bounded PCM index
-    fn at(&self, position: f32) -> f32 {
-        let index = position as usize;
-        let read = |index: usize| {
-            let at = (index % (self.pcm.len() / 2)) * 2;
-            f32::from(i16::from_le_bytes([self.pcm[at], self.pcm[at + 1]])) / 32_768.0
-        };
-        let fraction = position.fract();
-        read(index) * (1.0 - fraction) + read(index + 1) * fraction
+#[derive(Clone, Copy)]
+struct ShiftVoice {
+    position: f32,
+    rate: f32,
+    gain: f32,
+}
+
+impl ShiftVoice {
+    #[allow(clippy::cast_precision_loss)] // short recorded excerpt, exact sample count in f32
+    fn next(&mut self) -> Option<f32> {
+        let remaining = (SHIFT.len() / 2) as f32 - self.position;
+        if remaining <= 0.0 {
+            return None;
+        }
+        // Two-millisecond attack and five-millisecond release prevent crop-edge clicks.
+        let fade = (self.position / 48.0).min(remaining / 120.0).min(1.0);
+        let sample = pcm_at(SHIFT, self.position) * fade * self.gain;
+        self.position += self.rate * TEXTURE_STEP;
+        Some(sample)
     }
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // bounded PCM index
+fn pcm_at(pcm: &[u8], position: f32) -> f32 {
+    let index = position as usize;
+    let read = |index: usize| {
+        pcm.get(index * 2..index * 2 + 2).map_or(0.0, |bytes| {
+            f32::from(i16::from_le_bytes([bytes[0], bytes[1]])) / 32_768.0
+        })
+    };
+    let fraction = position.fract();
+    read(index) * (1.0 - fraction) + read(index + 1) * fraction
 }
 
 #[cfg(test)]
@@ -302,6 +354,55 @@ mod tests {
             cadence: Some(Rpm(cadence)),
             power: Some(Watts(250.0)),
         }
+    }
+
+    #[test]
+    fn shifts_are_brief_recorded_one_shots_that_follow_bicycle_volume() {
+        let settings = Settings {
+            wind: 0.0,
+            bike: 100.0,
+            ..Settings::default()
+        };
+        let mut sound = Sound::new(259);
+        let _ = sound.render(RATE as usize, Motion::default(), settings);
+        sound.shift();
+        let heard = sound.render(RATE as usize / 2, Motion::default(), settings);
+        assert!(
+            energy(&heard) > 0.000_01,
+            "a shift is audible even between pedal strokes"
+        );
+        let tail = sound.render(RATE as usize, Motion::default(), settings);
+        assert!(
+            energy(&tail) < 0.000_000_01,
+            "a shift ends instead of looping"
+        );
+        sound.shift();
+        let muted = Settings {
+            bike: 0.0,
+            ..settings
+        };
+        let mut silent = Sound::new(259);
+        silent.shift();
+        assert!(energy(&silent.render(RATE as usize, Motion::default(), muted)) < 0.000_000_01);
+        sound.restart();
+        assert!(
+            energy(&sound.render(RATE as usize, Motion::default(), settings)) < 0.000_000_01,
+            "a restarted output must discard a pending old shift"
+        );
+        for _ in 0..24 {
+            sound.shift();
+        }
+        let rapid = sound.render(RATE as usize, Motion::default(), settings);
+        assert!(
+            rapid
+                .iter()
+                .flatten()
+                .all(|sample| sample.is_finite() && sample.abs() < 1.0)
+        );
+        assert!(
+            energy(&sound.render(RATE as usize, Motion::default(), settings)) < 0.000_000_01,
+            "rapid presses must not leave a long backlog"
+        );
     }
 
     fn energy(samples: &[[f32; 2]]) -> f32 {

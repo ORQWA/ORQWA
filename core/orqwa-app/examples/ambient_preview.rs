@@ -10,6 +10,9 @@ fn main() -> std::io::Result<()> {
     let mut sound = Sound::new(259);
     let mut samples = Vec::new();
     for frame in 0..30 * 50 {
+        if [6 * 50, 9 * 50, 12 * 50, 12 * 50 + 5].contains(&frame) {
+            sound.shift();
+        }
         let time = f64::from(frame) / 50.0;
         let (speed, cadence, power) = if time < 3.0 {
             (0.0, 0.0, 0.0)
