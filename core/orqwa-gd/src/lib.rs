@@ -1683,6 +1683,17 @@ impl OrqwaApp {
         self.command(App::install_update)
     }
 
+    /// The downloaded update's path, "" before one is: on Android, ORQWA's Android plugin
+    /// installs it (ADR 0024).
+    #[func]
+    fn downloaded_update(&self) -> GString {
+        self.app
+            .as_ref()
+            .and_then(App::downloaded_update)
+            .map(|path| GString::from(path.to_string_lossy().as_ref()))
+            .unwrap_or_default()
+    }
+
     /// How the phone remote (#228) is set and doing: `{on, port, address ("" while off or
     /// without a network), connected}`.
     #[func]

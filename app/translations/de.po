@@ -1594,6 +1594,15 @@ msgstr "Die ausgewählte Plattform wird nicht unterstützt."
 msgid "The video and the route do not match."
 msgstr "Video und Route passen nicht zusammen."
 
+msgid "This device lets no app install apps, so ORQWA cannot update itself."
+msgstr "Dieses Gerät lässt keine App Apps installieren, darum kann sich ORQWA nicht selbst aktualisieren."
+
+msgid "If Advanced Protection is on, turn it off in Android's settings."
+msgstr "Ist das erweiterte Sicherheitsprogramm an, schalte es in den Android-Einstellungen aus."
+
+msgid "It is under Security & privacy; then check for updates again."
+msgstr "Du findest es unter Datenschutz & Sicherheit › Erweiterte Sicherheit › Geräteschutz; suche dann erneut nach Updates."
+
 msgid "This course already has a video."
 msgstr "Diese Route hat bereits ein Video."
 
@@ -2161,6 +2170,9 @@ msgstr "ORQWA %s ist verfügbar."
 
 msgid "ORQWA %s is available; you have %s."
 msgstr "ORQWA %s ist verfügbar; du hast %s."
+
+msgid "ORQWA downloads and installs it; then open ORQWA again."
+msgstr "ORQWA lädt sie herunter und installiert sie; öffne ORQWA danach wieder."
 
 msgid "ORQWA downloads it, closes and installs it, then starts again."
 msgstr "ORQWA lädt sie herunter, schliesst sich, installiert sie und startet dann neu."
