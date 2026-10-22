@@ -543,6 +543,9 @@ physically based materials and light, restyled group by group.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)
+  - [x] Natural rocks (R115): asymmetric boulders with weathered fracture planes, a CC0
+    rock scan and shared cliff/boulder shading with broad mineral patches and irregular
+    interrupted joints visible from a distance. Kept worlds update without regeneration.
   - [x] Denser mapped forests (R103): 4 m candidate spacing within 300 m of the road,
     10 m equivalent spacing farther away; wooded slopes keep their trees, clearings and
     other land retain their cover. Generator 2 offers regeneration of kept worlds.

@@ -218,6 +218,12 @@ road and land-use data, with mapped green spaces preserved.
 | R79 | Extends R31 (2026-10-16, #262): the history and the analysis across rides read a **SQLite index** of the rides' metadata in the platform's cache directory (ADR 0002), not the JSON next to every FIT file. The files stay the source of truth: the index knows each metadata file by its size and modification time, reads one again when that changed (a rename, an upload, a rebuild), forgets rides whose files are gone, and is built afresh when missing or from another version. Without a usable index (a cache that cannot be written, a damaged file) the history reads the files as before. |
 | R81 | Extends R21 and R29 (2026-10-16, #187): with an account on a platform that holds the rider's **training plan** (intervals.icu), the Workouts tab lists **the workouts planned for today** on that calendar, read when the tab opens, each chosen with one click and ridden like a library workout. The plan stays the platform's: ORQWA stores nothing of it, plans nothing itself (R21), and a planned ride without steps is not listed. Without internet the section says so and the library stays. |
 
+## Natural rock appearance
+
+| ID | Requirement |
+|---|---|
+| R115 | Refines R89 (2026-10-22): **boulders and cliffs read as natural rock at riding and overview distances**: asymmetric boulders with weathered broken faces, irregular intersecting fractures and broad mineral variation on exposed rock, without repeating masonry courses. Fine grain fades with distance while larger face variation remains legible. Existing kept worlds receive the material and model improvements without regeneration. |
+
 ## MVP definition
 
 Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mode → save a FIT file.
