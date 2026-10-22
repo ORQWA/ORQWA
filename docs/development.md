@@ -298,6 +298,10 @@ troubleshooting. Update it when those tasks change. Pure visual or internal fixe
 wiki edit; implementation details, bug-fix notes and review images belong in repository
 documentation and the PR.
 
+Keep the welcome and naming story on Home, and visual examples in the screenshot gallery.
+Lead guides with the steps a rider needs; explain settings and limitations only as needed
+to make a choice or solve a problem.
+
 Rider guides live in the [GitHub wiki](https://github.com/ORQWA/ORQWA/wiki), checked out as
 the `wiki/` submodule ([ADR 0015](adr/0015-usage-wiki.md)). Clone with
 `git clone --recurse-submodules`, or run `make wiki-init`
