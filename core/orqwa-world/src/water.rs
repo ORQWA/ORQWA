@@ -1,7 +1,5 @@
-//! Water: lakes, ponds and rivers mapped as areas, and streams and rivers mapped as lines, laid
-//! on the ground of each chunk just above it (see `drape`). The terrain model measures the
-//! water's surface where there is water, so laid on the ground lakes lie level, rivers slope
-//! with their course, and neither floats above the land nor sinks below it.
+//! Water footprints clipped to each chunk. Elevations come from shared longitudinal profiles
+//! (`water_levels`), so rivers slope along their course without climbing the banks.
 
 use orqwa_osm::{Area, LandCover, Waterway};
 use orqwa_routes::LocalProjection;
@@ -158,7 +156,7 @@ pub(crate) fn pools(areas: &[Area], projection: &LocalProjection, road: &RoadInd
 }
 
 /// The water within the chunk square `[origin, origin + size]`, relative to `chunk_origin`:
-/// streams and pools laid on the chunk's ground.
+/// streams and pools using the shared water elevations.
 pub(crate) fn mesh(
     streams: &[Stream],
     pools: &[Pool],
@@ -195,8 +193,7 @@ pub(crate) fn mesh(
 }
 
 /// The streams within the chunk square `[origin, origin + size]`, relative to `chunk_origin`,
-/// laid on the chunk's ground (see `drape`): water lies in the land, never floating above it
-/// or sunk below it.
+/// clipped to its triangles, with heights from the shared longitudinal water profiles.
 fn stream_mesh(
     streams: &[Stream],
     origin: (f64, f64),

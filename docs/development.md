@@ -65,6 +65,12 @@ bends and clips footway polygons against the road instead of discarding complete
 The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.
 Bench and vegetation queries use the same clipped footprints as the rendered meshes.
 
+River surfaces (R114, [ADR 0029](adr/0029-river-levels.md)) use generator 8 with the same
+stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
+both water meshes and channel beds use those shared elevations. Keep these profiles
+independent of road shaping. Review a steep valley from the road and above, plus a lake,
+after changing them. Older kept worlds offer **Regenerate world** for the corrected rivers.
+
 ## Refreshing screenshots
 
 Tree rendering uses the original close models plus authored medium/far forms from

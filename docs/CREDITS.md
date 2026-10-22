@@ -53,6 +53,10 @@ tiles: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL
 
 ## Documentation images
 
+The Alpenbrevet river comparison screenshots are ORQWA renders of the project owner's
+prepared course. They use the terrain and OpenStreetMap sources credited above; no new
+third-party artwork is included.
+
 Images that only illustrate the docs and never ship in the app may show third-party footage
 under other licences; each is listed here with its own.
 

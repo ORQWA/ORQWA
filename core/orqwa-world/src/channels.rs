@@ -1,8 +1,8 @@
 //! Channels (#93): water lies a little below the land beside it, in a channel with natural
 //! banks, not on the ground. Along streams and rivers and round lakes the ground is carved: the
 //! water's edge half a metre down, banks sloping out from it, the bed deepening towards the
-//! middle. The water's surface lies at the uncarved ground less that half metre
-//! (`HeightGrid::level`). Where the road ridden, a railway or a street crosses on the ground,
+//! middle. Both surface and bed use the shared water datum (`water_levels`), independent of
+//! valley sides and road shaping. Where the road ridden, a railway or a street crosses on the ground,
 //! the channel stops short of it, as at a culvert; under bridges it runs on.
 
 use std::collections::HashMap;
@@ -18,6 +18,9 @@ pub(crate) const DROP: f64 = 0.5;
 /// ...the ground at the foot of the banks this far, and the banks reach this far out...
 const BANK: f64 = 0.9;
 const BANK_WIDTH: f64 = 2.5;
+/// Tall DEM banks need room to meet the corrected water level without a vertical cut.
+pub(crate) const BANK_REACH: f64 = 40.0;
+const BANK_SLOPE: f64 = 0.8;
 /// ...from this far inside the water's edge, so the ground meets the water at its edge.
 const INSET: f64 = BANK_WIDTH * (1.0 - DROP / BANK);
 /// Towards the middle the bed deepens by this share of the distance, at most `DEEPEST` more.
@@ -26,7 +29,7 @@ const DEEPEST: f64 = 1.0;
 /// Channels stop this far short of the verges of the road ridden and the railways, and of
 /// streets crossing on the ground, rising to the land over `BANK_WIDTH`.
 const CROSSING_MARGIN: f64 = 0.5;
-/// Index cell size; larger than the reach of any channel.
+/// Index cell size.
 const CELL: f64 = 50.0;
 
 /// Where the water is: its edges, with the half width of streams (0 for shores).
@@ -71,7 +74,7 @@ impl Channels {
             }
         }
         let mut cells: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
-        let reach = BANK_WIDTH + 1.0;
+        let reach = BANK_REACH;
         for (index, edge) in edges.iter().enumerate() {
             let low = (
                 edge.a.0.min(edge.b.0) - edge.half - reach,
@@ -110,12 +113,19 @@ impl Channels {
     /// Whether a channel may change the ground within `reach` of (`east`, `north`).
     pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> bool {
         self.signed_distance(east, north, None)
-            .is_some_and(|d| d < BANK_WIDTH - INSET + reach)
+            .is_some_and(|d| d < BANK_REACH + reach)
     }
 
     /// How far the ground at (`east`, `north`) lies below the land because of channels; 0 away
     /// from water. `inside` says whether the point lies in a lake or river mapped as an area.
-    pub(crate) fn depth(&self, east: f64, north: f64, inside: bool, shapers: &Shapers<'_>) -> f64 {
+    pub(crate) fn depth(
+        &self,
+        east: f64,
+        north: f64,
+        inside: bool,
+        above_water: f64,
+        shapers: &Shapers<'_>,
+    ) -> f64 {
         let distance = match self.signed_distance(east, north, Some(inside)) {
             Some(distance) => distance,
             // Deep inside a lake, far from its shores.
@@ -125,10 +135,15 @@ impl Channels {
         let bank = BANK * ((BANK_WIDTH - (distance + INSET)) / BANK_WIDTH).clamp(0.0, 1.0);
         let bed = (DEEPENING * -(distance + INSET)).clamp(0.0, DEEPEST);
         let carve = bank + bed;
-        if carve <= 0.0 {
+        let correction = above_water.max(0.0);
+        let width = (BANK_WIDTH - INSET + correction / BANK_SLOPE).min(BANK_REACH);
+        let blend = (1.0 - distance / width).clamp(0.0, 1.0);
+        if carve <= 0.0 && blend <= 0.0 {
             return 0.0;
         }
-        carve * self.open(east, north, shapers)
+        // Match the bed to the water's own longitudinal datum. Fade this correction out
+        // through the bank so an elevated DEM bank cannot poke through the river surface.
+        (correction * blend + carve) * self.open(east, north, shapers)
     }
 
     /// The distance from (`east`, `north`) to the water's edge, negative in the water, if the
@@ -151,7 +166,7 @@ impl Channels {
 
     /// 1 where a channel may cut the ground, 0 at the road ridden, the railways and streets
     /// crossing on the ground, in between over `BANK_WIDTH`.
-    fn open(&self, east: f64, north: f64, shapers: &Shapers<'_>) -> f64 {
+    pub(crate) fn open(&self, east: f64, north: f64, shapers: &Shapers<'_>) -> f64 {
         let reach = VERGE + CROSSING_MARGIN + BANK_WIDTH;
         let road_gap = shapers
             .near(east, north, reach)

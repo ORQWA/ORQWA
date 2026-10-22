@@ -564,6 +564,10 @@ physically based materials and light, restyled group by group.
   - [x] Light and sky: physically based atmosphere with sunlit clouds (the faceted cloud
     meshes removed), AgX tone mapping, sun and sky light rebalanced, natural palette; dark
     rippled water with reflections (screen-space on High and Ultra); rain as faint streaks
+  - [x] River surfaces (R114, ADR 0029): shared longitudinal water levels independent of
+    valley sides and road embankments, level cross-sections and beds shaped to the same
+    datum, wider transitions on tall banks and rock on exposed channel sides; generator 8
+    offers regeneration for older kept worlds.
   - [x] Riders and bikes: detailed road bikes and cycling kit; realistic bodies (Human Base
     Meshes) skinned to a skeleton, posed on the bike in Blender, the app turning the leg bones
     to the pedals

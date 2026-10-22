@@ -167,8 +167,8 @@ void fragment() {
 	albedo = mix(albedo, dirt * 0.8, bank * 0.6 * (1.0 - bed));
 	normal = normalize(mix(normal, dirt_n, bank * 0.6 * (1.0 - bed)));
 	float steep = 1.0 - smoothstep(rock_slope - 0.03, rock_slope + 0.01, world_normal.y + (rock.r - 0.4) * 0.1);
-	steep *= 1.0 - bed;
-	albedo = mix(albedo, rock, steep);
+	// Exposed channel sides are rock too; triplanar mapping avoids stretched vertical mud.
+	albedo = mix(albedo, rock * mix(1.0, 0.55, bed), steep);
 	normal = normalize(mix(normal, rock_n, steep));
 
 	// Snow above the snow line, thinning out over a hundred metres, gone from steep faces.

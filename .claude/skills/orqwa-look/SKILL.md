@@ -121,6 +121,13 @@ edge. Keep entrances and the inner walking strip clear; review their ground cont
 
 ## Reviewing a render
 
+Rivers (R114, ADR 0029) use shared longitudinal profiles, independent of bank and road
+heights. Check level cross-sections, a submerged bed, continuity across chunks and water
+passing beneath bridges. Review a steep valley from road height and above, plus a lake.
+Tall banks need room to blend out; normals must follow the carved surface so exposed rock
+uses triplanar mapping instead of vertically stretched earth.
+Generator 8 offers regeneration for older kept worlds; stored format 2 is unchanged.
+
 Check, in order: would it pass for a photo at a glance; quality even across the frame (no poor
 surface beside a good one); silhouettes and proportions believable from the road; materials read as what
 they are (plaster, wood, stone, asphalt) at riding distance and do not shimmer far away; texture
