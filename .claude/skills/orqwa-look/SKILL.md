@@ -93,6 +93,12 @@ Blender Python; its header shows how to run it).
 Urban surfaces (R105, ADR 0027) distinguish dense-city paving, commercial/industrial asphalt
 and suburban lawns. Mapped parks and other natural land take precedence. Review sidewalk
 curbs and access openings from road height, plus an overview for garden/park preservation.
+Sidewalk strips must join around bends, slope continuously into lowered entrances and have
+closed sides reaching the drawn terrain; check outer edges, ends and chunk boundaries too.
+Round junctions with the carriageway's own tangent arcs and round outer bends. Narrow,
+beveled curb stones must read separately from the walking surface. Review corner continuity
+from above as well as road height; overlapping roads trim a sidewalk instead of removing
+whole slabs and leaving square gaps. Include Bielersee: Obedüre when its course is available.
 Building paths, forecourts and low walls are inferred; keep their appearance plausible
 without claiming exact mapped property boundaries. Shared concrete/paver textures are baked
 by the art pipeline. Urban material codes are part of the stored world's format contract.
@@ -115,6 +121,13 @@ edge. Keep entrances and the inner walking strip clear; review their ground cont
 
 ## Reviewing a render
 
+Rivers (R118, ADR 0030) use shared longitudinal profiles, independent of bank and road
+heights. Check level cross-sections, a submerged bed, continuity across chunks and water
+passing beneath bridges. Review a steep valley from road height and above, plus a lake.
+Tall banks need room to blend out; normals must follow the carved surface so exposed rock
+uses triplanar mapping instead of vertically stretched earth.
+Generator 8 offers regeneration for older kept worlds; stored format 2 is unchanged.
+
 Check, in order: would it pass for a photo at a glance; quality even across the frame (no poor
 surface beside a good one); silhouettes and proportions believable from the road; materials read as what
 they are (plaster, wood, stone, asphalt) at riding distance and do not shimmer far away; texture
@@ -122,3 +135,9 @@ scale right next to the rider; colours natural and harmonious side by side; no v
 repeats over large areas; light warm, shadows soft, AO in creases; distant terrain in haze;
 frame time within budget. Quick model checks: `--preview DIR` in the art container; the world:
 the `orqwa-render-review` skill.
+
+
+Rock cliffs and boulders (R115) need broad irregular fractures and mineral patches visible
+from the road and the drone. Use the shared `rock.gdshaderinc` field over the CC0 rock scan,
+without masonry rows or closed paving cells. Preserve model names and heights so kept
+worlds receive the appearance changes without rebuilding.

@@ -5,7 +5,8 @@ Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/textures/build.py \
         -- [name …] [--size 1024] [--out screenshots/textures]
 
-Every material is a procedural node tree. To make it tile seamlessly, the plane's UV (u, v)
+Materials are procedural node trees, except rock, converted from the archived CC0 scan
+(rock_scan.py, R115). To make a procedural tile seamless, the plane's UV (u, v)
 is wrapped onto a torus in 4D, (cos 2πu, sin 2πu, cos 2πv, sin 2πv), and every noise and
 Voronoi node samples that 4D point, so the texture has no edges to hide. Outputs, by default
 into app/assets/textures: <name>_albedo.webp (sRGB), <name>_normal.webp (OpenGL tangent space,
@@ -25,6 +26,9 @@ import bpy
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "app", "assets", "textures"))
+sys.path.insert(0, HERE)
+
+from rock_scan import convert as convert_rock  # noqa: E402
 
 
 class Tree:
@@ -191,39 +195,6 @@ class Tree:
 
 # --- materials -------------------------------------------------------------------------------
 # Colours are a starting point: tune them towards the palette as each surface is restyled.
-
-
-def rock(t):
-    # Weathered grey stone: tones in large soft patches over fine grain, faint banding of strata,
-    # lichen in pale and dark specks, and a few sharp cracks — no cells, which read as paving.
-    warp = t.noise(1.2, detail=3, rough=0.5)
-    warped_v = t.math("ADD", t.v, t.math("MULTIPLY", warp.outputs["Fac"], 0.25))
-    strata = t.math("SINE", t.math("MULTIPLY", warped_v, 2 * math.pi * 5))
-    patches = t.noise(2.0, detail=6, rough=0.6, offset=7.0)
-    grain = t.noise(40, detail=10, rough=0.75)
-    bumps = t.noise(6, detail=8, rough=0.65, distortion=0.4, offset=3.0)
-    tone = t.math("ADD", t.math("MULTIPLY", patches.outputs["Fac"], 0.8),
-                  t.math("MULTIPLY", strata, 0.06))
-    col = t.ramp(tone, [(0.3, (0.24, 0.23, 0.22)), (0.5, (0.36, 0.35, 0.33)),
-                        (0.7, (0.47, 0.45, 0.42))])
-    col = t.mix(col, t.ramp(grain.outputs["Fac"], [(0.35, (0.35, 0.35, 0.35)), (0.65, (1, 1, 1))]),
-                0.3, "OVERLAY")
-    lichen = t.noise(18, detail=4, rough=0.6, offset=11.0)
-    pale = t.math("GREATER_THAN", lichen.outputs["Fac"], 0.68)
-    col = t.mix(col, (0.55, 0.56, 0.5), t.math("MULTIPLY", pale, 0.5))
-    dark = t.math("LESS_THAN", lichen.outputs["Fac"], 0.3)
-    col = t.mix(col, (0.12, 0.12, 0.1), t.math("MULTIPLY", dark, 0.35))
-    # Cracks: the edges of large, strongly distorted cells, only where a mask allows.
-    cells = t.voronoi(0.6, feature="DISTANCE_TO_EDGE", rand=1.0)
-    mask = t.noise(1.5, detail=2, rough=0.5, offset=5.0)
-    crack = t.math("MULTIPLY", t.math("LESS_THAN", cells.outputs["Distance"], 0.004),
-                   t.math("GREATER_THAN", mask.outputs["Fac"], 0.55))
-    col = t.mix(col, (0.1, 0.1, 0.1), t.math("MULTIPLY", crack, 0.45))
-    height = t.math("ADD", t.math("MULTIPLY", bumps.outputs["Fac"], 0.8),
-                    t.math("MULTIPLY", grain.outputs["Fac"], 0.15))
-    height = t.math("SUBTRACT", height, t.math("MULTIPLY", crack, 0.3))
-    rough = t.math("ADD", 0.78, t.math("MULTIPLY", grain.outputs["Fac"], 0.18))
-    t.output(col, rough, height, 1.0, 0.04)
 
 
 def grass(t):
@@ -465,7 +436,7 @@ def paving(t):
 
 
 MATERIALS = {
-    "rock": rock, "grass": grass, "dirt": dirt, "sand": sand, "bark": bark, "asphalt": asphalt,
+    "rock": None, "grass": grass, "dirt": dirt, "sand": sand, "bark": bark, "asphalt": asphalt,
     "gravel": gravel, "plaster": plaster, "roof_tiles": roof_tiles, "planks": planks,
     "masonry": masonry, "slate": slate, "concrete": concrete, "paving": paving,
 }
@@ -542,7 +513,10 @@ def main():
     os.makedirs(out, exist_ok=True)
     obj = setup_scene()
     for name in args or list(MATERIALS):
-        bake(obj, name, MATERIALS[name], size, out)
+        if name == "rock":
+            convert_rock(size, out)
+        else:
+            bake(obj, name, MATERIALS[name], size, out)
 
 
 main()

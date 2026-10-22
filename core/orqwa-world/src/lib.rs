@@ -26,6 +26,7 @@ mod structures;
 mod urban;
 mod vegetation;
 mod water;
+mod water_levels;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::num::NonZeroUsize;
@@ -46,7 +47,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 5;
+pub const GENERATOR: u32 = 8;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -135,6 +136,7 @@ struct Ways {
     islands: Vec<roundabouts::Island>,
     /// Where water cuts the ground.
     channels: channels::Channels,
+    water_levels: std::sync::Arc<water_levels::Levels>,
     /// Where paved streets level the ground across them.
     levels: streets::Levels,
 }
@@ -150,12 +152,15 @@ impl Ways {
         let network = railways::network(map, projection, road, model).await;
         let streams = water::streams(&map.waterways, projection, road);
         let pools = water::pools(&map.areas, projection, road);
+        let water_levels =
+            water_levels::Levels::new(&streams, &pools, projection, road, model).await;
         let corners = junctions::corners(&streets, road);
         Self {
             clearance: streets::Clearance::new(&streets, &corners, &network.railways, &pools),
             corners,
             islands: roundabouts::islands(map, projection),
             channels: channels::Channels::new(&streams, &pools, &streets),
+            water_levels,
             levels: streets::Levels::new(&streets),
             streets,
             network,
@@ -277,7 +282,14 @@ pub async fn generate<M: ElevationModel>(
         hills: true,
     };
     let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
-    let urban = urban::Urban::build(buildings.values().flatten(), &ways.streets, &road, &land);
+    let urban = urban::Urban::build(
+        buildings.values().flatten(),
+        &ways.streets,
+        &ways.corners,
+        &ways.clearance,
+        &road,
+        &land,
+    );
     let mut world = whole(&projection, (&shapers, &ways, &below), model).await;
     let mouths = streets::mouths(&ways.streets, &road);
     let places: Vec<(String, (f64, f64))> = map
@@ -463,7 +475,7 @@ impl Corridor<'_> {
             cn,
             elevations,
             self.shapers,
-            (&self.ways.channels, self.land),
+            (&self.ways.channels, self.land, &self.ways.water_levels),
         );
         let origin = [
             heights.origin.0 + CHUNK_SIZE / 2.0,
@@ -530,13 +542,7 @@ impl Corridor<'_> {
             modelled: chunk_buildings.cells.into_values().collect(),
             streets: paved,
             tracks: unpaved,
-            urban: self.urban.mesh(
-                &heights,
-                self.land,
-                &self.ways.clearance,
-                self.shapers.road,
-                origin,
-            ),
+            urban: self.urban.mesh(&heights, origin),
             water: water::mesh(streams, pools, heights.origin, CHUNK_SIZE, &heights, origin),
             trees,
             props,
@@ -628,10 +634,10 @@ pub(crate) struct HeightGrid {
     /// Cells split into `SUB` × `SUB` pieces: the shaped heights of their vertices, row by row
     /// from the south-west.
     fine: HashMap<(usize, usize), Vec<f64>>,
-    /// How far channels cut the ground at each vertex (`channels`), coarse and fine as above;
-    /// the heights include it.
-    carve: Vec<f64>,
-    fine_carve: HashMap<(usize, usize), Vec<f64>>,
+    /// Local downward correction beneath ground crossings (culverts), coarse and fine.
+    water_drop: Vec<f64>,
+    fine_water_drop: HashMap<(usize, usize), Vec<f64>>,
+    water_levels: std::sync::Arc<water_levels::Levels>,
 }
 
 /// What a strip or area is laid on (`drape`): the ground, or the water's surface in its channel.
@@ -685,7 +691,11 @@ impl HeightGrid {
         cn: i32,
         elevations: &[Option<f64>],
         shapers: &Shapers<'_>,
-        water: (&channels::Channels, &LandIndex),
+        water: (
+            &channels::Channels,
+            &LandIndex,
+            &std::sync::Arc<water_levels::Levels>,
+        ),
     ) -> (Self, usize) {
         let side = Self::SIDE;
         let bordered = side + 2;
@@ -700,7 +710,6 @@ impl HeightGrid {
             .map_or(0.0, |(_, elevation, _)| elevation);
 
         let mut natural = vec![0.0; bordered * bordered];
-        let mut carve = vec![0.0; bordered * bordered];
         let mut fallbacks = 0;
         for (k, ((east, north), elevation)) in Self::vertices(cx, cn).zip(elevations).enumerate() {
             let height = elevation.unwrap_or_else(|| {
@@ -711,7 +720,6 @@ impl HeightGrid {
                     .map_or(chunk_road_elevation, |(_, elevation, _)| elevation)
             });
             natural[k] = height;
-            carve[k] = carve_at(water, east, north, shapers);
         }
         let mut grid = Self {
             origin,
@@ -719,13 +727,16 @@ impl HeightGrid {
             heights: vec![0.0; bordered * bordered],
             natural,
             fine: HashMap::new(),
-            carve,
-            fine_carve: HashMap::new(),
+            water_drop: vec![0.0; bordered * bordered],
+            fine_water_drop: HashMap::new(),
+            water_levels: std::sync::Arc::clone(water.2),
         };
         // Streets level the ground across them from the natural ground at their centre lines:
         // all of it is known first.
         for (k, (east, north)) in Self::vertices(cx, cn).enumerate() {
-            grid.heights[k] = grid.shaped_at(east, north, shapers) - grid.carve[k];
+            let shaped = grid.shaped_at(east, north, shapers);
+            grid.heights[k] = shaped - carve_at(water, east, north, shaped, shapers);
+            grid.water_drop[k] = crossing_drop(water, east, north, shaped, shapers);
         }
         let half_diagonal = GRID * std::f64::consts::FRAC_1_SQRT_2;
         for j in 0..side - 1 {
@@ -749,9 +760,9 @@ impl HeightGrid {
                 } else {
                     None
                 };
-                if let Some((fine, cuts)) = detail {
+                if let Some((fine, drops)) = detail {
                     grid.fine.insert((i, j), fine);
-                    grid.fine_carve.insert((i, j), cuts);
+                    grid.fine_water_drop.insert((i, j), drops);
                 }
             }
         }
@@ -891,28 +902,32 @@ impl HeightGrid {
             || low < high_road - ROAD_SINK - room * FILL_SLOPE
     }
 
-    /// The shaped heights of cell (`i`, `j`) split into `SUB` × `SUB` pieces.
-    /// The shaped and carved heights of a cell's fine pieces' vertices, and the carve.
+    /// The shaped bed and culvert corrections at a cell's fine vertices.
     fn detail(
         &self,
         i: usize,
         j: usize,
         shapers: &Shapers<'_>,
-        water: (&channels::Channels, &LandIndex),
+        water: (
+            &channels::Channels,
+            &LandIndex,
+            &std::sync::Arc<water_levels::Levels>,
+        ),
     ) -> (Vec<f64>, Vec<f64>) {
         let mut fine = Vec::with_capacity((SUB + 1) * (SUB + 1));
-        let mut cuts = Vec::with_capacity((SUB + 1) * (SUB + 1));
+        let mut drops = Vec::with_capacity((SUB + 1) * (SUB + 1));
         for b in 0..=SUB {
             for a in 0..=SUB {
                 #[allow(clippy::cast_precision_loss)] // small counts
                 let (u, v) = (a as f64 / SUB as f64, b as f64 / SUB as f64);
                 let (east, north) = self.position(i, j, u, v);
-                let cut = carve_at(water, east, north, shapers);
-                fine.push(self.shaped_at(east, north, shapers) - cut);
-                cuts.push(cut);
+                let shaped = self.shaped_at(east, north, shapers);
+                let cut = carve_at(water, east, north, shaped, shapers);
+                fine.push(shaped - cut);
+                drops.push(crossing_drop(water, east, north, shaped, shapers));
             }
         }
-        (fine, cuts)
+        (fine, drops)
     }
 
     /// Metres east/north of the point (`u`, `v`) (0–1) of cell (`i`, `j`).
@@ -1007,12 +1022,15 @@ impl HeightGrid {
     }
 
     /// The height of what lies `on` the ground at a point: the ground, or the water's surface
-    /// in its channel (the ground without the channel, less the channel's drop).
+    /// in its channel (the shared water datum, less the channel's drop).
     pub(crate) fn level(&self, on: On, east: f64, north: f64) -> f64 {
         match on {
             On::Ground => self.at(east, north),
             On::Water => {
-                self.at(east, north) + self.interpolate(east, north, &self.carve, &self.fine_carve)
+                self.water_levels
+                    .at(east, north)
+                    .unwrap_or_else(|| self.natural_at(east, north))
+                    + self.interpolate(east, north, &self.water_drop, &self.fine_water_drop)
                     - channels::DROP
             }
         }
@@ -1077,10 +1095,26 @@ impl HeightGrid {
         )
     }
 
-    /// The ground's normal at a point, from the shaped surface itself, so it is the same on
-    /// either side of chunk and cell edges.
+    /// Terrain normals include channel carving near water.
     fn normal_at(&self, east: f64, north: f64, shapers: &Shapers<'_>) -> [f32; 3] {
-        let height = |e: f64, n: f64| self.shaped_at(e, n, shapers);
+        // Channels change the bank's slope: lighting and triplanar rock must follow the
+        // carved mesh, rather than treating a newly exposed face as level ground.
+        let channel = self.water_levels.at(east, north).is_some();
+        let border = (east - self.origin.0).abs() < 1e-6
+            || (east - self.origin.0 - CHUNK_SIZE).abs() < 1e-6
+            || (north - self.origin.1).abs() < 1e-6
+            || (north - self.origin.1 - CHUNK_SIZE).abs() < 1e-6;
+        // Both chunks know this same coarse border, while only one knows each fine cell.
+        let plain = HashMap::new();
+        let height = |e: f64, n: f64| {
+            if channel && border {
+                self.interpolate(e, n, &self.heights, &plain)
+            } else if channel {
+                self.at(e, n)
+            } else {
+                self.shaped_at(e, n, shapers)
+            }
+        };
         let step = 1.0;
         let slope_east = (height(east + step, north) - height(east - step, north)) / (2.0 * step);
         let slope_north = (height(east, north + step) - height(east, north - step)) / (2.0 * step);
@@ -1227,18 +1261,41 @@ fn cut_out(portals: &[&structures::Portal], triangle: [[f64; 3]; 3]) -> Option<V
     touched.then_some(pieces)
 }
 
-/// How far channels cut the ground at a point (`channels::Channels::depth`).
-fn carve_at(
-    (channels, land): (&channels::Channels, &LandIndex),
+/// Keep water below a ground crossing even when its road cuts below the natural DEM.
+fn crossing_drop(
+    (channels, _, levels): (
+        &channels::Channels,
+        &LandIndex,
+        &std::sync::Arc<water_levels::Levels>,
+    ),
     east: f64,
     north: f64,
+    ground: f64,
+    shapers: &Shapers<'_>,
+) -> f64 {
+    levels.at(east, north).map_or(0.0, |datum| {
+        (ground - datum).min(0.0) * (1.0 - channels.open(east, north, shapers))
+    })
+}
+
+/// How far channels cut the ground at a point (`channels::Channels::depth`).
+fn carve_at(
+    (channels, land, levels): (
+        &channels::Channels,
+        &LandIndex,
+        &std::sync::Arc<water_levels::Levels>,
+    ),
+    east: f64,
+    north: f64,
+    ground: f64,
     shapers: &Shapers<'_>,
 ) -> f64 {
     let inside = land.cover_at(east, north) == Some(LandCover::Water);
     if !inside && !channels.near(east, north, 0.0) {
         return 0.0;
     }
-    channels.depth(east, north, inside, shapers)
+    let datum = levels.at(east, north).unwrap_or(ground);
+    channels.depth(east, north, inside, ground - datum, shapers)
 }
 
 /// Height at (`u`, `v`) (0–1) of a cell with corner heights south-west, south-east,

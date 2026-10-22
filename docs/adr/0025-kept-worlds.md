@@ -91,3 +91,8 @@ keeps the 3D world of a library course once it is built (R101):
 [Urban surfaces (ADR 0027)](0027-urban-surfaces.md) add a mesh to each chunk and new terrain
 cover codes, raising the stored format to 2 and generator to 5 (including city benches).
 Format-1 worlds rebuild when next ridden; the course-file format is unchanged.
+
+## Amendment — 2026-10-22
+
+[River levels (ADR 0030)](0030-river-levels.md) raise the generator to 8. The stored format
+stays at 2; older kept worlds remain rideable and offer regeneration for the corrected rivers.

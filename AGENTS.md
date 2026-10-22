@@ -3,10 +3,16 @@
 Read and follow [CLAUDE.md](CLAUDE.md) before working. Its architecture, container-only tooling,
 testing and documentation rules apply to every AI agent.
 
-Application usage documentation is maintained in the `wiki/` Git submodule. For every relevant
-feature addition, change or removal, update the affected wiki pages, navigation and screenshots
-in the same session as the code. Keep developer documentation, requirements, roadmap, ADRs and
-credits in the application repository current too.
+Always work in a separate Git worktree and task branch, including an independent wiki checkout.
+Do not implement changes in the user's existing workspace or mix unrelated tasks into a PR.
+
+Application usage documentation is maintained in the `wiki/` Git submodule. Keep it focused on
+usage guides: setup, controls, settings, rider workflows and troubleshooting. Update affected
+guides, navigation and screenshots in the same session when those user tasks change.
+Do not add implementation explanations, visual bug-fix notes, per-PR summaries or scenery
+regeneration notices. Pure visual or internal fixes do not require wiki changes. Keep technical
+details, validation and review images in the application repository and PR instead.
+Keep developer documentation, requirements, roadmap, ADRs and credits current too.
 
 - Run `make wiki-init` before reading/editing the wiki. Preserve all local changes.
 - Create or resume a wiki documentation branch before editing; do not work on a detached HEAD.

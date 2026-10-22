@@ -1393,9 +1393,6 @@ msgstr "Sa"
 msgid "Save"
 msgstr "Speichern"
 
-msgid "Saved %s"
-msgstr "%s gespeichert"
-
 msgid "Saved as %s"
 msgstr "Gespeichert unter %s"
 
@@ -1594,6 +1591,15 @@ msgstr "Die ausgewählte Plattform wird nicht unterstützt."
 msgid "The video and the route do not match."
 msgstr "Video und Route passen nicht zusammen."
 
+msgid "This device lets no app install apps, so ORQWA cannot update itself."
+msgstr "Dieses Gerät lässt keine App Apps installieren, darum kann sich ORQWA nicht selbst aktualisieren."
+
+msgid "If Advanced Protection is on, turn it off in Android's settings."
+msgstr "Ist das erweiterte Sicherheitsprogramm an, schalte es in den Android-Einstellungen aus."
+
+msgid "It is under Security & privacy; then check for updates again."
+msgstr "Du findest es unter Datenschutz & Sicherheit › Erweiterte Sicherheit › Geräteschutz; suche dann erneut nach Updates."
+
 msgid "This course already has a video."
 msgstr "Diese Route hat bereits ein Video."
 
@@ -1743,9 +1749,6 @@ msgstr "Videos mit GPS, Routenvideos (Incyclist .xml, Tacx .rlv)"
 
 msgid "View on %s"
 msgstr "Auf %s ansehen"
-
-msgid "View summary"
-msgstr "Zusammenfassung"
 
 msgid "W/kg"
 msgstr "W/kg"
@@ -2162,6 +2165,9 @@ msgstr "ORQWA %s ist verfügbar."
 msgid "ORQWA %s is available; you have %s."
 msgstr "ORQWA %s ist verfügbar; du hast %s."
 
+msgid "ORQWA downloads and installs it; then open ORQWA again."
+msgstr "ORQWA lädt sie herunter und installiert sie; öffne ORQWA danach wieder."
+
 msgid "ORQWA downloads it, closes and installs it, then starts again."
 msgstr "ORQWA lädt sie herunter, schliesst sich, installiert sie und startet dann neu."
 
@@ -2180,5 +2186,23 @@ msgstr "Jetzt aktualisieren"
 msgid "What's new"
 msgstr "Was ist neu"
 
+msgid "View details"
+msgstr "Details anzeigen"
+
+msgid "Discard ride?"
+msgstr "Fahrt verwerfen?"
+
 msgid "Tree density"
 msgstr "Baumdichte"
+
+msgid "Wind sound"
+msgstr "Windgeräusche"
+
+msgid "Bicycle sound"
+msgstr "Fahrradgeräusche"
+
+msgid "Wind volume; 0 mutes it"
+msgstr "Lautstärke des Windes; 0 schaltet ihn stumm"
+
+msgid "Chain, freewheel and gear shift volume; 0 mutes them"
+msgstr "Lautstärke von Kette, Freilauf und Gangwechseln; 0 schaltet sie stumm"

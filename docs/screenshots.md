@@ -21,6 +21,7 @@ same licence; the footage is used only in documentation.
 
 | Before riding | After riding |
 |---|---|
+| | ![Quick finish summary](images/app/summary-quick.png) |
 | ![Course library](images/app/courses.png) | ![Ride summary](images/app/summary.png) |
 | ![Course detail](images/app/course.png) | ![Ride history](images/app/history.png) |
 | ![Connected devices](images/issues/devices-readings.png) | ![Power curve and profile](images/app/analysis.png) |
@@ -45,7 +46,30 @@ apply from the next ride without regenerating the course.
 | ![City overview](images/views/city-overview.jpg) | ![Forest floor and ferns](images/views/forest-floor.jpg) |
 | ![City bench](images/views/city-benches.jpg) | ![Hairpin overview](images/views/hairpin-drone.jpg) |
 
+![Grounded sidewalk edges and continuous access approaches](images/issues/sidewalks-grounded.jpg)
+
+| Curved corners on Bielersee: Obedüre | Curbs from road height |
+|---|---|
+| ![Rounded sidewalk junction](images/issues/sidewalk-curves-overview.jpg) | ![Beveled curb-stone border](images/issues/sidewalk-curves-road.jpg) |
+
+## Rocks and cliffs
+
+Broad irregular fractures remain visible at overview distance; mineral detail comes from
+a credited CC0 rock scan. Kept worlds receive the appearance without regeneration.
+
+| Cliff overview | Closer rock faces |
+|---|---|
+| ![Fractured cliff](images/issues/rock-cliff-overview.jpg) | ![Rock faces on a wooded slope](images/issues/rock-cliff-close.jpg) |
+
+Repeat with `VIEWS="rock-cliff-overview rock-cliff-close"` in `scripts/render-views.sh`.
+See the [boulder gallery](../art/README.md#vegetation).
+
 ## Standard route views
+
+The [river geometry correction](adr/0030-river-levels.md) is checked against the
+Alpenbrevet Gold course near 104.57 km remaining and farther upstream:
+
+![Alpenbrevet river surface following the valley](images/issues/alpenbrevet-river-after.jpg)
 
 The fixture routes exercise villages, climbs, junctions, bridges, tunnels and weather. Their
 fixed camera positions make it possible to compare future changes. These are the current

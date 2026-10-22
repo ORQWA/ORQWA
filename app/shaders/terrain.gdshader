@@ -8,6 +8,7 @@ shader_type spatial;
 // so the tile does not show.
 
 #include "res://shaders/ground.gdshaderinc"
+#include "res://shaders/rock.gdshaderinc"
 
 uniform sampler2D grass_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D grass_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -91,7 +92,9 @@ vec3 rock_sides(out vec3 colour) {
 	vec3 x_normal = ground_bend(n, ground_unpack(texture(rock_normal, p.zy)), vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0), 1.0);
 	vec3 y_normal = ground_bend(n, ground_unpack(texture(rock_normal, p.xz)), vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), 1.0);
 	vec3 z_normal = ground_bend(n, ground_unpack(texture(rock_normal, p.xy)), vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), 1.0);
-	return normalize(x_normal * blend.x + y_normal * blend.y + z_normal * blend.z);
+	vec3 normal = normalize(x_normal * blend.x + y_normal * blend.y + z_normal * blend.z);
+	rock_weathering(world_position, world_normal, 8.0, colour, normal);
+	return normal;
 }
 
 void fragment() {
@@ -166,9 +169,12 @@ void fragment() {
 	float bank = 1.0 - smoothstep(rock_slope + 0.02, rock_slope + 0.12, world_normal.y + (dirt.r - 0.3) * 0.2);
 	albedo = mix(albedo, dirt * 0.8, bank * 0.6 * (1.0 - bed));
 	normal = normalize(mix(normal, dirt_n, bank * 0.6 * (1.0 - bed)));
-	float steep = 1.0 - smoothstep(rock_slope - 0.03, rock_slope + 0.01, world_normal.y + (rock.r - 0.4) * 0.1);
-	steep *= 1.0 - bed;
-	albedo = mix(albedo, rock, steep);
+	// Exposure breaks through in patches rather than tracing straight terrain cells.
+	vec2 face = vec2(world_position.x + world_position.z * 0.73, world_position.y);
+	float exposure = (ground_noise(face / 5.0) - 0.5) * 0.16;
+	float steep = 1.0 - smoothstep(rock_slope - 0.03, rock_slope + 0.03, world_normal.y + exposure + (rock.r - 0.4) * 0.1);
+	// Exposed channel sides are rock too; triplanar mapping avoids stretched vertical mud.
+	albedo = mix(albedo, rock * mix(1.0, 0.55, bed), steep);
 	normal = normalize(mix(normal, rock_n, steep));
 
 	// Snow above the snow line, thinning out over a hundred metres, gone from steep faces.

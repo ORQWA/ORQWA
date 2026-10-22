@@ -629,6 +629,58 @@ impl OrqwaApp {
         }
     }
 
+    /// Samples per second of the ambient stream (R114).
+    #[func]
+    fn ambient_sound_rate() -> i64 {
+        i64::from(orqwa_app::ambient::RATE)
+    }
+
+    /// Whether the 3D course ride's ambient stream can play now.
+    #[func]
+    fn ambient_sound_active(&self) -> bool {
+        self.app.as_ref().is_some_and(App::ambient_sound_active)
+    }
+
+    /// Fade in after opening a new ambient output queue.
+    #[func]
+    fn restart_ambient_sound(&mut self) {
+        if let Some(app) = self.app.as_mut() {
+            app.restart_ambient_sound();
+        }
+    }
+
+    /// Next stereo ambient frames (x left, y right); empty outside an active 3D ride.
+    #[func]
+    fn ambient_sound(&mut self, frames: i64) -> PackedVector2Array {
+        self.app
+            .as_mut()
+            .map(|app| app.ambient_sound(usize::try_from(frames).unwrap_or(0)))
+            .unwrap_or_default()
+            .into_iter()
+            .map(|[left, right]| Vector2::new(left, right))
+            .collect()
+    }
+
+    /// Wind and bicycle volumes in percent; weather names match the world presets.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot passes strings by value
+    fn set_ambient_sound(&mut self, wind: f64, bike: f64, weather: GString) {
+        use orqwa_app::ambient::{Settings, Weather};
+        let weather = match weather.to_string().as_str() {
+            "Cloudy" => Weather::Cloudy,
+            "Hazy" => Weather::Hazy,
+            "Rain" => Weather::Rain,
+            _ => Weather::Clear,
+        };
+        if let Some(app) = self.app.as_mut() {
+            app.set_ambient_sound(Settings {
+                wind,
+                bike,
+                weather,
+            });
+        }
+    }
+
     /// Opens a course file from the library or elsewhere; emits `route_loaded` like
     /// `load_route`. Its 3D world is built by `build_world`.
     #[func]
@@ -1681,6 +1733,17 @@ impl OrqwaApp {
     #[func]
     fn install_update(&mut self) -> bool {
         self.command(App::install_update)
+    }
+
+    /// The downloaded update's path, "" before one is: on Android, ORQWA's Android plugin
+    /// installs it (ADR 0024).
+    #[func]
+    fn downloaded_update(&self) -> GString {
+        self.app
+            .as_ref()
+            .and_then(App::downloaded_update)
+            .map(|path| GString::from(path.to_string_lossy().as_ref()))
+            .unwrap_or_default()
     }
 
     /// How the phone remote (#228) is set and doing: `{on, port, address ("" while off or

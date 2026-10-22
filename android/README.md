@@ -42,8 +42,11 @@ Everything Android lives here and in a few marked places; to take it out again:
 2. In `scripts/build-ffmpeg.sh`, remove the `android` branch.
 3. In `core/`: delete `orqwa-devices/src/android.rs` and its `mod` line, the
    `cfg(target_os = "android")` `jni` dependency in `orqwa-devices/Cargo.toml`, `jni` in the
-   workspace `Cargo.toml`, and `JNI_OnLoad` at the end of `orqwa-gd/src/lib.rs`.
+   workspace `Cargo.toml`, and `JNI_OnLoad` at the end of `orqwa-gd/src/lib.rs`. In
+   `orqwa-update`, drop the Android installer name and `target_os = "android"` from
+   `can_install`; `downloaded_update` in `orqwa-app` and `orqwa-gd` may stay.
 4. Remove the Docker volume `orqwa-gradle` and the image `orqwa-android`; in CI, the `android`
    job, `android` in the release's `needs`, the APK in `scripts/release/publish.sh` and its
    test, and the two `ANDROID_KEYSTORE` secrets.
-5. Mark ADR 0024 superseded and update `docs/PLAN.md`.
+5. In `app/ui/update_dialog.gd`, remove the `ANDROID` plugin branches.
+6. Mark ADR 0024 superseded and update `docs/PLAN.md`.

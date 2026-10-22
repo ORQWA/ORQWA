@@ -2,6 +2,7 @@
 # Renders ride screenshots with software Vulkan (lavapipe) on a virtual display, so visuals can
 # be checked without a GPU. Runs inside the dev container; images go to screenshots/.
 # SCREENSHOT_SETTINGS_ONLY=1 captures settings without generating a course or sample rides.
+# SCREENSHOT_RIDE_OPTIONS_ONLY=1 stops after course detail and the ride's settings.
 set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -9,7 +10,8 @@ out="${SCREENSHOT_DIR:-$root/screenshots}"
 mkdir -p "$out"
 "$root/scripts/build-gdext.sh" debug >/dev/null
 # Weeks of made-up rides, so the history and the Analysis tab (R61) have something to show.
-if [ "${SCREENSHOT_ERRORS_ONLY:-}" != 1 ] && [ "${SCREENSHOT_SETTINGS_ONLY:-}" != 1 ]; then
+if [ "${SCREENSHOT_ERRORS_ONLY:-}" != 1 ] && [ "${SCREENSHOT_SETTINGS_ONLY:-}" != 1 ] \
+    && [ "${SCREENSHOT_SUMMARY_ONLY:-}" != 1 ]; then
     cargo run -q --manifest-path "$root/core/Cargo.toml" -p orqwa-cli -- sample-rides --weeks 16
 fi
 godot --headless --path "$root/app" --import >/dev/null 2>&1 || true

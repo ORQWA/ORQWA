@@ -189,9 +189,17 @@ Built in rideable steps:
   the ride files and following them, so hundreds of rides cost one read
 - [x] Climbs (auto-detected, categorised) and personal records per route and climb
 - [x] Ghosts & pacers: own best, power / W/kg pacers, recorded GPX/FIT activities (R20)
-- [ ] Audio (R26): music app control ✅, original video sound ✅ (Phase 5); ambient sound
-  dropped for now (synthesised version did not sound right), to return with convincing
-  sounds (#259)
+- [x] Audio (R26, R114): music app control, original video sound (Phase 5), and continuous
+  ambient riding sound (#259, ADR 0029): CC0 wind and bicycle textures, irregular gusts and
+  speed-dependent airflow, chain movement following cadence and effort, a separately
+  recorded coasting freewheel following road speed; independent volume sliders before and
+  during a 3D course ride, paused/finished playback flushed; listening preview available.
+  - [x] Recorded gear changes (R116): one-shot on each accepted virtual shift through
+    keyboard, BLE or remote, sharing bicycle volume; limit/no-change presses stay quiet,
+    rapid shifts overlap with bounded voices and paused requests are never replayed.
+  - [x] Chain transfers and settling (R117): a quiet lever action followed by one of three
+    recorded transfers, following cadence and load and blending into the steady chain;
+    coasting defers the chain until pedaling resumes, and stopping pedals suspends it.
   - [x] Music helpers (#260): macOS compiles only the running player's command, so Apple
     Music works without Spotify installed; Windows sends media-key down/up events through
     `SendInput`. Native CI checks cover missing macOS players and the Windows input ABI.
@@ -317,6 +325,9 @@ Built in rideable steps:
   filter chips in a panel under a Filters button, the chips turned on listed under the toolbar
   (R85)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
+  - [x] Automatic quick summary dialog over the finished ride, shared with Finish & save:
+    essential figures, power PR badges (R62), rename, Done, confirmed discard and View details
+    (R113); no redundant finish flag in the bottom controls.
 - [x] Auto-reconnect last-used devices (R41)
 - [x] Devices that drop come back by themselves, also after a pause: the driver looks the
   device up again (macOS forgets it at once) instead of retrying its stale link; the in-ride
@@ -540,6 +551,9 @@ physically based materials and light, restyled group by group.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)
+  - [x] Natural rocks (R115): asymmetric boulders with weathered fracture planes, a CC0
+    rock scan and shared cliff/boulder shading with broad mineral patches and irregular
+    interrupted joints visible from a distance. Kept worlds update without regeneration.
   - [x] Denser mapped forests (R103): 4 m candidate spacing within 300 m of the road,
     10 m equivalent spacing farther away; wooded slopes keep their trees, clearings and
     other land retain their cover. Generator 2 offers regeneration of kept worlds.
@@ -548,7 +562,12 @@ physically based materials and light, restyled group by group.
     short draw distance; generator 3 offers regeneration of kept worlds.
   - [x] Urban surfaces (R105, ADR 0027): dense-city paving, commercial/industrial asphalt,
     sidewalks and curbs, inferred building paths, forecourts and low garden walls; parks
-    and suburban lawns preserved, grass kept out of paving. Generator 5 / stored format 2.
+    and suburban lawns preserved, grass kept out of paving. Generator 7 / stored format 2.
+  - [x] Grounded sidewalks: shared joins around bends, solid edges down to the terrain,
+    and continuous approaches to lowered building access; no floating slabs or open seams.
+  - [x] Rounded sidewalk corners and kerbs: follow the carriageway's junction arcs, round
+    outer bends, trim intersecting surfaces instead of removing whole slabs, and draw a
+    separate 18 cm curb-stone border with joints and a beveled lip (R105/R112).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs
@@ -556,6 +575,10 @@ physically based materials and light, restyled group by group.
   - [x] Light and sky: physically based atmosphere with sunlit clouds (the faceted cloud
     meshes removed), AgX tone mapping, sun and sky light rebalanced, natural palette; dark
     rippled water with reflections (screen-space on High and Ultra); rain as faint streaks
+  - [x] River surfaces (R118, ADR 0030): shared longitudinal water levels independent of
+    valley sides and road embankments, level cross-sections and beds shaped to the same
+    datum, wider transitions on tall banks and rock on exposed channel sides; generator 8
+    offers regeneration for older kept worlds.
   - [x] Riders and bikes: detailed road bikes and cycling kit; realistic bodies (Human Base
     Meshes) skinned to a skeleton, posed on the bike in Blender, the app turning the leg bones
     to the pedals
@@ -634,11 +657,15 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
     own archive, set up with the app's context): a course imported on the tablet fetched its tiles
   - [x] the overlay (R55) as picture-in-picture: the ride's HUD in a small window over other
     apps, scaled to it, the world not drawn behind it. Music control says it is not supported;
-    the update check offers the release page
+    the update check offers the release page (until E)
   - [x] touch: Godot turns taps into clicks, enough to ride
 - [x] D — a release-signed APK as a release asset (tags only, the key from the repository
   secrets; version code from ORQWA's version), the wiki (installing, permissions, updates,
   picture-in-picture); the internet list is unchanged
+- [x] E — updates installed from ORQWA (R103): the release's APK downloaded by the core and handed
+  to Android's installer by the plugin, without a prompt from Android 12 where Android allows it;
+  tried on the Tab S7 on 2026-10-22. Where Advanced Protection forbids installing apps, the
+  dialog explains how to turn it off
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))

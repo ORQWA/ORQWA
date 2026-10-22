@@ -343,15 +343,15 @@ msgstr ""
 msgid "Available — drag in to add, drop here to remove"
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd
 msgid "Avg cadence"
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd
 msgid "Avg heart rate"
 msgstr ""
 
-#: app/scenes/history_screen.gd core/orqwa-app/src/hud.rs
+#: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd core/orqwa-app/src/hud.rs
 msgid "Avg power"
 msgstr ""
 
@@ -373,6 +373,10 @@ msgstr ""
 
 #: app/scenes/ride_screen.gd
 msgid "Below 60 fps: a lower graphics quality (Settings → Graphics) runs smoother."
+msgstr ""
+
+#: app/ui/ride_options.gd
+msgid "Bicycle sound"
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -437,6 +441,10 @@ msgstr ""
 
 #: app/ui/ui_theme.gd core/orqwa-routes/src/climbs.rs
 msgid "Cat 4"
+msgstr ""
+
+#: app/ui/ride_options.gd
+msgid "Chain, freewheel and gear shift volume; 0 mutes them"
 msgstr ""
 
 #: app/ui/profile_form.gd
@@ -519,7 +527,7 @@ msgstr ""
 msgid "Climbed"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd app/scenes/courses_tab.gd app/scenes/history_screen.gd app/ui/course_card.gd
+#: app/scenes/analysis_tab.gd app/scenes/courses_tab.gd app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd app/ui/course_card.gd
 msgid "Climbing"
 msgstr ""
 
@@ -859,8 +867,12 @@ msgstr ""
 msgid "Devices"
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd
 msgid "Discard ride"
+msgstr ""
+
+#: app/scenes/ride_summary_dialog.gd
+msgid "Discard ride?"
 msgstr ""
 
 #: app/scenes/profile_tab.gd
@@ -871,11 +883,11 @@ msgstr ""
 msgid "Dismiss"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd app/scenes/history_screen.gd core/orqwa-app/src/hud.rs
+#: app/scenes/analysis_tab.gd app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd core/orqwa-app/src/hud.rs
 msgid "Distance"
 msgstr ""
 
-#: app/scenes/button_dialog.gd app/scenes/history_screen.gd app/scenes/remote_dialog.gd app/scenes/ride_settings_dialog.gd app/scenes/settings_dialog.gd
+#: app/scenes/button_dialog.gd app/scenes/history_screen.gd app/scenes/remote_dialog.gd app/scenes/ride_settings_dialog.gd app/scenes/ride_summary_dialog.gd app/scenes/settings_dialog.gd
 msgid "Done"
 msgstr ""
 
@@ -1283,6 +1295,10 @@ msgstr ""
 msgid "How do you want to ride?"
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "If Advanced Protection is on, turn it off in Android's settings."
+msgstr ""
+
 #: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Imperial (mi, lb)"
 msgstr ""
@@ -1313,6 +1329,10 @@ msgstr ""
 
 #: app/ui/workout_editor.gd
 msgid "Intervals"
+msgstr ""
+
+#: app/ui/update_dialog.gd
+msgid "It is under Security & privacy; then check for updates again."
 msgstr ""
 
 #: app/scenes/course_detail.gd
@@ -1716,6 +1736,10 @@ msgid "ORQWA courses"
 msgstr ""
 
 #: app/ui/update_dialog.gd
+msgid "ORQWA downloads and installs it; then open ORQWA again."
+msgstr ""
+
+#: app/ui/update_dialog.gd
 msgid "ORQWA downloads it, closes and installs it, then starts again."
 msgstr ""
 
@@ -2011,7 +2035,7 @@ msgstr ""
 msgid "Remove video"
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd
 msgid "Rename the ride"
 msgstr ""
 
@@ -2047,7 +2071,7 @@ msgstr ""
 msgid "Ride settings"
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd
 msgid "Ride summary"
 msgstr ""
 
@@ -2137,10 +2161,6 @@ msgstr ""
 
 #: app/scenes/course_edit_dialog.gd app/scenes/profile_dialog.gd app/ui/workout_editor.gd
 msgid "Save"
-msgstr ""
-
-#: app/scenes/ride_screen.gd
-msgid "Saved %s"
 msgstr ""
 
 #: app/scenes/history_screen.gd
@@ -2375,7 +2395,7 @@ msgstr ""
 msgid "The period before"
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd
 msgid "The ride and its FIT file are deleted."
 msgstr ""
 
@@ -2431,6 +2451,10 @@ msgstr ""
 msgid "This course needs its video because it has no geographic route."
 msgstr ""
 
+#: app/ui/update_dialog.gd
+msgid "This device lets no app install apps, so ORQWA cannot update itself."
+msgstr ""
+
 #: core/orqwa-app/src/failure.rs
 msgid "This video follows its GPS data and does not need manual synchronization."
 msgstr ""
@@ -2443,7 +2467,7 @@ msgstr ""
 msgid "Thu"
 msgstr ""
 
-#: app/scenes/analysis_tab.gd app/scenes/history_screen.gd core/orqwa-app/src/hud.rs
+#: app/scenes/analysis_tab.gd app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd core/orqwa-app/src/hud.rs
 msgid "Time"
 msgstr ""
 
@@ -2627,16 +2651,16 @@ msgstr ""
 msgid "Videos with GPS, route videos (Incyclist .xml, Tacx .rlv)"
 msgstr ""
 
+#: app/scenes/ride_summary_dialog.gd
+msgid "View details"
+msgstr ""
+
 #: app/ui/graphics_settings.gd
 msgid "View distance"
 msgstr ""
 
 #: app/scenes/history_screen.gd
 msgid "View on %s"
-msgstr ""
-
-#: app/ui/ride_bar.gd
-msgid "View summary"
 msgstr ""
 
 #: core/orqwa-app/src/hud.rs
@@ -2709,6 +2733,14 @@ msgstr ""
 
 #: app/scenes/history_screen.gd
 msgid "Whole route"
+msgstr ""
+
+#: app/ui/ride_options.gd
+msgid "Wind sound"
+msgstr ""
+
+#: app/ui/ride_options.gd
+msgid "Wind volume; 0 mutes it"
 msgstr ""
 
 #: app/scenes/history_screen.gd core/orqwa-app/src/hud.rs
@@ -2891,7 +2923,7 @@ msgstr ""
 msgid "“%s” and all their rides are deleted."
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/ui/power_record_badges.gd
 msgid "★ Best %s: %d W"
 msgstr ""
 

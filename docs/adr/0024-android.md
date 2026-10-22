@@ -1,6 +1,6 @@
 # ADR 0024 — ORQWA on Android tablets
 
-- Status: accepted (phases A–D done; removable as below)
+- Status: accepted (phases A–E done; removable as below)
 - Date: 2026-10-19
 
 ## Context
@@ -151,4 +151,33 @@ volume: a key made with each image would refuse every update after a rebuild.
 - **Release asset.** `ORQWA-android-arm64.apk` is published with the others; the release waits
   for the Android build.
 - **Updates.** The update check offers the release page, as on macOS and Linux; the rider
-  installs the newer APK over the old one.
+  installs the newer APK over the old one. (Replaced by phase E below.)
+
+## Amendment 2026-10-21: phase E, updates from ORQWA (R103)
+
+Riders found installing each APK by hand a chore, and an app store such as Obtainium one app too
+many. So ORQWA installs its updates on Android as on Windows (ADR 0023):
+
+- **Download.** The core picks the release's `ORQWA-<version>-android-arm64.apk` on Android,
+  falling back to `ORQWA-android-arm64.apk` for earlier releases (ADR 0023, #322), and downloads
+  it into the cache (`updates/ORQWA-<version>.apk`), as it does the MSI on Windows.
+- **Install.** The core cannot start Android's installer, so the plugin does: it writes the APK
+  into a `PackageInstaller` session for ORQWA's own package and commits it. From Android 12 the
+  session asks for no prompt (`UPDATE_PACKAGES_WITHOUT_USER_ACTION`), which Android grants an app
+  updating itself; where it asks anyway, its prompt is shown. Android closes ORQWA to update it
+  and does not start it again, so the dialog tells the rider to open ORQWA again.
+- **Permission.** Installing needs `REQUEST_INSTALL_PACKAGES`, which the rider allows once under
+  **Install unknown apps**; the plugin opens that setting and goes on when the rider comes back.
+  A failure, from the session or from Android's answer, shows in the update dialog.
+- **Advanced Protection.** Android 16's Advanced Protection, like a device administrator's
+  policy, forbids every app to install apps (`DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY`) and
+  allows no exception for one app. The plugin asks for that restriction before the download, and
+  the dialog then says to turn Advanced Protection off instead of offering the update.
+- **Tried** on the Tab S7 (Android 16) on 2026-10-22, with a stand-in for GitHub's latest release
+  serving a build signed alike: the update downloaded, the rider allowed installing apps once, and
+  Android installed it without a further prompt and closed ORQWA. With Advanced Protection on,
+  Android refused the setting, which the restriction check now heads off.
+- **Signing.** Android installs an update only when it is signed like the installed app, so only
+  release builds update from releases; a CI or debug build is refused and says so.
+- **Removal.** The two permissions and the plugin's installer go with the plugin; the core's
+  Android installer name and `can_install` go with the other `target_os = "android"` code.

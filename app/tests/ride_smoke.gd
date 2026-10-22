@@ -96,8 +96,10 @@ func _run() -> void:
 	var reconnect: Button = ride_devices.find_children("*", "Button", true, false)[0]
 	_check(reconnect.disabled, "nothing to reconnect with every device connected")
 	ride_devices.free()
+	await _ambient_sound()
 
 	_orqwa.finish_ride()
+	_check(not _orqwa.ambient_sound_active(), "finishing stops ambient sound")
 	_check(_saved_path.ends_with(".fit"), "ride saved: %s" % _saved_path)
 	_check(_failure.is_empty(), "no failure: %s" % _failure)
 	var history: Array = _orqwa.history()
@@ -270,6 +272,7 @@ func _workout() -> void:
 	await create_timer(2.0).timeout
 	var state: Dictionary = _orqwa.ride_state()
 	_check(not state.has("x"), "no place on a route: %s" % state)
+	_check(not _orqwa.ambient_sound_active(), "workouts without a course stay quiet")
 	var info: Dictionary = state.get("workout", {})
 	var target: float = info.get("target_power_w", 0.0)
 	_check(target >= 120.0 and target < 125.0, "starts at the lowest power: %s" % info)
@@ -357,6 +360,45 @@ func _workout() -> void:
 	_check(_orqwa.delete_workout(id), "deleted")
 	_check(not _orqwa.delete_workout("builtin:recovery-30"), "built-ins stay")
 	_failure = ""
+
+
+## R114: real PCM reaches Godot; pause and hidden screens flush the playback queue.
+func _ambient_sound() -> void:
+	_check(_orqwa.ambient_sound_active(), "ambient sound during a 3D ride")
+	_check(OrqwaApp.ambient_sound_rate() == 48000, "ambient sample rate")
+	_orqwa.set_ambient_sound(50.0, 50.0, "Cloudy")
+	var samples: PackedVector2Array = _orqwa.ambient_sound(2400)
+	_check(samples.size() == 2400, "stereo PCM from the live ride")
+	var audible: bool = false
+	for sample: Vector2 in samples:
+		audible = audible or sample.length_squared() > 0.000001
+	_check(audible, "the moving ride is audible")
+	var sound: RideSound = RideSound.new()
+	root.add_child(sound)
+	sound.update(_orqwa, true)
+	_check(sound.playing, "generator starts during the ride")
+	_orqwa.set_paused(true)
+	sound.update(_orqwa, true)
+	_check(not sound.playing, "pause stops and drops queued samples")
+	_check(_orqwa.ambient_sound(2400).is_empty(), "paused core produces no PCM")
+	_orqwa.set_paused(false)
+	sound.update(_orqwa, true)
+	_check(sound.playing, "resume starts a fresh playback queue")
+	sound.update(_orqwa, false)
+	_check(not sound.playing, "hidden ride screen stops sound")
+	sound.free()
+	var options: RideOptions = RideOptions.new()
+	root.add_child(options)
+	options.set_options({"wind_volume": 0.0, "bike_volume": 75.0})
+	var wind_volume: float = options.options()["wind_volume"]
+	var bike_volume: float = options.options()["bike_volume"]
+	_check(wind_volume == 0.0, "wind can be muted independently")
+	_check(bike_volume == 75.0, "bicycle volume survives settings edits")
+	options.show_option_groups(false, true)
+	var wind: HSlider = options.get("_wind_volume")
+	_check(not wind.visible, "ambient controls are hidden on video rides")
+	options.free()
+	await process_frame
 
 
 ## Waits for a signal and returns its arguments, failing after TIMEOUT_S.

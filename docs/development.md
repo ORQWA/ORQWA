@@ -53,11 +53,23 @@ regenerate them; one that kept worlds could no longer be read or drawn with rais
 ride** on, a library course rides the world kept before your change: turn it off while working
 on the generator. Renders and screenshots prepare GPX routes, which always build.
 
-Urban surfaces and benches (R105–R106, [ADR 0027](adr/0027-urban-surfaces.md)) use generator 5
+Urban surfaces and benches (R105–R106, [ADR 0027](adr/0027-urban-surfaces.md)) use generator 7
 and stored world format 2: chunks include an `urban` mesh and its material codes. The format-2
 sample is committed alongside format 1. Cached format-1 worlds rebuild on their next ride; course
 files keep their existing format. Format-2 worlds from generator 4 offer regeneration to
-add the more regular city benches.
+add the more regular city benches. Generator 6 joins sidewalk edges around bends, closes
+their sides down to the drawn terrain and slopes neighbouring pieces into lowered entrances.
+Existing format-2 worlds offer regeneration for the corrected sidewalks; the layout is unchanged.
+Generator 7 shares the carriageway's tangent arcs with the sidewalk at junctions, rounds outer
+bends and clips footway polygons against the road instead of discarding complete sections.
+The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.
+Bench and vegetation queries use the same clipped footprints as the rendered meshes.
+
+River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
+stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
+both water meshes and channel beds use those shared elevations. Keep these profiles
+independent of road shaping. Review a steep valley from the road and above, plus a lake,
+after changing them. Older kept worlds offer **Regenerate world** for the corrected rivers.
 
 ## Refreshing screenshots
 
@@ -84,6 +96,14 @@ the route views pause the rider at fixed positions. The graphics settings in the
 unchanged. Both app and route runners check their capture script compiles before rendering.
 
 Additional UI fixtures use the same real controls without hardware or account credentials:
+
+`SCREENSHOT_SUMMARY_ONLY=1 scripts/screenshots.sh` captures just the quick finish dialog over
+a finished fake-trainer workout as `summary-quick.png`, without rendering a 3D world.
+Use a fresh `XDG_DATA_HOME` to show the workout's first power PR in that capture; this mode
+does not generate sample ride history.
+The normal run also captures its full details as `summary.png`.
+The automatic-finish, manual-finish and discard flows are checked by `summary_smoke.gd`;
+`window_smoke.gd` checks the dialog at 1024 × 640 in English and German.
 
 For a graphics/settings change, capture only the settings with
 `SCREENSHOT_SETTINGS_ONLY=1 scripts/screenshots.sh` in the container; this avoids building
@@ -195,6 +215,13 @@ line (`ORQWA 0.2.1 (0ad9af1)`), as Git reports it while building, or the `ORQWA_
 variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
 the host: a worktree's Git directory lies outside the checkout the container sees.
 
+### Riding audio
+
+The Rust ambient mixer, its CC0 texture sources, regeneration command and a WAV listening
+preview are documented in [the audio README](../core/orqwa-app/audio/README.md) and
+[ADR 0029](adr/0029-ride-audio.md). Run the preview and asset preparation in the devcontainer.
+The live mixer needs no audio downloads or additional dependency.
+
 ### Publishing a release
 
 A tag does not set the version. The About tab, the first log line, the CLI and the User-Agent
@@ -266,6 +293,11 @@ the parts and how to remove Android support again.
 
 ## Usage wiki
 
+Keep the wiki focused on usage guides: setup, controls, settings, rider workflows and
+troubleshooting. Update it when those tasks change. Pure visual or internal fixes need no
+wiki edit; implementation details, bug-fix notes and review images belong in repository
+documentation and the PR.
+
 Rider guides live in the [GitHub wiki](https://github.com/ORQWA/ORQWA/wiki), checked out as
 the `wiki/` submodule ([ADR 0015](adr/0015-usage-wiki.md)). Clone with
 `git clone --recurse-submodules`, or run `make wiki-init`
@@ -280,7 +312,7 @@ and `python3 -m unittest discover -s scripts/wiki -p 'test_*.py'` directly.
 1. Initialize the wiki and create a branch before editing:
    `make wiki-init`, then `git -C wiki switch -c docs/my-change`.
    Resume an existing branch with `git -C wiki switch docs/my-change`.
-2. Update the relevant guides, `Home.md`, `_Sidebar.md` and screenshots. Wiki filenames are
+2. Update affected guides, with navigation and screenshots only where needed. Wiki filenames are
    GitHub page names. Use absolute `https://github.com/ORQWA/ORQWA/wiki/<page>` links, and
    `https://raw.githubusercontent.com/ORQWA/ORQWA/main/docs/images/<file>` for shared images.
    Check wiki references before deleting an image from the application repository.
