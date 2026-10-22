@@ -10,6 +10,7 @@ global uniform float wind_time;
 // their tops.
 
 #include "res://shaders/ground.gdshaderinc"
+#include "res://shaders/rock.gdshaderinc"
 
 uniform int kind = 0;
 uniform sampler2D albedo_texture : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -58,7 +59,9 @@ void fragment() {
 		vec3 bent = ground_bend(n, ground_unpack(texture(normal_texture, p.zy)), vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0), 1.0) * blend.x
 			+ ground_bend(n, ground_unpack(texture(normal_texture, p.xz)), vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), 1.0) * blend.y
 			+ ground_bend(n, ground_unpack(texture(normal_texture, p.xy)), vec3(1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), 1.0) * blend.z;
-		NORMAL = normalize((VIEW_MATRIX * MODEL_MATRIX * vec4(normalize(bent), 0.0)).xyz);
+		bent = normalize(bent);
+		rock_weathering(model_position, n, 0.65, albedo, bent);
+		NORMAL = normalize((VIEW_MATRIX * vec4(MODEL_NORMAL_MATRIX * bent, 0.0)).xyz);
 		albedo *= tint;
 	} else if (kind == 2) {
 		albedo = tint;

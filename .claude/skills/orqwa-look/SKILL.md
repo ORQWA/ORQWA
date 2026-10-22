@@ -122,3 +122,9 @@ scale right next to the rider; colours natural and harmonious side by side; no v
 repeats over large areas; light warm, shadows soft, AO in creases; distant terrain in haze;
 frame time within budget. Quick model checks: `--preview DIR` in the art container; the world:
 the `orqwa-render-review` skill.
+
+
+Rock cliffs and boulders (R112) need broad irregular fractures and mineral patches visible
+from the road and the drone. Use the shared `rock.gdshaderinc` field over the CC0 rock scan,
+without masonry rows or closed paving cells. Preserve model names and heights so kept
+worlds receive the appearance changes without rebuilding.

@@ -45,6 +45,18 @@ apply from the next ride without regenerating the course.
 | ![City overview](images/views/city-overview.jpg) | ![Forest floor and ferns](images/views/forest-floor.jpg) |
 | ![City bench](images/views/city-benches.jpg) | ![Hairpin overview](images/views/hairpin-drone.jpg) |
 
+## Rocks and cliffs
+
+Broad irregular fractures remain visible at overview distance; mineral detail comes from
+a credited CC0 rock scan. Kept worlds receive the appearance without regeneration.
+
+| Cliff overview | Closer rock faces |
+|---|---|
+| ![Fractured cliff](images/issues/rock-cliff-overview.jpg) | ![Rock faces on a wooded slope](images/issues/rock-cliff-close.jpg) |
+
+Repeat with `VIEWS="rock-cliff-overview rock-cliff-close"` in `scripts/render-views.sh`.
+See the [boulder gallery](../art/README.md#vegetation).
+
 ## Standard route views
 
 The fixture routes exercise villages, climbs, junctions, bridges, tunnels and weather. Their

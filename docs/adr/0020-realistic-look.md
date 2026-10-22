@@ -153,3 +153,23 @@ over 24 m patches choose ferns within the existing undergrowth budget, under map
 within 60 m of the route. Small-plant draw distance limits their rendering cost. Generator 3
 offers regeneration; existing model names and instance buffers stay compatible with kept
 worlds, so the stored format remains 1.
+
+
+### Natural rocks (2026-10-22, R112)
+
+Cliffs and boulders share a non-repeating field of irregular interrupted fractures and broad
+mineral variation. Derivative normals add relief at the scale of broken faces. Poly Haven's
+CC0 **Rock Boulder Dry** supplies mineral mottling, fissures and grain; a comparison on the
+same boulders under identical lighting favoured its eroded faces over procedural noise.
+Untouched 1K diffuse and OpenGL normal originals are archived in
+`art/sources/rock-boulder-dry/`, credited in `docs/CREDITS.md`, and converted offline by
+`art/textures/rock_scan.py`. The app fetches nothing for them.
+
+The material avoids periodic strata and paving cells; irregular exposure patches break up
+grass-to-rock edges. Boulders retain their model names, triangle counts and height contract.
+Terrain positions, placement and buffers are unchanged, so kept worlds receive the look
+without a generator or stored-format increment.
+
+The same wooded cliff face in Bern: [before](../images/issues/rock-cliff-before.jpg),
+[after](../images/issues/rock-cliff-close.jpg) and
+[overview](../images/issues/rock-cliff-overview.jpg).

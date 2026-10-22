@@ -43,13 +43,22 @@ smooth shading, real proportions, physically based materials and light. Every gr
 left the faceted look of ADR 0011; riders are smooth but still stylized figures (`docs/PLAN.md`,
 Phase 9).
 
+Rock surfaces (R112) combine the CC0 Poly Haven **Rock Boulder Dry** scan with metre-scale
+weathering in `app/shaders/rock.gdshaderinc`, shared by cliffs and boulders. Larger fractured
+faces remain visible after grain is mipmapped away; joints are irregular and interrupted,
+without masonry rows or paving cells. Weathering scales are 8 m on cliffs and 0.65 m on
+boulders. Relief changes shading, preserving terrain contact; exposure patches break up the
+grass-to-rock transition.
+
 ## Textures (`textures/`)
 
 `build.py` bakes tileable PBR textures (albedo, normal, roughness; WebP, normal maps lossless)
 from procedural Blender materials into `app/assets/textures/`: for the ground and roads `grass`,
 `dirt`, `gravel`, `rock` and `asphalt` (`sand` too, unused so far), for trees `bark`, for
 buildings `plaster`, `roof_tiles`, `slate`, `planks` and `masonry`. Only the maps the app reads
-are committed (most materials need no roughness map). Pass names after `--` for some, `--size`
+are committed (most materials need no roughness map). Rock is converted by `rock_scan.py`
+from the untouched 1K CC0 originals in `sources/rock-boulder-dry/`, with source and credits
+recorded there and in [Credits](../docs/CREDITS.md). `build.py -- rock` runs that conversion. Pass names after `--` for some, `--size`
 for another resolution (1024 by default) and `--out` to bake elsewhere, such as
 `screenshots/textures` while trying things out.
 
@@ -126,7 +135,7 @@ Every building is in the [gallery](#buildings).
 `build.py` holds the catalogue and the kinds in one file: `conifer` (a spruce: a trunk under
 whorls of needle sprays drooping out, long at the bottom and short at the top, and a spire),
 `broadleaf` (a trunk forking into limbs that reach into crowns of leaf clusters), `bush` (clumps
-of leaf clusters) and `rock` (subdivided balls pushed in and out and broken along a few planes,
+of leaf clusters) and `rock` (asymmetric masses cut along seven weathered fracture planes,
 shaded smooth); for the subtropics (#136) `palm` (coconut palms with a curving trunk under
 drooping fronds and a few coconuts, and a fan palm), `banana` (a stem under big paddle leaves)
 and `tropical_bush` (leaf clusters with long leaves fanning out). Crowns are foliage cards:

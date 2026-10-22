@@ -77,6 +77,10 @@ prints its figures, and `cargo test -p orqwa-app -- --ignored reference_route` c
 against the cached tiles. Map and terrain tiles are cached in the container's volumes after
 the first run.
 
+For rock changes (R112), render `rock-cliff-overview` and `rock-cliff-close` (the cameras
+find a broad steep face on the Bern fixture), plus `rock_block` and `rock_pair` in the model
+gallery. Grain alone is insufficient at distance. Refresh the linked wiki images too.
+
 ## Pitfalls
 
 For a complete documentation refresh, follow

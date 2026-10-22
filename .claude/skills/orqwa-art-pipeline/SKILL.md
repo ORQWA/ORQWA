@@ -69,7 +69,11 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
 - Where a recipe does not look real, a CC0 scan may replace it (ADR 0020): keep the original
   under `art/sources/<name>/` with `SOURCE.md`, convert it to the same names and formats in a
   script, and credit it in `docs/CREDITS.md`.
-- The `rock` recipe looks like paving; it is redone with the vegetation.
+- `build.py -- rock` converts the archived CC0 Poly Haven **Rock Boulder Dry** scan using
+  `rock_scan.py`, preserving sRGB albedo and lossless OpenGL normals. Originals and credits
+  are under `art/sources/rock-boulder-dry/`. It replaced procedural noise after comparison
+  on identical boulders in the same light. `rock.gdshaderinc` adds broad fractures at an 8 m
+  scale for cliffs and 0.65 m for boulders. Review close and overview distances (R112).
 
 ## bpy pitfalls
 
