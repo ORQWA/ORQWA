@@ -3,6 +3,7 @@
 //! frame; all asynchronous work runs on an internal runtime, so callers never block or await.
 
 pub mod about;
+pub mod ambient;
 pub mod analysis;
 pub mod failure;
 use failure::{Failure, Kind};
@@ -497,7 +498,7 @@ fn drive_shift_input(
 ) {
     for shift in input.poll() {
         if let Some(active) = ride {
-            active.ride.shift(shift);
+            active.shift(shift);
         }
     }
     // Taken either way, so that presses between rides do not act in the next one.
@@ -542,6 +543,8 @@ struct ActiveRide {
     player: Option<video::VideoPlayer>,
     /// And its sound (R26), if it has any.
     sound: Option<video::SoundPlayer>,
+    ambient: ambient::Sound,
+    ambient_settings: ambient::Settings,
     /// Whether the video shows: a ride along a blank screen must say why.
     video_watch: VideoWatch,
     /// Ride time per real time, with the fake trainer (#53).
@@ -550,6 +553,24 @@ struct ActiveRide {
     paused: bool,
     /// Sped up or jumped: its times are not real, so it counts towards no records.
     simulated: bool,
+}
+
+impl ActiveRide {
+    fn shift(&mut self, shift: Shift) {
+        let before = self.ride.state().gear;
+        self.ride.shift(shift);
+        let after = self.ride.state().gear;
+        if before.map(|gear| gear.number) != after.map(|gear| gear.number)
+            && self.started.is_some()
+            && !self.paused
+            && !self.finished
+            && self.player.is_none()
+            && self.ride.route().is_some()
+            && self.ambient_settings.bike > 0.0
+        {
+            self.ambient.shift();
+        }
+    }
 }
 
 /// The name the rider gave the course being imported.
@@ -1319,6 +1340,50 @@ impl App {
         if let Some(sound) = self.ride.as_ref().and_then(|a| a.sound.as_ref()) {
             sound.set_on(on);
         }
+    }
+
+    /// Change wind and bicycle volume and weather for this ride (R114).
+    pub fn set_ambient_sound(&mut self, settings: ambient::Settings) {
+        if let Some(active) = self.ride.as_mut() {
+            active.ambient_settings = settings;
+        }
+    }
+
+    /// Fade in a newly opened output queue, including when resuming a paused ride.
+    pub fn restart_ambient_sound(&mut self) {
+        if let Some(active) = self.ride.as_mut() {
+            active.ambient.restart();
+        }
+    }
+
+    /// Whether ambient playback may run: only an active, unpaused 3D course ride.
+    #[must_use]
+    pub fn ambient_sound_active(&self) -> bool {
+        self.view != View::Video
+            && self.ride.as_ref().is_some_and(|a| {
+                !a.paused && !a.finished && a.started.is_some() && a.ride.state().position.is_some()
+            })
+    }
+
+    /// Next stereo frames at [`ambient::RATE`]; empty when ambient playback is inactive.
+    /// Pulling is bounded to a quarter second to keep accidental requests cheap.
+    pub fn ambient_sound(&mut self, frames: usize) -> Vec<[f32; 2]> {
+        if !self.ambient_sound_active() {
+            return Vec::new();
+        }
+        let Some(active) = self.ride.as_mut() else {
+            return Vec::new();
+        };
+        let state = active.ride.state();
+        active.ambient.render(
+            frames.min(ambient::RATE as usize / 4),
+            ambient::Motion {
+                speed: state.speed,
+                cadence: state.telemetry.cadence,
+                power: state.telemetry.power,
+            },
+            active.ambient_settings,
+        )
     }
 
     /// Saves the loaded route with everything needed to ride it offline as a course in the
@@ -2807,6 +2872,12 @@ impl App {
             ghost,
             player,
             sound,
+            ambient: ambient::Sound::new(
+                SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map_or(259, |d| d.as_secs() ^ u64::from(d.subsec_nanos())),
+            ),
+            ambient_settings: ambient::Settings::default(),
             video_watch: VideoWatch {
                 since: std::time::Instant::now(),
                 frames: 0,
@@ -4330,10 +4401,14 @@ mod tests {
         };
         let before = ride(&mut app, 60);
         assert!(before.distance.0 > 1.0, "{before:?}");
+        assert!(app.ambient_sound_active());
+        assert_eq!(app.ambient_sound(2_400).len(), 2_400);
 
         // Paused, nothing moves and the clock stands...
         assert!(app.set_paused(true));
         assert!(app.is_paused());
+        assert!(!app.ambient_sound_active());
+        assert_eq!(app.ambient_sound(2_400), [] as [[f32; 2]; 0]);
         let paused = ride(&mut app, 30);
         assert_eq!(paused.distance, before.distance);
         assert_eq!(paused.elapsed, before.elapsed);
@@ -4343,6 +4418,10 @@ mod tests {
         let after = ride(&mut app, 30);
         assert!(after.distance.0 > paused.distance.0, "{after:?}");
         assert!(after.elapsed > paused.elapsed);
+        assert_eq!(app.ambient_sound(2_400).len(), 2_400);
+        app.finish_ride();
+        assert!(!app.ambient_sound_active());
+        assert_eq!(app.ambient_sound(2_400), [] as [[f32; 2]; 0]);
         app.shutdown();
     }
 
@@ -4634,6 +4713,105 @@ mod tests {
         app.update(Duration::from_millis(16));
 
         assert_eq!(app.ride_state().unwrap().gear.unwrap().number, before + 1);
+        app.shutdown();
+    }
+
+    #[test]
+    fn only_successful_live_virtual_shifts_make_a_sound() {
+        let dir = temp_dir("shift-sound");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        let mut profile = app.profile().profile.clone();
+        profile.drivetrain = Drivetrain::SingleCog {
+            chainring: 50,
+            cog: 14,
+        };
+        let id = app.profile().id.clone();
+        app.save_profile(Some(&id), profile.clone()).unwrap();
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::RouteLoaded(_)));
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(200.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+        run_until(&mut app, |e| matches!(e, AppEvent::Connected(_)));
+        app.start_ride(Percent(50.0), DescentMode::Coast, &GhostChoice::None)
+            .unwrap();
+
+        // Compare with the same soundscape without a shift, keeping natural noise out of
+        // the assertion. Drive the shared input path so keyboard, BLE and phone all count.
+        let hear = |app: &mut App, shifts: &[Shift]| {
+            app.ride.as_mut().unwrap().ambient = ambient::Sound::new(259);
+            for &shift in shifts {
+                app.shift(shift);
+            }
+            app.update(Duration::ZERO);
+            let active = app.ride.as_mut().unwrap();
+            let state = active.ride.state();
+            let motion = ambient::Motion {
+                speed: state.speed,
+                cadence: state.telemetry.cadence,
+                power: state.telemetry.power,
+            };
+            let heard = active
+                .ambient
+                .render(12_000, motion, active.ambient_settings);
+            let plain = ambient::Sound::new(259).render(12_000, motion, active.ambient_settings);
+            heard != plain
+        };
+        assert!(!hear(&mut app, &[]), "starting a ride is silent");
+        assert!(
+            hear(&mut app, &[Shift::Up]),
+            "an accepted harder gear clicks"
+        );
+        assert!(
+            hear(&mut app, &[Shift::Down]),
+            "an accepted easier gear clicks"
+        );
+        assert!(
+            hear(&mut app, &[Shift::Up, Shift::Down]),
+            "two changes in one poll are not lost"
+        );
+        assert!(hear(&mut app, &[Shift::To(1)]));
+        assert!(
+            !hear(&mut app, &[Shift::Down]),
+            "the easiest gear cannot shift down"
+        );
+        assert!(
+            !hear(&mut app, &[Shift::To(1)]),
+            "selecting the current gear is silent"
+        );
+        assert!(hear(&mut app, &[Shift::To(24)]));
+        assert!(
+            !hear(&mut app, &[Shift::Up]),
+            "the hardest gear cannot shift up"
+        );
+        app.set_paused(true);
+        assert!(
+            !hear(&mut app, &[Shift::Down]),
+            "paused shifts must not be queued"
+        );
+        app.set_paused(false);
+        assert!(
+            !hear(&mut app, &[]),
+            "resume does not replay paused requests"
+        );
+        app.set_ambient_sound(ambient::Settings {
+            bike: 0.0,
+            ..ambient::Settings::default()
+        });
+        assert!(
+            !hear(&mut app, &[Shift::Down]),
+            "muting bicycle sound includes shifts"
+        );
+        app.set_ambient_sound(ambient::Settings::default());
+        profile.drivetrain = Drivetrain::Cassette;
+        app.save_profile(Some(&id), profile).unwrap();
+        assert!(
+            !hear(&mut app, &[Shift::Up]),
+            "cassette button presses do not invent a shift"
+        );
         app.shutdown();
     }
 
@@ -5796,6 +5974,8 @@ mod tests {
         app.ride_along_video(true);
         start(&mut app);
         assert!(app.riding_along_video());
+        assert!(!app.ambient_sound_active());
+        assert_eq!(app.ambient_sound(2_400), [] as [[f32; 2]; 0]);
         app.abort_ride();
 
         // Without its video, a course is ridden in 3D only.

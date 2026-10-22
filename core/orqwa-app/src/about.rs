@@ -151,6 +151,15 @@ fn assets() -> String {
         text.push('\n');
     }
     text.push_str(
+        "\nRide audio textures (CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/):\n\
+         Wind and Leaves.wav by ecfike (https://freesound.org/people/ecfike/sounds/183496/);\n\
+         bicycle forward movement by dawidwmika (https://freesound.org/people/dawidwmika/sounds/380288/);\n\
+         bike-wheel-free-looped.flac by yurkobb (https://freesound.org/people/yurkobb/sounds/274481/);\n\
+         bike_gear_shift.wav by ChemiCatz (https://freesound.org/people/ChemiCatz/sounds/267910/);\n\
+         changingGears.wav by stib (https://freesound.org/people/stib/sounds/494322/).\n\
+         Excerpts mixed to mono, filtered, resampled and level adjusted by ORQWA.\n",
+    );
+    text.push_str(
         "\nCountry codes (ISO 3166-1): from Debian's iso-codes \
          (https://salsa.debian.org/iso-codes-team/iso-codes), under the GNU Lesser General \
          Public License, version 2.1 or later (the text is with FFmpeg's notice).\n",

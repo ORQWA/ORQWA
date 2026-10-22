@@ -41,6 +41,7 @@ var _settings_dialog: RideSettingsDialog = RideSettingsDialog.new()
 var _settings_for_pause: bool = false
 ## The ride options in effect (`RideOptions.options()`).
 var _options: Dictionary = {}
+var _sound: RideSound = RideSound.new()
 var _imperial: bool = false
 var _climb_panel: PanelContainer = PanelContainer.new()
 var _climb_title: Label = UiTheme.caption("")
@@ -102,6 +103,7 @@ func bind(orqwa: OrqwaApp, world: RideWorld) -> void:
 ## Prepares the screen for a new ride on the loaded route with `options` in effect.
 func begin(options: Dictionary) -> void:
 	_options = options
+	_apply_sound_options(options)
 	_finished = false
 	_saved = false
 	_gear = 0
@@ -154,6 +156,7 @@ func begin(options: Dictionary) -> void:
 
 
 func _ready() -> void:
+	add_child(_sound)
 	# The map panel clips the map to its rounded shape; it must be opaque, as the clip mask
 	# also takes its transparency.
 	var map_panel: Panel = _minimap.get_parent() as Panel
@@ -242,6 +245,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if _orqwa != null:
+		_sound.update(_orqwa, visible and not _finished)
 	if _toast_left > 0.0:
 		_toast_left -= delta
 		if _toast_left <= 0.0:
@@ -353,6 +358,14 @@ func _on_options_changed(options: Dictionary) -> void:
 	_orqwa.adjust_ride(difficulty, flat_descents)
 	var video_sound: bool = options.get("video_sound", true)
 	_orqwa.set_video_sound(video_sound)
+	_apply_sound_options(options)
+
+
+func _apply_sound_options(options: Dictionary) -> void:
+	var wind: float = options.get("wind_volume", 50.0)
+	var bike: float = options.get("bike_volume", 50.0)
+	var weather: String = options.get("weather", "Clear")
+	_orqwa.set_ambient_sound(wind, bike, weather)
 
 
 ## A changed workout reaches the trainer at once; the ride keeps the name it started with.

@@ -209,6 +209,13 @@ line (`ORQWA 0.2.1 (0ad9af1)`), as Git reports it while building, or the `ORQWA_
 variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
 the host: a worktree's Git directory lies outside the checkout the container sees.
 
+### Riding audio
+
+The Rust ambient mixer, its CC0 texture sources, regeneration command and a WAV listening
+preview are documented in [the audio README](../core/orqwa-app/audio/README.md) and
+[ADR 0029](adr/0029-ride-audio.md). Run the preview and asset preparation in the devcontainer.
+The live mixer needs no audio downloads or additional dependency.
+
 ### Publishing a release
 
 A tag does not set the version. The About tab, the first log line, the CLI and the User-Agent
