@@ -317,6 +317,9 @@ Built in rideable steps:
   filter chips in a panel under a Filters button, the chips turned on listed under the toolbar
   (R85)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
+  - [x] Automatic quick summary dialog over the finished ride, shared with Finish & save:
+    essential figures, power PR badges (R62), rename, Done, confirmed discard and View details
+    (R113); no redundant finish flag in the bottom controls.
 - [x] Auto-reconnect last-used devices (R41)
 - [x] Devices that drop come back by themselves, also after a pause: the driver looks the
   device up again (macOS forgets it at once) instead of retrying its stale link; the in-ride
