@@ -102,6 +102,9 @@ The [usage wiki](https://github.com/ORQWA/ORQWA/wiki) covers riding and every fe
 with [Getting started](https://github.com/ORQWA/ORQWA/wiki/Getting-started); testers can ride a
 trainer without the app with the [command-line tool](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool).
 
+[Syncing between devices](https://github.com/ORQWA/ORQWA/wiki/Syncing-between-devices) explains
+how to share ride history, courses and rider settings through a file-sync client such as Nextcloud.
+
 ## Download
 
 Tagged builds for macOS (Apple silicon), Windows and Linux are published on the

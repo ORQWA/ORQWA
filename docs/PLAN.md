@@ -72,7 +72,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   `courses/*.tqc` shared by all riders. The SQLite index of ADR 0002 (`history.sqlite` in the
   cache directory, R79) spares the history and the analysis reading every JSON summary; the
   files stay the truth and the index follows them. Config TOML, data JSON
-  ([ADR 0004](adr/0004-config-formats.md)).
+  ([ADR 0004](adr/0004-config-formats.md)). See the rider guide to
+  [syncing between devices](https://github.com/ORQWA/ORQWA/wiki/Syncing-between-devices),
+  including direct Nextcloud folder sync; computer settings and caches stay local.
 - **Course files** (`.tqc`, [ADR 0007](adr/0007-course-files.md)): manifest, GPX, the
   terrain and map tiles used and a picture of its map, so a course is rebuilt offline
   anywhere; video courses refer to their video instead of embedding it.
