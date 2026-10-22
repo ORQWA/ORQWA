@@ -31,10 +31,8 @@ same licence; the footage is used only in documentation.
 
 ## Cities and woodland
 
-Graphics quality controls the forest's density and distance; automatic tree LODs retain
-nearby detail and use simpler distant canopies and shadows. These matching views show
-the lowest and highest presets. [Tree settings](https://github.com/ORQWA/ORQWA/wiki/Settings#trees-and-forests)
-apply from the next ride without regenerating the course.
+The same woodland view on Low and Ultra graphics.
+Change quality in [Settings](https://github.com/ORQWA/ORQWA/wiki/Settings#graphics-and-full-screen).
 
 | Low | Ultra |
 |---|---|
@@ -53,9 +51,6 @@ apply from the next ride without regenerating the course.
 | ![Rounded sidewalk junction](images/issues/sidewalk-curves-overview.jpg) | ![Beveled curb-stone border](images/issues/sidewalk-curves-road.jpg) |
 
 ## Rocks and cliffs
-
-Broad irregular fractures remain visible at overview distance; mineral detail comes from
-a credited CC0 rock scan. Kept worlds receive the appearance without regeneration.
 
 | Cliff overview | Closer rock faces |
 |---|---|

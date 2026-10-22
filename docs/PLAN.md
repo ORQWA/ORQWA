@@ -679,6 +679,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   cycling-orca illustration, sidebar navigation and a link from the README
 - [x] Refresh the app, video-course, route, model and rider screenshots after the city and
   woodland changes; a screenshot gallery linked from the README and wiki navigation
+- [x] Shorten the usage wiki around setup and rider tasks; remove scenery and implementation
+  descriptions, keeping the naming story and screenshot gallery
 - [ ] Drop the release asset `Torqa-windows-x86_64.msi` (`scripts/release/publish.sh`) once
   riders have moved past Torqa 0.5.0
 
