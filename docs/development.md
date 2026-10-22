@@ -53,13 +53,17 @@ regenerate them; one that kept worlds could no longer be read or drawn with rais
 ride** on, a library course rides the world kept before your change: turn it off while working
 on the generator. Renders and screenshots prepare GPX routes, which always build.
 
-Urban surfaces and benches (R105–R106, [ADR 0027](adr/0027-urban-surfaces.md)) use generator 6
+Urban surfaces and benches (R105–R106, [ADR 0027](adr/0027-urban-surfaces.md)) use generator 7
 and stored world format 2: chunks include an `urban` mesh and its material codes. The format-2
 sample is committed alongside format 1. Cached format-1 worlds rebuild on their next ride; course
 files keep their existing format. Format-2 worlds from generator 4 offer regeneration to
 add the more regular city benches. Generator 6 joins sidewalk edges around bends, closes
 their sides down to the drawn terrain and slopes neighbouring pieces into lowered entrances.
 Existing format-2 worlds offer regeneration for the corrected sidewalks; the layout is unchanged.
+Generator 7 shares the carriageway's tangent arcs with the sidewalk at junctions, rounds outer
+bends and clips footway polygons against the road instead of discarding complete sections.
+The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.
+Bench and vegetation queries use the same clipped footprints as the rendered meshes.
 
 ## Refreshing screenshots
 

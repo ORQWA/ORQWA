@@ -380,6 +380,7 @@ type StreetCells = std::collections::HashMap<(i64, i64), Vec<(f64, f64, f64)>>;
 /// Where the map's streets, railways and shores are, to keep trees and grass off them.
 pub(crate) struct Clearance {
     cells: StreetCells,
+    corners: StreetCells,
 }
 
 /// Index cell size; larger than half the widest street plus the margins used.
@@ -393,9 +394,10 @@ impl Clearance {
         pools: &[Pool],
     ) -> Self {
         let mut cells = StreetCells::new();
+        let mut corner_cells = StreetCells::new();
         // Kerbs' outlines and apexes: the corners are filled between them and the streets.
         for (e, n) in corners.iter().flat_map(Corner::outline) {
-            cells
+            corner_cells
                 .entry(clearance_cell(e, n))
                 .or_default()
                 .push((e, n, 0.5));
@@ -413,7 +415,10 @@ impl Clearance {
                     .push((e, n, half));
             }
         }
-        Self { cells }
+        Self {
+            cells,
+            corners: corner_cells,
+        }
     }
 
     /// Like [`Clearance::blocked`], counting only the points `counts` accepts (e.g. not those
@@ -425,10 +430,33 @@ impl Clearance {
         margin: f64,
         counts: impl Fn(f64, f64) -> bool,
     ) -> bool {
+        Self::blocked_in(&self.cells, east, north, margin, &counts)
+            || Self::blocked_in(&self.corners, east, north, margin, &counts)
+    }
+
+    /// Street/rail/shore clearance without padded junction corners: footways use
+    /// the junction's exact curved outline instead of its vegetation exclusion.
+    pub(crate) fn blocked_urban_by(
+        &self,
+        east: f64,
+        north: f64,
+        margin: f64,
+        counts: impl Fn(f64, f64) -> bool,
+    ) -> bool {
+        Self::blocked_in(&self.cells, east, north, margin, &counts)
+    }
+
+    fn blocked_in(
+        cells: &StreetCells,
+        east: f64,
+        north: f64,
+        margin: f64,
+        counts: &impl Fn(f64, f64) -> bool,
+    ) -> bool {
         let (ce, cn) = clearance_cell(east, north);
         (ce - 1..=ce + 1).any(|x| {
             (cn - 1..=cn + 1).any(|y| {
-                self.cells.get(&(x, y)).is_some_and(|points| {
+                cells.get(&(x, y)).is_some_and(|points| {
                     points.iter().any(|&(e, n, half)| {
                         (e - east).hypot(n - north) < half + margin + STEP_M / 2.0 && counts(e, n)
                     })
@@ -439,19 +467,7 @@ impl Clearance {
 
     /// Whether `(east, north)` lies on a street or within `margin` of its edge.
     pub(crate) fn blocked(&self, east: f64, north: f64, margin: f64) -> bool {
-        let (ce, cn) = clearance_cell(east, north);
-        (ce - 1..=ce + 1).any(|x| {
-            (cn - 1..=cn + 1).any(|y| {
-                self.cells.get(&(x, y)).is_some_and(|points| {
-                    points
-                        .iter()
-                        // Points lie at most a step apart: allow half a step along.
-                        .any(|&(e, n, half)| {
-                            (e - east).hypot(n - north) < half + margin + STEP_M / 2.0
-                        })
-                })
-            })
-        })
+        self.blocked_by(east, north, margin, |_, _| true)
     }
 }
 

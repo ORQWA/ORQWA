@@ -170,6 +170,12 @@ and placement while rendering simpler canopy and shadow geometry at smaller proj
 This automatic detail reduction also applies to kept worlds without regeneration; Low keeps
 its lower population and avoids extra spatial batches that would add CPU and draw-call cost.
 
+Urban geometry refinement (2026-10-22, R105/R112): sidewalks and distinct curb-stone borders
+follow rounded street corners and outer bends. Junction approaches join those curves without
+square gaps, clipped ends or paving across the carriageway. Curb stones have joints and a
+beveled lip; lowered entrances remain continuous. Placement is inferred from the existing
+road and land-use data, with mapped green spaces preserved.
+
 ## Workouts & overlay
 
 | ID | Requirement |

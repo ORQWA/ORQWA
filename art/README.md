@@ -60,6 +60,8 @@ The Rust generator drapes sidewalks, forecourts and building access over the ter
 builds curb and low-wall faces, using these shared materials in `app/shaders/urban.gdshader`.
 Sidewalks share their joins around bends, slope into lowered entrances and have solid
 perimeter faces extending down to the terrain, including outer edges and exposed ends.
+At junctions they share the asphalt's rounded corner outline. An 18 cm curb-stone strip
+follows the road edge, with a beveled lip and joints; outside bends curve around the road.
 Terrain uses paving in dense districts and shared road asphalt for commercial/industrial
 land. Mapped green areas and low-density residential lawns retain their vegetation.
 

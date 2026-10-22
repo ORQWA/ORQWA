@@ -46,7 +46,7 @@ course offline, without another data provider, and leave parks and suburban gard
 
 ## Kept worlds
 
-Generator **6**, stored format **2**. Each chunk gains an `urban` mesh and terrain colour
+Generator **7**, stored format **2**. Each chunk gains an `urban` mesh and terrain colour
 codes gain urban/commercial kinds. Older kept worlds rebuild on the next ride, as required
 for an incompatible layout (ADR 0025); course files and their format are unchanged. The new
 stored-world fixture records the layout. The bench placement raises the generator from 4
@@ -64,6 +64,24 @@ urban clearance checks; the padded point samples used to exclude vegetation must
 the sidewalk beside its own street. Junctions and protected land remain clear. The stored
 format stays at 2; existing kept worlds offer regeneration.
 
+### Rounded footways and curbstones amendment (2026-10-22)
+
+Generator 7 uses the same tangent circles for a junction's asphalt and its sidewalks.
+Replace the straight strips between the tangent cross-sections with a curved walking band;
+round the outside of mapped street bends too. Convex polygon subtraction trims overlaps
+against other carriageways and replacement regions, retaining the clear part of a strip
+instead of discarding it. Vegetation's padded junction clearance is separate from these
+exact road boundaries. Cache the resulting footprints once for meshes, benches and plants.
+Shallow forks keep their own road arm: matching the ridden road checks the line beyond the
+meeting point, rather than treating every near-parallel approach as the same road. Allow
+tangent points farther along acute forks so their triangular islands get a rounded nose.
+
+The road-facing 18 cm border is a separate surface with a 2 cm bevel over its first 2.5 cm.
+Its UVs follow the curb in metres, with 75 cm stone joints in the urban shader; paved walking
+surfaces keep their existing material and scale. Normals follow the final beveled and ramped
+surfaces. Corner heights interpolate between their streets, including the ridden road's
+height, and solid sides still follow the terrain's cuts. Stored format 2 is unchanged.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,
@@ -73,6 +91,9 @@ chunk boundaries and both sides of sidewalk bends. Bench tests cover regular sea
 opposite side while keeping access clear. Review images compare the same street and overview
 on the Bern fixture, with MSAA and bloom disabled in both software-rendered views to avoid
 lavapipe artifacts. Native M1 performance remains a manual check (R43).
+Additional regressions check a full-width walk around both corners of a T-junction, a rounded
+outer bend and the narrow beveled curb border. Review views include Bielersee: Obedüre from
+above and road height, using a temporary copy of the course without changing the rider's file.
 
 Only geometry supplied by the current tiles is authoritative. Inferred access and low walls
 can differ from the real property. Pedestrian-only spaces, further street furniture and

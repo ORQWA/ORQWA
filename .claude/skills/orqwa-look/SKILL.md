@@ -95,6 +95,10 @@ and suburban lawns. Mapped parks and other natural land take precedence. Review 
 curbs and access openings from road height, plus an overview for garden/park preservation.
 Sidewalk strips must join around bends, slope continuously into lowered entrances and have
 closed sides reaching the drawn terrain; check outer edges, ends and chunk boundaries too.
+Round junctions with the carriageway's own tangent arcs and round outer bends. Narrow,
+beveled curb stones must read separately from the walking surface. Review corner continuity
+from above as well as road height; overlapping roads trim a sidewalk instead of removing
+whole slabs and leaving square gaps. Include Bielersee: Obedüre when its course is available.
 Building paths, forecourts and low walls are inferred; keep their appearance plausible
 without claiming exact mapped property boundaries. Shared concrete/paver textures are baked
 by the art pipeline. Urban material codes are part of the stored world's format contract.
