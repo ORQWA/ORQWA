@@ -317,6 +317,9 @@ Built in rideable steps:
   filter chips in a panel under a Filters button, the chips turned on listed under the toolbar
   (R85)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
+  - [x] Automatic quick summary dialog over the finished ride, shared with Finish & save:
+    essential figures, power PR badges (R62), rename, Done, confirmed discard and View details
+    (R113); no redundant finish flag in the bottom controls.
 - [x] Auto-reconnect last-used devices (R41)
 - [x] Devices that drop come back by themselves, also after a pause: the driver looks the
   device up again (macOS forgets it at once) instead of retrying its stale link; the in-ride
@@ -540,7 +543,7 @@ physically based materials and light, restyled group by group.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)
-  - [x] Natural rocks (R112): asymmetric boulders with weathered fracture planes, a CC0
+  - [x] Natural rocks (R115): asymmetric boulders with weathered fracture planes, a CC0
     rock scan and shared cliff/boulder shading with broad mineral patches and irregular
     interrupted joints visible from a distance. Kept worlds update without regeneration.
   - [x] Denser mapped forests (R103): 4 m candidate spacing within 300 m of the road,
@@ -551,7 +554,12 @@ physically based materials and light, restyled group by group.
     short draw distance; generator 3 offers regeneration of kept worlds.
   - [x] Urban surfaces (R105, ADR 0027): dense-city paving, commercial/industrial asphalt,
     sidewalks and curbs, inferred building paths, forecourts and low garden walls; parks
-    and suburban lawns preserved, grass kept out of paving. Generator 5 / stored format 2.
+    and suburban lawns preserved, grass kept out of paving. Generator 7 / stored format 2.
+  - [x] Grounded sidewalks: shared joins around bends, solid edges down to the terrain,
+    and continuous approaches to lowered building access; no floating slabs or open seams.
+  - [x] Rounded sidewalk corners and kerbs: follow the carriageway's junction arcs, round
+    outer bends, trim intersecting surfaces instead of removing whole slabs, and draw a
+    separate 18 cm curb-stone border with joints and a beveled lip (R105/R112).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs

@@ -1,4 +1,4 @@
-// Shared cliff and boulder weathering (R112). Broad broken faces survive mipmapping
+// Shared cliff and boulder weathering (R115). Broad broken faces survive mipmapping
 // without forming masonry rows; the field lives in metres rather than in the texture.
 float rock_field(vec3 p, out float shade) {
 	vec2 face = vec2(p.x + p.z * 0.73, p.y + p.z * 0.19);

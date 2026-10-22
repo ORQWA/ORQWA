@@ -21,6 +21,7 @@ same licence; the footage is used only in documentation.
 
 | Before riding | After riding |
 |---|---|
+| | ![Quick finish summary](images/app/summary-quick.png) |
 | ![Course library](images/app/courses.png) | ![Ride summary](images/app/summary.png) |
 | ![Course detail](images/app/course.png) | ![Ride history](images/app/history.png) |
 | ![Connected devices](images/issues/devices-readings.png) | ![Power curve and profile](images/app/analysis.png) |
@@ -44,6 +45,12 @@ apply from the next ride without regenerating the course.
 | ![City paving and sidewalks](images/views/city-street.jpg) | ![Wooded hairpin](images/views/hairpin-chase.jpg) |
 | ![City overview](images/views/city-overview.jpg) | ![Forest floor and ferns](images/views/forest-floor.jpg) |
 | ![City bench](images/views/city-benches.jpg) | ![Hairpin overview](images/views/hairpin-drone.jpg) |
+
+![Grounded sidewalk edges and continuous access approaches](images/issues/sidewalks-grounded.jpg)
+
+| Curved corners on Bielersee: Obedüre | Curbs from road height |
+|---|---|
+| ![Rounded sidewalk junction](images/issues/sidewalk-curves-overview.jpg) | ![Beveled curb-stone border](images/issues/sidewalk-curves-road.jpg) |
 
 ## Rocks and cliffs
 

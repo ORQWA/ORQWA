@@ -3,6 +3,9 @@
 Read and follow [CLAUDE.md](CLAUDE.md) before working. Its architecture, container-only tooling,
 testing and documentation rules apply to every AI agent.
 
+Always work in a separate Git worktree and task branch, including an independent wiki checkout.
+Do not implement changes in the user's existing workspace or mix unrelated tasks into a PR.
+
 Application usage documentation is maintained in the `wiki/` Git submodule. For every relevant
 feature addition, change or removal, update the affected wiki pages, navigation and screenshots
 in the same session as the code. Keep developer documentation, requirements, roadmap, ADRs and

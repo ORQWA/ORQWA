@@ -42,6 +42,14 @@ void fragment() {
 		albedo = texture(concrete_albedo, UV / 3.0).rgb;
 		detail = ground_unpack(texture(concrete_normal, UV / 3.0));
 		roughness = texture(concrete_rough, UV / 3.0).r;
+		if (material_code > 2.5) {
+			// Narrow kerbstones follow the street; UV.x is metres along the curb.
+			float along = fract(UV.x / 0.75) * 0.75;
+			float joint = (1.0 - smoothstep(0.003, 0.009, min(along, 0.75 - along)))
+				* (1.0 - smoothstep(0.02, 0.12, fwidth(UV.x)));
+			albedo *= mix(1.04, 0.6, joint);
+			roughness = max(roughness, 0.8);
+		}
 	}
 	vec3 normal = ground_bend_along(world_normal, detail, world_position, UV, 1.0);
 	float water = puddle(world_position.xz, world_normal, 0.5);

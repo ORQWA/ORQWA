@@ -6,7 +6,7 @@ Run in the art container:
         -- [name …] [--size 1024] [--out screenshots/textures]
 
 Materials are procedural node trees, except rock, converted from the archived CC0 scan
-(rock_scan.py, R112). To make a procedural tile seamless, the plane's UV (u, v)
+(rock_scan.py, R115). To make a procedural tile seamless, the plane's UV (u, v)
 is wrapped onto a torus in 4D, (cos 2πu, sin 2πu, cos 2πv, sin 2πv), and every noise and
 Voronoi node samples that 4D point, so the texture has no edges to hide. Outputs, by default
 into app/assets/textures: <name>_albedo.webp (sRGB), <name>_normal.webp (OpenGL tangent space,

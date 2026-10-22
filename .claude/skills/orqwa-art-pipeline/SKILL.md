@@ -73,7 +73,7 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
   `rock_scan.py`, preserving sRGB albedo and lossless OpenGL normals. Originals and credits
   are under `art/sources/rock-boulder-dry/`. It replaced procedural noise after comparison
   on identical boulders in the same light. `rock.gdshaderinc` adds broad fractures at an 8 m
-  scale for cliffs and 0.65 m for boulders. Review close and overview distances (R112).
+  scale for cliffs and 0.65 m for boulders. Review close and overview distances (R115).
 
 ## bpy pitfalls
 

@@ -1,4 +1,4 @@
-"""Converts the archived CC0 rock scan into ORQWA's shared rock maps (R112, ADR 0020)."""
+"""Converts the archived CC0 rock scan into ORQWA's shared rock maps (R115, ADR 0020)."""
 
 from pathlib import Path
 

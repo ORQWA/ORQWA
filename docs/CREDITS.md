@@ -9,7 +9,7 @@ libraries (LGPL 2.1 or later) and every Rust crate, from `core/orqwa-app/notices
 
 ## Models
 
-The fractured boulders and shared cliff/boulder weathering shader (R112) are own work
+The fractured boulders and shared cliff/boulder weathering shader (R115) are own work
 (GPL-3.0). The rock albedo and OpenGL normal are converted from
 [Rock Boulder Dry](https://polyhaven.com/a/rock_boulder_dry) by **Dimitrios Savva**
 (photography) and **Rico Cilliers** (processing), Poly Haven, **CC0 1.0**. Untouched

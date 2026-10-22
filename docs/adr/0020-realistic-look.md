@@ -155,7 +155,7 @@ offers regeneration; existing model names and instance buffers stay compatible w
 worlds, so the stored format remains 1.
 
 
-### Natural rocks (2026-10-22, R112)
+### Natural rocks (2026-10-22, R115)
 
 Cliffs and boulders share a non-repeating field of irregular interrupted fractures and broad
 mineral variation. Derivative normals add relief at the scale of broken faces. Poly Haven's

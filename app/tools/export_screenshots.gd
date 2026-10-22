@@ -30,6 +30,7 @@ const SHOTS: Dictionary[String, String] = {
 	"ride-devices": "issues/ride-devices.jpg",
 	"hud-settings_dialog": "app/hud-editor.jpg",
 	"summary": "app/summary.png",
+	"summary-quick": "app/summary-quick.png",
 	"summary-curve": "app/summary-curve.png",
 	"upload-menu": "app/upload.png",
 	"history": "app/history.png",

@@ -43,7 +43,7 @@ smooth shading, real proportions, physically based materials and light. Every gr
 left the faceted look of ADR 0011; riders are smooth but still stylized figures (`docs/PLAN.md`,
 Phase 9).
 
-Rock surfaces (R112) combine the CC0 Poly Haven **Rock Boulder Dry** scan with metre-scale
+Rock surfaces (R115) combine the CC0 Poly Haven **Rock Boulder Dry** scan with metre-scale
 weathering in `app/shaders/rock.gdshaderinc`, shared by cliffs and boulders. Larger fractured
 faces remain visible after grain is mipmapped away; joints are irregular and interrupted,
 without masonry rows or paving cells. Weathering scales are 8 m on cliffs and 0.65 m on
@@ -67,6 +67,10 @@ and staggered rectangular `paving`, each with 1024 px albedo, normal and roughne
 Concrete spans 3 m per tile (0.75 × 0.5 m slabs); paving spans 2 m (0.25 × 0.5 m blocks).
 The Rust generator drapes sidewalks, forecourts and building access over the terrain and
 builds curb and low-wall faces, using these shared materials in `app/shaders/urban.gdshader`.
+Sidewalks share their joins around bends, slope into lowered entrances and have solid
+perimeter faces extending down to the terrain, including outer edges and exposed ends.
+At junctions they share the asphalt's rounded corner outline. An 18 cm curb-stone strip
+follows the road edge, with a beveled lip and joints; outside bends curve around the road.
 Terrain uses paving in dense districts and shared road asphalt for commercial/industrial
 land. Mapped green areas and low-density residential lawns retain their vegetation.
 
