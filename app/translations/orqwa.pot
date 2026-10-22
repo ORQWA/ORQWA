@@ -2891,7 +2891,7 @@ msgstr ""
 msgid "“%s” and all their rides are deleted."
 msgstr ""
 
-#: app/scenes/history_screen.gd
+#: app/ui/power_record_badges.gd
 msgid "★ Best %s: %d W"
 msgstr ""
 

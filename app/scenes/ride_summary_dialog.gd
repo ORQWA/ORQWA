@@ -13,6 +13,7 @@ var _path: String = ""
 var _name: String = ""
 var _title: EditableTitle = EditableTitle.new(tr("Rename the ride"))
 var _stats: ReflowGrid = ReflowGrid.new()
+var _power_records: PowerRecordBadges = PowerRecordBadges.new()
 var _confirm_discard: ConfirmationDialog = ConfirmationDialog.new()
 
 
@@ -33,6 +34,7 @@ func _ready() -> void:
 	_stats.add_theme_constant_override("h_separation", 32)
 	_stats.add_theme_constant_override("v_separation", 20)
 	rows.add_child(_stats)
+	rows.add_child(_power_records)
 	add_child(rows)
 	var discard: Button = add_button(tr("Discard ride"), true, "discard")
 	UiTheme.danger_button(discard)
@@ -55,18 +57,22 @@ func open(path: String) -> void:
 	for ride: Dictionary in _orqwa.history():
 		if ride["path"] != path:
 			continue
-		var ride_name: String = ride["name"]
-		_name = ride_name
-		_title.text = ride_name
-		var start: int = ride["start_unix_s"]
-		_title.placeholder_text = (
-			"%s · %s"
-			% [ride["route"], UiTheme.date(start).get_slice(",", 0).rsplit(" ", true, 1)[0]]
-		)
-		_fill_stats(ride)
-		UiScale.popup(self, Vector2i(640, 340))
-		get_ok_button().grab_focus()
+		_show_ride(ride)
 		return
+
+
+func _show_ride(ride: Dictionary) -> void:
+	var ride_name: String = ride["name"]
+	_name = ride_name
+	_title.text = ride_name
+	var start: int = ride["start_unix_s"]
+	_title.placeholder_text = (
+		"%s · %s" % [ride["route"], UiTheme.date(start).get_slice(",", 0).rsplit(" ", true, 1)[0]]
+	)
+	_fill_stats(ride)
+	_power_records.show_ride(ride)
+	UiScale.popup(self, Vector2i(640, 420 if _power_records.visible else 340))
+	get_ok_button().grab_focus()
 
 
 func _fill_stats(ride: Dictionary) -> void:

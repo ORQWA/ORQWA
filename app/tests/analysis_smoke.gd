@@ -196,8 +196,8 @@ func _analysis_tab() -> void:
 		"power_records": PackedFloat64Array([300.0]),
 		"power_curve": PackedVector2Array([Vector2(5, 700), Vector2(300, 312.4)]),
 	}
-	history.call("_fill_power_records", ride)
-	var records: HFlowContainer = history.get("_power_records")
+	var records: PowerRecordBadges = history.get("_power_records")
+	records.show_ride(ride)
 	var badges: Array[Node] = records.get_children()
 	_check(
 		badges.size() == 1 and (badges[0] as Label).text == "★ Best 5 min: 312 W",

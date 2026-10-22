@@ -87,6 +87,8 @@ Additional UI fixtures use the same real controls without hardware or account cr
 
 `SCREENSHOT_SUMMARY_ONLY=1 scripts/screenshots.sh` captures just the quick finish dialog over
 a finished fake-trainer workout as `summary-quick.png`, without rendering a 3D world.
+Use a fresh `XDG_DATA_HOME` to show the workout's first power PR in that capture; this mode
+does not generate sample ride history.
 The normal run also captures its full details as `summary.png`.
 The automatic-finish, manual-finish and discard flows are checked by `summary_smoke.gd`;
 `window_smoke.gd` checks the dialog at 1024 × 640 in English and German.

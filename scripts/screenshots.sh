@@ -9,7 +9,8 @@ out="${SCREENSHOT_DIR:-$root/screenshots}"
 mkdir -p "$out"
 "$root/scripts/build-gdext.sh" debug >/dev/null
 # Weeks of made-up rides, so the history and the Analysis tab (R61) have something to show.
-if [ "${SCREENSHOT_ERRORS_ONLY:-}" != 1 ] && [ "${SCREENSHOT_SETTINGS_ONLY:-}" != 1 ]; then
+if [ "${SCREENSHOT_ERRORS_ONLY:-}" != 1 ] && [ "${SCREENSHOT_SETTINGS_ONLY:-}" != 1 ] \
+    && [ "${SCREENSHOT_SUMMARY_ONLY:-}" != 1 ]; then
     cargo run -q --manifest-path "$root/core/Cargo.toml" -p orqwa-cli -- sample-rides --weeks 16
 fi
 godot --headless --path "$root/app" --import >/dev/null 2>&1 || true

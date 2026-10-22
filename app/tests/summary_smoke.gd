@@ -51,6 +51,27 @@ func _run() -> void:
 		"key figures shown: %s" % [captions]
 	)
 	var saved: String = summary.get("_path")
+	# A record uses its own duration's watts; other efforts in the curve are not PRs.
+	var record_ride: Dictionary = {}
+	for entry: Dictionary in orqwa.history():
+		if entry["path"] == saved:
+			record_ride = entry.duplicate(true)
+	record_ride["power_records"] = PackedFloat64Array([5.0, 60.0])
+	record_ride["power_curve"] = PackedVector2Array(
+		[Vector2(60, 321.4), Vector2(5, 789.6), Vector2(300, 123)]
+	)
+	summary.call("_show_ride", record_ride)
+	var records: PowerRecordBadges = summary.get("_power_records")
+	_check(records.visible and records.get_child_count() == 2, "only power PRs get badges")
+	var five_seconds: Label = records.get_child(0)
+	var one_minute: Label = records.get_child(1)
+	_check(
+		five_seconds.text == "★ Best 5 s: 790 W" and one_minute.text == "★ Best 1 min: 321 W",
+		"power PR durations and watts: %s, %s" % [five_seconds.text, one_minute.text]
+	)
+	record_ride["power_records"] = PackedFloat64Array()
+	summary.call("_show_ride", record_ride)
+	_check(not records.visible and records.get_child_count() == 0, "no stale power PR badges")
 	# Missing readings are omitted, and distance and climbing follow the rider's units.
 	var rider: Dictionary = orqwa.profile()
 	var rider_id: String = rider["id"]

@@ -284,6 +284,23 @@ func _small_window(locale: String, ride: String) -> void:
 		main.call("_show_quick_summary", ride)
 		var quick_summary: RideSummaryDialog = main.get("_quick_summary")
 		await _dialog_fits(quick_summary, room, locale)
+		# All five record durations must fit, including the longer German captions.
+		var record_ride: Dictionary = {}
+		for entry: Dictionary in orqwa.history():
+			if entry["path"] == ride:
+				record_ride = entry.duplicate(true)
+		record_ride["power_records"] = PackedFloat64Array([5.0, 60.0, 300.0, 1200.0, 3600.0])
+		record_ride["power_curve"] = PackedVector2Array(
+			[
+				Vector2(5, 900),
+				Vector2(60, 500),
+				Vector2(300, 350),
+				Vector2(1200, 280),
+				Vector2(3600, 250)
+			]
+		)
+		quick_summary.call("_show_ride", record_ride)
+		await _dialog_fits(quick_summary, room, locale)
 		main.call("_show_summary", ride)
 		await _settle()
 		_fits(summary, room, "%s, a ride's summary" % locale)
