@@ -1,5 +1,5 @@
 //! Continuous riding sound (R114): recorded textures with non-repeating grains, turbulent
-//! airflow, independent pedal / freewheel rates, and recorded shift one-shots (R115).
+//! airflow, independent pedal / freewheel rates, and recorded chain transfers (R115–R116).
 
 use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 
@@ -14,6 +14,11 @@ const WIND: &[u8] = include_bytes!("../audio/wind.pcm");
 const CHAIN: &[u8] = include_bytes!("../audio/chain.pcm");
 const FREEWHEEL: &[u8] = include_bytes!("../audio/freewheel.pcm");
 const SHIFT: &[u8] = include_bytes!("../audio/shift.pcm");
+const TRANSFERS: [&[u8]; 3] = [
+    include_bytes!("../audio/shift-chain-1.pcm"),
+    include_bytes!("../audio/shift-chain-2.pcm"),
+    include_bytes!("../audio/shift-chain-3.pcm"),
+];
 
 /// Weather affects the soundscape, without changing the simulation's wind or resistance.
 #[derive(Clone, Copy, Debug, Default)]
@@ -150,13 +155,19 @@ impl Sound {
         self.shifts.fill(None);
     }
 
-    /// Play one recorded mechanical shift. Bounded voices let rapid changes overlap without
-    /// building a backlog; tiny pitch and level variations avoid an identical repeated click.
+    /// Trigger a quiet lever action followed by the chain transferring and settling (R116).
+    /// The chain waits for pedaling; bounded voices keep repeated requests from growing a queue.
     pub fn shift(&mut self) {
+        let clip = TRANSFERS[self.random.next() as usize % TRANSFERS.len()];
         self.shifts[self.next_shift] = Some(ShiftVoice {
-            position: 0.0,
-            rate: 0.96 + self.random.unit() * 0.08,
+            lever: 0.0,
+            transfer: 0.0,
+            delay: 0.05,
+            clip,
+            pitch: 0.97 + self.random.unit() * 0.06,
             gain: 0.9 + self.random.unit() * 0.2,
+            chain_rate: 1.0,
+            engagement: 0.0,
         });
         self.next_shift = (self.next_shift + 1) % self.shifts.len();
     }
@@ -213,16 +224,20 @@ impl Sound {
             let chain_gain =
                 self.pedal * (0.16 + 0.12 * (power / 350.0).min(1.0)) * (0.85 + 0.15 * stroke);
             let mut shift = 0.0;
+            let mut transferring = 0.0;
             for voice in &mut self.shifts {
                 if let Some(active) = voice {
-                    if let Some(sample) = active.next() {
+                    if let Some((sample, engagement)) = active.next(targets[1]) {
                         shift += sample;
+                        transferring += engagement;
                     } else {
                         *voice = None;
                     }
                 }
             }
-            let bike = chain * chain_gain
+            // The recorded rattle replaces some steady chain noise, then blends back into it
+            // as the chain seats. A hard shift has more bite under the rider's load.
+            let bike = chain * chain_gain * (1.0 - 0.55 * transferring.min(1.0))
                 + freewheel * self.coasting * 0.25
                 + shift * (0.3 + 0.15 * (power / 350.0).min(1.0));
             let mut stereo = [0.0; 2];
@@ -312,23 +327,54 @@ impl Texture {
 
 #[derive(Clone, Copy)]
 struct ShiftVoice {
-    position: f32,
-    rate: f32,
+    lever: f32,
+    transfer: f32,
+    delay: f32,
+    clip: &'static [u8],
+    pitch: f32,
     gain: f32,
+    chain_rate: f32,
+    engagement: f32,
 }
 
 impl ShiftVoice {
     #[allow(clippy::cast_precision_loss)] // short recorded excerpt, exact sample count in f32
-    fn next(&mut self) -> Option<f32> {
-        let remaining = (SHIFT.len() / 2) as f32 - self.position;
-        if remaining <= 0.0 {
+    fn next(&mut self, cadence: f32) -> Option<(f32, f32)> {
+        let lever_length = (SHIFT.len() / 2) as f32;
+        let transfer_length = (self.clip.len() / 2) as f32;
+        if self.lever >= lever_length && self.transfer >= transfer_length {
             return None;
         }
-        // Two-millisecond attack and five-millisecond release prevent crop-edge clicks.
-        let fade = (self.position / 48.0).min(remaining / 120.0).min(1.0);
-        let sample = pcm_at(SHIFT, self.position) * fade * self.gain;
-        self.position += self.rate * TEXTURE_STEP;
-        Some(sample)
+        let fade = (self.lever / 48.0)
+            .min((lever_length - self.lever) / 120.0)
+            .min(1.0);
+        let mut sample = pcm_at(SHIFT, self.lever) * fade.max(0.0) * 0.12;
+        self.lever = (self.lever + self.pitch * TEXTURE_STEP).min(lever_length);
+        let pedaling = cadence > 3.0;
+        approach(
+            &mut self.engagement,
+            if pedaling { 1.0 } else { 0.0 },
+            DT / 0.008,
+        );
+        if pedaling {
+            approach(
+                &mut self.chain_rate,
+                (cadence / 90.0).clamp(0.4, 2.2) * self.pitch,
+                DT / 0.02,
+            );
+        }
+        let mut engagement = 0.0;
+        if self.engagement > 0.000_1 && self.transfer < transfer_length {
+            self.delay -= self.chain_rate * DT;
+            if self.delay <= 0.0 {
+                let remaining = transfer_length - self.transfer;
+                let fade = (self.transfer / 120.0).min(remaining / 1_800.0).min(1.0);
+                engagement = fade * self.engagement;
+                sample += pcm_at(self.clip, self.transfer) * engagement;
+                self.transfer += self.chain_rate * TEXTURE_STEP;
+            }
+        }
+        Some((sample * self.gain, engagement))
     }
 }
 
@@ -357,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    fn shifts_are_brief_recorded_one_shots_that_follow_bicycle_volume() {
+    fn shifts_follow_bicycle_volume_and_discard_pending_transfers_on_restart() {
         let settings = Settings {
             wind: 0.0,
             bike: 100.0,
@@ -368,13 +414,13 @@ mod tests {
         sound.shift();
         let heard = sound.render(RATE as usize / 2, Motion::default(), settings);
         assert!(
-            energy(&heard) > 0.000_01,
-            "a shift is audible even between pedal strokes"
+            energy(&heard) > 0.000_000_01,
+            "the lever is audible even while the chain is stationary"
         );
         let tail = sound.render(RATE as usize, Motion::default(), settings);
         assert!(
             energy(&tail) < 0.000_000_01,
-            "a shift ends instead of looping"
+            "the lever ends instead of looping while the chain waits"
         );
         sound.shift();
         let muted = Settings {
@@ -383,8 +429,12 @@ mod tests {
         };
         let mut silent = Sound::new(259);
         silent.shift();
-        assert!(energy(&silent.render(RATE as usize, Motion::default(), muted)) < 0.000_000_01);
+        assert!(energy(&silent.render(RATE as usize * 2, moving(8.0, 90.0), muted)) < 0.000_000_01);
         sound.restart();
+        assert!(
+            sound.shifts.iter().all(Option::is_none),
+            "restart must also discard chain transfers still waiting for pedaling"
+        );
         assert!(
             energy(&sound.render(RATE as usize, Motion::default(), settings)) < 0.000_000_01,
             "a restarted output must discard a pending old shift"
@@ -392,7 +442,8 @@ mod tests {
         for _ in 0..24 {
             sound.shift();
         }
-        let rapid = sound.render(RATE as usize, Motion::default(), settings);
+        assert_eq!(sound.shifts.iter().flatten().count(), 4);
+        let rapid = sound.render(RATE as usize * 3, moving(8.0, 90.0), settings);
         assert!(
             rapid
                 .iter()
@@ -400,9 +451,76 @@ mod tests {
                 .all(|sample| sample.is_finite() && sample.abs() < 1.0)
         );
         assert!(
-            energy(&sound.render(RATE as usize, Motion::default(), settings)) < 0.000_000_01,
+            sound.shifts.iter().all(Option::is_none),
             "rapid presses must not leave a long backlog"
         );
+    }
+
+    fn shift_voice() -> ShiftVoice {
+        let mut sound = Sound::new(259);
+        sound.shift();
+        sound.shifts[0].expect("accepted shift")
+    }
+
+    fn transfer_samples(voice: &mut ShiftVoice, cadence: f32, frames: u32) -> Vec<[f32; 2]> {
+        (0..frames)
+            .map(|_| [voice.next(cadence).map_or(0.0, |(sample, _)| sample); 2])
+            .collect()
+    }
+
+    #[test]
+    fn shifting_includes_chain_movement_after_the_lever_and_then_settles() {
+        for clip in TRANSFERS {
+            let mut voice = ShiftVoice {
+                clip,
+                ..shift_voice()
+            };
+            let _ = transfer_samples(&mut voice, 90.0, RATE * 35 / 100);
+            let chain = transfer_samples(&mut voice, 90.0, RATE / 2);
+            assert!(
+                energy(&chain) > 0.001,
+                "the chain must remain audible after the lever ends"
+            );
+            let _ = transfer_samples(&mut voice, 90.0, RATE);
+            assert!(
+                voice.next(90.0).is_none(),
+                "the chain must seat rather than loop"
+            );
+        }
+    }
+
+    #[test]
+    fn coasting_defers_chain_transfer_until_pedaling_resumes() {
+        let mut voice = shift_voice();
+        let _ = transfer_samples(&mut voice, 0.0, RATE);
+        let stopped = transfer_samples(&mut voice, 0.0, RATE);
+        assert!(energy(&stopped) < f32::EPSILON);
+        let resumed = transfer_samples(&mut voice, 90.0, RATE);
+        assert!(
+            energy(&resumed) > 0.001,
+            "a shift while coasting must engage the chain when pedaling resumes"
+        );
+        let _ = transfer_samples(&mut voice, 0.0, RATE);
+        let stopped = transfer_samples(&mut voice, 0.0, RATE / 2);
+        assert!(
+            energy(&stopped) < f32::EPSILON,
+            "stopping the pedals stops the transferring chain too"
+        );
+        let _ = transfer_samples(&mut voice, 90.0, RATE);
+        assert!(voice.next(90.0).is_none());
+    }
+
+    #[test]
+    fn faster_cadence_moves_the_chain_between_gears_sooner() {
+        let duration = |cadence| {
+            let mut voice = shift_voice();
+            (0..RATE * 4)
+                .take_while(|_| voice.next(cadence).is_some())
+                .count()
+        };
+        let slow = duration(60.0);
+        let fast = duration(120.0);
+        assert!(slow > fast * 3 / 2 && slow < (RATE * 3) as usize);
     }
 
     fn energy(samples: &[[f32; 2]]) -> f32 {

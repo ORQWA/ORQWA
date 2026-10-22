@@ -54,3 +54,19 @@ old voice rather than leaving a long queue. A non-playing ride cannot queue a sh
 restarting the audio queue discards old voices. The listening preview includes separate
 shifts and a rapid pair; signal and application tests cover timing, silence, limits,
 pause, mute and cassette behavior. Existing controls and screenshots remain accurate.
+
+## Amendment — 2026-10-22: chain transfer and settling (R116)
+
+The lever-only one-shot sounded artificial without the chain moving onto the next gear.
+A fifth CC0 source supplies three 1.1-second passages of actual chain transfers, including
+their rattle, engagement and settling. The recording captures front-ring shifts; it supplies
+a general drivetrain texture rather than claiming to reproduce a particular rear cog.
+
+Each accepted change now layers a much quieter lever action with a varied transfer passage.
+Chain playback follows cadence and is stronger under load; a brief delay, edge fades and
+ducking of the continuous chain blend the event into riding. The chain waits during coasting
+and fades out if pedaling stops mid-transfer, then resumes with the pedals. The existing
+four-voice bound and playback restart flush apply to these pending transfers too. No new
+controls or dependencies are needed. A bicycle-only preview exercises slow and fast shifts,
+rapid changes and coasting-to-pedaling engagement; Rust tests cover those transitions and
+audible chain detail after the lever ends.

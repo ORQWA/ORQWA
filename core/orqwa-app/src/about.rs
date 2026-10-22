@@ -155,7 +155,8 @@ fn assets() -> String {
          Wind and Leaves.wav by ecfike (https://freesound.org/people/ecfike/sounds/183496/);\n\
          bicycle forward movement by dawidwmika (https://freesound.org/people/dawidwmika/sounds/380288/);\n\
          bike-wheel-free-looped.flac by yurkobb (https://freesound.org/people/yurkobb/sounds/274481/);\n\
-         bike_gear_shift.wav by ChemiCatz (https://freesound.org/people/ChemiCatz/sounds/267910/).\n\
+         bike_gear_shift.wav by ChemiCatz (https://freesound.org/people/ChemiCatz/sounds/267910/);\n\
+         changingGears.wav by stib (https://freesound.org/people/stib/sounds/494322/).\n\
          Excerpts mixed to mono, filtered, resampled and level adjusted by ORQWA.\n",
     );
     text.push_str(

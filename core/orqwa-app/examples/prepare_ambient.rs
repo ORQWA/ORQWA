@@ -14,8 +14,14 @@ fn main() {
         ("chain", "bike", 8_000, 16_000),
         ("freewheel", "freewheel", 0, 2_000),
         ("shift", "shift", 80, 300),
+        ("shift-chain-1", "transfer", 6_650, 1_100),
+        ("shift-chain-2", "transfer", 8_050, 1_100),
+        ("shift-chain-3", "transfer", 10_650, 1_100),
     ] {
-        if only.as_ref().is_some_and(|only| only != name) {
+        if only
+            .as_ref()
+            .is_some_and(|only| only != name && only != recording)
+        {
             continue;
         }
         let mut audio = Audio::open(&Path::new(&source).join(format!("{recording}.mp3")))

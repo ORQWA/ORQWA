@@ -194,9 +194,12 @@ Built in rideable steps:
   speed-dependent airflow, chain movement following cadence and effort, a separately
   recorded coasting freewheel following road speed; independent volume sliders before and
   during a 3D course ride, paused/finished playback flushed; listening preview available.
-  - [x] Recorded gear-change clicks (R115): one-shot on each accepted virtual shift through
+  - [x] Recorded gear changes (R115): one-shot on each accepted virtual shift through
     keyboard, BLE or remote, sharing bicycle volume; limit/no-change presses stay quiet,
     rapid shifts overlap with bounded voices and paused requests are never replayed.
+  - [x] Chain transfers and settling (R116): a quiet lever action followed by one of three
+    recorded transfers, following cadence and load and blending into the steady chain;
+    coasting defers the chain until pedaling resumes, and stopping pedals suspends it.
   - [x] Music helpers (#260): macOS compiles only the running player's command, so Apple
     Music works without Spotify installed; Windows sends media-key down/up events through
     `SendInput`. Native CI checks cover missing macOS players and the Windows input ABI.

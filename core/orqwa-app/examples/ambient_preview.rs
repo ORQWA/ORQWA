@@ -7,14 +7,30 @@ use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 
 fn main() -> std::io::Result<()> {
     let output = std::env::args().nth(1).expect("output WAV path");
+    let shifts_only = std::env::args().nth(2).as_deref() == Some("--shifts");
+    let shifts: &[u32] = if shifts_only {
+        &[2 * 50, 5 * 50, 8 * 50, 8 * 50 + 10, 12 * 50, 19 * 50]
+    } else {
+        &[6 * 50, 9 * 50, 12 * 50, 12 * 50 + 5]
+    };
     let mut sound = Sound::new(259);
     let mut samples = Vec::new();
     for frame in 0..30 * 50 {
-        if [6 * 50, 9 * 50, 12 * 50, 12 * 50 + 5].contains(&frame) {
+        if shifts.contains(&frame) {
             sound.shift();
         }
         let time = f64::from(frame) / 50.0;
-        let (speed, cadence, power) = if time < 3.0 {
+        let (speed, cadence, power) = if shifts_only {
+            if time < 7.0 {
+                (7.0, 60.0, 150.0)
+            } else if time < 11.0 {
+                (10.0, 90.0, 250.0)
+            } else if time < 15.0 {
+                (9.0, 0.0, 0.0)
+            } else {
+                (11.0, 120.0, 350.0)
+            }
+        } else if time < 3.0 {
             (0.0, 0.0, 0.0)
         } else if time < 14.0 {
             (
@@ -34,7 +50,11 @@ fn main() -> std::io::Result<()> {
                 cadence: Some(Rpm(cadence)),
                 power: Some(Watts(power)),
             },
-            Settings::default(),
+            Settings {
+                wind: if shifts_only { 0.0 } else { 50.0 },
+                bike: if shifts_only { 75.0 } else { 50.0 },
+                ..Settings::default()
+            },
         ));
     }
     let mut file = std::fs::File::create(output)?;

@@ -39,6 +39,7 @@ pages. Bundled excerpts are mixed to mono, filtered, resampled to 24 kHz and lev
 - `core/orqwa-app/audio/chain.pcm`: **dawidwmika**, [bicycle forward movement](https://freesound.org/people/dawidwmika/sounds/380288/), seconds 8–24 of the HQ preview.
 - `core/orqwa-app/audio/freewheel.pcm`: **yurkobb**, [bike-wheel-free-looped.flac](https://freesound.org/people/yurkobb/sounds/274481/), first 2 seconds of the HQ preview.
 - `core/orqwa-app/audio/shift.pcm`: **ChemiCatz**, [bike_gear_shift.wav](https://freesound.org/people/ChemiCatz/sounds/267910/), seconds 0.08–0.38 of the HQ preview, one mechanical gear change.
+- `core/orqwa-app/audio/shift-chain-{1,2,3}.pcm`: **stib**, [changingGears.wav](https://freesound.org/people/stib/sounds/494322/), seconds 6.65–7.75, 8.05–9.15 and 10.65–11.75 of the HQ preview. Close-miked chain transfers between front rings, retaining the rattle and settling after engagement.
 
 [Processing and reproduction](../core/orqwa-app/audio/README.md) use the existing Rust audio
 decoder. The live wind model and texture mixer are ORQWA's own work (GPL-3.0). These sources
