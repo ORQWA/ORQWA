@@ -168,6 +168,14 @@ many. So ORQWA installs its updates on Android as on Windows (ADR 0023):
 - **Permission.** Installing needs `REQUEST_INSTALL_PACKAGES`, which the rider allows once under
   **Install unknown apps**; the plugin opens that setting and goes on when the rider comes back.
   A failure, from the session or from Android's answer, shows in the update dialog.
+- **Advanced Protection.** Android 16's Advanced Protection, like a device administrator's
+  policy, forbids every app to install apps (`DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY`) and
+  allows no exception for one app. The plugin asks for that restriction before the download, and
+  the dialog then says to turn Advanced Protection off instead of offering the update.
+- **Tried** on the Tab S7 (Android 16) on 2026-10-22, with a stand-in for GitHub's latest release
+  serving a build signed alike: the update downloaded, the rider allowed installing apps once, and
+  Android installed it without a further prompt and closed ORQWA. With Advanced Protection on,
+  Android refused the setting, which the restriction check now heads off.
 - **Signing.** Android installs an update only when it is signed like the installed app, so only
   release builds update from releases; a CI or debug build is refused and says so.
 - **Removal.** The two permissions and the plugin's installer go with the plugin; the core's

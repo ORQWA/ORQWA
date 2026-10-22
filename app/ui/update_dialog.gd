@@ -12,6 +12,8 @@ var _orqwa: OrqwaApp
 var _version: String = ""
 var _page: String = ""
 var _installable: bool = false
+## Android forbids every app to install apps here (Advanced Protection or the device's admin).
+var _forbidden: bool = false
 ## The installer is being downloaded.
 var _downloading: bool = false
 
@@ -44,7 +46,12 @@ func bind(orqwa: OrqwaApp) -> void:
 func offer(version: String, page: String, installable: bool) -> void:
 	_version = version
 	_page = page
-	_installable = installable
+	_forbidden = (
+		installable
+		and Engine.has_singleton(ANDROID)
+		and not Engine.get_singleton(ANDROID).call(&"canInstallUpdates")
+	)
+	_installable = installable and not _forbidden
 	_downloading = false
 	_show_offer()
 	UiScale.popup(self, Vector2i(560, 220))
@@ -60,7 +67,13 @@ func _show_offer() -> void:
 		text += " " + tr("Your rides and settings stay as they are.")
 		ok_button_text = tr("Update now")
 	else:
-		text += " " + tr("Download it from its release page.")
+		if _forbidden:
+			# Advanced Protection allows no exception for one app: only turning it off helps.
+			text += " " + tr("This device lets no app install apps, so ORQWA cannot update itself.")
+			text += " " + tr("If Advanced Protection is on, turn it off in Android's settings.")
+			text += " " + tr("It is under Security & privacy; then check for updates again.")
+		else:
+			text += " " + tr("Download it from its release page.")
 		ok_button_text = tr("Open the release page")
 	dialog_text = text
 	cancel_button_text = tr("Later")

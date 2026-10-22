@@ -11,6 +11,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Build;
+import android.os.UserManager;
 import android.provider.Settings;
 import android.util.Rational;
 import android.view.View;
@@ -104,6 +105,23 @@ public class OrqwaAndroid extends GodotPlugin {
         return activity != null
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
                 && activity.isInPictureInPictureMode();
+    }
+
+    /**
+     * Whether Android lets ORQWA install its updates. Advanced Protection (Android 16) or a
+     * device's administrator may forbid every app to install apps; asked before the download,
+     * so the rider is not sent to a setting they cannot change.
+     */
+    @UsedByGodot
+    public boolean canInstallUpdates() {
+        Activity activity = getActivity();
+        if (activity == null) {
+            return false;
+        }
+        UserManager users = (UserManager) activity.getSystemService(Context.USER_SERVICE);
+        return !users.hasUserRestriction(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
+                && (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                        || !users.hasUserRestriction(UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY));
     }
 
     /**

@@ -639,8 +639,10 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
 - [x] D — a release-signed APK as a release asset (tags only, the key from the repository
   secrets; version code from ORQWA's version), the wiki (installing, permissions, updates,
   picture-in-picture); the internet list is unchanged
-- [ ] E — updates installed from ORQWA (R103): the release's APK downloaded by the core and handed
-  to Android's installer by the plugin, without a prompt from Android 12 where Android allows it
+- [x] E — updates installed from ORQWA (R103): the release's APK downloaded by the core and handed
+  to Android's installer by the plugin, without a prompt from Android 12 where Android allows it;
+  tried on the Tab S7 on 2026-10-22. Where Advanced Protection forbids installing apps, the
+  dialog explains how to turn it off
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
