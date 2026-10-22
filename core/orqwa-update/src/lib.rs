@@ -11,13 +11,22 @@ use tokio::io::AsyncWriteExt;
 /// GitHub's latest published release of ORQWA; drafts and pre-releases are never "latest".
 pub const LATEST_RELEASE: &str = "https://api.github.com/repos/ORQWA/ORQWA/releases/latest";
 
-/// The release asset that installs ORQWA on this system: the APK on Android, the installer
-/// (`.msi`) elsewhere, which only Windows runs.
+/// The plain release asset name: the APK on Android, the MSI elsewhere (run only on Windows).
+/// Releases also carry it with their version in the name ([`installer_name`]); earlier
+/// ORQWA versions know only this plain name.
 pub const INSTALLER: &str = if cfg!(target_os = "android") {
     "ORQWA-android-arm64.apk"
 } else {
     "ORQWA-windows-x86_64.msi"
 };
+
+/// The installer's release name, e.g. `ORQWA-0.5.2-windows-x86_64.msi` or
+/// `ORQWA-0.5.2-android-arm64.apk` (#322).
+#[must_use]
+pub fn installer_name(version: Version) -> String {
+    let platform = INSTALLER.strip_prefix("ORQWA-").unwrap_or(INSTALLER);
+    format!("ORQWA-{version}-{platform}")
+}
 
 /// Something went wrong looking for, downloading or installing an update.
 #[derive(Debug, thiserror::Error)]
@@ -142,10 +151,12 @@ pub fn parse_release(json: &str) -> Result<Release, UpdateError> {
     let tag = value["tag_name"].as_str().unwrap_or_default();
     let version = Version::parse(tag)
         .ok_or_else(|| UpdateError::Unexpected(format!("tag {tag:?} is no version")))?;
+    // The versioned name first: the plain one is published only while earlier versions need it.
+    let versioned = installer_name(version);
     let installer = value["assets"].as_array().and_then(|assets| {
-        assets
+        [versioned.as_str(), INSTALLER]
             .iter()
-            .find(|asset| asset["name"] == INSTALLER)
+            .find_map(|name| assets.iter().find(|asset| asset["name"] == *name))
             .and_then(|asset| {
                 Some(Installer {
                     url: asset["browser_download_url"].as_str()?.to_owned(),
@@ -349,8 +360,39 @@ mod tests {
     }
 
     #[test]
+    fn the_installer_named_with_its_version_is_taken_first() {
+        let platform = if cfg!(target_os = "android") {
+            "android-arm64.apk"
+        } else {
+            "windows-x86_64.msi"
+        };
+        let both = release_json(
+            "v0.5.2",
+            &[
+                asset(INSTALLER, "https://x/plain", 1),
+                asset(&format!("ORQWA-0.5.2-{platform}"), "https://x/versioned", 2),
+            ]
+            .join(","),
+        );
+        let versioned_only = release_json(
+            "v0.5.2",
+            &asset(&format!("ORQWA-0.5.2-{platform}"), "https://x/versioned", 2),
+        );
+        let another_version = release_json(
+            "v0.5.2",
+            &asset(&format!("ORQWA-0.5.1-{platform}"), "https://x/old", 3),
+        );
+
+        for json in [both, versioned_only] {
+            let installer = parse_release(&json).unwrap().installer.unwrap();
+            assert_eq!(installer.url, "https://x/versioned");
+        }
+        assert_eq!(parse_release(&another_version).unwrap().installer, None);
+    }
+
+    #[test]
     fn each_system_takes_its_own_installer() {
-        let json = release_json(
+        let plain = release_json(
             "v0.5.1",
             &[
                 asset("ORQWA-android-arm64.apk", "https://x/apk", 160_000_000),
@@ -359,14 +401,32 @@ mod tests {
             .join(","),
         );
 
-        let installer = parse_release(&json).unwrap().installer.unwrap();
+        let versioned = release_json(
+            "v0.5.1",
+            &[
+                asset(
+                    "ORQWA-0.5.1-android-arm64.apk",
+                    "https://x/apk",
+                    160_000_000,
+                ),
+                asset(
+                    "ORQWA-0.5.1-windows-x86_64.msi",
+                    "https://x/msi",
+                    220_000_000,
+                ),
+            ]
+            .join(","),
+        );
 
         let (url, name) = if cfg!(target_os = "android") {
             ("https://x/apk", "ORQWA-0.5.1.apk")
         } else {
             ("https://x/msi", "ORQWA-0.5.1.msi")
         };
-        assert_eq!(installer.url, url);
+        for json in [plain, versioned] {
+            let installer = parse_release(&json).unwrap().installer.unwrap();
+            assert_eq!(installer.url, url);
+        }
         assert_eq!(download_name(Version::parse("0.5.1").unwrap()), name);
     }
 

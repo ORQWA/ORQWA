@@ -158,8 +158,9 @@ volume: a key made with each image would refuse every update after a rebuild.
 Riders found installing each APK by hand a chore, and an app store such as Obtainium one app too
 many. So ORQWA installs its updates on Android as on Windows (ADR 0023):
 
-- **Download.** The core picks the release's `ORQWA-android-arm64.apk` on Android and downloads it
-  into the cache (`updates/ORQWA-<version>.apk`), as it does the MSI on Windows.
+- **Download.** The core picks the release's `ORQWA-<version>-android-arm64.apk` on Android,
+  falling back to `ORQWA-android-arm64.apk` for earlier releases (ADR 0023, #322), and downloads
+  it into the cache (`updates/ORQWA-<version>.apk`), as it does the MSI on Windows.
 - **Install.** The core cannot start Android's installer, so the plugin does: it writes the APK
   into a `PackageInstaller` session for ORQWA's own package and commits it. From Android 12 the
   session asks for no prompt (`UPDATE_PACKAGES_WITHOUT_USER_ACTION`), which Android grants an app

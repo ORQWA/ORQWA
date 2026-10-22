@@ -80,3 +80,14 @@ Options considered:
   `release-assets.githubusercontent.com` for the download, are listed in the wiki's internet list.
 - **No new dependency.** It uses `reqwest`, `serde_json`, `tokio` and `thiserror`, which the
   workspace already has.
+
+## Amendment 2026-10-22: versioned release files (#322)
+
+- **Names.** Each release file carries its version: `ORQWA-0.5.2-windows-x86_64.msi`,
+  `orqwa-cli-0.5.2-linux-arm64.tar.gz`. Downloads of different releases no longer overwrite each
+  other or look alike. The release script adds the version; builds and CI artifacts keep plain
+  names, so the build jobs are unchanged.
+- **Updates.** The updater takes the installer named with the release's version, and the plain
+  name only where that is missing. Every ORQWA before this change knows only the plain name, so
+  releases also carry the installers under it (and Torqa 0.5.0's old name, ADR 0026) until riders
+  have moved past those versions.

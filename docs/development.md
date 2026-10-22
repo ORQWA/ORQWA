@@ -241,7 +241,11 @@ the release needs it. Branch and PR builds only produce workflow artifacts.
 The tag's commit must contain this workflow. A tag push runs the container checks and the
 native macOS, Windows and both Linux builds, and the Android build. After all succeed, the
 `release` job verifies every nonempty app/CLI archive (the Android APK among them), creates a
-draft with generated release notes, uploads the archives and publishes it. Only that job has
+draft with generated release notes, uploads the archives and publishes it. Each archive goes up
+with the release's version in its name (`ORQWA-0.5.2-windows-x86_64.msi`,
+`orqwa-cli-0.5.2-linux-arm64.tar.gz`; #322); the builds and CI artifacts keep plain names. The
+Windows installer and the APK also go up under their plain names, which every ORQWA before the
+versioned names looks for when it updates itself. Only that job has
 `contents: write`, using the automatic `GITHUB_TOKEN`.
 
 The APK of a tag is signed with ORQWA's release key, from the repository secrets
