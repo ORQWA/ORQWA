@@ -39,6 +39,10 @@ func _run() -> void:
 		await process_frame
 	_check(summary.visible, "crossing the finish opens the summary automatically")
 	_check(ride.visible and not detail.visible, "the dialog stays over the ride")
+	_check(not orqwa.ambient_sound_active(), "finishing stops the core audio stream")
+	await process_frame
+	var sound: RideSound = ride.get("_sound")
+	_check(not sound.playing, "the finished ride's playback stops behind the quick summary")
 	var bar: RideBar = ride.get("_bar")
 	var back: Button = bar.get("_back")
 	_check(not back.visible, "a saved ride needs no extra finish button")

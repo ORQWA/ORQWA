@@ -88,6 +88,9 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 📴 Ride offline on any computer · ⚖️ realistic physics, adjustable difficulty ·
 🎛️ a HUD your way · 🌍 English and German · 🖥️ macOS, Windows and Linux
 
+[Wind and bicycle sound](https://github.com/ORQWA/ORQWA/wiki/Devices-and-riding#wind-and-bicycle-sound)
+follows your speed, pedaling and coasting in 3D, with independent volume controls.
+
 Error explanations follow your rider's language; [technical details](https://github.com/ORQWA/ORQWA/wiki/Riders#language-and-error-details)
 remain available separately after notifications disappear.
 

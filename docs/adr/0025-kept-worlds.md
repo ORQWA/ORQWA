@@ -94,5 +94,5 @@ Format-1 worlds rebuild when next ridden; the course-file format is unchanged.
 
 ## Amendment — 2026-10-22
 
-[River levels (ADR 0029)](0029-river-levels.md) raise the generator to 8. The stored format
+[River levels (ADR 0030)](0030-river-levels.md) raise the generator to 8. The stored format
 stays at 2; older kept worlds remain rideable and offer regeneration for the corrected rivers.

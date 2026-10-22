@@ -36,6 +36,8 @@ const VIEWS: Dictionary[String, Array] = {
 	"city-overview": ["kirchenfeldbruecke", 100.0, 2, "Midday", "Clear"],
 	"city-benches": ["kirchenfeldbruecke", 100.0, 0, "Midday", "Clear", "bench"],
 	"forest-floor": ["gurtenstrasse", 1840.0, 0, "Midday", "Clear", "fern"],
+	"rock-cliff-overview": ["kirchenfeldbruecke", 380.0, 0, "Midday", "Clear", "cliff-far"],
+	"rock-cliff-close": ["kirchenfeldbruecke", 380.0, 0, "Midday", "Clear", "cliff-near"],
 	# The reference route (#167): a planner's file over a pass, its hard places.
 	"oberalp-tunnel-chase": ["oberalp", 3700.0, 0, "Midday", "Clear"],
 	"oberalp-railway-chase": ["oberalp", 4500.0, 0, "Midday", "Clear"],
@@ -115,7 +117,12 @@ func _run() -> void:
 		root.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 		var environment: Environment = world.get("_environment")
 		environment.glow_enabled = false
+	var capture_camera: Camera3D = world.get("_camera")
+	var default_fov: float = capture_camera.fov
+	var ride_screen: Control = _main.get_node("RideScreen")
 	for view: String in views:
+		capture_camera.fov = default_fov
+		ride_screen.show()
 		var spec: Array = specs[view]
 		var distance: float = spec[1]
 		var camera: int = spec[2]
@@ -153,6 +160,8 @@ func _run() -> void:
 
 
 func _focus_instance(orqwa: OrqwaApp, world: RideWorld, model: String) -> bool:
+	if model.begins_with("cliff-"):
+		return _focus_cliff(orqwa, world, model == "cliff-near")
 	var rider: Node3D = world.get_node("Rider")
 	var nearest: float = INF
 	var at: Vector3 = Vector3.ZERO
@@ -190,4 +199,48 @@ func _focus_instance(orqwa: OrqwaApp, world: RideWorld, model: String) -> bool:
 		camera.look_at_from_position(
 			at - away * 4.0 + along * 3.0 + Vector3.UP * 1.7, at + Vector3.UP * 0.55, Vector3.UP
 		)
+	return true
+
+
+## Aim at a broad exposed face, so rock reviews exercise the material at both distances.
+func _focus_cliff(orqwa: OrqwaApp, world: RideWorld, close_up: bool) -> bool:
+	var rider: Node3D = world.get_node("Rider")
+	var best: float = 0.0
+	var at: Vector3 = Vector3.ZERO
+	var outward: Vector3 = Vector3.ZERO
+	for index: int in range(orqwa.world_chunk_count()):
+		var chunk: Dictionary = orqwa.world_chunk(index)
+		var center: Vector3 = chunk["center"]
+		var terrain: Dictionary = chunk["terrain"]
+		var vertices: PackedVector3Array = terrain["vertices"]
+		var normals: PackedVector3Array = terrain["normals"]
+		var colours: PackedColorArray = terrain["colors"]
+		var indices: PackedInt32Array = terrain["indices"]
+		for offset: int in range(0, indices.size(), 3):
+			var a: int = indices[offset]
+			var b: int = indices[offset + 1]
+			var c: int = indices[offset + 2]
+			var normal: Vector3 = (normals[a] + normals[b] + normals[c]).normalized()
+			if normal.y < 0.15 or normal.y > 0.55 or colours[a].a > 0.3:
+				continue
+			var point: Vector3 = center + (vertices[a] + vertices[b] + vertices[c]) / 3.0
+			var distance_m: float = point.distance_to(rider.global_position)
+			if distance_m > 800.0:
+				continue
+			var area: float = (vertices[b] - vertices[a]).cross(vertices[c] - vertices[a]).length()
+			var score: float = area / (1.0 + distance_m * distance_m / 10000.0)
+			if score > best:
+				best = score
+				at = point
+				outward = normal
+	if best == 0.0:
+		return false
+	world.set("_free", true)
+	var camera: Camera3D = world.get("_camera")
+	var distance_m: float = 24.0 if close_up else 100.0
+	camera.fov = 40.0
+	(_main.get_node("RideScreen") as Control).hide()
+	camera.look_at_from_position(
+		at + outward * distance_m + Vector3.UP * distance_m * 0.15, at, Vector3.UP
+	)
 	return true

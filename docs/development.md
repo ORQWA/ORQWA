@@ -65,7 +65,7 @@ bends and clips footway polygons against the road instead of discarding complete
 The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.
 Bench and vegetation queries use the same clipped footprints as the rendered meshes.
 
-River surfaces (R114, [ADR 0029](adr/0029-river-levels.md)) use generator 8 with the same
+River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
 both water meshes and channel beds use those shared elevations. Keep these profiles
 independent of road shaping. Review a steep valley from the road and above, plus a lake,
@@ -215,6 +215,13 @@ line (`ORQWA 0.2.1 (0ad9af1)`), as Git reports it while building, or the `ORQWA_
 variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
 the host: a worktree's Git directory lies outside the checkout the container sees.
 
+### Riding audio
+
+The Rust ambient mixer, its CC0 texture sources, regeneration command and a WAV listening
+preview are documented in [the audio README](../core/orqwa-app/audio/README.md) and
+[ADR 0029](adr/0029-ride-audio.md). Run the preview and asset preparation in the devcontainer.
+The live mixer needs no audio downloads or additional dependency.
+
 ### Publishing a release
 
 A tag does not set the version. The About tab, the first log line, the CLI and the User-Agent
@@ -282,6 +289,11 @@ the parts and how to remove Android support again.
 
 ## Usage wiki
 
+Keep the wiki focused on usage guides: setup, controls, settings, rider workflows and
+troubleshooting. Update it when those tasks change. Pure visual or internal fixes need no
+wiki edit; implementation details, bug-fix notes and review images belong in repository
+documentation and the PR.
+
 Rider guides live in the [GitHub wiki](https://github.com/ORQWA/ORQWA/wiki), checked out as
 the `wiki/` submodule ([ADR 0015](adr/0015-usage-wiki.md)). Clone with
 `git clone --recurse-submodules`, or run `make wiki-init`
@@ -296,7 +308,7 @@ and `python3 -m unittest discover -s scripts/wiki -p 'test_*.py'` directly.
 1. Initialize the wiki and create a branch before editing:
    `make wiki-init`, then `git -C wiki switch -c docs/my-change`.
    Resume an existing branch with `git -C wiki switch docs/my-change`.
-2. Update the relevant guides, `Home.md`, `_Sidebar.md` and screenshots. Wiki filenames are
+2. Update affected guides, with navigation and screenshots only where needed. Wiki filenames are
    GitHub page names. Use absolute `https://github.com/ORQWA/ORQWA/wiki/<page>` links, and
    `https://raw.githubusercontent.com/ORQWA/ORQWA/main/docs/images/<file>` for shared images.
    Check wiki references before deleting an image from the application repository.

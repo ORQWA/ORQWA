@@ -75,8 +75,13 @@ Blender references. Use them for any visual or model work.
 - Rustdoc on all public items.
 - Significant decisions get an ADR in `docs/adr/`.
 - User-facing guides live in the `wiki/` Git submodule, published on the GitHub wiki.
-- **Every relevant feature addition, change or removal must update the wiki in the same
-  session and application PR.** Update affected pages, Home/sidebar navigation and screenshots.
+- **Keep the wiki focused on usage guides:** setup, controls, settings, rider workflows and
+  troubleshooting. Update affected guides in the same session and PR when those user tasks
+  change, including navigation and screenshots where needed. Do not add implementation
+  explanations, visual bug-fix notes, per-PR summaries or scenery regeneration notices.
+  Pure visual or internal fixes need no wiki change; technical details, validation and review
+  images belong in repository documentation and the PR.
+  When editing the wiki:
   Run `make wiki-init` before reading or editing guides. Preserve local changes; never reset
   a dirty wiki checkout or edit on a detached HEAD: create/resume a documentation branch.
   Run `make wiki-prepare BRANCH=docs/<change>`, explicitly stage `git add wiki`, and include

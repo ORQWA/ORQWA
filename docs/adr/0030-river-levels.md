@@ -1,4 +1,4 @@
-# ADR 0029 — River surfaces independent of bank terrain
+# ADR 0030 — River surfaces independent of bank terrain
 
 - Status: accepted
 - Date: 2026-10-22
@@ -7,7 +7,7 @@
 
 Rivers copied the shaped terrain at every water vertex. On Alpenbrevet Gold, steep valley
 sides and road embankments became towering water slopes. Subtracting a fixed channel depth
-could not correct the water surface or keep its bed submerged (R114).
+could not correct the water surface or keep its bed submerged (R118).
 
 ## Decision
 
