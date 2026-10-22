@@ -14,6 +14,7 @@ var _overlay: OverlayWindow
 var _opaque: ColorRect = ColorRect.new()
 var _failures: FailureDetails = FailureDetails.new()
 var _update: UpdateDialog = UpdateDialog.new()
+var _quick_summary: RideSummaryDialog = RideSummaryDialog.new()
 ## A newer ORQWA found during a ride, offered once back on the start page (R99).
 var _pending_update: Array = []
 ## On Android: the ride's HUD shows in a small window on top of other apps.
@@ -50,6 +51,10 @@ func _ready() -> void:
 	_start.bind(_orqwa)
 	_ride.bind(_orqwa, _world)
 	_summary.bind(_orqwa)
+	add_child(_quick_summary)
+	_quick_summary.bind(_orqwa)
+	_quick_summary.closed.connect(_back_home)
+	_quick_summary.details_requested.connect(_show_summary)
 	move_child(_failures, get_child_count() - 1)
 	_start.ride_started.connect(_on_ride_started)
 	_overlay = OverlayWindow.new(get_window())
@@ -66,7 +71,8 @@ func _ready() -> void:
 	_opaque.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_opaque)
 	_ride.closed.connect(_back_home)
-	_ride.summary_requested.connect(_show_summary)
+	# Saving emits from the core: read its history only after that call has returned.
+	_ride.summary_requested.connect(_show_quick_summary, CONNECT_DEFERRED)
 	_ride.overlay_requested.connect(_set_overlay)
 	_ride.overlay_zoom_requested.connect(_overlay.zoom)
 	get_window().size_changed.connect(_on_window_resized)
@@ -224,7 +230,13 @@ func _notification(what: int) -> void:
 		_orqwa.set_fullscreen(FullScreen.is_on(get_window()))
 
 
-## The summary of the ride just saved (R42); closing it returns to the start page.
+## The quick summary stays over the finished ride, like the ride settings (R113).
+func _show_quick_summary(path: String) -> void:
+	_set_overlay(false)
+	_quick_summary.open(path)
+
+
+## The full details of the ride just saved (R42); closing returns to the start page.
 func _show_summary(path: String) -> void:
 	_ride.hide()
 	_world.hide()
@@ -234,6 +246,7 @@ func _show_summary(path: String) -> void:
 
 
 func _back_home() -> void:
+	_quick_summary.hide()
 	_ride.hide()
 	_world.hide()
 	_video.hide()
