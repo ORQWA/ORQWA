@@ -85,6 +85,12 @@ unchanged. Both app and route runners check their capture script compiles before
 
 Additional UI fixtures use the same real controls without hardware or account credentials:
 
+`SCREENSHOT_SUMMARY_ONLY=1 scripts/screenshots.sh` captures just the quick finish dialog over
+a finished fake-trainer workout as `summary-quick.png`, without rendering a 3D world.
+The normal run also captures its full details as `summary.png`.
+The automatic-finish, manual-finish and discard flows are checked by `summary_smoke.gd`;
+`window_smoke.gd` checks the dialog at 1024 × 640 in English and German.
+
 For a graphics/settings change, capture only the settings with
 `SCREENSHOT_SETTINGS_ONLY=1 scripts/screenshots.sh` in the container; this avoids building
 a course or populating sample rides. `SCREENSHOT_LOCALE=de` selects German for the same run.

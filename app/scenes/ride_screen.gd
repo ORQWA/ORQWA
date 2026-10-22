@@ -41,8 +41,6 @@ var _settings_dialog: RideSettingsDialog = RideSettingsDialog.new()
 var _settings_for_pause: bool = false
 ## The ride options in effect (`RideOptions.options()`).
 var _options: Dictionary = {}
-## Finished from the settings: go to the summary as soon as the ride is saved.
-var _summary_when_saved: bool = false
 var _saved_path: String = ""
 var _imperial: bool = false
 var _climb_panel: PanelContainer = PanelContainer.new()
@@ -108,7 +106,7 @@ func begin(options: Dictionary) -> void:
 	_finished = false
 	_saved = false
 	_gear = 0
-	_summary_when_saved = false
+	_saved_path = ""
 	_bar.show_settings(true)
 	_bar.show_finish("")
 	_bar.show_pause(true)
@@ -431,7 +429,6 @@ func _on_profile_changed(profile: Dictionary) -> void:
 
 
 func _on_finish_requested() -> void:
-	_summary_when_saved = true
 	_finish_ride()
 
 
@@ -755,9 +752,8 @@ func _on_remembered_missing(names: PackedStringArray) -> void:
 
 
 func _on_ride_finished() -> void:
-	# The finish toast with the time comes from `route_completed`; the whole screen shows it.
 	overlay_requested.emit(false)
-	_orqwa.finish_ride()
+	_finish_ride()
 
 
 ## After the finish: to the summary, or back if nothing was recorded.
@@ -770,6 +766,7 @@ func _on_finish_pressed() -> void:
 
 func _finish_ride() -> void:
 	_finished = true
+	_settings_dialog.hide()
 	_bar.show_pause(false)
 	_bar.show_settings(false)
 	_orqwa.finish_ride()
@@ -785,12 +782,8 @@ func _on_ride_saved(path: String) -> void:
 	_saved = true
 	_saved_path = path
 	_bar.show_settings(false)
-	if _summary_when_saved:
-		summary_requested.emit(path)
-		return
-	_show_toast(tr("Saved %s") % path.get_file())
-	_toast_left = TOAST_SECONDS * 2.0
 	_bar.show_finish("summary")
+	summary_requested.emit(path)
 
 
 func _on_failed(message: String) -> void:

@@ -1393,9 +1393,6 @@ msgstr "Sa"
 msgid "Save"
 msgstr "Speichern"
 
-msgid "Saved %s"
-msgstr "%s gespeichert"
-
 msgid "Saved as %s"
 msgstr "Gespeichert unter %s"
 
@@ -2179,6 +2176,12 @@ msgstr "Jetzt aktualisieren"
 
 msgid "What's new"
 msgstr "Was ist neu"
+
+msgid "View details"
+msgstr "Details anzeigen"
+
+msgid "Discard ride?"
+msgstr "Fahrt verwerfen?"
 
 msgid "Tree density"
 msgstr "Baumdichte"

@@ -281,6 +281,9 @@ func _small_window(locale: String, ride: String) -> void:
 	start.hide()
 	var summary: HistoryScreen = main.get_node("HistoryScreen")
 	if not ride.is_empty():
+		main.call("_show_quick_summary", ride)
+		var quick_summary: RideSummaryDialog = main.get("_quick_summary")
+		await _dialog_fits(quick_summary, room, locale)
 		main.call("_show_summary", ride)
 		await _settle()
 		_fits(summary, room, "%s, a ride's summary" % locale)

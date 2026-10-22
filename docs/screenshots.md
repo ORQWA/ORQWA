@@ -21,6 +21,7 @@ same licence; the footage is used only in documentation.
 
 | Before riding | After riding |
 |---|---|
+| | ![Quick finish summary](images/app/summary-quick.png) |
 | ![Course library](images/app/courses.png) | ![Ride summary](images/app/summary.png) |
 | ![Course detail](images/app/course.png) | ![Ride history](images/app/history.png) |
 | ![Connected devices](images/issues/devices-readings.png) | ![Power curve and profile](images/app/analysis.png) |
