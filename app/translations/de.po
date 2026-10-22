@@ -1741,9 +1741,6 @@ msgstr "Videos mit GPS, Routenvideos (Incyclist .xml, Tacx .rlv)"
 msgid "View on %s"
 msgstr "Auf %s ansehen"
 
-msgid "View summary"
-msgstr "Zusammenfassung"
-
 msgid "W/kg"
 msgstr "W/kg"
 

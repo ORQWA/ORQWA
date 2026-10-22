@@ -1,7 +1,7 @@
 class_name RideBar
 extends PanelContainer
 ## The ride view's controls in one slim bar at the bottom left (#189): icon buttons with
-## tooltips for the settings, the overlay and the way out of the ride, and the simulation's
+## tooltips for the settings, the overlay and pausing, and the simulation's
 ## speeds when the ride is simulated. A chevron folds the bar away to its corner and back;
 ## the keys work either way.
 
@@ -11,8 +11,8 @@ signal settings_requested
 signal overlay_requested
 ## The ride should pause, or go on (P).
 signal pause_requested
-## The summary, or the way back, was asked for.
-signal finish_requested
+## The way back was asked for after a ride recorded nothing.
+signal back_requested
 ## A simulation speed was chosen.
 signal speed_chosen(scale: float)
 ## The bar was folded away, or unfolded.
@@ -34,7 +34,7 @@ var _tools: HBoxContainer = HBoxContainer.new()
 var _settings: Button = Button.new()
 var _overlay: Button = Button.new()
 var _pause: Button = Button.new()
-var _finish: Button = Button.new()
+var _back: Button = Button.new()
 var _simulation: HBoxContainer = HBoxContainer.new()
 var _speed_buttons: Array[Button] = []
 
@@ -63,10 +63,10 @@ func _init() -> void:
 	_icon_button(_pause, "pause", tr("Pause the ride: the clock and the trainer wait (P)"))
 	_pause.pressed.connect(pause_requested.emit)
 	_tools.add_child(_pause)
-	_icon_button(_finish, "flag", tr("View summary"))
-	_finish.pressed.connect(finish_requested.emit)
-	_finish.hide()
-	_tools.add_child(_finish)
+	_icon_button(_back, "back", tr("Back"))
+	_back.pressed.connect(back_requested.emit)
+	_back.hide()
+	_tools.add_child(_back)
 	_simulation.add_theme_constant_override("separation", 4)
 	_simulation.add_child(VSeparator.new())
 	var caption: Label = UiTheme.caption(tr("Simulation"))
@@ -122,16 +122,9 @@ func show_settings(shown: bool) -> void:
 	_settings.visible = shown
 
 
-## Shows the way out of the ride: `"summary"`, `"back"` to where the ride came from, or `""`
-## for none.
-func show_finish(way: String) -> void:
-	_finish.visible = not way.is_empty()
-	if way == "back":
-		_finish.icon = UiIcons.texture("back", ICON)
-		_finish.tooltip_text = tr("Back")
-	elif way == "summary":
-		_finish.icon = UiIcons.texture("flag", ICON)
-		_finish.tooltip_text = tr("View summary")
+## Shows the way back when a ride recorded nothing and has no summary.
+func show_back(shown: bool) -> void:
+	_back.visible = shown
 
 
 func _toggle_fold() -> void:

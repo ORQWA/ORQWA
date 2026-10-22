@@ -41,7 +41,6 @@ var _settings_dialog: RideSettingsDialog = RideSettingsDialog.new()
 var _settings_for_pause: bool = false
 ## The ride options in effect (`RideOptions.options()`).
 var _options: Dictionary = {}
-var _saved_path: String = ""
 var _imperial: bool = false
 var _climb_panel: PanelContainer = PanelContainer.new()
 var _climb_title: Label = UiTheme.caption("")
@@ -106,9 +105,8 @@ func begin(options: Dictionary) -> void:
 	_finished = false
 	_saved = false
 	_gear = 0
-	_saved_path = ""
 	_bar.show_settings(true)
-	_bar.show_finish("")
+	_bar.show_back(false)
 	_bar.show_pause(true)
 	_show_paused(false)
 	_bar.folded = _orqwa.ride_bar_folded()
@@ -185,7 +183,7 @@ func _ready() -> void:
 	_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_bar.settings_requested.connect(_open_settings)
 	_bar.overlay_requested.connect(func() -> void: overlay_requested.emit(true))
-	_bar.finish_requested.connect(_on_finish_pressed)
+	_bar.back_requested.connect(closed.emit)
 	_bar.speed_chosen.connect(_set_time_scale)
 	_bar.folded_changed.connect(func(folded: bool) -> void: _orqwa.set_ride_bar_folded(folded))
 	add_child(_bar)
@@ -756,14 +754,6 @@ func _on_ride_finished() -> void:
 	_finish_ride()
 
 
-## After the finish: to the summary, or back if nothing was recorded.
-func _on_finish_pressed() -> void:
-	if _saved:
-		summary_requested.emit(_saved_path)
-	else:
-		closed.emit()
-
-
 func _finish_ride() -> void:
 	_finished = true
 	_settings_dialog.hide()
@@ -773,16 +763,14 @@ func _finish_ride() -> void:
 	if not _saved:
 		# Nothing to save (e.g. the trainer never connected): offer the way back.
 		_show_toast(tr("Nothing recorded."))
-		_bar.show_finish("back")
+		_bar.show_back(true)
 
 
 func _on_ride_saved(path: String) -> void:
 	_finished = true
 	_bar.show_pause(false)
 	_saved = true
-	_saved_path = path
 	_bar.show_settings(false)
-	_bar.show_finish("summary")
 	summary_requested.emit(path)
 
 

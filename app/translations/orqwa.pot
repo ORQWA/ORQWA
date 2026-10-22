@@ -2639,10 +2639,6 @@ msgstr ""
 msgid "View on %s"
 msgstr ""
 
-#: app/ui/ride_bar.gd
-msgid "View summary"
-msgstr ""
-
 #: core/orqwa-app/src/hud.rs
 msgid "W/kg"
 msgstr ""

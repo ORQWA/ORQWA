@@ -39,6 +39,9 @@ func _run() -> void:
 		await process_frame
 	_check(summary.visible, "crossing the finish opens the summary automatically")
 	_check(ride.visible and not detail.visible, "the dialog stays over the ride")
+	var bar: RideBar = ride.get("_bar")
+	var back: Button = bar.get("_back")
+	_check(not back.visible, "a saved ride needs no extra finish button")
 	var stats: ReflowGrid = summary.get("_stats")
 	var captions: Array[String] = []
 	for cell: Node in stats.get_children():
