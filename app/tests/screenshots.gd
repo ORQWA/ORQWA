@@ -112,6 +112,14 @@ func _run() -> void:
 			weather if not weather.is_empty() else "Clear"
 		)
 	await create_timer(maxf(ride_s, 4.0)).timeout
+	if OS.get_environment("SCREENSHOT_RIDE_OPTIONS_ONLY") == "1":
+		var screen: RideScreen = _main.get_node("RideScreen")
+		screen.call("_open_settings")
+		await create_timer(0.5).timeout
+		root.get_texture().get_image().save_jpg(out_dir.path_join("ride-settings.jpg"), 0.9)
+		print("saved ride settings")
+		quit(0)
+		return
 
 	for mode: int in range(3):
 		await create_timer(1.5).timeout

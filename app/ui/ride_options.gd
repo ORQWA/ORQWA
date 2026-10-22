@@ -23,6 +23,10 @@ var _flat_descents: CheckBox = CheckBox.new()
 var _time: OptionButton = OptionButton.new()
 var _weather: OptionButton = OptionButton.new()
 var _video_sound: CheckBox = CheckBox.new()
+var _wind_volume: HSlider = HSlider.new()
+var _bike_volume: HSlider = HSlider.new()
+var _wind_label: Label = Label.new()
+var _bike_label: Label = Label.new()
 ## The controls of the options that only change the 3D world, of those of video courses, and
 ## of trainer difficulty, which a workout's ERG power leaves no part in.
 var _world_rows: Array[Control] = []
@@ -55,8 +59,18 @@ func _init() -> void:
 	_row("Descents", _flat_descents, null)
 	_row("Time of day", _time, null, true)
 	_row("Weather", _weather, null, true)
+	_row("Wind sound", _wind_volume, _wind_label, true)
+	_row("Bicycle sound", _bike_volume, _bike_label, true)
 	_row("Sound", _video_sound, null, false, true)
 	# i18n-end
+	for slider: HSlider in [_wind_volume, _bike_volume]:
+		slider.min_value = 0.0
+		slider.max_value = 100.0
+		slider.step = 5.0
+		slider.value = 50.0
+		slider.value_changed.connect(func(_value: float) -> void: _changed())
+	_wind_volume.tooltip_text = tr("Wind volume; 0 mutes it")
+	_bike_volume.tooltip_text = tr("Chain and freewheel volume; 0 mutes them")
 	for option: OptionButton in [_camera, _time, _weather]:
 		option.item_selected.connect(func(_index: int) -> void: _changed())
 	_difficulty.value_changed.connect(func(_value: float) -> void: _changed())
@@ -70,7 +84,8 @@ func _init() -> void:
 
 
 ## The current options: `{camera, difficulty, flat_descents, time, weather, video_sound}`;
-## `time` and `weather` are names known to `RideWorld`.
+## `time` and `weather` are names known to `RideWorld`; `wind_volume` and `bike_volume`
+## are independent percentages, with zero to mute.
 func options() -> Dictionary:
 	return {
 		"camera": _camera.selected,
@@ -79,6 +94,8 @@ func options() -> Dictionary:
 		"time": _time.get_item_text(_time.selected),
 		"weather": _weather.get_item_text(_weather.selected),
 		"video_sound": _video_sound.button_pressed,
+		"wind_volume": _wind_volume.value,
+		"bike_volume": _bike_volume.value,
 	}
 
 
@@ -97,12 +114,16 @@ func set_options(options: Dictionary) -> void:
 	var time: String = options.get("time", "Midday")
 	var weather: String = options.get("weather", "Clear")
 	var video_sound: bool = options.get("video_sound", true)
+	var wind_volume: float = options.get("wind_volume", 50.0)
+	var bike_volume: float = options.get("bike_volume", 50.0)
 	_camera.select(camera_mode)
 	_difficulty.set_value_no_signal(difficulty)
 	_flat_descents.set_pressed_no_signal(flat_descents)
 	_select_text(_time, time)
 	_select_text(_weather, weather)
 	_video_sound.set_pressed_no_signal(video_sound)
+	_wind_volume.set_value_no_signal(wind_volume)
+	_bike_volume.set_value_no_signal(bike_volume)
 	_update_labels()
 
 
@@ -124,6 +145,8 @@ func _changed() -> void:
 
 func _update_labels() -> void:
 	_difficulty_label.text = "%d %%" % roundi(_difficulty.value)
+	_wind_label.text = "%d %%" % roundi(_wind_volume.value)
+	_bike_label.text = "%d %%" % roundi(_bike_volume.value)
 
 
 func _row(

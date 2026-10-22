@@ -2,6 +2,7 @@
 # Renders ride screenshots with software Vulkan (lavapipe) on a virtual display, so visuals can
 # be checked without a GPU. Runs inside the dev container; images go to screenshots/.
 # SCREENSHOT_SETTINGS_ONLY=1 captures settings without generating a course or sample rides.
+# SCREENSHOT_RIDE_OPTIONS_ONLY=1 stops after course detail and the ride's settings.
 set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"

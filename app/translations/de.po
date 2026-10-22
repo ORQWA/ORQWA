@@ -2182,3 +2182,15 @@ msgstr "Was ist neu"
 
 msgid "Tree density"
 msgstr "Baumdichte"
+
+msgid "Wind sound"
+msgstr "Windgeräusche"
+
+msgid "Bicycle sound"
+msgstr "Fahrradgeräusche"
+
+msgid "Wind volume; 0 mutes it"
+msgstr "Lautstärke des Windes; 0 schaltet ihn stumm"
+
+msgid "Chain and freewheel volume; 0 mutes them"
+msgstr "Lautstärke von Kette und Freilauf; 0 schaltet sie stumm"

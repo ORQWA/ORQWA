@@ -189,9 +189,11 @@ Built in rideable steps:
   the ride files and following them, so hundreds of rides cost one read
 - [x] Climbs (auto-detected, categorised) and personal records per route and climb
 - [x] Ghosts & pacers: own best, power / W/kg pacers, recorded GPX/FIT activities (R20)
-- [ ] Audio (R26): music app control ✅, original video sound ✅ (Phase 5); ambient sound
-  dropped for now (synthesised version did not sound right), to return with convincing
-  sounds (#259)
+- [x] Audio (R26, R112): music app control, original video sound (Phase 5), and continuous
+  ambient riding sound (#259, ADR 0029): CC0 wind and bicycle textures, irregular gusts and
+  speed-dependent airflow, chain movement following cadence and effort, a separately
+  recorded coasting freewheel following road speed; independent volume sliders before and
+  during a 3D course ride, paused/finished playback flushed; listening preview available.
   - [x] Music helpers (#260): macOS compiles only the running player's command, so Apple
     Music works without Spotify installed; Windows sends media-key down/up events through
     `SendInput`. Native CI checks cover missing macOS players and the Windows input ABI.

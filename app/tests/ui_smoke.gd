@@ -78,6 +78,8 @@ func _ride_settings() -> void:
 		"time": "Evening",
 		"weather": "Rain",
 		"video_sound": false,
+		"wind_volume": 0.0,
+		"bike_volume": 75.0,
 	}
 	options.set_options(wanted)
 	_check(options.options() == wanted, "options round trip: %s" % options.options())
