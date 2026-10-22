@@ -6,7 +6,7 @@
 ## Context
 
 The first ambient synthesizer was removed because it did not sound convincing (#259).
-R112 calls for realistic wind and bicycle sound that follows riding rather than a repeating
+R114 calls for realistic wind and bicycle sound that follows riding rather than a repeating
 sound track. R26 and R48 require per-ride controls before and during the ride, offline.
 
 ## Decision
@@ -41,7 +41,7 @@ volume sliders in the shared ride options; zero mutes a layer.
   documented listening choices. Rain currently strengthens the breeze; this does not add a
   separate rain recording or location-specific birds, traffic or water.
 
-## Amendment — 2026-10-22: recorded shifting sound (R113)
+## Amendment — 2026-10-22: recorded shifting sound (R115)
 
 A fourth CC0 recording supplies a 300 ms gear-change one-shot. The shared Rust shift-input
 handler compares the accepted gear before and after every input, so keyboard, BLE and

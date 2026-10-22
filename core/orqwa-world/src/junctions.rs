@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::drape;
 use crate::road::RoadIndex;
 use crate::streets::Street;
-use crate::{HeightGrid, MeshData, On, ROAD_HALF_WIDTH};
+use crate::{HeightGrid, MeshData, On, ROAD_HALF_WIDTH, ROAD_SINK};
 
 /// Streets this close to a point (metres) meet there.
 const MEET_M: f64 = 1.0;
@@ -19,12 +19,14 @@ const ARM_M: f64 = 6.0;
 const ARM_MIN_M: f64 = 2.0;
 /// Corners this wide (radians) get a kerb; narrower ones are mostly the streets themselves and
 /// wider ones barely a corner.
-const CORNER: (f64, f64) = (0.4, 2.8);
+const CORNER: (f64, f64) = (0.25, 3.0);
+/// Acute forks need tangent points farther along both arms to round their nose.
+const CORNER_REACH_M: f64 = 40.0;
 /// The kerb's radius, as a share of the two arms' half widths together, and its bounds.
 const RADIUS_SHARE: f64 = 0.6;
 const RADIUS_M: (f64, f64) = (0.8, 4.5);
 /// Arc pieces are at most this wide (radians).
-const ARC_STEP: f64 = 0.2;
+const ARC_STEP: f64 = 0.1;
 /// A kerb is laid only where its ends and corner lie this close to the streets' real edges:
 /// streets curving away right at the junction, or meeting at points a few metres apart, have
 /// edges other than the straight ones it is drawn from.
@@ -42,12 +44,72 @@ pub(crate) struct Corner {
     paved: bool,
     min: (f64, f64),
     max: (f64, f64),
+    centre: (f64, f64),
+    radius: f64,
+    end_lifts: [f64; 2],
+}
+
+/// A sidewalk following the same curved edge as its junction's carriageway.
+pub(crate) struct FootwayCorner {
+    /// Region replaced by the curved sidewalk, between its tangent cross-sections.
+    pub zone: Vec<(f64, f64)>,
+    /// Convex pieces, with street heights at their two cross-sections.
+    pub sections: Vec<FootwaySection>,
+}
+
+/// A convex piece of a curved footway and its two street heights.
+pub(crate) struct FootwaySection {
+    /// Four corners, with the road-facing edge first.
+    pub polygon: Vec<(f64, f64)>,
+    /// Street heights at the first and second cross-sections.
+    pub lifts: [f64; 2],
 }
 
 impl Corner {
     /// The points along its kerb, to keep plants off.
     pub(crate) fn outline(&self) -> impl Iterator<Item = (f64, f64)> + '_ {
         std::iter::once(self.apex).chain(self.arc.iter().copied())
+    }
+
+    /// A constant-width footway on the land side of the existing road fillet.
+    pub(crate) fn footway(&self, inset: f64, width: f64) -> Option<FootwayCorner> {
+        if !self.paved || self.radius <= inset + width + 0.1 {
+            return None;
+        }
+        let offset = |p: (f64, f64), amount: f64| {
+            let share = 1.0 - amount / self.radius;
+            (
+                self.centre.0 + (p.0 - self.centre.0) * share,
+                self.centre.1 + (p.1 - self.centre.1) * share,
+            )
+        };
+        #[allow(clippy::cast_precision_loss)] // a few arc sections
+        let lift = |i: usize| {
+            self.end_lifts[0]
+                + (self.end_lifts[1] - self.end_lifts[0]) * i as f64 / (self.arc.len() - 1) as f64
+        };
+        Some(FootwayCorner {
+            zone: vec![
+                self.apex,
+                self.arc[0],
+                self.centre,
+                self.arc[self.arc.len() - 1],
+            ],
+            sections: self
+                .arc
+                .windows(2)
+                .enumerate()
+                .map(|(i, pair)| FootwaySection {
+                    polygon: vec![
+                        offset(pair[0], inset),
+                        offset(pair[1], inset),
+                        offset(pair[1], inset + width),
+                        offset(pair[0], inset + width),
+                    ],
+                    lifts: [lift(i), lift(i + 1)],
+                })
+                .collect(),
+        })
     }
 }
 
@@ -157,7 +219,11 @@ fn arms_at(
             };
             let half = street.half_width();
             // Drawn as the road ridden here: the road is the arm (once, each way).
-            if road.runs_along(from.0, from.1, ROAD_HALF_WIDTH + half + 0.5, direction) {
+            // A branch starts on the road too. Check its line farther out, so a
+            // shallow fork is not mistaken for a duplicate of the ridden road.
+            if road.runs_along(from.0, from.1, ROAD_HALF_WIDTH + half + 0.5, direction)
+                && road.runs_along(ahead.0, ahead.1, 1.0, direction)
+            {
                 road_arm = true;
                 continue;
             }
@@ -173,14 +239,13 @@ fn arms_at(
         }
     }
     if road_arm && let Some((from, ahead)) = road.heading(at.0, at.1, ROAD_HALF_WIDTH + MEET_M) {
-        let lift = arms.iter().map(|a| a.lift).fold(f64::MAX, f64::min);
         for direction in [ahead, (-ahead.0, -ahead.1)] {
             arms.push(Arm {
                 from,
                 direction,
                 half: ROAD_HALF_WIDTH,
-                reach: ARM_M,
-                lift,
+                reach: CORNER_REACH_M,
+                lift: ROAD_SINK,
                 paved: true,
                 street: None,
             });
@@ -238,7 +303,7 @@ fn fillet(a: &Arm, b: &Arm, angle: f64) -> Option<Corner> {
     let t = (de * -b.direction.1 + b.direction.0 * dn) / det;
     let s = (a.direction.0 * dn - a.direction.1 * de) / det;
     // The edges meet far out or behind the junction: no corner of these two.
-    let far = a.half + b.half + RADIUS_M.1;
+    let far = CORNER_REACH_M;
     if !(-1.0..=far).contains(&t) || !(-1.0..=far).contains(&s) {
         return None;
     }
@@ -299,6 +364,9 @@ fn fillet(a: &Arm, b: &Arm, angle: f64) -> Option<Corner> {
         paved: a.paved && b.paved,
         min,
         max,
+        centre,
+        radius,
+        end_lifts: [a.lift, b.lift],
     })
 }
 

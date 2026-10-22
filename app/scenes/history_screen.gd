@@ -38,7 +38,7 @@ var _subtitle: Label = Label.new()
 var _stats: ReflowGrid = ReflowGrid.new()
 var _climbs: VBoxContainer = VBoxContainer.new()
 ## The durations over which the ride holds the rider's best power (R62).
-var _power_records: HFlowContainer = HFlowContainer.new()
+var _power_records: PowerRecordBadges = PowerRecordBadges.new()
 ## What an FTP test showed (R22), and taking it as the rider's FTP.
 var _ftp_row: HBoxContainer = HBoxContainer.new()
 var _ftp_text: Label = Label.new()
@@ -239,7 +239,6 @@ func _ready() -> void:
 	_detail.add_child(_stats)
 	_climbs.add_theme_constant_override("separation", 4)
 	_detail.add_child(_climbs)
-	_power_records.add_theme_constant_override("h_separation", 24)
 	_detail.add_child(_power_records)
 	_ftp_row.add_theme_constant_override("separation", 16)
 	_ftp_text.add_theme_font_size_override("font_size", 18)
@@ -367,7 +366,7 @@ func _show_ride(index: int) -> void:
 	_export_status.hide()
 	_fill_stats(ride)
 	_fill_climbs(ride)
-	_fill_power_records(ride)
+	_power_records.show_ride(ride)
 	_show_power_curve(ride)
 	_show_ftp(ride)
 	var detail: Dictionary = _orqwa.ride_detail(path, CHART_POINTS)
@@ -485,27 +484,6 @@ func _fill_climbs(ride: Dictionary) -> void:
 		var record: bool = climb["record"]
 		var what: String = tr("Climb %d  ·  %.1f km from km %.1f") % [i + 1, length_km, start_km]
 		_climbs.add_child(_time_row(what, time_s, climb["avg_power"], record))
-
-
-## A ★ for each duration over which the ride holds the rider's best power (R62).
-func _fill_power_records(ride: Dictionary) -> void:
-	for child: Node in _power_records.get_children():
-		child.queue_free()
-	var records: PackedFloat64Array = ride.get("power_records", PackedFloat64Array())
-	var curve: PackedVector2Array = ride.get("power_curve", PackedVector2Array())
-	_power_records.visible = not records.is_empty()
-	for seconds: float in records:
-		var watts: float = 0.0
-		for point: Vector2 in curve:
-			if is_equal_approx(point.x, seconds):
-				watts = point.y
-		var badge: Label = Label.new()
-		badge.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-		badge.text = (
-			tr("★ Best %s: %d W") % [PowerCurveChart.duration_label(seconds), roundi(watts)]
-		)
-		badge.add_theme_color_override("font_color", UiTheme.CLIMB_COLORS["Cat 3"])
-		_power_records.add_child(badge)
 
 
 ## The ride's best power over each duration, over the rider's best of all rides (R62).

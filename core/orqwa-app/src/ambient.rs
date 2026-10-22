@@ -1,5 +1,5 @@
-//! Continuous riding sound (R112): recorded textures with non-repeating grains, turbulent
-//! airflow, independent pedal / freewheel rates, and recorded shift one-shots (R113).
+//! Continuous riding sound (R114): recorded textures with non-repeating grains, turbulent
+//! airflow, independent pedal / freewheel rates, and recorded shift one-shots (R115).
 
 use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 

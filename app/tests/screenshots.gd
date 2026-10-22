@@ -24,6 +24,10 @@ func _run() -> void:
 		await _error_details(out_dir)
 		quit()
 		return
+	if OS.get_environment("SCREENSHOT_SUMMARY_ONLY") == "1":
+		await _summary_only(out_dir)
+		quit()
+		return
 	var orqwa: OrqwaApp = _main.get_node("Orqwa")
 	var world: RideWorld = _main.get_node("World")
 	var start: StartPage = _main.get_node("StartPage")
@@ -184,10 +188,9 @@ func _run() -> void:
 			settings_dialog.hide()
 
 	# The ride's summary (R42), then the history.
-	orqwa.finish_ride()
-	var newest: Dictionary = orqwa.history()[0]
-	var saved_path: String = newest["path"]
-	ride_screen.summary_requested.emit(saved_path)
+	await _quick_summary(orqwa, out_dir)
+	var quick_summary: RideSummaryDialog = _main.get("_quick_summary")
+	quick_summary.custom_action.emit(&"details")
 	await create_timer(1.0).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("summary.png"))
 	print("saved summary")
@@ -439,8 +442,8 @@ func _workout_screens(orqwa: OrqwaApp, start: StartPage) -> void:
 	orqwa.finish_ride()
 
 	# A structured workout (R21): the plan on the tab, then ridden on its own.
-	(_main.get_node("RideScreen") as Control).hide()
-	start.show()
+	await process_frame
+	_main.call("_back_home")
 	start_tabs.current_tab = StartPage.Tab.WORKOUTS
 	options.set_workout({"kind": "plan", "id": "builtin:threshold-2x15"})
 	options.changed.emit()
@@ -454,8 +457,8 @@ func _workout_screens(orqwa: OrqwaApp, start: StartPage) -> void:
 	print("saved structured workout")
 	orqwa.finish_ride()
 	# The FTP test (R22) on the tab.
-	(_main.get_node("RideScreen") as Control).hide()
-	start.show()
+	await process_frame
+	_main.call("_back_home")
 	options.set_workout({"kind": "ftp_test"})
 	options.changed.emit()
 	await create_timer(0.5).timeout
@@ -473,6 +476,30 @@ func _workout_screens(orqwa: OrqwaApp, start: StartPage) -> void:
 	await create_timer(0.5).timeout
 	root.get_texture().get_image().save_png(out_dir.path_join("workout-editor.png"))
 	editor.hide()
+
+
+func _summary_only(out_dir: String) -> void:
+	root.disable_3d = true
+	var locale: String = OS.get_environment("SCREENSHOT_LOCALE")
+	if not locale.is_empty():
+		TranslationServer.set_locale(locale)
+	var orqwa: OrqwaApp = _main.get_node("Orqwa")
+	var start: StartPage = _main.get_node("StartPage")
+	_check(orqwa.connect_fake_trainer(180.0, 90.0), "fake trainer")
+	var workout: Dictionary = {
+		"kind": "power", "power_w": 180.0, "name": tr("Constant power %d W") % 180
+	}
+	_check(orqwa.start_workout(workout, false, false), "summary workout")
+	start.ride_started.emit({"workout": workout, "on_course": false})
+	await create_timer(12.0).timeout
+	await _quick_summary(orqwa, out_dir)
+
+
+func _quick_summary(orqwa: OrqwaApp, out_dir: String) -> void:
+	orqwa.finish_ride()
+	await create_timer(1.0).timeout
+	root.get_texture().get_image().save_png(out_dir.path_join("summary-quick.png"))
+	print("saved quick summary")
 
 
 func _error_details(out_dir: String) -> void:

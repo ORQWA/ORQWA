@@ -555,9 +555,9 @@ func _ride_bar() -> void:
 	_check(
 		buttons[3].button_pressed and not buttons[2].button_pressed, "the speed in effect is marked"
 	)
-	bar.show_finish("back")
-	var finish: Button = bar.get("_finish")
-	_check(finish.visible, "the way back shows")
+	bar.show_back(true)
+	var back: Button = bar.get("_back")
+	_check(back.visible and back.tooltip_text == "Back", "the way back shows")
 	var pause: Button = bar.get("_pause")
 	var pausing: Texture2D = pause.icon
 	bar.show_paused(true)

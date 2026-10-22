@@ -189,12 +189,12 @@ Built in rideable steps:
   the ride files and following them, so hundreds of rides cost one read
 - [x] Climbs (auto-detected, categorised) and personal records per route and climb
 - [x] Ghosts & pacers: own best, power / W/kg pacers, recorded GPX/FIT activities (R20)
-- [x] Audio (R26, R112): music app control, original video sound (Phase 5), and continuous
+- [x] Audio (R26, R114): music app control, original video sound (Phase 5), and continuous
   ambient riding sound (#259, ADR 0029): CC0 wind and bicycle textures, irregular gusts and
   speed-dependent airflow, chain movement following cadence and effort, a separately
   recorded coasting freewheel following road speed; independent volume sliders before and
   during a 3D course ride, paused/finished playback flushed; listening preview available.
-  - [x] Recorded gear-change clicks (R113): one-shot on each accepted virtual shift through
+  - [x] Recorded gear-change clicks (R115): one-shot on each accepted virtual shift through
     keyboard, BLE or remote, sharing bicycle volume; limit/no-change presses stay quiet,
     rapid shifts overlap with bounded voices and paused requests are never replayed.
   - [x] Music helpers (#260): macOS compiles only the running player's command, so Apple
@@ -322,6 +322,9 @@ Built in rideable steps:
   filter chips in a panel under a Filters button, the chips turned on listed under the toolbar
   (R85)
 - [x] Ride summary screen after the ride (name, keep or discard), then back home (R42)
+  - [x] Automatic quick summary dialog over the finished ride, shared with Finish & save:
+    essential figures, power PR badges (R62), rename, Done, confirmed discard and View details
+    (R113); no redundant finish flag in the bottom controls.
 - [x] Auto-reconnect last-used devices (R41)
 - [x] Devices that drop come back by themselves, also after a pause: the driver looks the
   device up again (macOS forgets it at once) instead of retrying its stale link; the in-ride
@@ -553,7 +556,12 @@ physically based materials and light, restyled group by group.
     short draw distance; generator 3 offers regeneration of kept worlds.
   - [x] Urban surfaces (R105, ADR 0027): dense-city paving, commercial/industrial asphalt,
     sidewalks and curbs, inferred building paths, forecourts and low garden walls; parks
-    and suburban lawns preserved, grass kept out of paving. Generator 5 / stored format 2.
+    and suburban lawns preserved, grass kept out of paving. Generator 7 / stored format 2.
+  - [x] Grounded sidewalks: shared joins around bends, solid edges down to the terrain,
+    and continuous approaches to lowered building access; no floating slabs or open seams.
+  - [x] Rounded sidewalk corners and kerbs: follow the carriageway's junction arcs, round
+    outer bends, trim intersecting surfaces instead of removing whole slabs, and draw a
+    separate 18 cm curb-stone border with joints and a beveled lip (R105/R112).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs
@@ -639,11 +647,15 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
     own archive, set up with the app's context): a course imported on the tablet fetched its tiles
   - [x] the overlay (R55) as picture-in-picture: the ride's HUD in a small window over other
     apps, scaled to it, the world not drawn behind it. Music control says it is not supported;
-    the update check offers the release page
+    the update check offers the release page (until E)
   - [x] touch: Godot turns taps into clicks, enough to ride
 - [x] D — a release-signed APK as a release asset (tags only, the key from the repository
   secrets; version code from ORQWA's version), the wiki (installing, permissions, updates,
   picture-in-picture); the internet list is unchanged
+- [x] E — updates installed from ORQWA (R103): the release's APK downloaded by the core and handed
+  to Android's installer by the plugin, without a prompt from Android 12 where Android allows it;
+  tried on the Tab S7 on 2026-10-22. Where Advanced Protection forbids installing apps, the
+  dialog explains how to turn it off
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))

@@ -1,7 +1,7 @@
 class_name RideSound
 extends AudioStreamPlayer
 ## Plays the core's live ambient PCM. Stopping drops queued frames, so resuming never plays
-## old chain movement, and a finished ride cannot leak sound into the next screen (R112).
+## old chain movement, and a finished ride cannot leak sound into the next screen (R114).
 
 var _playback: AudioStreamGeneratorPlayback
 

@@ -1342,7 +1342,7 @@ impl App {
         }
     }
 
-    /// Change wind and bicycle volume and weather for this ride (R112).
+    /// Change wind and bicycle volume and weather for this ride (R114).
     pub fn set_ambient_sound(&mut self, settings: ambient::Settings) {
         if let Some(active) = self.ride.as_mut() {
             active.ambient_settings = settings;

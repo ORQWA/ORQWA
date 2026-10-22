@@ -1,6 +1,7 @@
 //! Newer versions of ORQWA (R99, ADR 0023): looked for at start-up unless this computer turned
-//! that off, or when the rider asks; never during a ride. On Windows the new installer is
-//! downloaded and run over ORQWA when the rider agrees; elsewhere the rider gets its page.
+//! that off, or when the rider asks; never during a ride. On Windows and Android the new
+//! installer is downloaded and installed over ORQWA when the rider agrees; elsewhere the rider
+//! gets its page.
 
 use std::path::PathBuf;
 
@@ -93,13 +94,12 @@ impl App {
         if self.updates.busy || self.ride.is_some() || !orqwa_update::can_install() {
             return false;
         }
-        let name = format!(
-            "ORQWA-{}.msi",
-            self.updates
-                .release
-                .as_ref()
-                .map_or_else(String::new, |release| release.version.to_string(),)
-        );
+        let name = self
+            .updates
+            .release
+            .as_ref()
+            .map(|release| orqwa_update::download_name(release.version))
+            .unwrap_or_default();
         self.updates.busy = true;
         let dir = self.cache_dir.join("updates");
         let tx = self.jobs_tx.clone();
@@ -132,6 +132,13 @@ impl App {
         orqwa_update::install(&msi, &app).map_err(|e| failed(&e))?;
         info!(installer = %msi.display(), "installing the update");
         Ok(())
+    }
+
+    /// The downloaded update, for the front end that installs it itself: on Android, ORQWA's
+    /// Android plugin hands the APK to Android's installer (ADR 0024).
+    #[must_use]
+    pub fn downloaded_update(&self) -> Option<&std::path::Path> {
+        self.updates.downloaded.as_deref()
     }
 
     /// Tells what a background update job found.
@@ -314,6 +321,7 @@ mod tests {
         let mut app = app("update-install", vec![release("v99.0.0")]);
 
         assert!(app.install_update().is_err(), "nothing downloaded");
+        assert!(app.downloaded_update().is_none());
         assert!(!app.download_update(), "no newer release known yet");
         app.check_for_updates(true);
         settle(&mut app);

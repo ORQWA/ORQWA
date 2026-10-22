@@ -362,7 +362,7 @@ func _workout() -> void:
 	_failure = ""
 
 
-## R112: real PCM reaches Godot; pause and hidden screens flush the playback queue.
+## R114: real PCM reaches Godot; pause and hidden screens flush the playback queue.
 func _ambient_sound() -> void:
 	_check(_orqwa.ambient_sound_active(), "ambient sound during a 3D ride")
 	_check(OrqwaApp.ambient_sound_rate() == 48000, "ambient sample rate")
