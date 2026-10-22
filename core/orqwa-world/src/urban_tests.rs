@@ -92,15 +92,88 @@ async fn sidewalks_have_raised_curbs_and_leave_roads_junctions_and_green_spaces_
             (x + 30.0).abs() >= 25.0 || (z + 700.0).abs() >= 25.0,
             "paving in water"
         );
-        if material == 0.75 && x.abs() < 3.3 && normal[1].abs() < 0.1 {
+        if material == 0.75 && x.abs() < 3.3 && normal[0].abs() > 0.9 {
             let ground = ground_at(&world, x, z).expect("terrain below curb");
             let rise = y - ground;
-            assert!((0.14..0.30).contains(&rise), "curb rise {rise}");
+            assert!((-0.03..0.30).contains(&rise), "curb rise {rise}");
             assert!(normal[0] * x < 0.0, "curb should face the road");
             curbs += 1;
         }
     }
     assert!(curbs > 10, "no raised curb faces");
+}
+
+#[tokio::test]
+async fn sidewalks_are_grounded_and_join_lowered_access_without_steps() {
+    let mut map = city();
+    map.buildings = vec![house(301, 25.0, 250.0, 6.0), house(302, 25.0, 480.0, 6.0)];
+    let world = world(&map).await;
+    let mut sides = 0;
+    for chunk in &world.chunks {
+        assert_valid(&chunk.urban);
+        assert_faces_follow_normals(&chunk.urban);
+        for triangle in chunk.urban.indices.as_chunks::<3>().0 {
+            if chunk.urban.normals[triangle[0] as usize][1].abs() > 0.01 {
+                continue;
+            }
+            let rises = [triangle[0], triangle[1], triangle[2]].map(|index| {
+                let v = chunk.urban.vertices[index as usize];
+                v[1] - ground_at(&world, v[0] + chunk.center[0], v[2] + chunk.center[2]).unwrap()
+            });
+            if rises.iter().copied().fold(f32::MIN, f32::max) > 0.4 {
+                continue; // Garden walls have their own ground contact.
+            }
+            assert!(
+                rises.iter().any(|rise| *rise <= 0.001),
+                "floating sidewalk face {rises:?}"
+            );
+            sides += 1;
+        }
+    }
+    assert!(sides > 100, "no solid sidewalk edges");
+    for entrance in [250.0, 480.0] {
+        let mut previous: Option<f32> = None;
+        for step in -100..=100 {
+            let z = -(entrance + step as f32 * 0.1);
+            let y = height_on(&world, |chunk| &chunk.urban, 4.0, z).expect("continuous sidewalk");
+            if let Some(before) = previous {
+                assert!(
+                    (y - before).abs() < 0.025,
+                    "step beside entrance at {z}: {before} to {y}"
+                );
+            }
+            previous = Some(y);
+        }
+    }
+}
+
+#[tokio::test]
+async fn sidewalks_join_on_both_sides_of_a_bend() {
+    let mut map = city();
+    map.roads.push(orqwa_osm::Road {
+        class: orqwa_osm::RoadClass::Street,
+        line: vec![at(50.0, 150.0), at(50.0, 200.0), at(80.0, 250.0)],
+        structure: None,
+    });
+    let world = world(&map).await;
+    let forward = (30.0_f32 / 3400.0_f32.sqrt(), 50.0_f32 / 3400.0_f32.sqrt());
+    let divisor = 1.0 + forward.1;
+    for side in [-1.0, 1.0] {
+        for width in [3.0, 3.5, 4.0, 4.5] {
+            // Walk across the shared mitre, including the wedge outside the bend
+            // that two independently offset rectangular strips leave uncovered.
+            let east = 50.0 + width * side;
+            let north = 200.0 - forward.0 / divisor * width * side;
+            for step in -10..=10 {
+                let z = -(north + step as f32 * 0.01);
+                assert!(
+                    height_on(&world, |chunk| &chunk.urban, east, z).is_some(),
+                    "sidewalk gap at {east}, {}",
+                    -z
+                );
+            }
+        }
+    }
 }
 
 #[tokio::test]

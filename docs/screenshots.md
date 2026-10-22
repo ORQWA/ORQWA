@@ -45,6 +45,8 @@ apply from the next ride without regenerating the course.
 | ![City overview](images/views/city-overview.jpg) | ![Forest floor and ferns](images/views/forest-floor.jpg) |
 | ![City bench](images/views/city-benches.jpg) | ![Hairpin overview](images/views/hairpin-drone.jpg) |
 
+![Grounded sidewalk edges and continuous access approaches](images/issues/sidewalks-grounded.jpg)
+
 ## Standard route views
 
 The fixture routes exercise villages, climbs, junctions, bridges, tunnels and weather. Their

@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Requirements: R105, R106, R89, R101
+- Requirements: R105, R106, R112, R89, R101
 
 ## Context
 
@@ -46,17 +46,30 @@ course offline, without another data provider, and leave parks and suburban gard
 
 ## Kept worlds
 
-Generator **5**, stored format **2**. Each chunk gains an `urban` mesh and terrain colour
+Generator **6**, stored format **2**. Each chunk gains an `urban` mesh and terrain colour
 codes gain urban/commercial kinds. Older kept worlds rebuild on the next ride, as required
 for an incompatible layout (ADR 0025); course files and their format are unchanged. The new
 stored-world fixture records the layout. The bench placement raises the generator from 4
 to 5 without changing the stored format; a format-2 world offers regeneration.
 
+### Sidewalk grounding amendment (2026-10-22)
+
+Generator 6 shares offset-edge intersections between adjoining sidewalk strips at bends.
+All sidewalk perimeter faces extend slightly below the terrain, following the same terrain
+triangle cuts as their tops, so curbs, outer edges and exposed ends have no open underside.
+Shared cross-sections use the lower adjoining height at building access; neighbouring
+pieces slope into the opening instead of leaving a vertical step between slabs. Bench
+height queries use the same profile. Paved street edges use exact segment distances in
+urban clearance checks; the padded point samples used to exclude vegetation must not remove
+the sidewalk beside its own street. Junctions and protected land remain clear. The stored
+format stays at 2; existing kept worlds offer regeneration.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,
 garden walls, parks in dense districts, suburban lawns, vegetation exclusion, and rural/bridge
-exclusions. Bench tests cover regular seating, paired bins, sidewalk height and trying the
+exclusions. Regression tests cover solid ground contact, continuous access approaches across
+chunk boundaries and both sides of sidewalk bends. Bench tests cover regular seating, paired bins, sidewalk height and trying the
 opposite side while keeping access clear. Review images compare the same street and overview
 on the Bern fixture, with MSAA and bloom disabled in both software-rendered views to avoid
 lavapipe artifacts. Native M1 performance remains a manual check (R43).

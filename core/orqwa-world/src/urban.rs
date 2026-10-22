@@ -1,4 +1,4 @@
-//! Inferred urban paving and building access (R105). Geometry follows the drawn terrain;
+//! Inferred urban paving and building access (R105, R112). Geometry follows the drawn terrain;
 //! mapped green spaces and infrastructure take precedence over inferred surroundings.
 
 use std::collections::HashMap;
@@ -61,7 +61,7 @@ struct Patch {
     polygon: Vec<Point>,
     material: Material,
     lift: f64,
-    /// Sidewalks have a vertical curb on their first edge. Boundary walls rise instead.
+    /// Raised sidewalks have solid sides; their first edge follows the road.
     curb: bool,
     wall: bool,
     /// Access paths rise gently to meet their street and the lowered sidewalk opening.
@@ -218,19 +218,19 @@ impl Urban {
             if way.half < 2.5 || !self.urban_at(midpoint(way.a, way.b), land) {
                 continue;
             }
-            let forward = direction(way.a, way.b);
-            let right = (forward.1, -forward.0);
+            let start = self.walk_join(index, way.a);
+            let end = self.walk_join(index, way.b);
             for sign in [-1.0, 1.0] {
-                let offset = |p: Point, width: f64| {
+                let offset = |p: Point, right: Point, width: f64| {
                     (p.0 + right.0 * width * sign, p.1 + right.1 * width * sign)
                 };
                 let inner = way.half + GAP;
                 self.add_patch(Patch {
                     polygon: vec![
-                        offset(way.a, inner),
-                        offset(way.b, inner),
-                        offset(way.b, inner + WALK_WIDTH),
-                        offset(way.a, inner + WALK_WIDTH),
+                        offset(way.a, start, inner),
+                        offset(way.b, end, inner),
+                        offset(way.b, end, inner + WALK_WIDTH),
+                        offset(way.a, start, inner + WALK_WIDTH),
                     ],
                     material: Material::Concrete,
                     lift: way.lift + CURB_HEIGHT,
@@ -240,6 +240,45 @@ impl Urban {
                 });
             }
         }
+    }
+
+    fn walk_join(&self, index: usize, point: Point) -> Point {
+        let way = self.ways[index];
+        let forward = direction(way.a, way.b);
+        let right = (forward.1, -forward.0);
+        let mut neighbours: Vec<_> = Self::near(&self.way_cells, point, 0.001)
+            .filter(|&other| {
+                let candidate = self.ways[other];
+                other != index
+                    && (candidate.half - way.half).abs() < 1e-6
+                    && (candidate.lift - way.lift).abs() < 1e-6
+                    && (distance(candidate.a, point) < 1e-6 || distance(candidate.b, point) < 1e-6)
+            })
+            .collect();
+        neighbours.sort_unstable();
+        neighbours.dedup();
+        let [other] = neighbours.as_slice() else {
+            return right;
+        };
+        let other = self.ways[*other];
+        let away = if distance(other.a, point) < 1e-6 {
+            direction(other.a, other.b)
+        } else {
+            direction(other.b, other.a)
+        };
+        let sign = if distance(way.a, point) < 1e-6 {
+            -1.0
+        } else {
+            1.0
+        };
+        let next = (away.0 * sign, away.1 * sign);
+        let divisor = 1.0 + forward.0 * next.0 + forward.1 * next.1;
+        // Both strips use the intersection of their offset edges. Limit mitres at
+        // hairpins rather than stretching a sidewalk across the carriageway.
+        if divisor < 0.5 {
+            return right;
+        }
+        ((right.0 + next.1) / divisor, (right.1 - next.0) / divisor)
     }
 
     fn accesses(&mut self, land: &LandIndex) {
@@ -403,15 +442,28 @@ impl Urban {
                     && !self.access_crosses(&patch.polygon, true)
                     && self.patch_clear(patch, land, clearance, road)
             })
-            .map(|patch| {
-                patch.lift
-                    - if self.access_crosses(&patch.polygon, false) {
-                        CURB_HEIGHT
-                    } else {
-                        0.0
-                    }
-            })
+            .map(|patch| walk_lift(patch, self.walk_ends(patch), point))
             .max_by(f64::total_cmp)
+    }
+
+    fn walk_ends(&self, patch: &Patch) -> [f64; 2] {
+        let end_lift = |point| {
+            Self::near(&self.patch_cells, point, 0.001)
+                .map(|index| &self.patches[index])
+                .filter(|other| {
+                    other.curb
+                        && polygon_distance(&other.polygon, point) < 1e-6
+                        && self.access_crosses(&other.polygon, false)
+                })
+                .map(|other| other.lift - CURB_HEIGHT)
+                .fold(patch.lift, f64::min)
+        };
+        // A shared cross-section has one height even if just one adjoining piece
+        // crosses an entrance. Its neighbour becomes the approach ramp.
+        [
+            end_lift(midpoint(patch.polygon[0], patch.polygon[3])),
+            end_lift(midpoint(patch.polygon[1], patch.polygon[2])),
+        ]
     }
 
     fn patch_clear(
@@ -424,10 +476,12 @@ impl Urban {
         let valid = |point: Point| {
             !protected(point, land)
                 && !clearance.blocked_by(point.0, point.1, 0.02, |east, north| {
-                    // The ridden road is checked precisely below; its map line's padded
-                    // point samples otherwise swallow the sidewalk beside it.
+                    // Padded vegetation-clearance samples swallow sidewalks beside
+                    // their own streets. Check those centre-line segments exactly below.
                     road.nearest(east, north, ROAD_HALF_WIDTH + 0.5).is_none()
+                        && !self.on_way((east, north), true)
                 })
+                && !self.on_way(point, false)
                 && road
                     .nearest(point.0, point.1, ROAD_HALF_WIDTH + 0.02)
                     .is_none()
@@ -442,6 +496,14 @@ impl Urban {
                 .take(patch.polygon.len())
                 .flat_map(|(&a, &b)| drape::densify(&[a, b], 1.0))
                 .all(valid)
+    }
+
+    fn on_way(&self, point: Point, center_only: bool) -> bool {
+        Self::near(&self.way_cells, point, 4.0).any(|index| {
+            let way = self.ways[index];
+            let reach = if center_only { 0.001 } else { way.half + 0.02 };
+            distance(point, project(point, way.a, way.b)) < reach
+        })
     }
 
     pub(crate) fn mesh(
@@ -480,9 +542,14 @@ impl Urban {
             {
                 continue;
             }
-            let access = patch.curb && self.access_crosses(&patch.polygon, false);
-            let lift = patch.lift - if access { CURB_HEIGHT } else { 0.0 };
+            let lift = patch.lift;
+            let ends = if patch.curb {
+                self.walk_ends(patch)
+            } else {
+                [lift; 2]
+            };
             let first = mesh.vertices.len();
+            let first_index = mesh.indices.len();
             drape::drape_polygon(
                 &mut mesh,
                 &patch.polygon,
@@ -491,6 +558,18 @@ impl Urban {
                 origin,
                 &uv,
             );
+            if patch.curb {
+                for vertex in &mut mesh.vertices[first..] {
+                    let point = (
+                        f64::from(vertex[0]) + origin[0],
+                        -f64::from(vertex[2]) - origin[2],
+                    );
+                    #[allow(clippy::cast_possible_truncation)] // a small offset in GPU geometry
+                    {
+                        vertex[1] += (walk_lift(patch, ends, point) - lift) as f32;
+                    }
+                }
+            }
             if let Some((start, end, end_lift)) = patch.ramp {
                 for vertex in &mut mesh.vertices[first..] {
                     let point = (
@@ -507,16 +586,8 @@ impl Urban {
             }
             mesh.colors
                 .resize(mesh.vertices.len(), patch.material.color());
-            if patch.curb && !access {
-                vertical(
-                    &mut mesh,
-                    patch.polygon[0],
-                    patch.polygon[1],
-                    patch.lift - CURB_HEIGHT,
-                    patch.lift,
-                    heights,
-                    origin,
-                );
+            if patch.curb {
+                walk_sides(&mut mesh, first_index, &patch.polygon, heights, origin);
             } else if patch.wall {
                 for k in 0..patch.polygon.len() {
                     vertical(
@@ -646,6 +717,75 @@ fn contains(points: &[Point], p: Point) -> bool {
     inside
 }
 
+fn polygon_distance(polygon: &[Point], point: Point) -> f64 {
+    if contains(polygon, point) {
+        return 0.0;
+    }
+    polygon
+        .iter()
+        .copied()
+        .zip(polygon.iter().copied().cycle().skip(1))
+        .take(polygon.len())
+        .map(|(a, b)| distance(point, project(point, a, b)))
+        .fold(f64::MAX, f64::min)
+}
+
+fn walk_lift(patch: &Patch, ends: [f64; 2], point: Point) -> f64 {
+    let from_edge = |a: Point, b: Point| {
+        ((b.0 - a.0) * (point.1 - a.1) - (b.1 - a.1) * (point.0 - a.0)).abs()
+            / distance(a, b).max(1e-9)
+    };
+    let start = from_edge(patch.polygon[0], patch.polygon[3]);
+    let end = from_edge(patch.polygon[1], patch.polygon[2]);
+    let along = start / (start + end).max(1e-9);
+    ends[0] + (ends[1] - ends[0]) * along
+}
+
+fn walk_sides(
+    mesh: &mut MeshData,
+    first_index: usize,
+    polygon: &[Point],
+    heights: &HeightGrid,
+    origin: [f64; 3],
+) {
+    let mut sides = Vec::new();
+    // Reuse the top's terrain cuts: a long straight side can otherwise bridge a
+    // hollow or cut through the top on uneven ground. Chunk cuts get no end wall.
+    for triangle in mesh.indices[first_index..].as_chunks::<3>().0 {
+        for k in 0..3 {
+            let (a, b) = (
+                mesh.vertices[triangle[k] as usize],
+                mesh.vertices[triangle[(k + 1) % 3] as usize],
+            );
+            let point = |v: [f32; 3]| (f64::from(v[0]) + origin[0], -f64::from(v[2]) - origin[2]);
+            let (pa, pb) = (point(a), point(b));
+            if polygon
+                .iter()
+                .copied()
+                .zip(polygon.iter().copied().cycle().skip(1))
+                .take(polygon.len())
+                .any(|(start, end)| {
+                    distance(pa, project(pa, start, end)) < 1e-4
+                        && distance(pb, project(pb, start, end)) < 1e-4
+                })
+                && distance(pa, pb) > 1e-4
+            {
+                sides.push((
+                    pa,
+                    pb,
+                    [
+                        f64::from(a[1]) + origin[1] - heights.at(pa.0, pa.1),
+                        f64::from(b[1]) + origin[1] - heights.at(pb.0, pb.1),
+                    ],
+                ));
+            }
+        }
+    }
+    for (a, b, top) in sides {
+        vertical_piece(mesh, a, b, -0.02, top, heights, origin);
+    }
+}
+
 fn overlaps(first: &[Point], second: &[Point]) -> bool {
     let edges = |polygon: &[Point]| {
         polygon
@@ -701,7 +841,7 @@ fn vertical(
         {
             continue;
         }
-        vertical_piece(mesh, a, b, low, high, heights, origin);
+        vertical_piece(mesh, a, b, low, [high; 2], heights, origin);
     }
 }
 
@@ -711,7 +851,7 @@ fn vertical_piece(
     a: Point,
     b: Point,
     low: f64,
-    high: f64,
+    high: [f64; 2],
     heights: &HeightGrid,
     origin: [f64; 3],
 ) {
@@ -720,8 +860,8 @@ fn vertical_piece(
     let base = u32::try_from(mesh.vertices.len()).expect("urban mesh fits u32");
     for (point, lift, u) in [
         (a, low, 0.0),
-        (a, high, 0.0),
-        (b, high, distance(a, b)),
+        (a, high[0], 0.0),
+        (b, high[1], distance(a, b)),
         (b, low, distance(a, b)),
     ] {
         mesh.vertices.push([

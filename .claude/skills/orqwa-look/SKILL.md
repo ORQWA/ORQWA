@@ -93,6 +93,8 @@ Blender Python; its header shows how to run it).
 Urban surfaces (R105, ADR 0027) distinguish dense-city paving, commercial/industrial asphalt
 and suburban lawns. Mapped parks and other natural land take precedence. Review sidewalk
 curbs and access openings from road height, plus an overview for garden/park preservation.
+Sidewalk strips must join around bends, slope continuously into lowered entrances and have
+closed sides reaching the drawn terrain; check outer edges, ends and chunk boundaries too.
 Building paths, forecourts and low walls are inferred; keep their appearance plausible
 without claiming exact mapped property boundaries. Shared concrete/paver textures are baked
 by the art pipeline. Urban material codes are part of the stored world's format contract.
