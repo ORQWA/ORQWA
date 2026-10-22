@@ -551,7 +551,12 @@ physically based materials and light, restyled group by group.
     short draw distance; generator 3 offers regeneration of kept worlds.
   - [x] Urban surfaces (R105, ADR 0027): dense-city paving, commercial/industrial asphalt,
     sidewalks and curbs, inferred building paths, forecourts and low garden walls; parks
-    and suburban lawns preserved, grass kept out of paving. Generator 5 / stored format 2.
+    and suburban lawns preserved, grass kept out of paving. Generator 7 / stored format 2.
+  - [x] Grounded sidewalks: shared joins around bends, solid edges down to the terrain,
+    and continuous approaches to lowered building access; no floating slabs or open seams.
+  - [x] Rounded sidewalk corners and kerbs: follow the carriageway's junction arcs, round
+    outer bends, trim intersecting surfaces instead of removing whole slabs, and draw a
+    separate 18 cm curb-stone border with joints and a beveled lip (R105/R112).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs

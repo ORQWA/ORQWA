@@ -92,15 +92,212 @@ async fn sidewalks_have_raised_curbs_and_leave_roads_junctions_and_green_spaces_
             (x + 30.0).abs() >= 25.0 || (z + 700.0).abs() >= 25.0,
             "paving in water"
         );
-        if material == 0.75 && x.abs() < 3.3 && normal[1].abs() < 0.1 {
+        if material == 0.75 && x.abs() < 3.3 && normal[0].abs() > 0.9 {
             let ground = ground_at(&world, x, z).expect("terrain below curb");
             let rise = y - ground;
-            assert!((0.14..0.30).contains(&rise), "curb rise {rise}");
+            assert!((-0.03..0.30).contains(&rise), "curb rise {rise}");
             assert!(normal[0] * x < 0.0, "curb should face the road");
             curbs += 1;
         }
     }
     assert!(curbs > 10, "no raised curb faces");
+}
+
+#[tokio::test]
+async fn sidewalks_are_grounded_and_join_lowered_access_without_steps() {
+    let mut map = city();
+    map.buildings = vec![house(301, 25.0, 250.0, 6.0), house(302, 25.0, 480.0, 6.0)];
+    let world = world(&map).await;
+    let mut sides = 0;
+    for chunk in &world.chunks {
+        assert_valid(&chunk.urban);
+        assert_faces_follow_normals(&chunk.urban);
+        for triangle in chunk.urban.indices.as_chunks::<3>().0 {
+            if chunk.urban.normals[triangle[0] as usize][1].abs() > 0.01 {
+                continue;
+            }
+            let rises = [triangle[0], triangle[1], triangle[2]].map(|index| {
+                let v = chunk.urban.vertices[index as usize];
+                v[1] - ground_at(&world, v[0] + chunk.center[0], v[2] + chunk.center[2]).unwrap()
+            });
+            if rises.iter().copied().fold(f32::MIN, f32::max) > 0.4 {
+                continue; // Garden walls have their own ground contact.
+            }
+            assert!(
+                rises.iter().any(|rise| *rise <= 0.001),
+                "floating sidewalk face {rises:?}"
+            );
+            sides += 1;
+        }
+    }
+    assert!(sides > 100, "no solid sidewalk edges");
+    for entrance in [250.0, 480.0] {
+        let mut previous: Option<f32> = None;
+        for step in -100..=100 {
+            let z = -(entrance + step as f32 * 0.1);
+            let y = height_on(&world, |chunk| &chunk.urban, 4.0, z).expect("continuous sidewalk");
+            if let Some(before) = previous {
+                assert!(
+                    (y - before).abs() < 0.025,
+                    "step beside entrance at {z}: {before} to {y}"
+                );
+            }
+            previous = Some(y);
+        }
+    }
+}
+
+#[tokio::test]
+async fn sidewalks_join_on_both_sides_of_a_bend() {
+    let mut map = city();
+    map.roads.push(orqwa_osm::Road {
+        class: orqwa_osm::RoadClass::Street,
+        line: vec![at(50.0, 150.0), at(50.0, 200.0), at(80.0, 250.0)],
+        structure: None,
+    });
+    let world = world(&map).await;
+    let forward = (30.0_f32 / 3400.0_f32.sqrt(), 50.0_f32 / 3400.0_f32.sqrt());
+    let divisor = 1.0 + forward.1;
+    for side in [-1.0, 1.0] {
+        for width in [3.0, 3.5, 4.0, 4.2] {
+            // Cross the joint inside the rounded walking strip, including the
+            // wedge two independently offset rectangular slabs leave uncovered.
+            let east = 50.0 + width * side;
+            let north = 200.0 - forward.0 / divisor * width * side;
+            for step in -10..=10 {
+                let z = -(north + step as f32 * 0.01);
+                assert!(
+                    height_on(&world, |chunk| &chunk.urban, east, z).is_some(),
+                    "sidewalk gap at {east}, {}",
+                    -z
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn sidewalks_follow_rounded_junction_corners_without_square_gaps() {
+    let mut map = city();
+    map.roads = vec![
+        road_north(),
+        orqwa_osm::Road {
+            class: orqwa_osm::RoadClass::Street,
+            line: vec![at(-100.0, 500.0), at(0.0, 500.0)],
+            structure: None,
+        },
+    ];
+    let world = world(&map).await;
+    for chunk in &world.chunks {
+        assert_valid(&chunk.urban);
+        assert_faces_follow_normals(&chunk.urban);
+        assert!(
+            chunk
+                .urban
+                .normals
+                .iter()
+                .all(|normal| { (normal.iter().map(|v| v * v).sum::<f32>() - 1.0).abs() < 0.001 }),
+            "urban lighting normals must be unit vectors"
+        );
+    }
+    // The footway follows the same tangent circle as the road's rounded corner,
+    // on both sides of the side street, at its full walking width.
+    let radius = (3.0_f32 + 2.75) * 0.6;
+    for side in [-1.0, 1.0] {
+        let center = (-3.0 - radius, 500.0 + side * (2.75 + radius));
+        for step in 0..=32 {
+            let angle = step as f32 / 32.0 * std::f32::consts::FRAC_PI_2;
+            for across in [0.2, 0.9, 1.6] {
+                let r = radius - 0.12 - across;
+                let (east, north) = (
+                    center.0 + r * angle.cos(),
+                    center.1 - side * r * angle.sin(),
+                );
+                assert!(
+                    height_on(&world, |chunk| &chunk.urban, east, -north).is_some(),
+                    "gap around junction curb at {east}, {north}"
+                );
+                assert!(
+                    street_at(&world, east, -north).is_none(),
+                    "sidewalk in junction asphalt"
+                );
+            }
+        }
+    }
+    for east in [-2.0, -1.0, 0.0] {
+        assert!(
+            height_on(&world, |chunk| &chunk.urban, east, -500.0).is_none(),
+            "curb across the junction mouth"
+        );
+    }
+}
+
+#[tokio::test]
+async fn acute_forks_have_a_rounded_sidewalk_nose_instead_of_cut_off_slabs() {
+    let mut map = city();
+    map.roads = vec![
+        road_north(),
+        orqwa_osm::Road {
+            class: orqwa_osm::RoadClass::Street,
+            line: vec![at(-40.0, 400.0), at(0.0, 500.0)],
+            structure: None,
+        },
+    ];
+    let world = world(&map).await;
+    let angle = 0.4_f32.atan();
+    let radius = (3.0 + 2.75) * 0.6;
+    let apex_north = 500.0 - (2.75 + 3.0 * angle.cos()) / angle.sin();
+    let center = (-3.0 - radius, apex_north - radius / (angle / 2.0).tan());
+    for step in 1..32 {
+        let arc = (std::f32::consts::PI - angle) * step as f32 / 32.0;
+        let r = radius - 0.12 - 0.9;
+        let (east, north) = (center.0 + r * arc.cos(), center.1 + r * arc.sin());
+        assert!(
+            height_on(&world, |chunk| &chunk.urban, east, -north).is_some(),
+            "gap around fork nose at {east}, {north}"
+        );
+        assert!(
+            street_at(&world, east, -north).is_none(),
+            "footway overlaps fork asphalt"
+        );
+    }
+}
+
+#[tokio::test]
+async fn outer_sidewalk_bends_are_round_and_curbstones_have_their_own_beveled_border() {
+    let mut map = city();
+    map.roads.push(orqwa_osm::Road {
+        class: orqwa_osm::RoadClass::Street,
+        line: vec![at(50.0, 150.0), at(50.0, 200.0), at(100.0, 200.0)],
+        structure: None,
+    });
+    let world = world(&map).await;
+    for step in 1..32 {
+        let angle = step as f32 / 32.0 * std::f32::consts::FRAC_PI_2;
+        let radius = 2.75 + 0.12 + 0.9;
+        let (east, north) = (50.0 - radius * angle.cos(), 200.0 + radius * angle.sin());
+        assert!(
+            height_on(&world, |chunk| &chunk.urban, east, -north).is_some(),
+            "gap around outer bend at {east}, {north}"
+        );
+    }
+    let mut curb_tops = 0;
+    for ([x, _, _], normal, material) in urban_vertices(&world) {
+        if material == 0.75 && normal[1] > 0.9 && x.abs() < 10.0 {
+            assert!(
+                (3.12 - 0.001..=3.30 + 0.001).contains(&x.abs()),
+                "curbstone outside its narrow border: {x}"
+            );
+            curb_tops += 1;
+        }
+    }
+    assert!(curb_tops > 100, "no separate curbstone tops");
+    let walk = height_on(&world, |chunk| &chunk.urban, 4.0, -250.0).unwrap();
+    let lip = height_on(&world, |chunk| &chunk.urban, 3.125, -250.0).unwrap();
+    assert!(
+        (0.01..0.025).contains(&(walk - lip)),
+        "curb lip has no bevel"
+    );
 }
 
 #[tokio::test]
