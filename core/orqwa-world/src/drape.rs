@@ -153,7 +153,8 @@ pub(crate) fn drape_polygon(
             continue;
         }
         let normal = plane_normal(&triangle, heights, on);
-        let base = u32::try_from(mesh.vertices.len()).expect("draped meshes fit u32");
+        let start = mesh.vertices.len();
+        let base = u32::try_from(start).expect("draped meshes fit u32");
         for &(east, north) in &piece {
             mesh.vertices.push([
                 (east - origin[0]) as f32,
@@ -164,10 +165,14 @@ pub(crate) fn drape_polygon(
             mesh.uvs.push(uv((east, north)));
         }
         for k in 1..piece.len() - 1 {
-            let (first, second, third) = (piece[0], piece[k], piece[k + 1]);
-            let area = (second.0 - first.0) * (third.1 - first.1)
-                - (second.1 - first.1) * (third.0 - first.0);
-            // Slivers along an edge add nothing.
+            let (first, second, third) = (
+                mesh.vertices[start],
+                mesh.vertices[start + k],
+                mesh.vertices[start + k + 1],
+            );
+            let area = (second[0] - first[0]) * (third[2] - first[2])
+                - (second[2] - first[2]) * (third[0] - first[0]);
+            // Clipping slivers can collapse after conversion to GPU precision.
             if area.abs() > 1e-6 {
                 let corner = base + u32::try_from(k).expect("small");
                 mesh.indices.extend([base, corner, corner + 1]);

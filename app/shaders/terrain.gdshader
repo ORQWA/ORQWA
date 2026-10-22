@@ -173,8 +173,8 @@ void fragment() {
 	vec2 face = vec2(world_position.x + world_position.z * 0.73, world_position.y);
 	float exposure = (ground_noise(face / 5.0) - 0.5) * 0.16;
 	float steep = 1.0 - smoothstep(rock_slope - 0.03, rock_slope + 0.03, world_normal.y + exposure + (rock.r - 0.4) * 0.1);
-	steep *= 1.0 - bed;
-	albedo = mix(albedo, rock, steep);
+	// Exposed channel sides are rock too; triplanar mapping avoids stretched vertical mud.
+	albedo = mix(albedo, rock * mix(1.0, 0.55, bed), steep);
 	normal = normalize(mix(normal, rock_n, steep));
 
 	// Snow above the snow line, thinning out over a hundred metres, gone from steep faces.

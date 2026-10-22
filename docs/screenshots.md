@@ -66,6 +66,11 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+The [river geometry correction](adr/0030-river-levels.md) is checked against the
+Alpenbrevet Gold course near 104.57 km remaining and farther upstream:
+
+![Alpenbrevet river surface following the valley](images/issues/alpenbrevet-river-after.jpg)
+
 The fixture routes exercise villages, climbs, junctions, bridges, tunnels and weather. Their
 fixed camera positions make it possible to compare future changes. These are the current
 renders; historical before/after images remain with their original reviews.

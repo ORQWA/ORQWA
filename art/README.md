@@ -74,6 +74,12 @@ follows the road edge, with a beveled lip and joints; outside bends curve around
 Terrain uses paving in dense districts and shared road asphalt for commercial/industrial
 land. Mapped green areas and low-density residential lawns retain their vegetation.
 
+Water geometry uses shared longitudinal elevations rather than the bank terrain
+(R118, [ADR 0030](../docs/adr/0030-river-levels.md)). Keep river cross-sections level while
+the course descends; the bed follows the same datum and the gravel band follows the bank.
+Tall banks blend out over a wider reach; exposed steep channel sides use triplanar rock.
+Review steep valley rivers from road height and above with `orqwa-render-review`.
+
 ```sh
 scripts/art.sh blender --background --factory-startup --python art/textures/build.py -- --out screenshots/textures --size 512
 ```
