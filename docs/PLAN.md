@@ -654,6 +654,10 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   woodland changes; a screenshot gallery linked from the README and wiki navigation
 - [ ] Drop the release asset `Torqa-windows-x86_64.msi` (`scripts/release/publish.sh`) once
   riders have moved past Torqa 0.5.0
+- [x] Release files named with their version (`ORQWA-0.5.2-windows-x86_64.msi`, #322); the
+  updater takes the versioned installer first
+- [ ] Drop the plain-named installers (`ORQWA-windows-x86_64.msi`, `ORQWA-android-arm64.apk`) from
+  releases once riders have moved past the versions that look only for them
 
 ## Risks
 

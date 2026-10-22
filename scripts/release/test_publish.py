@@ -21,6 +21,17 @@ ASSETS = (
     "orqwa-cli-linux-arm64.tar.gz",
     "ORQWA-android-arm64.apk",
 )
+# What updaters of releases before the versioned names download (#322, ADR 0026).
+PLAIN_INSTALLERS = (
+    "ORQWA-windows-x86_64.msi",
+    "ORQWA-android-arm64.apk",
+    "Torqa-windows-x86_64.msi",
+)
+
+
+def versioned(name, version="0.1.0"):
+    app = "orqwa-cli" if name.startswith("orqwa-cli-") else "ORQWA"
+    return f"{app}-{version}-{name[len(app) + 1:]}"
 
 
 class PublishTests(unittest.TestCase):
@@ -81,12 +92,31 @@ if args[1] == "view":
         self.assertIn("--draft", calls[1])
         self.assertEqual(
             calls[2][3:-1],
-            [f"dist/{name}" for name in ASSETS] + ["dist/Torqa-windows-x86_64.msi"],
+            [f"dist/{versioned(name)}" for name in ASSETS]
+            + [f"dist/{name}" for name in PLAIN_INSTALLERS],
         )
         self.assertEqual(calls[2][-1], "--clobber")
         self.assertEqual(calls[3][-1], "--draft=false")
         for call in calls:
             self.assertEqual(call[2], self.env["RELEASE_TAG"])
+
+    def test_each_download_carries_the_release_version(self):
+        self.env["RELEASE_TAG"] = "v0.5.2"
+        self.assertEqual(self.publish().returncode, 0)
+        uploads = self.calls()[2]
+        for name in (
+            "ORQWA-0.5.2-windows-x86_64.msi",
+            "ORQWA-0.5.2-macos-arm64.zip",
+            "ORQWA-0.5.2-android-arm64.apk",
+            "orqwa-cli-0.5.2-linux-arm64.tar.gz",
+        ):
+            self.assertIn(f"dist/{name}", uploads)
+            self.assertEqual((self.root / "dist" / name).read_bytes(), b"archive")
+
+    def test_earlier_updaters_still_find_their_installers(self):
+        self.assertEqual(self.publish().returncode, 0)
+        for name in PLAIN_INSTALLERS:
+            self.assertIn(f"dist/{name}", self.calls()[2])
 
     def test_torqa_0_5_0_finds_the_installer_under_its_old_name(self):
         (self.root / "dist" / "ORQWA-windows-x86_64.msi").write_bytes(b"installer")
