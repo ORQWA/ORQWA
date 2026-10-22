@@ -194,10 +194,10 @@ Built in rideable steps:
   speed-dependent airflow, chain movement following cadence and effort, a separately
   recorded coasting freewheel following road speed; independent volume sliders before and
   during a 3D course ride, paused/finished playback flushed; listening preview available.
-  - [x] Recorded gear changes (R115): one-shot on each accepted virtual shift through
+  - [x] Recorded gear changes (R116): one-shot on each accepted virtual shift through
     keyboard, BLE or remote, sharing bicycle volume; limit/no-change presses stay quiet,
     rapid shifts overlap with bounded voices and paused requests are never replayed.
-  - [x] Chain transfers and settling (R116): a quiet lever action followed by one of three
+  - [x] Chain transfers and settling (R117): a quiet lever action followed by one of three
     recorded transfers, following cadence and load and blending into the steady chain;
     coasting defers the chain until pedaling resumes, and stopping pedals suspends it.
   - [x] Music helpers (#260): macOS compiles only the running player's command, so Apple
@@ -551,6 +551,9 @@ physically based materials and light, restyled group by group.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)
+  - [x] Natural rocks (R115): asymmetric boulders with weathered fracture planes, a CC0
+    rock scan and shared cliff/boulder shading with broad mineral patches and irregular
+    interrupted joints visible from a distance. Kept worlds update without regeneration.
   - [x] Denser mapped forests (R103): 4 m candidate spacing within 300 m of the road,
     10 m equivalent spacing farther away; wooded slopes keep their trees, clearings and
     other land retain their cover. Generator 2 offers regeneration of kept worlds.

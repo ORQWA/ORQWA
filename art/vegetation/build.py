@@ -7,7 +7,7 @@ Run in the art container:
 The look is realistic (skill orqwa-look, ADR 0020): smooth, tapered trunks with bark; crowns of
 many foliage cards — sprays of needles drooping in whorls for conifers, clusters of leaves for
 broadleaf trees and bushes — whose normals point out of the crown so it is lit as a whole;
-rounded rocks. Each model is one mesh with named materials (`trunk`, `leaves`, `needles`,
+weathered, fractured boulders. Each model is one mesh with named materials (`trunk`, `leaves`, `needles`,
 `frond`, `rock`); the app textures and colours them — foliage and rocks per instance from the
 palette — so the files carry shape, texture coordinates, normals and material names. `models.json` beside them lists
 each model's kind and height for the world to choose and scale them. Pass model names after
@@ -276,7 +276,7 @@ def bush(spec):
 
 
 def rock(spec):
-    """Rounded rocks: subdivided balls pushed in and out by noise, shaded smooth, sunk into the
+    """Fractured boulders: asymmetric masses cut by weathered planes, sunk into the
     ground a little so slopes do not show their undersides."""
     mesh = Mesh()
     height = 0.0
@@ -302,10 +302,10 @@ def boulder(mesh, centre, radius, scale, seed):
         triangles = finer
     rng = random.Random(seed)
     lumps = [(unit((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1))),
-              rng.uniform(-0.3, 0.35)) for _ in range(14)]
+              rng.uniform(-0.4, 0.45)) for _ in range(14)]
     # Planes the stone broke along: flat faces with rounded edges.
     cuts = [(unit((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-0.3, 1))),
-             rng.uniform(0.6, 0.8)) for _ in range(4)]
+             rng.uniform(0.52, 0.88)) for _ in range(7)]
 
     def place(p):
         bump = sum(amount * max(0.0, p[0] * d[0] + p[1] * d[1] + p[2] * d[2]) ** 2
@@ -314,7 +314,10 @@ def boulder(mesh, centre, radius, scale, seed):
         for d, depth in cuts:
             over = q[0] * d[0] + q[1] * d[1] + q[2] * d[2] - depth
             if over > 0:
-                q = [q[i] - d[i] * over * 0.9 for i in range(3)]
+                q = [q[i] - d[i] * over * 0.98 for i in range(3)]
+        # A tilted crown and off-centre shoulders avoid a flattened-egg silhouette.
+        q[0] += 0.14 * q[2] + 0.08 * q[1] * q[2]
+        q[2] += 0.12 * q[1]
         k = radius * (1.0 - 0.12 * abs(p[2]))
         return (centre[0] + q[0] * k * scale[0], centre[1] + q[1] * k * scale[1],
                 centre[2] + q[2] * k * scale[2])

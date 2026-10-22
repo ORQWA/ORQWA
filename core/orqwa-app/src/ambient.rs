@@ -1,5 +1,5 @@
 //! Continuous riding sound (R114): recorded textures with non-repeating grains, turbulent
-//! airflow, independent pedal / freewheel rates, and recorded chain transfers (R115–R116).
+//! airflow, independent pedal / freewheel rates, and recorded chain transfers (R116–R117).
 
 use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 
@@ -155,7 +155,7 @@ impl Sound {
         self.shifts.fill(None);
     }
 
-    /// Trigger a quiet lever action followed by the chain transferring and settling (R116).
+    /// Trigger a quiet lever action followed by the chain transferring and settling (R117).
     /// The chain waits for pedaling; bounded voices keep repeated requests from growing a queue.
     pub fn shift(&mut self) {
         let clip = TRANSFERS[self.random.next() as usize % TRANSFERS.len()];

@@ -41,7 +41,7 @@ volume sliders in the shared ride options; zero mutes a layer.
   documented listening choices. Rain currently strengthens the breeze; this does not add a
   separate rain recording or location-specific birds, traffic or water.
 
-## Amendment — 2026-10-22: recorded shifting sound (R115)
+## Amendment — 2026-10-22: recorded shifting sound (R116)
 
 A fourth CC0 recording supplies a 300 ms gear-change one-shot. The shared Rust shift-input
 handler compares the accepted gear before and after every input, so keyboard, BLE and
@@ -55,7 +55,7 @@ restarting the audio queue discards old voices. The listening preview includes s
 shifts and a rapid pair; signal and application tests cover timing, silence, limits,
 pause, mute and cassette behavior. Existing controls and screenshots remain accurate.
 
-## Amendment — 2026-10-22: chain transfer and settling (R116)
+## Amendment — 2026-10-22: chain transfer and settling (R117)
 
 The lever-only one-shot sounded artificial without the chain moving onto the next gear.
 A fifth CC0 source supplies three 1.1-second passages of actual chain transfers, including
