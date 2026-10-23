@@ -174,7 +174,7 @@ The same wooded cliff face in Bern: [before](../images/issues/rock-cliff-before.
 [after](../images/issues/rock-cliff-close.jpg) and
 [overview](../images/issues/rock-cliff-overview.jpg).
 
-### Bridge structures and surface backs (2026-10-23, R120–R121)
+### Bridge structures and surface backs (2026-10-23, R121–R122)
 
 Single-track railway bridges use a 4.8 m deck around the 3.2 m bed, leaving maintenance
 space. Concrete viaducts have low kerbs and open steel safety rails, narrower columns with

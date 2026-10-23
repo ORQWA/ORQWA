@@ -1,4 +1,4 @@
-"""Convert the archived CC0 cast-concrete scan for bridge structures (R121)."""
+"""Convert the archived CC0 cast-concrete scan for bridge structures (R122)."""
 
 from pathlib import Path
 

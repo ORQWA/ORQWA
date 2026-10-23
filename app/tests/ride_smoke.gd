@@ -77,6 +77,15 @@ func _run() -> void:
 	var power: float = state.get("power", 0.0)
 	_check(distance_m > 0.5, "rider moves: %s" % state)
 	_check(is_equal_approx(power, 250.0), "power arrives: %s" % state)
+	var centre_x: float = state["x"]
+	var centre_y: float = state["y"]
+	var rider_x: float = state["rider_x"]
+	var rider_y: float = state["rider_y"]
+	var centre: Vector2 = Vector2(centre_x, centre_y)
+	var avatar: Vector2 = Vector2(rider_x, rider_y)
+	var heading: float = state["heading"]
+	var right: Vector2 = Vector2(cos(heading), -sin(heading))
+	_check((avatar - centre).dot(right) > 0.0, "rider keeps right of the route (R120)")
 	var metrics: Dictionary = state.get("metrics", {})
 	_check(metrics.get("time_remaining") != null, "time to go on the HUD: %s" % metrics)
 	# The ride settings show the devices, and the connected trainer needs no reconnect (R69).

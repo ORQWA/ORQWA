@@ -132,13 +132,18 @@ edge. Keep entrances and the inner walking strip clear; review their ground cont
 
 ## Reviewing a render
 
-Bridges (R120–R121) need believable proportions from underneath and from the riding camera:
+Bridges (R121–R122) need believable proportions from underneath and from the riding camera:
 single tracks use a 4.8 m deck around the 3.2 m ballast bed, concrete viaducts have low kerbs
 and open steel protection, capped columns and end bearing walls, while stone arches retain
 masonry parapets. Use the dedicated cast-concrete scan at 2.16 m scale, with pores and
 weathering rather than the sidewalk recipe's tiled joints; arches use masonry maps. Keep
 steel distinct. Close beam ends and exposed cap undersides. Roads, streets, paths and railway beds
 must remain opaque from below, including old kept geometry; markings and rails stay on top.
+
+For rider road placement (R120), check both traffic sides, narrow paths, bends and a road
+ridden in both directions. The rider and ghost must stay inside the drawn carriageway on
+the local side; chase, first-person and drone cameras follow that lane. The original route
+and minimap remain centred. Widths come from the drawn mesh, including kept worlds.
 
 Rivers (R118, ADR 0030) use shared longitudinal profiles, independent of bank and road
 heights. Check level cross-sections, a submerged bed, continuity across chunks and water

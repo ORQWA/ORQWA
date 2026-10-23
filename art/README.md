@@ -86,12 +86,12 @@ the course descends; the bed follows the same datum and the gravel band follows 
 Tall banks blend out over a wider reach; exposed steep channel sides use triplanar rock.
 Review steep valley rivers from road height and above with `orqwa-render-review`.
 
-Non-ridden road bridges have solid 0.7 m decks (R120), with separate downward-facing
+Non-ridden road bridges have solid 0.7 m decks (R121), with separate downward-facing
 underside vertices to keep the slab edges sharp. Undersides use edge UVs so unpaved bridges'
 grass strips stay on top. Review the deck from road height underneath as well as from above;
 the generator adds this geometry when a kept world is regenerated.
 
-Bridge structures (R121) use the CC0 Poly Haven **Concrete Wall 007** photograph-based
+Bridge structures (R122) use the CC0 Poly Haven **Concrete Wall 007** photograph-based
 albedo, normal and roughness maps for cast concrete, with pores, worn patches and formboard
 marks at their original 2.16 m scale. `concrete_scan.py` converts the archived originals in
 `art/sources/concrete-wall-007/`; rebuild with `build.py -- bridge_concrete`. These dedicated

@@ -3126,7 +3126,7 @@ async fn separate_parallel_and_crossing_bridges_are_not_claimed_by_the_ridden_br
 async fn non_ridden_bridges_are_solid_from_below() {
     use orqwa_osm::{Road, RoadClass};
 
-    // R120: sloping bridges across the ridden road, with a gentle bend and several chunks.
+    // R121: sloping bridges across the ridden road, with a gentle bend and several chunks.
     // Motorways use Major; tracks and paths use the separate unpaved mesh.
     let classes = [
         RoadClass::Major,

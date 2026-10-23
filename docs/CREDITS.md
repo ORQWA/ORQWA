@@ -16,7 +16,7 @@ The fractured boulders and shared cliff/boulder weathering shader (R115) are own
 1K originals and their source are kept in `art/sources/rock-boulder-dry/`;
 `art/textures/rock_scan.py` converts them to the shared rock WebP maps.
 
-Bridge concrete (R121) uses [Concrete Wall 007](https://polyhaven.com/a/concrete_wall_007)
+Bridge concrete (R122) uses [Concrete Wall 007](https://polyhaven.com/a/concrete_wall_007)
 by **Charlotte Baglioni** (photography), **Dario Barresi** (processing) and **Rico Cilliers**
 (tiling), Poly Haven, **CC0 1.0**. Untouched 1K albedo, OpenGL normal and roughness maps,
 source URLs and checksums are kept in `art/sources/concrete-wall-007/`.
@@ -70,6 +70,19 @@ The Blender skills in `.claude/skills/blender-*` are from
 **MIT**; see `.claude/skills/README.md`.
 
 ## Data
+
+Country/territory traffic-side defaults are factual reference data cross-checked against
+[World Standards' driving-side list](https://www.worldstandards.eu/cars/list-of-left-driving-countries/).
+No text, map artwork or implementation was copied.
+
+The small offline outlines for Hong Kong, Macau and the US Virgin Islands
+(`core/orqwa-osm/data/traffic-territories.json`) come from
+[`country-coder`](https://github.com/rapideditor/country-coder/blob/c30d4314809cb8a446c3d42181cd370a1a424056/src/data/borders.json),
+copyright 2026 country-coder contributors, **ISC**. The original licence accompanies the
+data; no upstream implementation code was copied.
+
+The London cycleway review fixture (`core/fixtures/london-cycleway.gpx`) is extracted from
+the prepared OpenFreeMap transportation data, © OpenStreetMap contributors (ODbL 1.0).
 
 Map and terrain data credits are shown in the app and stored in every course file; see
 [Courses](https://github.com/ORQWA/ORQWA/wiki/Courses).

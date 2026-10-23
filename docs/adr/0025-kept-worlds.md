@@ -103,11 +103,11 @@ stays at 2; older kept worlds remain rideable and offer regeneration for the cor
 
 ## Amendment — 2026-10-23
 
-Solid undersides for non-ridden road bridges (R120) raise the generator to 11. The added
+Solid undersides for non-ridden road bridges (R121) raise the generator to 11. The added
 vertices and triangles use the existing mesh layout, so stored format stays at 3. Older kept
 worlds remain rideable and offer regeneration to close the decks seen from below.
 
-The bridge restyle (R121) raises the generator to 12 for narrower railway decks, open
+The bridge restyle (R122) raises the generator to 12 for narrower railway decks, open
 railings, capped columns and bearing walls. Stored format remains 3. Wearing surfaces retain
 the existing road-profile metadata;
 new bridge details carry sRGB tints with zero alpha, outside the positive road-style flag

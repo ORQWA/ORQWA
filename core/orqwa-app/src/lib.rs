@@ -14,6 +14,7 @@ pub mod library;
 pub mod media;
 pub mod paths;
 pub mod remote;
+mod traffic;
 pub mod updates;
 pub mod uploads;
 pub mod video;
@@ -683,6 +684,8 @@ pub struct App {
     /// every course again.
     estimates: Estimates,
     world: Option<Arc<World>>,
+    road_widths: orqwa_world::RoadWidths,
+    driving_left: Vec<Option<bool>>,
     offline: bool,
     /// Name and GPX of the loaded route, for saving it as a course.
     loaded: Option<(String, String)>,
@@ -782,6 +785,8 @@ impl App {
             filling_countries: None,
             estimates: Estimates::default(),
             world: None,
+            road_widths: orqwa_world::RoadWidths::default(),
+            driving_left: Vec::new(),
             offline: false,
             loaded: None,
             used: UsedFiles::default(),
@@ -1023,6 +1028,16 @@ impl App {
             )
             .await
             .map(|mut imported| {
+                // Older shared courses may know their country without having bundled the
+                // border tiles. A single known country gives a useful offline fallback.
+                if let Some(countries) = &unpacked.manifest.countries
+                    && let [country] = countries.as_slice()
+                {
+                    let left = traffic::keeps_left(Some(&country.code));
+                    for side in &mut imported.driving_left {
+                        side.get_or_insert(left);
+                    }
+                }
                 imported.name = unpacked.manifest.name;
                 imported
             });
@@ -1949,6 +1964,8 @@ impl App {
         self.video = None;
         self.view = View::World;
         self.world = None;
+        self.road_widths = orqwa_world::RoadWidths::default();
+        self.driving_left.clear();
         self.route = None;
         self.course_map = None;
         self.minimap = orqwa_world::FlatMap::default();
@@ -3592,6 +3609,20 @@ impl App {
         self.world.as_deref()
     }
 
+    /// Avatar position in metres east/north, on the local traffic side of the drawn road.
+    /// Ghosts ride nearer the centre on the same side. The route, GPS recording, minimap and
+    /// simulation keep their original centre-line positions.
+    #[must_use]
+    pub fn rider_position(&self, distance: Meters, ghost: bool) -> Option<(f64, f64)> {
+        Some(traffic::position(
+            self.route.as_ref()?,
+            &self.driving_left,
+            &self.road_widths,
+            distance,
+            ghost,
+        ))
+    }
+
     /// Disconnects all devices, waiting at most a few seconds.
     pub fn shutdown(&mut self) {
         self.remote = None;
@@ -3678,6 +3709,7 @@ impl App {
                     {
                         self.keep_world(course.clone(), Arc::clone(&world), Some(fingerprint));
                     }
+                    self.road_widths = orqwa_world::RoadWidths::new(&world.road);
                     self.world = Some(world);
                     // A prepared GPX goes into the course library (R39).
                     if !self.from_course
@@ -3787,12 +3819,14 @@ impl App {
             course_map,
             minimap,
             countries,
+            driving_left,
             ..
         } = imported;
         self.loaded = Some((name.clone(), gpx));
         self.course_map = course_map;
         self.minimap = minimap;
         self.countries = countries;
+        self.driving_left = driving_left;
         events.push(AppEvent::RouteLoaded(RouteSummary {
             name,
             length: route.length().0,
@@ -4202,6 +4236,47 @@ mod tests {
         let path = dir.join("route.gpx");
         std::fs::write(&path, xml).unwrap();
         path
+    }
+
+    #[test]
+    fn older_offline_courses_use_their_single_known_country_for_traffic() {
+        let dir = temp_dir("traffic-country-fallback");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |event| matches!(event, AppEvent::CourseAdded(_)));
+        let path = app.course.clone().unwrap();
+        let mut manifest = course::read_manifest(&path).unwrap();
+        let gb = CourseCountry {
+            code: "GB".into(),
+            names: std::collections::BTreeMap::new(),
+        };
+        for (countries, expected_side) in [
+            (vec![gb.clone()], -1.0),
+            (
+                vec![
+                    gb,
+                    CourseCountry {
+                        code: "FR".into(),
+                        names: std::collections::BTreeMap::new(),
+                    },
+                ],
+                1.0,
+            ),
+        ] {
+            manifest.countries = Some(countries);
+            course::rewrite_manifest(&path, &manifest).unwrap();
+            app.open_course(path.clone());
+            run_until(&mut app, |event| matches!(event, AppEvent::RouteLoaded(_)));
+            let route = app.route().unwrap();
+            let at = route.position(Meters(100.0));
+            let centre = LocalProjection::for_route(route).project(at.lat, at.lon);
+            let rider = app.rider_position(Meters(100.0), false).unwrap();
+            let right =
+                (rider.0 - centre.0) * at.heading.cos() - (rider.1 - centre.1) * at.heading.sin();
+            assert!(right * expected_side > 0.0);
+        }
+        app.shutdown();
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     /// Calls `update` like a 60 fps frame loop until `done` returns true (or 120 s pass).

@@ -78,7 +78,7 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
   `concrete_scan.py`. Originals, licence and checksums live in `art/sources/concrete-wall-007/`.
   Keep its 2.16 m physical scale and dedicated albedo/normal/roughness maps: the urban
   concrete recipe's paving joints made bridge walls look tiled. Review pores and weathering
-  below the deck and from the Oberalp close/side views, as well as the original chase (R121).
+  below the deck and from the Oberalp close/side views, as well as the original chase (R122).
 
 ## bpy pitfalls
 

@@ -61,6 +61,8 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+### Bridge ownership
+
 The Alpenbrevet Lukmanier approach (approximately 34.8 km into the saved course) exposed a
 second mapped bridge beneath the bridge ridden. Generator 13 gives the aligned bridge one
 owner even when GPX smoothing shifts its centre line slightly; separate bridges remain.
@@ -68,6 +70,29 @@ owner even when GPX smoothing shifts its centre line slightly; separate bridges 
 | Duplicate mapped structure | One bridge |
 |---|---|
 | ![Overlapping decks and railings](images/issues/alpenbrevet-bridge-duplicate-before.jpg) | ![One deck and railing set](images/issues/alpenbrevet-bridge-duplicate-after.jpg) |
+
+### Local traffic lanes
+
+The rider follows the local traffic side and the drawn carriageway width (R120), including
+on narrow cycleways. Ghosts stay toward the centre on the same side. The map and recorded
+route retain their original centre line.
+
+| Right-hand traffic: Oberalp | Left-hand traffic: narrow London road |
+|---|---|
+| ![Rider in the right-hand tunnel lane](images/traffic/right-tunnel.jpg) | ![Rider keeping left on a narrow road](images/traffic/left-narrow-road.jpg) |
+
+[Tunnel before the fix](images/traffic/right-tunnel-before.jpg) ·
+[London street](images/traffic/left-street.jpg) ·
+[First person](images/traffic/left-first-person.jpg) ·
+[Drone](images/traffic/left-drone.jpg)
+
+Reproduce the London views in the dev container with
+`GPX=core/fixtures/london-cycleway.gpx SHOTS="london-left-chase:120:0 london-left-first-person:120:1 london-left-drone:120:2 london-left-narrow:600:0" scripts/render-views.sh`.
+The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-chase oberalp-hairpins-drone"`.
+The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
+0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
+
+### Road profiles
 
 Road hierarchy and paving (R119, [ADR 0031](adr/0031-road-appearance.md)) use the same
 materials for ridden and surrounding ways. This controlled, offline scene uses the Rust
@@ -90,7 +115,7 @@ Reproduce with `COURSE=core/orqwa-gd/courses/twann-chasseral.tqc`
 and `SHOTS="lamboing:4200:2:0,180,-20"` in `scripts/render-views.sh`. The course uses its
 saved inputs offline. Matching before/after review images are in `docs/images/roads/`.
 
-The Oberalp railway bridge (R121), seen from the same riding camera before and after the
+The Oberalp railway bridge (R122), seen from the same riding camera before and after the
 proportion and material changes. The close views check open railings, supports and the soffit.
 
 | Before: broad deck with solid walls | After: narrower deck and open railings |
@@ -103,7 +128,7 @@ proportion and material changes. The close views check open railings, supports a
 
 ![Railway bridge from the side](images/views/oberalp-bridge-side.jpg)
 
-The non-ridden bridge regression scene checks the deck from underneath and above (R120).
+The non-ridden bridge regression scene checks the deck from underneath and above (R121).
 It uses generated test geometry with the application's road, street and terrain materials.
 
 | Before: sky visible through the deck | After: solid underside |

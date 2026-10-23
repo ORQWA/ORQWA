@@ -94,13 +94,13 @@ gallery. Grain alone is insufficient at distance. Refresh the linked wiki images
 
 ## Pitfalls
 
-For bridge geometry (R120), include a camera below a non-ridden road bridge: top and side
+For bridge geometry (R121), include a camera below a non-ridden road bridge: top and side
 views cannot reveal a missing underside. Check its downward-facing deck across chunk joins,
 and retain a view from above to check the road surface. Motorway/local-road decks and
 unpaved track/path decks share this geometry; ridden-road and railway structures use another
 builder.
 
-For the bridge restyle (R121), compare `oberalp-railway-chase` with `oberalp-bridge-close`,
+For the bridge restyle (R122), compare `oberalp-railway-chase` with `oberalp-bridge-close`,
 `oberalp-bridge-under` and `oberalp-bridge-side`, plus Bern's `bridge-side`. Include a tunnel
 view when changing the shared structure material. Check low kerbs, open metal railings,
 plausible deck widths, capped supports and closed ends without stretching the texture on

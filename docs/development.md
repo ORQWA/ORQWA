@@ -71,7 +71,7 @@ both water meshes and channel beds use those shared elevations. Keep these profi
 independent of road shaping. Review a steep valley from the road and above, plus a lake,
 after changing them. Older kept worlds offer **Regenerate world** for the corrected rivers.
 
-Bridge geometry (R120–R121) uses generator 12 / stored format 3. `drape::deck` adds a
+Bridge geometry (R121–R122) uses generator 12 / stored format 3. `drape::deck` adds a
 downward-facing underside at the same depth as the side walls, including at chunk joins;
 the ridden road and railway decks are built separately in `structures.rs`. Older kept
 worlds offer regeneration. Run `cargo test -p orqwa-world non_ridden_bridges` for coverage
