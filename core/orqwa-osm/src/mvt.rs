@@ -11,7 +11,7 @@ use mvt_reader::feature::Value;
 use crate::countries::{Border, CountryData};
 use crate::{
     Area, Building, LandCover, LatLon, MapData, OsmError, Place, PlaceKind, Railway, Road,
-    RoadClass, StructureKind, Waterway,
+    RoadClass, RoadDetails, RoadKind, RoadSurface, StructureKind, Waterway,
 };
 
 /// Adds the features of tile (x, y) at `zoom` to `data`.
@@ -493,10 +493,47 @@ fn add_road(
         if let Some(class) = class {
             data.roads.push(Road {
                 class,
+                details: road_details(tags),
                 line,
                 structure: kind,
             });
         }
+    }
+}
+
+#[allow(clippy::float_cmp)] // integer flags encoded as MVT numbers, not measurements
+fn road_details(tags: &Tags) -> RoadDetails {
+    let kind = match (tags.text("class"), tags.text("subclass")) {
+        ("motorway", _) => RoadKind::Motorway,
+        ("trunk", _) => RoadKind::Trunk,
+        ("primary", _) => RoadKind::Primary,
+        ("secondary", _) => RoadKind::Secondary,
+        ("tertiary", _) => RoadKind::Tertiary,
+        ("minor", _) => RoadKind::Local,
+        ("service", _) => RoadKind::Service,
+        ("track", _) => RoadKind::Track,
+        ("path", "cycleway") => RoadKind::Cycleway,
+        ("path", _) => RoadKind::Path,
+        _ => RoadKind::Unknown,
+    };
+    let surface = match tags.text("surface") {
+        "paved" => RoadSurface::Paved,
+        "unpaved" => RoadSurface::Unpaved,
+        "asphalt" | "chipseal" => RoadSurface::Asphalt,
+        "concrete" | "concrete:plates" | "concrete:lanes" => RoadSurface::Concrete,
+        "paving_stones" | "bricks" => RoadSurface::Paving,
+        "sett" | "cobblestone" | "unhewn_cobblestone" => RoadSurface::Cobbles,
+        "gravel" | "fine_gravel" | "compacted" | "pebblestone" => RoadSurface::Gravel,
+        "dirt" | "earth" | "ground" | "mud" | "clay" => RoadSurface::Dirt,
+        "grass" | "grass_paver" => RoadSurface::Grass,
+        _ => RoadSurface::Unknown,
+    };
+    RoadDetails {
+        kind,
+        surface,
+        oneway: matches!(tags.text("oneway"), "1" | "-1" | "yes")
+            || tags.number("oneway").is_some_and(|n| n.abs() == 1.0),
+        ramp: tags.text("ramp") == "1" || tags.number("ramp") == Some(1.0),
     }
 }
 
@@ -686,6 +723,31 @@ fn clip(a: (f64, f64), b: (f64, f64), extent: f64) -> Option<(f64, f64)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn roads_retain_hierarchy_paving_direction_and_ramps() {
+        let tags = Tags(HashMap::from([
+            ("class".into(), Value::String("motorway".into())),
+            ("surface".into(), Value::String("paved".into())),
+            ("oneway".into(), Value::String("-1".into())),
+            ("ramp".into(), Value::String("1".into())),
+        ]));
+        let details = road_details(&tags);
+        assert_eq!(details.kind, RoadKind::Motorway);
+        assert_eq!(details.surface, RoadSurface::Paved);
+        assert!(details.oneway && details.ramp);
+        assert_eq!(
+            road_details(&Tags(HashMap::new())).surface,
+            RoadSurface::Unknown
+        );
+        let tags = Tags(HashMap::from([
+            ("class".into(), Value::String("path".into())),
+            ("subclass".into(), Value::String("cycleway".into())),
+            ("surface".into(), Value::String("unpaved".into())),
+        ]));
+        assert_eq!(road_details(&tags).kind, RoadKind::Cycleway);
+        assert_eq!(road_details(&tags).surface, RoadSurface::Unpaved);
+    }
 
     fn test_tile() -> MapData {
         let mut data = MapData::default();

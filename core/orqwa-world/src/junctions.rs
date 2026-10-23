@@ -243,10 +243,10 @@ fn arms_at(
             arms.push(Arm {
                 from,
                 direction,
-                half: ROAD_HALF_WIDTH,
+                half: road.half_width_at(from.0, from.1),
                 reach: CORNER_REACH_M,
                 lift: ROAD_SINK,
-                paved: true,
+                paved: road.appearance_at(from.0, from.1).paved(),
                 street: None,
             });
         }
@@ -425,6 +425,9 @@ pub(crate) fn meshes(
                 chunk_origin,
                 &uv,
             );
+            let material = if corner.paved { 0.0 } else { 1.0 / 8.0 };
+            mesh.colors
+                .resize(mesh.vertices.len(), [material, 6.0 / 32.0, 0.0, 1.0 / 8.0]);
         }
     }
     (paved, unpaved)

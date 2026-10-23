@@ -957,6 +957,7 @@ mod tests {
     fn road_of(class: RoadClass, points: &[(f64, f64)]) -> Road {
         Road {
             class,
+            details: orqwa_osm::RoadDetails::default(),
             line: points.iter().map(|&p| flat().to_lat_lon(p)).collect(),
             structure: None,
         }

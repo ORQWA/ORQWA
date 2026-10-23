@@ -57,6 +57,7 @@ async fn sidewalks_have_raised_curbs_and_leave_roads_junctions_and_green_spaces_
     }
     map.roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(-100.0, 500.0), at(100.0, 500.0)],
         structure: None,
     });
@@ -465,6 +466,7 @@ async fn city_benches_use_free_sidewalks_without_blocking_entrances_or_junctions
     });
     map.roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(-100.0, 620.0), at(100.0, 620.0)],
         structure: None,
     });

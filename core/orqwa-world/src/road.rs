@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use orqwa_routes::{LocalProjection, Route, Surface, catmull_rom};
 
 use crate::MeshData;
+use crate::appearance::{Appearance, Index};
 
 /// Size of the index cells.
 const CELL: f64 = 100.0;
@@ -42,6 +43,7 @@ pub(crate) type Plane = ((f64, f64), (f64, f64));
 
 #[derive(Debug, Clone, Copy)]
 struct Segment {
+    appearance: Option<Appearance>,
     /// Start and end in metres east/north.
     a: (f64, f64),
     b: (f64, f64),
@@ -66,6 +68,7 @@ struct Segment {
 /// A point of the road ridden, for what stands beside it ([`RoadIndex::stations`]).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Station {
+    pub(crate) appearance: Appearance,
     /// Metres east/north.
     pub(crate) position: (f64, f64),
     /// Road surface elevation.
@@ -103,6 +106,77 @@ pub(crate) struct RoadIndex {
 }
 
 impl RoadIndex {
+    pub(crate) fn set_appearances(&mut self, index: &Index) {
+        for segment in &mut self.segments {
+            let point = (
+                f64::midpoint(segment.a.0, segment.b.0),
+                f64::midpoint(segment.a.1, segment.b.1),
+            );
+            segment.appearance = Some(index.at(point, direction(segment), segment.surface));
+        }
+        // Ease width changes over roughly twenty metres; material boundaries stay local.
+        for line in &self.lines {
+            for reverse in [false, true] {
+                let indices: Vec<_> = if reverse {
+                    line.clone().rev().collect()
+                } else {
+                    line.clone().collect()
+                };
+                let mut previous: Option<f64> = None;
+                for i in indices {
+                    let segment = &mut self.segments[i];
+                    if let Some(mut look) = segment.appearance {
+                        if let Some(width) = previous {
+                            let step = (segment.distance_b - segment.distance_a).max(0.0) * 0.2;
+                            look.width = look.width.clamp(width - step, width + step);
+                        }
+                        previous = Some(look.width);
+                        segment.appearance = Some(look);
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn appearance_at(&self, east: f64, north: f64) -> Appearance {
+        let (cx, cy) = cell_of(east, north);
+        let mut best: Option<(f64, Appearance)> = None;
+        for x in cx - 1..=cx + 1 {
+            for y in cy - 1..=cy + 1 {
+                for &i in self.cells.get(&(x, y)).into_iter().flatten() {
+                    let segment = &self.segments[i];
+                    let distance = closest_on_segment(segment, east, north).0;
+                    if best.is_none_or(|b| distance < b.0) {
+                        best = Some((distance, segment.appearance.unwrap_or_default()));
+                    }
+                }
+            }
+        }
+        best.map_or_else(Appearance::default, |b| b.1)
+    }
+
+    pub(crate) fn half_width_at(&self, east: f64, north: f64) -> f64 {
+        self.appearance_at(east, north).width / 2.0
+    }
+
+    pub(crate) fn edge_distance(&self, east: f64, north: f64) -> f64 {
+        self.near_shaped(east, north, 30.0)
+            .iter()
+            .map(|r| r.0 - 3.0)
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    /// Distances relative to the historical six-metre cross-section, so terrain shaping
+    /// follows each segment's width while railways retain their own existing cross-section.
+    pub(crate) fn near_shaped(
+        &self,
+        east: f64,
+        north: f64,
+        reach: f64,
+    ) -> Vec<(f64, f64, Surface)> {
+        self.near_adjusted(east, north, reach, true)
+    }
+
     pub(crate) fn new(route: &Route, projection: &LocalProjection) -> Self {
         let points: Vec<Centre> = route
             .points()
@@ -160,6 +234,7 @@ impl RoadIndex {
         for line in lines {
             let start = segments.len();
             segments.extend(line.windows(2).map(|w| Segment {
+                appearance: None,
                 a: w[0].position,
                 b: w[1].position,
                 elevation_a: w[0].elevation,
@@ -232,6 +307,18 @@ impl RoadIndex {
     /// Every piece of road within `reach`: its distance, the road's elevation there and what
     /// carries it. Where the road passes a place more than once (hairpins), each pass is there.
     pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> Vec<(f64, f64, Surface)> {
+        self.near_adjusted(east, north, reach, false)
+    }
+
+    fn near_adjusted(
+        &self,
+        east: f64,
+        north: f64,
+        reach: f64,
+        shaped: bool,
+    ) -> Vec<(f64, f64, Surface)> {
+        let limit = reach;
+        let reach = reach + if shaped { 8.0 } else { 0.0 };
         let (low_e, low_n) = cell_of(east - reach, north - reach);
         let (high_e, high_n) = cell_of(east + reach, north + reach);
         let mut found = Vec::new();
@@ -247,8 +334,11 @@ impl RoadIndex {
                     if first != (ce, cn) && in_range(first) {
                         continue;
                     }
-                    let candidate = closest_on_segment(segment, east, north);
-                    if candidate.0 <= reach {
+                    let mut candidate = closest_on_segment(segment, east, north);
+                    if shaped {
+                        candidate.0 -= segment.appearance.map_or(0.0, |a| a.width / 2.0 - 3.0);
+                    }
+                    if candidate.0 <= limit {
                         found.push(candidate);
                     }
                 }
@@ -419,6 +509,7 @@ impl RoadIndex {
                     (low.0..high.0).contains(&position.0) && (low.1..high.1).contains(&position.1);
                 if inside {
                     stations.push(Station {
+                        appearance: segment.appearance.unwrap_or_default(),
                         position,
                         elevation: segment.elevation_a
                             + (segment.elevation_b - segment.elevation_a) * t,
@@ -683,9 +774,12 @@ fn line_mesh(segments: &[Segment], half_width: f64, mouths: &[Mouth]) -> MeshDat
                 rings,
                 ((east, north), elevation, distance),
                 (re, rn),
-                half_width,
+                after.appearance.map_or(half_width, |a| a.width / 2.0),
                 (joined(distance, -1.0), joined(distance, 1.0)),
             );
+            if let Some(appearance) = after.appearance {
+                mesh.colors.extend([appearance.color(); RING]);
+            }
             rings += 1;
         }
     }

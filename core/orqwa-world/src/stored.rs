@@ -17,7 +17,7 @@ use crate::{BuildingCell, Horizon, Label, MeshData, Props, TerrainChunk, Trees, 
 /// `tests/data/stored-world-<FORMAT>.bin` fails then), or a change in what the app makes of the
 /// data, such as a model renamed or removed or another layout of an instance buffer. Worlds of
 /// another format are built again.
-pub const FORMAT: u32 = 2;
+pub const FORMAT: u32 = 3;
 
 /// The first bytes of a world's parts built whole.
 const MAGIC: &[u8; 8] = b"TQWORLD\0";

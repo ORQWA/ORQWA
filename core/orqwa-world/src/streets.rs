@@ -9,12 +9,13 @@ use std::collections::HashMap;
 use orqwa_osm::{MapData, RoadClass, StructureKind};
 use orqwa_routes::{ElevationModel, LocalProjection};
 
+use crate::appearance::Appearance;
 use crate::junctions::{self, Corner};
 use crate::railways::{self, Railway};
 use crate::road::{Mouth, RoadIndex};
 use crate::structures::Below;
 use crate::water::{self, Pool};
-use crate::{HeightGrid, MeshData, On, ROAD_HALF_WIDTH, chains, drape};
+use crate::{HeightGrid, MeshData, On, chains, drape};
 
 /// Distance between the points of a street: short enough to tell where it runs along the road
 /// ridden and to keep plants off it.
@@ -46,6 +47,7 @@ fn lift(class: RoadClass, index: usize) -> f64 {
 
 /// A street of the map in metres east/north, with its bounds for quick chunk tests.
 pub(crate) struct Street {
+    pub(crate) appearance: Appearance,
     class: RoadClass,
     points: Vec<(f64, f64)>,
     min: (f64, f64),
@@ -63,7 +65,7 @@ impl Street {
 
     /// Half its width in metres.
     pub(crate) fn half_width(&self) -> f64 {
-        width(self.class) / 2.0
+        self.appearance.width / 2.0
     }
 
     /// Whether it is a bridge.
@@ -78,7 +80,7 @@ impl Street {
 
     /// Whether it is paved (asphalt) rather than gravel or dirt.
     pub(crate) fn paved(&self) -> bool {
-        paved(self.class)
+        self.appearance.paved()
     }
 }
 
@@ -94,13 +96,6 @@ pub(crate) fn width(class: RoadClass) -> f64 {
 }
 
 /// Whether a way is paved (asphalt) rather than gravel or dirt.
-fn paved(class: RoadClass) -> bool {
-    matches!(
-        class,
-        RoadClass::Major | RoadClass::Street | RoadClass::Service
-    )
-}
-
 /// The map's streets around the route, their pieces joined end to end where they go on as one
 /// way of a kind (`chains`), densified, with bridge decks' end heights from `model`: a bridge
 /// cut by a tile border is one deck between its real ends, not two dipping to the ground where
@@ -124,7 +119,9 @@ pub(crate) async fn lines<M: ElevationModel>(
     let pieces: Vec<&[(f64, f64)]> = projected.iter().map(Vec::as_slice).collect();
     let alike = |first: usize, second: usize| {
         let (first, second) = (&map.roads[first], &map.roads[second]);
-        first.class == second.class && first.structure == second.structure
+        first.class == second.class
+            && first.structure == second.structure
+            && first.details == second.details
     };
     let joined = chains::chains(&pieces, &alike);
     let mut streets = Vec::new();
@@ -166,6 +163,7 @@ pub(crate) async fn lines<M: ElevationModel>(
             max = (max.0.max(e), max.1.max(n));
         }
         streets.push(Street {
+            appearance: Appearance::of(road),
             class: road.class,
             points,
             min,
@@ -200,8 +198,8 @@ pub(crate) fn meshes(
         {
             continue;
         }
-        let half = width(street.class) / 2.0;
-        let target = if paved(street.class) {
+        let half = street.half_width();
+        let target = if street.paved() {
             &mut paved_mesh
         } else {
             &mut unpaved_mesh
@@ -212,7 +210,7 @@ pub(crate) fn meshes(
             let mut run: Vec<((f64, f64), f64)> = Vec::new();
             for (i, &(point, distance)) in piece.iter().enumerate() {
                 let direction = local_direction(&points, i);
-                let reach = ROAD_HALF_WIDTH + half + 0.5;
+                let reach = road.half_width_at(point.0, point.1) + half + 0.5;
                 if road.runs_along(point.0, point.1, reach, direction) {
                     ribbon(
                         target,
@@ -240,7 +238,7 @@ pub(crate) fn meshes(
         }
         if street.deck.is_none() {
             for (point, direction) in rounds(&street.points) {
-                let reach = ROAD_HALF_WIDTH + half + 0.5;
+                let reach = road.half_width_at(point.0, point.1) + half + 0.5;
                 let outside = point.0 + half < low.0
                     || point.0 - half > high.0
                     || point.1 + half < low.1
@@ -264,6 +262,9 @@ pub(crate) fn meshes(
                     chunk_origin,
                     &|_| [0.0, 0.0],
                 );
+                target
+                    .colors
+                    .resize(target.vertices.len(), street.appearance.plain_color());
             }
         }
     }
@@ -301,19 +302,25 @@ fn rounds(points: &[(f64, f64)]) -> Vec<((f64, f64), (f64, f64))> {
 pub(crate) fn mouths(streets: &[Street], road: &RoadIndex) -> Vec<Mouth> {
     let mut mouths = Vec::new();
     for street in streets.iter().filter(|s| s.deck.is_none()) {
-        let half = width(street.class) / 2.0;
+        let half = street.half_width();
         for (i, &(east, north)) in street.points.iter().enumerate() {
             // Points on the road's surface belong to no side; beside it, a band wider than the
             // points are apart catches every street that reaches the edge.
-            let Some((distance, along, side)) = road.locate(east, north, ROAD_HALF_WIDTH + 3.0)
+            let Some((distance, along, side)) =
+                road.locate(east, north, road.half_width_at(east, north) + 3.0)
             else {
                 continue;
             };
-            if distance < ROAD_HALF_WIDTH - 0.5 {
+            if distance < road.half_width_at(east, north) - 0.5 {
                 continue;
             }
             let direction = local_direction(&street.points, i);
-            if !road.runs_along(east, north, ROAD_HALF_WIDTH + half + 0.5, direction) {
+            if !road.runs_along(
+                east,
+                north,
+                road.half_width_at(east, north) + half + 0.5,
+                direction,
+            ) {
                 mouths.push((along, side, half));
             }
         }
@@ -372,6 +379,8 @@ fn ribbon(
             origin,
         );
     }
+    mesh.colors
+        .resize(mesh.vertices.len(), street.appearance.color());
 }
 
 /// Street points with their half widths, by index cell.
@@ -404,7 +413,7 @@ impl Clearance {
         }
         let lines = streets
             .iter()
-            .map(|s| (&s.points, width(s.class) / 2.0))
+            .map(|s| (&s.points, s.half_width()))
             .chain(railways.iter().map(|r| (&r.points, railways::BED_M / 2.0)))
             .chain(pools.iter().map(|p| (&p.shore, water::SHORE_M / 2.0)));
         for (points, half) in lines {

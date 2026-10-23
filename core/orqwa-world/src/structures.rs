@@ -13,7 +13,7 @@ use orqwa_routes::{ElevationModel, LocalProjection, Surface};
 
 use crate::road::{CentrePoint, Plane, RoadIndex, TunnelRun};
 use crate::streets::{Levels, Street};
-use crate::{LEVEL_REACH, MeshData, ROAD_HALF_WIDTH, ROAD_SINK, Shapers, palette, railways, shape};
+use crate::{LEVEL_REACH, MeshData, ROAD_SINK, Shapers, palette, railways, shape};
 
 static CONCRETE: LazyLock<[f32; 4]> = LazyLock::new(|| palette::srgb("structure.concrete", 0.0));
 static STONE: LazyLock<[f32; 4]> = LazyLock::new(|| palette::srgb("structure.stone", 0.0));
@@ -136,7 +136,7 @@ impl<'a> Below<'a> {
     ) -> bool {
         let low = deck - CLEARANCE;
         let lines = [
-            (self.road, ROAD_HALF_WIDTH),
+            (self.road, self.road.half_width_at(east, north)),
             (self.railways, railways::BED_M / 2.0),
         ];
         let on_a_line = lines.iter().any(|&(line, half)| {
@@ -518,10 +518,18 @@ pub(crate) async fn build_all<M: ElevationModel>(
     model: &mut M,
 ) -> MeshData {
     let mut mesh = MeshData::default();
-    let own = road
-        .structure_runs()
-        .into_iter()
-        .map(|(surface, run)| (surface, sections(&run, surface, false), None));
+    let own = road.structure_runs().into_iter().map(|(surface, run)| {
+        let mut sections = sections(&run, surface, false);
+        if surface == Surface::Bridge {
+            for section in &mut sections {
+                let at = section.centre.position;
+                let half = road.half_width_at(at.0, at.1) + 0.6;
+                section.left = half;
+                section.right = half;
+            }
+        }
+        (surface, sections, None)
+    });
     let rails = bundles(&railways.structure_runs())
         .into_iter()
         .map(|(surface, run)| (surface, run, Some(road)));

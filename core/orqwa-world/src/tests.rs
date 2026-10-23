@@ -89,11 +89,13 @@ async fn route_north(structures: &[Structure]) -> Route {
     for structure in structures {
         roads.push(orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![from, structure.line[0]],
             structure: None,
         });
         roads.push(orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: structure.line.clone(),
             structure: Some(structure.kind),
         });
@@ -101,6 +103,7 @@ async fn route_north(structures: &[Structure]) -> Route {
     }
     roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![from, at(0.0, 1020.0)],
         structure: None,
     });
@@ -121,6 +124,54 @@ async fn world(map: &MapData) -> World {
         &mut |_, _| {},
     )
     .await
+}
+
+#[tokio::test]
+async fn ridden_cycleways_and_surrounding_highways_keep_their_own_widths_and_surfaces() {
+    use orqwa_osm::{RoadDetails, RoadKind, RoadSurface};
+    let mut cycleway = road_north();
+    cycleway.class = RoadClass::Path;
+    cycleway.details = RoadDetails { kind: RoadKind::Cycleway, surface: RoadSurface::Paved, ..RoadDetails::default() };
+    let mut highway = road_north();
+    highway.class = RoadClass::Major;
+    highway.details = RoadDetails { kind: RoadKind::Motorway, surface: RoadSurface::Paved, oneway: true, ..RoadDetails::default() };
+    highway.line = vec![at(50.0, 100.0), at(50.0, 900.0)];
+    let mut unpaved = road_north();
+    unpaved.details.surface = RoadSurface::Unpaved;
+    unpaved.line = vec![at(-50.0, 100.0), at(-50.0, 900.0)];
+    let world = world(&MapData { roads: vec![cycleway, highway, unpaved], ..MapData::default() }).await;
+    let top: Vec<_> = world.road.vertices.iter().zip(&world.road.uvs).filter(|(_, uv)| uv[0] == 0.0 || uv[0] == 1.0).collect();
+    assert!(top.iter().all(|(v, _)| v[0].abs() < 1.3), "a ridden cycleway stays narrow");
+    assert!(world.road.colors.iter().all(|c| c[0] == 0.0 && c[2] == 0.0), "paved cycleway, no invented paint");
+    for chunk in &world.chunks {
+        for mesh in [&chunk.streets, &chunk.tracks] { assert_eq!(mesh.vertices.len(), mesh.colors.len()); }
+    }
+    let highway_widths: Vec<_> = world.chunks.iter().flat_map(|c| &c.streets.colors).filter(|c| c[2] == 0.5).map(|c| c[1] * 32.0).collect();
+    assert!(!highway_widths.is_empty() && highway_widths.iter().all(|&w| w > 9.0));
+    assert!(world.chunks.iter().flat_map(|c| &c.tracks.colors).any(|c| c[0] == 0.125 && c[2] == 0.0), "explicit unpaved local road uses gravel");
+}
+
+#[tokio::test]
+async fn road_appearance_matching_ignores_crossings_parallel_neighbours_and_other_levels() {
+    use orqwa_osm::{RoadDetails, RoadKind, RoadSurface};
+    let route = route_north(&[]).await;
+    let projection = LocalProjection::for_route(&route);
+    let mut path = road_north();
+    path.details = RoadDetails { kind: RoadKind::Cycleway, surface: RoadSurface::Paved, ..RoadDetails::default() };
+    let mut crossing = road_north();
+    crossing.details.kind = RoadKind::Motorway;
+    crossing.line = vec![at(-100.0, 500.0), at(100.0, 500.0)];
+    let mut upper = path.clone();
+    upper.structure = Some(StructureKind::Bridge);
+    upper.details.kind = RoadKind::Motorway;
+    let mut neighbour = path.clone();
+    neighbour.details.kind = RoadKind::Primary;
+    neighbour.line = vec![at(5.0, 0.0), at(5.0, 1000.0)];
+    let index = appearance::Index::new(&MapData { roads: vec![crossing, upper, neighbour, path], ..MapData::default() }, &projection);
+    let point = projection.project(at(0.0, 500.0).0, at(0.0, 500.0).1);
+    assert!(index.at(point, (0.0, 1.0), Surface::Ground).width < 3.0);
+    assert!(index.at(point, (0.0, 1.0), Surface::Bridge).width > 9.0);
+    assert!((index.at((1000.0, 1000.0), (0.0, 1.0), Surface::Ground).width - 6.0).abs() < 0.01, "unmapped route has a stable fallback");
 }
 
 /// All terrain vertices in absolute coordinates.
@@ -217,6 +268,7 @@ async fn streets_lie_on_the_ground_however_it_folds() {
     let world = world(&MapData {
         roads: vec![Road {
             class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(-150.0, 300.0), at(150.0, 300.0)],
             structure: None,
         }],
@@ -252,6 +304,7 @@ async fn where_streets_join_the_road_its_edge_is_road_not_shoulder() {
     let world = world(&MapData {
         roads: vec![Road {
             class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(-150.0, 300.0), at(0.0, 300.0)],
             structure: None,
         }],
@@ -290,6 +343,7 @@ async fn streets_meet_with_rounded_kerbs_and_end_round() {
 
     let street = |points: &[(f64, f64)]| Road {
         class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: points.iter().map(|&(e, n)| at(e, n)).collect(),
         structure: None,
     };
@@ -331,6 +385,7 @@ async fn streets_meeting_the_road_ridden_get_kerbs_at_its_edge() {
 
     let street = |points: &[(f64, f64)]| Road {
         class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: points.iter().map(|&(e, n)| at(e, n)).collect(),
         structure: None,
     };
@@ -369,6 +424,7 @@ async fn streets_on_a_hillside_are_level_across_the_ground_shaped_around_them() 
     let world = world(&MapData {
         roads: vec![Road {
             class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(200.0, 100.0), at(200.0, 900.0)],
             structure: None,
         }],
@@ -614,6 +670,7 @@ async fn roundabouts_get_a_raised_island_with_a_kerb() {
         .into_iter()
         .map(|(class, line)| Road {
             class,
+            details: orqwa_osm::RoadDetails::default(),
             line,
             structure: None,
         })
@@ -896,6 +953,7 @@ async fn bridges_over_the_road_keep_it_clear() {
         railways: [line(-13.0, 27.0, 300.0), line(-75.0, 45.0, 600.0)].concat(),
         roads: vec![orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(-30.0, 800.0), at(20.0, 800.0)],
             structure: Some(StructureKind::Bridge),
         }],
@@ -1531,6 +1589,7 @@ async fn ferns_grow_on_the_nearby_forest_floor_and_keep_clear_of_obstacles() {
         }],
         roads: vec![orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(-100.0, 450.0), at(100.0, 450.0)],
             structure: None,
         }],
@@ -1706,6 +1765,7 @@ async fn other_streets_join_the_road_ridden_and_lie_on_the_ground() {
 
     let way = |class, from: (f64, f64), to: (f64, f64), structure| Road {
         class,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(from.0, from.1), at(to.0, to.1)],
         structure,
     };
@@ -2390,6 +2450,7 @@ async fn shops_get_a_front_and_an_awning_onto_their_street() {
         buildings: vec![house(31, 80.0), house(32, 120.0)],
         roads: vec![Road {
             class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(40.0, 489.0), at(160.0, 489.0)],
             structure: None,
         }],
@@ -2462,6 +2523,7 @@ async fn roads_stay_clear_of_buildings() {
         ],
         roads: vec![Road {
             class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(40.0, 600.0), at(200.0, 600.0)],
             structure: None,
         }],
@@ -2644,6 +2706,7 @@ async fn streams_run_in_channels_and_pass_under_roads_and_streets() {
         }],
         roads: vec![Road {
             class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(100.0, 300.0), at(100.0, 700.0)],
             structure: None,
         }],
@@ -2745,6 +2808,7 @@ async fn bridges_of_other_streets_stand_on_piers() {
     let map = MapData {
         roads: vec![Road {
             class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(100.0, 600.0), at(300.0, 600.0)],
             structure: Some(StructureKind::Bridge),
         }],
@@ -2800,6 +2864,7 @@ async fn a_bridge_cut_by_a_tile_border_is_one_deck_between_its_ends() {
     }
     let piece = |from: (f64, f64), to: (f64, f64)| Road {
         class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(from.0, from.1), at(to.0, to.1)],
         structure: Some(StructureKind::Bridge),
     };
@@ -3797,6 +3862,7 @@ async fn forest_and_houses(origin: (f64, f64)) -> World {
     let road = MapData {
         roads: vec![orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at_from(origin, 0.0, -20.0), at_from(origin, 0.0, 1020.0)],
             structure: None,
         }],
@@ -3978,6 +4044,7 @@ async fn route_north_at(elevation: f64, map: &MapData) -> Route {
 fn road_north() -> orqwa_osm::Road {
     orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(0.0, -20.0), at(0.0, 1020.0)],
         structure: None,
     }
@@ -4114,6 +4181,7 @@ async fn snow_poles_replace_delineators_on_mountain_roads() {
 async fn nothing_stands_where_a_street_joins_the_road() {
     let side_street = orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(0.0, 300.0), at(200.0, 300.0)],
         structure: None,
     };
@@ -4155,6 +4223,7 @@ async fn towns_get_lamps_benches_and_shelters_with_room_to_stand() {
     };
     let side_street = orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(0.0, 600.0), at(-200.0, 600.0)],
         structure: None,
     };
@@ -4241,6 +4310,7 @@ async fn the_countryside_gets_fences_bales_and_crosses_but_not_towns() {
     let mut roads = vec![road_north()];
     roads.extend((1..8).map(|k| orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Track,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![
             at(0.0, 100.0 * f64::from(k)),
             at(-150.0, 100.0 * f64::from(k)),
@@ -4291,6 +4361,7 @@ async fn route_through(points: &[(f64, f64, f64)], map: &mut MapData) -> Route {
     xml.push_str("</trkseg></trk></gpx>");
     map.roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: points.iter().map(|&(e, n, _)| at(e, n)).collect(),
         structure: None,
     });
