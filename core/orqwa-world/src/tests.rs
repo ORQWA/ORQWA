@@ -5343,6 +5343,161 @@ async fn curved_bridge_protection_leaves_the_wearing_surface_open() {
 }
 
 #[tokio::test]
+async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
+    let ring = (0..=48)
+        .map(|i| {
+            let angle = std::f64::consts::TAU * f64::from(i) / 48.0;
+            at(20.0 + 20.0 * angle.cos(), 480.0 + 20.0 * angle.sin())
+        })
+        .collect();
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: ring,
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let route = route_north(&[]).await;
+    let projection = LocalProjection::for_route(&route);
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let islands = roundabouts::islands(&map, &projection);
+    assert_eq!(islands.len(), 1);
+    let rails = road::RoadIndex::from_lines(&[]);
+    let streets = streets::lines(&map, &projection, &mut Level(500.0)).await;
+    let levels = streets::Levels::new(&streets, &appearance::Index::new(&map, &projection));
+    let ground = foundations::Ground(&world.chunks);
+    let mut line: Vec<_> = (0..=40)
+        .map(|i| (0.0, 400.0 + f64::from(i) * 2.0))
+        .collect();
+    line.extend((1..=48).map(|i| {
+        let angle = std::f64::consts::PI * f64::from(i) / 48.0;
+        (20.0 - 20.0 * angle.cos(), 480.0 + 20.0 * angle.sin())
+    }));
+    line.extend((0..40).rev().map(|i| (40.0, 400.0 + f64::from(i) * 2.0)));
+    for height in [500.0, 508.0] {
+        let mut distance = 0.0;
+        let points = line
+            .iter()
+            .enumerate()
+            .map(|(i, &point)| {
+                if i > 0 {
+                    distance += (point.0 - line[i - 1].0).hypot(point.1 - line[i - 1].1);
+                }
+                road::Centre {
+                    position: point,
+                    elevation: height,
+                    distance,
+                    surface: Surface::Bridge,
+                    mapped: true,
+                }
+            })
+            .collect();
+        let road = road::RoadIndex::from_lines(&[points]);
+        let below = structures::Below::new(&road, &rails, &streets, &islands);
+        let shapers = Shapers {
+            road: &road,
+            rails: &rails,
+            streets: &levels,
+            portals: &[],
+            hollows: &[],
+            hills: true,
+        };
+        let mesh = structures::build_all(
+            (&road, &rails),
+            &below,
+            &shapers,
+            &ground,
+            &projection,
+            &mut Level(500.0),
+        )
+        .await;
+        let mut inside = 0;
+        let mut outside = 0;
+        let steel = palette::srgb("structure.steel", 0.0);
+        for (&v, &c) in mesh.vertices.iter().zip(&mesh.colors) {
+            if c != steel {
+                continue;
+            }
+            let radius = (v[0] - 20.0).hypot(-v[2] - 480.0);
+            if radius < 21.0 {
+                inside += 1;
+            } else if radius > 24.0 {
+                outside += 1;
+            }
+        }
+        assert!(
+            outside > 100,
+            "bridge outside the roundabout stays protected"
+        );
+        if height == 500.0 {
+            assert_eq!(
+                inside, 0,
+                "no fence follows the GPX inside the at-grade roundabout"
+            );
+        } else {
+            assert!(inside > 100, "a separate overpass keeps both railings");
+        }
+    }
+}
+
+#[tokio::test]
+async fn riding_back_over_a_bridge_does_not_add_a_second_set_of_fences() {
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for i in (0..=100).chain((0..100).rev()) {
+        let (lat, lon) = at(0.0, f64::from(i) * 10.0);
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>500</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let map = MapData {
+        roads: vec![
+            orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 0.0), at(0.0, 300.0)],
+                structure: None,
+            },
+            orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+                structure: Some(StructureKind::Bridge),
+            },
+            orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 700.0), at(0.0, 1000.0)],
+                structure: None,
+            },
+        ],
+        ..MapData::default()
+    };
+    let route = Route::from_gpx_with::<Level>(&xml, None, &map)
+        .await
+        .unwrap();
+    let projection = LocalProjection::for_route(&route);
+    let road = road::RoadIndex::new(&route, &projection);
+    let bridges: Vec<_> = road
+        .structure_runs()
+        .into_iter()
+        .filter(|(s, _)| *s == Surface::Bridge)
+        .collect();
+    assert_eq!(
+        bridges.len(),
+        1,
+        "one physical bridge, ridden twice, has one deck and one set of barriers"
+    );
+    assert!(
+        bridges[0].1.len() > 100,
+        "the complete first bridge remains"
+    );
+}
+
+#[tokio::test]
 async fn delineators_mark_country_roads_but_not_towns() {
     // A village on the road's second half.
     let village = Area {

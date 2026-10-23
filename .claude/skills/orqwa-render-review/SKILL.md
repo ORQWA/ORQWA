@@ -101,6 +101,9 @@ and that posts remain upright. Include Alpenbrevet's start/finish loop as well a
 switchbacks; a straight-road view cannot validate curve placement.
 On curved bridges, check that the slab stays below the asphalt and that railings and their
 posts remain outside the wearing surface, especially beside the start/finish roundabout.
+At roundabouts, inspect the whole junction from above and from its entry: bridge fences must
+not follow the GPX through its interior or cross themselves there. Aligning rail pieces is
+insufficient. Confirm that genuine outside-edge protection and higher overpasses remain.
 
 For bridge geometry (R121), include a camera below a non-ridden road bridge: top and side
 views cannot reveal a missing underside. Check its downward-facing deck across chunk joins,

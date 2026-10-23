@@ -176,3 +176,16 @@ heights also agree across terrain chunk boundaries. Stored format remains 3.
 Bridge cross-sections use the same averaged tangents as the pavement, including at their
 ends, and bridge post directions interpolate along the curve. This keeps protection outside
 the carriageway and the slab beneath the wearing surface on the start/finish loop.
+
+Generator 23 excludes bridge segments already owned by an earlier traversal of the course
+from structure generation, as pavement generation already does. Slightly different outbound
+and return GPX curves no longer create two decks and crossing sets of fences at a shared
+roundabout approach. It also treats each mapped roundabout's filled outer road boundary as a junction area
+for protection. Ground/bridge boundary mismatches at the same level share the earlier
+pavement owner; short differing ends within the pavement overlap margin share the complete
+earlier bridge, rather than producing fence stubs.
+Bridge tags persisting through a GPX turn no longer create a fence
+inside that area, even when the mapped ring runs parallel to the local GPX tangent. Kerbs,
+parapets and steel rails share the exclusion. Outside protection and overpasses more than
+3 m above the junction remain; underground service loops do not suppress surface protection.
+Stored format remains 3.

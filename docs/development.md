@@ -144,6 +144,18 @@ including the transition to ground road; posts follow the interpolated bend rath
 preceding section's tangent. This prevents intrusion into curved carriageways and concrete
 showing through the asphalt on Alpenbrevet's start/finish loop.
 
+Generator 23 gives a retraced bridge one structure owner, matching the pavement. The return
+GPX's different curve can no longer generate a second deck and crossing fences at the shared
+roundabout approach. It also excludes bridge barriers from the full mapped roundabout area, including its
+interior and carriageway. Boundary mismatches between Ground and Bridge share the earlier
+pavement owner at the same level. Short different ends within the six-metre pavement overlap
+margin belong to the complete earlier bridge, preventing residual fence stubs.
+Following a curved GPX with persistent bridge tags is not enough
+to infer a fence boundary there. This uses the ring's outer road footprint rather than the
+GPX offset or an angle test, so parallel portions of the junction also stay open. Outside
+protection and distinct higher overpasses remain. Tunnel service loops do not create a
+surface junction exclusion.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

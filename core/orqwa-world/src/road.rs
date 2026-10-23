@@ -213,15 +213,25 @@ impl RoadIndex {
                 .flat_map(|cell| self.cells.get(&cell).into_iter().flatten())
                 .any(|&j| {
                     let earlier = &self.segments[j];
+                    let (distance, height, _) = closest_on_segment(earlier, middle.0, middle.1);
+                    // A return traversal can enter/leave the same bridge a sample earlier.
+                    // Ground/bridge tag boundaries do not give that shared pavement a
+                    // second owner; genuinely separated levels still do.
+                    let same_surface = earlier.surface == segment.surface
+                        || (earlier.surface != Surface::Tunnel
+                            && segment.surface != Surface::Tunnel
+                            && (height - f64::midpoint(segment.elevation_a, segment.elevation_b))
+                                .abs()
+                                <= 0.5);
                     let gap = segment.distance_a - earlier.distance_b;
                     let back = {
                         let other = direction(earlier);
                         way.0 * other.0 + way.1 * other.1 < -0.7
                     };
                     j < i
-                        && earlier.surface == segment.surface
+                        && same_surface
                         && (gap >= APART || (back && gap >= 2.0 * SAME_ROAD))
-                        && closest_on_segment(earlier, middle.0, middle.1).0 < SAME_ROAD
+                        && distance < SAME_ROAD
                 });
             self.segments[i].repeat = repeat;
         }
@@ -705,7 +715,42 @@ impl RoadIndex {
     pub(crate) fn structure_runs(&self) -> Vec<(Surface, Vec<CentrePoint>)> {
         let mut runs: Vec<(Surface, Vec<CentrePoint>)> = Vec::new();
         let mut previous = Surface::Ground;
+        let mut shared_end = 0;
         for (index, segment) in self.segments.iter().enumerate() {
+            if index < shared_end {
+                continue;
+            }
+            let starts_bridge = segment.surface == Surface::Bridge
+                && (index == 0
+                    || self.segments[index - 1].surface != Surface::Bridge
+                    || self.lines.iter().any(|line| line.start == index));
+            if starts_bridge {
+                let line_end = self
+                    .lines
+                    .iter()
+                    .find(|line| line.contains(&index))
+                    .expect("segment belongs to a line")
+                    .end;
+                let run: Vec<_> = self.segments[index..line_end]
+                    .iter()
+                    .take_while(|s| s.surface == Surface::Bridge)
+                    .collect();
+                let fresh: f64 = run.iter().filter(|s| !s.repeat).map(|s| length(s)).sum();
+                // The wearing surface overlaps retraced pavement by this same margin.
+                // A few metres of different GPX curve at a junction do not justify a
+                // separate tiny slab and fence across that shared pavement.
+                if run.iter().any(|s| s.repeat) && fresh <= 2.0 * SAME_ROAD {
+                    shared_end = index + run.len();
+                    previous = Surface::Ground;
+                    continue;
+                }
+            }
+            // The first ride already owns this bridge, just as it owns its pavement.
+            // A return GPX's slightly different curve must not add crossing fences.
+            if segment.surface == Surface::Bridge && segment.repeat {
+                previous = Surface::Ground;
+                continue;
+            }
             // A structure never runs on from one line into another.
             if self.lines.iter().any(|line| line.start == index) {
                 previous = Surface::Ground;
@@ -1151,5 +1196,57 @@ fn centre_point(segment: &Segment, position: (f64, f64), elevation: f64) -> Cent
         position,
         elevation,
         direction: direction(segment),
+    }
+}
+
+#[cfg(test)]
+mod ownership_tests {
+    use super::*;
+
+    #[test]
+    fn retraced_bridge_boundary_does_not_leave_a_short_fence_across_the_junction() {
+        let mut points: Vec<_> = (0..=300)
+            .map(|i| (f64::from(i) * 2.0, (200..=250).contains(&i)))
+            .collect();
+        points.extend(
+            (0..300)
+                .rev()
+                .map(|i| (f64::from(i) * 2.0, (195..=260).contains(&i))),
+        );
+        let mut distance = 0.0;
+        let line = points
+            .iter()
+            .enumerate()
+            .map(|(i, &(north, bridge))| {
+                if i > 0 {
+                    distance += (north - points[i - 1].0).abs();
+                }
+                Centre {
+                    position: (
+                        if distance > 600.0 && (490.0..=494.0).contains(&north) {
+                            4.0
+                        } else {
+                            0.0
+                        },
+                        north,
+                    ),
+                    elevation: 500.0,
+                    distance,
+                    surface: if bridge {
+                        Surface::Bridge
+                    } else {
+                        Surface::Ground
+                    },
+                    mapped: true,
+                }
+            })
+            .collect();
+        let mut road = RoadIndex::from_lines(&[line]);
+        road.mark_repeats();
+        assert_eq!(
+            road.structure_runs().len(),
+            1,
+            "mismatched return tags must not create short extra decks or fences at the roundabout entry"
+        );
     }
 }

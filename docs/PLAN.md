@@ -543,6 +543,9 @@ physically based materials and light, restyled group by group.
       start/finish loop (generator 22).
     - [ ] Shadow rows beneath overhanging roads and bridges: reproduce on Alpenbrevet at
       30.64 km to go and retain continuous, natural shadows without diagonal striping.
+    - [x] Roundabout bridge fences: one structure owner for outbound and return curves,
+      including mismatched tag boundaries; leave the at-grade junction interior open while
+      retaining outside-edge and grade-separated protection (generator 23).
     - [x] Terrain inside tunnels and pavement on their roofs around 175.72 km to go:
       clip surrounding terrain and paving along the complete tube, and give aligned
       mapped ground approaches one surface owner (generator 20).

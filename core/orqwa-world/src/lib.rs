@@ -51,7 +51,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 22;
+pub const GENERATOR: u32 = 23;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -291,7 +291,7 @@ pub async fn generate<M: ElevationModel>(
         hollows: &hollows,
         hills: true,
     };
-    let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
+    let below = structures::Below::new(&road, &ways.network.index, &ways.streets, &ways.islands);
     let urban = urban::Urban::build(
         buildings.values().flatten(),
         &ways.streets,

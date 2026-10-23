@@ -144,6 +144,20 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Bridge fences at the start/finish roundabout
+
+Alpenbrevet's outbound and return GPX curves share this bridge but differ near its connection
+to the roundabout. Previously each traversal generated barriers, which crossed each other
+and left fences through the junction. Generator 23 gives the shared bridge one structure
+owner, including its slightly different tag boundaries, and excludes protection from the
+roundabout's interior. The bridge outside the junction and higher overpasses remain protected.
+These identical close cameras show the actual saved course around 0.33 km from the start
+(210.41 km to go), also traversed near the finish. Buildings and vegetation are omitted.
+
+| Before | After |
+|---|---|
+| ![Crossing bridge fences at the roundabout entry](images/issues/alpenbrevet-roundabout-fence-before.jpg) | ![Open roundabout connection with one set of bridge barriers](images/issues/alpenbrevet-roundabout-fence-after.jpg) |
+
 ### Protection through curves
 
 Generator 22 fits each guardrail span between shared road-edge endpoints rather than placing

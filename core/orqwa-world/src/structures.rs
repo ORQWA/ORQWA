@@ -133,10 +133,16 @@ pub(crate) struct Below<'a> {
     railways: &'a RoadIndex,
     /// Street segments, a few metres long.
     streets: StreetPoints,
+    roundabouts: &'a [crate::roundabouts::Island],
 }
 
 impl<'a> Below<'a> {
-    pub(crate) fn new(road: &'a RoadIndex, railways: &'a RoadIndex, streets: &[Street]) -> Self {
+    pub(crate) fn new(
+        road: &'a RoadIndex,
+        railways: &'a RoadIndex,
+        streets: &[Street],
+        roundabouts: &'a [crate::roundabouts::Island],
+    ) -> Self {
         let mut cells = StreetPoints::new();
         for street in streets.iter().filter(|s| !s.on_bridge()) {
             for pair in street.points().windows(2) {
@@ -157,6 +163,7 @@ impl<'a> Below<'a> {
             road,
             railways,
             streets: cells,
+            roundabouts,
         }
     }
 
@@ -173,6 +180,13 @@ impl<'a> Below<'a> {
         ground: f64,
         heading: (f64, f64),
     ) -> bool {
+        // A GPX may turn through a roundabout while still tagged as bridge. Its offset
+        // ribbon is not a fence boundary: keep the entire junction open, including the
+        // inside of the turn. A genuinely higher overpass retains its protection.
+        if (ground - deck).abs() <= 3.0 && self.roundabouts.iter().any(|r| r.inside_junction(point))
+        {
+            return true;
+        }
         if self.road.ground_join(point, deck, 0.5).is_some() {
             return true;
         }
