@@ -304,6 +304,26 @@ impl RoadIndex {
         })
     }
 
+    /// Whether an aligned street's whole cross-section is hidden by the ridden road.
+    /// Proximity alone also catches shallow branches before they reach the road's edge.
+    pub(crate) fn covers_street(
+        &self,
+        point: (f64, f64),
+        half: f64,
+        surface: Surface,
+        heading: (f64, f64),
+    ) -> bool {
+        self.nearest_segment(point.0, point.1, half + 8.0)
+            .is_some_and(|((distance, _, on), index)| {
+                let segment = &self.segments[index];
+                let forward = direction(segment);
+                let road_half = segment.appearance.unwrap_or_default().width / 2.0;
+                on == surface
+                    && (forward.0 * heading.0 + forward.1 * heading.1).abs() > 0.8
+                    && distance + half <= road_half + 1e-6
+            })
+    }
+
     /// Every piece of road within `reach`: its distance, the road's elevation there and what
     /// carries it. Where the road passes a place more than once (hairpins), each pass is there.
     pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> Vec<(f64, f64, Surface)> {

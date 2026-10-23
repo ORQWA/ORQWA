@@ -31,6 +31,9 @@ Oberalp and rain; compare against current main using the same cameras and softwa
   shops, junctions, river, old town, roundabout, bridges and the Oberalp reference route) into
   `screenshots/views/`. Render them before a visual change (`OUT_DIR=…/views-before`, pass it inside
   `sh -c '…'`) and after, and compare pairs; `VIEWS="village-chase lake-drone"` limits it.
+  For a prepared course, set `COURSE=core/orqwa-gd/courses/twann-chasseral.tqc` and
+  `SHOTS="shortcut:4200:2:0,180,-20"` (adjust the distance/camera as needed). This opens its saved
+  inputs and builds offline, rather than preparing a GPX with fresh provider requests.
 
 - `scripts/dev.sh scripts/screenshots.sh` — the standard app screenshots (`app/tests/
   screenshots.gd`): start page tabs, course page, a ride in each camera, the settings, summary,

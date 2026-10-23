@@ -35,9 +35,15 @@ surveyed width and lane counts are absent.
   route. Terrain, junctions, vegetation clearance, bridge decks, sidewalks and roadside props
   follow the drawn widths. Motorways, trunk roads, ramps and unpaved ways get no inferred
   urban sidewalk.
+- Suppress surrounding road geometry only when its whole cross-section is covered by an
+  aligned ridden road on the same structure level. Retain the transition segment into that
+  covered section; shallow branches must meet the ridden road without a grass gap. Nearby
+  parallel paths keep their visible surface. Open the ridden road's shoulder at these mouths.
 - Reuse existing own-work textures. Road vertex colours encode material, width, marking
   style and estimated lane/track flags. Geometry without an across-road coordinate, such as
-  junction corners and round caps, has no painted markings.
+  junction corners and round caps, has no painted markings. Shore strips appended to the
+  unpaved-road mesh carry complete plain-gravel metadata too; a partial colour array would
+  cause Godot to reject the combined mesh.
 - Add **no provider, network request, dependency or preparation download**. Decode the saved
   tiles at generation; course opening and regeneration remain offline. Course files and their
   format are unchanged. Detailed raw OSM enrichment needs a separate bounded preparation
@@ -46,12 +52,16 @@ surveyed width and lane counts are absent.
 
 ## Kept worlds and validation
 
-Generator **9**, stored format **3**. The new vertex-colour meaning requires rebuilding
-older kept worlds; the stored-world fixture records the contract. Course inputs stay valid.
+Generator **10**, stored format **3**. The new vertex-colour meaning requires rebuilding
+older kept worlds; the stored-world fixture records the contract. Generator 9 introduced the
+road profiles; 10 also offers regeneration for the junction and shore-material corrections.
+Course inputs stay valid.
 Tests cover retained tags, hierarchy and paving overrides, route matching across neighbouring
 ways and levels, narrow ridden cycleways, surrounding motorway widths, mesh attribute lengths,
-and existing junction, terrain, urban and stored-world behaviour. Render comparisons cover
-local streets, main roads and cycleways; native M1 frame time remains a manual check.
+shallow junction continuity across chunk boundaries, nearby parallel paths, and existing
+junction, terrain, urban and stored-world behaviour. Render comparisons cover
+local streets, main roads and cycleways, plus the bundled Twann–Chasseral course near
+Lamboing at 4.2 and 4.6 km with networking disabled. Native M1 frame time remains a manual check.
 
 ## Limits
 

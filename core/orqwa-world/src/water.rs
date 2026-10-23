@@ -284,5 +284,9 @@ pub(crate) fn shore_mesh(
     for uv in &mut mesh.uvs {
         uv[0] = 0.0;
     }
+    // Shores share the unpaved-road mesh, so they need the same complete material array.
+    #[allow(clippy::cast_possible_truncation)] // narrow shore width in GPU metadata
+    let gravel = [1.0 / 8.0, SHORE_M as f32 / 32.0, 0.0, 1.0 / 8.0];
+    mesh.colors.resize(mesh.vertices.len(), gravel);
     mesh
 }

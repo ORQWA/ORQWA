@@ -4,7 +4,8 @@
 # Runs inside the dev container: scripts/dev.sh scripts/render-views.sh
 # VIEWS="village-chase lake-drone" renders only some; OUT_DIR changes the folder, QUALITY the
 # graphics preset (medium by default). GPX=<file> with SHOTS="name:distance:camera ..." renders
-# shots of any route instead (e.g. one from an issue), camera 0 chase, 1 first person, 2 drone,
+# shots of any route instead (e.g. one from an issue); COURSE=<file.tqc> uses its saved inputs
+# offline. Camera 0 chase, 1 first person, 2 drone,
 # with :right,up,back a camera standing aside (see app/tools/render_views.gd).
 set -eu
 
@@ -25,6 +26,9 @@ status=0
 routes="gurtenstrasse bielersee kirchenfeldbruecke oberalp"
 if [ -n "${GPX:-}" ]; then
     routes="$(realpath "$GPX")"
+fi
+if [ -n "${COURSE:-}" ]; then
+    routes="$(realpath "$COURSE")"
 fi
 for route in $routes; do
     # A script error leaves Godot waiting for the world forever, hence the timeout.

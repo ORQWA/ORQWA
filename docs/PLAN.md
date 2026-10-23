@@ -553,8 +553,9 @@ physically based materials and light, restyled group by group.
   - [x] Road hierarchy and paving (R119, ADR 0031): shared appearance for ridden and surrounding
     roads; motorway carriageways and ramps, main roads, local streets and cycleways retain
     distinct estimated widths and markings. Explicit paving overrides class defaults;
-    geometry and roadside placement follow widths. Existing course tiles only, no added
-    downloads or ride-start requests. Generator 9 / stored format 3.
+    geometry and roadside placement follow widths. Shallow branches retain their joining
+    segments and nearby parallel paths keep their visible surface. Existing course tiles only,
+    no added downloads or ride-start requests. Generator 10 / stored format 3.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)

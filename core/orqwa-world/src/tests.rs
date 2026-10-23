@@ -1936,6 +1936,79 @@ async fn grass_and_flowers_line_the_road_but_not_lakes_or_the_road_itself() {
 }
 
 #[tokio::test]
+async fn shallow_intersections_reach_the_road_in_both_directions_and_across_chunks() {
+    let mut roads = vec![road_north()];
+    for (side, join) in [(-1.0, 480.0), (1.0, 760.0)] {
+        let mut branch = road_north();
+        branch.details.kind = orqwa_osm::RoadKind::Local;
+        branch.line = vec![at(0.0, join), at(side * 60.0, join + side * 150.0)];
+        if side < 0.0 {
+            branch.line.reverse();
+        }
+        roads.push(branch);
+    }
+    let world = world(&MapData {
+        roads,
+        ..MapData::default()
+    })
+    .await;
+
+    // Twenty-two-degree branches used to disappear within the sum of the road widths.
+    // Sample the actual triangles, including both sides of the 480 m chunk boundary.
+    let length = 1.0_f32.hypot(2.5);
+    for (side, join) in [(-1.0, 480.0), (1.0, 760.0)] {
+        for step in 0..=100 {
+            let off = step as f32 * 0.25;
+            for across in [-1.8, 0.0, 1.8] {
+                let x = side * off + across * 2.5 / length;
+                let north = join + side * off * 2.5 - across / length;
+                if x.abs() <= 3.05 {
+                    continue;
+                }
+                let street = street_at(&world, x, -north)
+                    .unwrap_or_else(|| panic!("junction gap at {x}, {north}"));
+                let ground = ground_at(&world, x, -north).expect("ground below the street");
+                assert!(street > ground, "ground through junction at {x}, {north}");
+            }
+        }
+        let north = join + side * 2.9 * 2.5;
+        assert!(
+            street_at(&world, side * 2.9, -north).is_some(),
+            "the joining segment extends under the ridden road"
+        );
+        assert!(
+            world.road.uvs.as_chunks::<6>().0.iter().any(|ring| {
+                let bevel = if side < 0.0 { ring[1] } else { ring[4] };
+                (bevel[1] - (join + side * 8.0)).abs() < 1.0 && (0.0..=1.0).contains(&bevel[0])
+            }),
+            "the gravel shoulder must open at a shallow junction"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_nearby_parallel_cycleway_keeps_its_visible_surface() {
+    let mut cycleway = road_north();
+    cycleway.class = RoadClass::Path;
+    cycleway.details.kind = orqwa_osm::RoadKind::Cycleway;
+    cycleway.details.surface = orqwa_osm::RoadSurface::Paved;
+    cycleway.line = vec![at(4.0, 100.0), at(4.0, 900.0)];
+    let world = world(&MapData {
+        roads: vec![road_north(), cycleway],
+        ..MapData::default()
+    })
+    .await;
+    for north in [200.0, 479.75, 480.25, 700.0] {
+        for east in [3.5, 4.0, 4.75] {
+            assert!(
+                street_at(&world, east, -north).is_some(),
+                "parallel cycleway removed at {east}, {north}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn other_streets_join_the_road_ridden_and_lie_on_the_ground() {
     use orqwa_osm::{Road, RoadClass, StructureKind};
 
@@ -3633,10 +3706,24 @@ async fn lakes_are_edged_by_a_band_of_gravel_the_forest_keeps_off() {
     };
     let world = world(&MapData {
         areas: vec![forest, pond],
+        // Both shores and tracks append to the same mesh in these chunks.
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Track,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(100.0, 400.0), at(100.0, 600.0)],
+            structure: None,
+        }],
         ..MapData::default()
     })
     .await;
     let band_at = |x: f32, z: f32| height_on(&world, |c| &c.tracks, x, z);
+    for chunk in &world.chunks {
+        assert_eq!(
+            chunk.tracks.colors.len(),
+            chunk.tracks.vertices.len(),
+            "combined gravel roads and shores need material data for every vertex"
+        );
+    }
 
     // All round, just outside the shore, on the ground; none out in the water.
     let mut checked = 0;

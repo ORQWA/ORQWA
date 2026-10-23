@@ -73,6 +73,15 @@ then `OUT=/workspaces/orqwa/screenshots/road-profiles.png xvfb-run -a godot --pa
 
 ![Road hierarchy on a prepared real route](images/roads/road-types.jpg)
 
+The sample course's shallow junctions near Lamboing retain their joining segments and open
+the shoulder at the road edge:
+
+![Joined roads near Lamboing](images/roads/lamboing-shortcut-after.jpg)
+
+Reproduce with `COURSE=core/orqwa-gd/courses/twann-chasseral.tqc`
+and `SHOTS="lamboing:4200:2:0,180,-20"` in `scripts/render-views.sh`. The course uses its
+saved inputs offline. Matching before/after review images are in `docs/images/roads/`.
+
 The [river geometry correction](adr/0030-river-levels.md) is checked against the
 Alpenbrevet Gold course near 104.57 km remaining and farther upstream:
 

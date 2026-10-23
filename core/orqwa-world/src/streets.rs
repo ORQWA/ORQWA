@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 
 use orqwa_osm::{MapData, RoadClass, StructureKind};
-use orqwa_routes::{ElevationModel, LocalProjection};
+use orqwa_routes::{ElevationModel, LocalProjection, Surface};
 
 use crate::appearance::Appearance;
 use crate::junctions::{self, Corner};
@@ -165,8 +165,8 @@ pub(crate) async fn lines<M: ElevationModel>(
 
 /// The paved streets and the unpaved tracks and paths within the chunk square `[origin,
 /// origin + size]`, relative to `chunk_origin`, with the `corners` of their junctions.
-/// Stretches running along the road ridden are left out (it is drawn there already, and they
-/// are mostly the same road); streets joining or crossing it run on under it.
+/// Fully covered stretches running along the road ridden are left out; streets joining or
+/// crossing it retain their joining segments and run on under it.
 pub(crate) fn meshes(
     (streets, corners): (&[Street], &[Corner]),
     origin: (f64, f64),
@@ -193,26 +193,42 @@ pub(crate) fn meshes(
             &mut unpaved_mesh
         };
         let total = along(&street.points);
+        let surface = if street.on_bridge() {
+            Surface::Bridge
+        } else {
+            Surface::Ground
+        };
         for piece in drape::pieces(&street.points, low, high) {
             let points: Vec<(f64, f64)> = piece.iter().map(|&(p, _)| p).collect();
             let mut run: Vec<((f64, f64), f64)> = Vec::new();
+            let mut previous = None;
             for (i, &(point, distance)) in piece.iter().enumerate() {
                 let direction = local_direction(&points, i);
-                let reach = road.half_width_at(point.0, point.1) + half + 0.5;
-                if road.runs_along(point.0, point.1, reach, direction) {
-                    ribbon(
-                        target,
-                        &run,
-                        half,
-                        street,
-                        total,
-                        (heights, below),
-                        chunk_origin,
-                    );
-                    run.clear();
+                if road.covers_street(point, half, surface, direction) {
+                    if !run.is_empty() {
+                        // Keep the transition segment: its visible end must reach a
+                        // cross-section inside the ridden road, not stop a sample short.
+                        run.push((point, distance));
+                        ribbon(
+                            target,
+                            &run,
+                            half,
+                            street,
+                            total,
+                            (heights, below),
+                            chunk_origin,
+                        );
+                        run.clear();
+                    }
                 } else {
+                    if run.is_empty()
+                        && let Some(point) = previous
+                    {
+                        run.push(point);
+                    }
                     run.push((point, distance));
                 }
+                previous = Some((point, distance));
             }
             ribbon(
                 target,
@@ -226,12 +242,11 @@ pub(crate) fn meshes(
         }
         if street.deck.is_none() {
             for (point, direction) in rounds(&street.points) {
-                let reach = road.half_width_at(point.0, point.1) + half + 0.5;
                 let outside = point.0 + half < low.0
                     || point.0 - half > high.0
                     || point.1 + half < low.1
                     || point.1 - half > high.1;
-                if outside || road.runs_along(point.0, point.1, reach, direction) {
+                if outside || road.covers_street(point, half, surface, direction) {
                     continue;
                 }
                 let disc: Vec<(f64, f64)> = (0..CAP_CORNERS)
@@ -286,7 +301,7 @@ fn rounds(points: &[(f64, f64)]) -> Vec<((f64, f64), (f64, f64))> {
 }
 
 /// Where the streets meet the road ridden (see [`Mouth`]): the road's edge is road there, not
-/// shoulder. Stretches running along the road are no mouths.
+/// shoulder. Fully covered stretches running along the road are no mouths.
 pub(crate) fn mouths(streets: &[Street], road: &RoadIndex) -> Vec<Mouth> {
     let mut mouths = Vec::new();
     for street in streets.iter().filter(|s| s.deck.is_none()) {
@@ -294,21 +309,21 @@ pub(crate) fn mouths(streets: &[Street], road: &RoadIndex) -> Vec<Mouth> {
         for (i, &(east, north)) in street.points.iter().enumerate() {
             // Points on the road's surface belong to no side; beside it, a band wider than the
             // points are apart catches every street that reaches the edge.
-            let Some((distance, along, side)) =
-                road.locate(east, north, road.half_width_at(east, north) + 3.0)
-            else {
+            let reach = road.half_width_at(east, north) + 3.0;
+            let Some((_, along, side)) = road.locate(east, north, reach) else {
                 continue;
             };
-            if distance < road.half_width_at(east, north) - 0.5 {
+            let Some((from, forward)) = road.heading(east, north, reach) else {
+                continue;
+            };
+            // Beyond a route endpoint the nearest-point distance includes the distance
+            // along its continuation. Only the lateral distance identifies an edge mouth.
+            let across = (forward.0 * (north - from.1) - forward.1 * (east - from.0)).abs();
+            if across < road.half_width_at(east, north) - 0.5 {
                 continue;
             }
             let direction = local_direction(&street.points, i);
-            if !road.runs_along(
-                east,
-                north,
-                road.half_width_at(east, north) + half + 0.5,
-                direction,
-            ) {
+            if !road.covers_street((east, north), half, Surface::Ground, direction) {
                 mouths.push((along, side, half));
             }
         }
