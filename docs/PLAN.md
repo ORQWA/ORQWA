@@ -526,6 +526,8 @@ physically based materials and light, restyled group by group.
       independent crossing and parallel bridges stay visible (generator 13).
     - [x] Open Lukmanier tunnel mouths through draped approach paving, end caps and
       junctions as well as terrain; preserve roads above tunnels (generator 14).
+    - [x] Complete bridge ownership across mismatched tunnel/bridge tag boundaries:
+      remove the extra approach slab at Alpenbrevet 174.17 km to go (generator 15).
     - [ ] Alpenbrevet artifact review: floating supports,
       railway transitions and bridge ends crossing junctions.
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over

@@ -3089,6 +3089,58 @@ async fn a_ridden_bridge_has_no_second_deck_from_the_map() {
 }
 
 #[tokio::test]
+async fn a_bridge_tag_boundary_does_not_create_an_extra_approach_deck() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            // The mapped end is just before the resampled route changes to Bridge.
+            // Point-wise ownership leaves a raised slab and railing across the approach.
+            line: vec![at(0.4, 289.0), at(0.4, 700.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().all(|c| c.streets.vertices.is_empty()),
+        "one mapped bridge following the ridden centre line must have one complete owner"
+    );
+}
+
+#[tokio::test]
+async fn a_bridge_extending_beyond_the_ridden_route_keeps_its_separate_section() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.4, 300.0), at(0.4, 1100.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().any(|c| c
+            .streets
+            .vertices
+            .iter()
+            .any(|v| v[2] + c.center[2] < -1040.0)),
+        "a mapped bridge continuing beyond the route retains its own deck"
+    );
+}
+
+#[tokio::test]
 async fn separate_parallel_and_crossing_bridges_are_not_claimed_by_the_ridden_bridge() {
     let route = route_north(&[Structure {
         kind: StructureKind::Bridge,

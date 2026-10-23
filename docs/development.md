@@ -88,6 +88,11 @@ height-grid ramp cannot close the opening after the terrain itself has been holl
 Independent surface roads above tunnels remain visible. Review the full saved Alpenbrevet
 route: cropping it changes the projection origin and terrain grid, which can hide this fault.
 
+Generator 15 assigns a complete aligned mapped bridge to the ridden road when the feature
+follows that centre line and overlaps its bridge. A slightly different tunnel/bridge tag
+boundary must not leave a short mapped deck, railing or end cap across the approach. Bridges
+that leave the ridden corridor still use per-section coverage and retain their visible parts.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Bearing foundations sample drawn ground at every corner, including

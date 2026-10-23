@@ -123,3 +123,8 @@ Generator 14 cuts draped ground paving to tunnel openings too, including approac
 and junctions, and suppresses aligned mapped roads over the ridden tunnel. Previously only
 the terrain mesh was hollowed out, leaving road-textured ramps across some portals. Stored
 format remains 3; regenerated worlds receive the corrected geometry.
+
+Generator 15 extends bridge ownership across the complete aligned mapped feature. This removes
+short duplicate slabs at tunnel-to-bridge transitions where map nodes and resampled structure
+boundaries differ. A bridge leaving the ridden corridor retains its independent sections.
+Stored format stays at 3.

@@ -73,6 +73,18 @@ impl Street {
         self.deck.is_some()
     }
 
+    /// The ridden road owns the whole aligned bridge, including differently tagged ends.
+    fn owned_bridge(&self, road: &RoadIndex) -> bool {
+        self.on_bridge()
+            && road.owns_bridge(
+                self.half_width(),
+                self.points
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &point)| (point, local_direction(&self.points, i))),
+            )
+    }
+
     /// How far it lies above the ground.
     pub(crate) fn lift(&self) -> f64 {
         lift(self.class, self.index)
@@ -183,6 +195,7 @@ pub(crate) fn meshes(
             || street.min.0 > high.0
             || street.max.1 < low.1
             || street.min.1 > high.1
+            || street.owned_bridge(road)
         {
             continue;
         }

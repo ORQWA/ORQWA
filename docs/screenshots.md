@@ -71,6 +71,15 @@ owner even when GPX smoothing shifts its centre line slightly; separate bridges 
 |---|---|
 | ![Overlapping decks and railings](images/issues/alpenbrevet-bridge-duplicate-before.jpg) | ![One deck and railing set](images/issues/alpenbrevet-bridge-duplicate-after.jpg) |
 
+The separate tunnel-to-bridge case is at **174.17 km to go**, approximately 36.57 km into
+the full course. Generator 15 owns the complete aligned bridge despite the slight difference
+between its mapped and resampled tag boundaries. Focused geometry renders below use the same
+camera above and beside the transition, with vegetation and buildings omitted.
+
+| Extra approach deck | Continuous approach |
+|---|---|
+| ![Raised slab and duplicate railing at the tunnel exit](images/issues/alpenbrevet-bridge-transition-before.jpg) | ![Single road surface leading onto the bridge](images/issues/alpenbrevet-bridge-transition-after.jpg) |
+
 ### Tunnel approaches
 
 Alpenbrevet Gold's Lukmanier approach at 34.97 km and the reverse view at 36.38 km.

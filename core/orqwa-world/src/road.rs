@@ -332,6 +332,34 @@ impl RoadIndex {
             })
     }
 
+    /// Whether a complete mapped bridge follows the ridden road and overlaps its bridge.
+    /// Ownership spans the feature: the map and resampled route can change structure tags at
+    /// slightly different places, especially where a tunnel leads straight onto a bridge.
+    pub(crate) fn owns_bridge(
+        &self,
+        half: f64,
+        points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
+    ) -> bool {
+        let mut bridge = false;
+        for (point, heading) in points {
+            let Some(((distance, _, on), index)) =
+                self.nearest_segment(point.0, point.1, SAME_ROAD)
+            else {
+                return false;
+            };
+            let segment = &self.segments[index];
+            let forward = direction(segment);
+            let road_half = segment.appearance.unwrap_or_default().width / 2.0;
+            if distance > road_half.min(half).min(SAME_ROAD)
+                || (forward.0 * heading.0 + forward.1 * heading.1).abs() <= 0.8
+            {
+                return false;
+            }
+            bridge |= on == Surface::Bridge;
+        }
+        bridge
+    }
+
     /// Every piece of road within `reach`: its distance, the road's elevation there and what
     /// carries it. Where the road passes a place more than once (hairpins), each pass is there.
     pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> Vec<(f64, f64, Surface)> {

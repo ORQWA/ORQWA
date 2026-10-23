@@ -118,6 +118,11 @@ origin and grid alignment. Alpenbrevet's portal approaches around 35.0 km and 39
 paving stretched across the already-cut terrain openings. Check both mouths; an open terrain
 mesh alone does not prove the street ribbons, rounded caps and junctions leave them clear.
 
+At 174.17 km to go on Alpenbrevet Gold (about 36.57 km from its 210.74 km start-to-finish
+length), check the tunnel-to-bridge transition from the side. Map and resampled structure tags
+can change a metre apart: point-wise suppression can leave a short raised deck and railing
+across the approach. Use remaining course distance when the rider has jumped during review.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,
