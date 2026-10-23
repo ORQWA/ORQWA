@@ -134,3 +134,8 @@ samples or pre-carving helper heights. Structures are built after chunks; pier a
 foundations use the lowest triangle intersection across their full footprint, including
 channels and steep banks. Mapped-road piers use the same footprint calculation in their chunk.
 Stored format remains 3: only generated geometry and build order change.
+
+Generator 17 gives each continuous railway/road crossing one overpass, underpass or level
+clearance, including adjoining samples whose structure tags differ. Parallel-track coupling
+also rejects vertically separated lines. This removes conflicting elevation pins and the
+resulting railway ramps; stored format remains 3.

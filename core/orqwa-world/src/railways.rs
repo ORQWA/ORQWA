@@ -41,6 +41,8 @@ const AT_ROAD: f64 = 0.03;
 /// A track this close alongside one laid out before runs with it — at its height, on its
 /// bridges and in its tunnels — as parallel tracks do (#99).
 pub(crate) const PARALLEL_M: f64 = 7.0;
+/// Nearby tracks at different vertical levels are independent, even when parallel in plan.
+const PARALLEL_HEIGHT_M: f64 = 6.0;
 
 /// A railway near the route: its points a few metres apart, to keep plants off it.
 pub(crate) struct Railway {
@@ -210,6 +212,7 @@ fn lay_out(
             let way = ((b.0 - a.0) / length, (b.1 - a.1) / length);
             let (east, north) = points[k].position;
             laid.alongside(east, north, way, PARALLEL_M)
+                .filter(|(height, _)| (height - heights[k]).abs() <= PARALLEL_HEIGHT_M)
         })
         .collect();
     pins.extend(
@@ -319,19 +322,44 @@ fn smooth(heights: &[f64], along: &[f64], reach: f64) -> Vec<f64> {
 /// whether that is a least, a most or an exact height).
 fn crossings(points: &[Point], surfaces: &[Surface], road: &RoadIndex) -> Vec<(usize, f64, Pin)> {
     let reach = ROAD_HALF_WIDTH + BED_M / 2.0 + 1.0;
+    let samples: Vec<_> = points
+        .iter()
+        .zip(surfaces)
+        .map(|(point, surface)| {
+            let (e, n) = point.position;
+            let (_, height, on) = road.nearest(e, n, reach)?;
+            (*surface != Surface::Tunnel && on != Surface::Tunnel).then_some((height, on))
+        })
+        .collect();
     let mut pins = Vec::new();
-    for (k, point) in points.iter().enumerate() {
-        let (e, n) = point.position;
-        let Some((_, road_height, road_surface)) = road.nearest(e, n, reach) else {
+    let mut k = 0;
+    while k < samples.len() {
+        if samples[k].is_none() {
+            k += 1;
             continue;
+        }
+        let start = k;
+        while k < samples.len() && samples[k].is_some() {
+            k += 1;
+        }
+        // One physical crossing has one clearance, including samples just beyond a mapped
+        // structure boundary. Pinning those to road level made six-metre steps in five metres.
+        let (offset, pin) = if surfaces[start..k].contains(&Surface::Bridge) {
+            (OVER_ROAD, Pin::AtLeast)
+        } else if samples[start..k]
+            .iter()
+            .flatten()
+            .any(|s| s.1 == Surface::Bridge)
+        {
+            (-UNDER_ROAD, Pin::AtMost)
+        } else {
+            (-AT_ROAD, Pin::Exactly)
         };
-        let pin = match (surfaces[k], road_surface) {
-            (Surface::Tunnel, _) | (_, Surface::Tunnel) => continue,
-            (Surface::Bridge, _) => (k, road_height + OVER_ROAD, Pin::AtLeast),
-            (_, Surface::Bridge) => (k, road_height - UNDER_ROAD, Pin::AtMost),
-            _ => (k, road_height - AT_ROAD, Pin::Exactly),
-        };
-        pins.push(pin);
+        for (index, sample) in samples.iter().enumerate().take(k).skip(start) {
+            if let Some((height, _)) = sample {
+                pins.push((index, height + offset, pin));
+            }
+        }
     }
     pins
 }
@@ -451,6 +479,110 @@ mod tests {
         let mut steep: Vec<f64> = along.iter().map(|a| 500.0 + 0.3 * a).collect();
         hold_grades(&mut steep, &along, &[], None);
         assert!(grade_at(&steep, &along) > 0.29);
+    }
+
+    #[test]
+    fn a_bridge_crossing_keeps_one_clearance_through_its_tag_boundary() {
+        let road = RoadIndex::from_lines(&[(0..=100)
+            .map(|i| Centre {
+                position: (0.0, f64::from(i) * 10.0),
+                elevation: 500.0,
+                distance: f64::from(i) * 10.0,
+                surface: Surface::Ground,
+                mapped: true,
+            })
+            .collect()]);
+        let points: Vec<_> = (0..=100)
+            .map(|i| Point {
+                position: (f64::from(i) * 5.0 - 250.0, 500.0),
+                surface: if i == 50 {
+                    Surface::Bridge
+                } else {
+                    Surface::Ground
+                },
+                terrain: Some(490.0),
+            })
+            .collect();
+        let laid = RoadIndex::from_lines(&[]);
+        let line = lay_out(&points, false, &road, &laid).expect("railway crossing");
+        let heights: Vec<_> = line.iter().map(|p| p.elevation).collect();
+        let along: Vec<_> = line.iter().map(|p| p.distance).collect();
+        assert!(line[50].elevation >= 506.0, "bridge clears the road");
+        assert!(
+            grade_at(&heights, &along) <= MAX_GRADE + 1e-9,
+            "bridge approaches must not become level crossings with an abrupt ramp"
+        );
+    }
+
+    #[test]
+    fn a_rail_underpass_stays_below_the_road_at_its_bridge_end() {
+        let road = RoadIndex::from_lines(&[(0..=100)
+            .map(|i| Centre {
+                position: (0.0, f64::from(i) * 10.0),
+                elevation: 500.0,
+                distance: f64::from(i) * 10.0,
+                surface: if i == 50 {
+                    Surface::Bridge
+                } else {
+                    Surface::Ground
+                },
+                mapped: true,
+            })
+            .collect()]);
+        let points: Vec<_> = (0..=100)
+            .map(|i| Point {
+                position: (
+                    f64::from(i) * 5.0 - 250.0,
+                    510.0 + (f64::from(i) - 50.0) * 2.0,
+                ),
+                surface: Surface::Ground,
+                terrain: Some(490.0),
+            })
+            .collect();
+        let line =
+            lay_out(&points, false, &road, &RoadIndex::from_lines(&[])).expect("railway underpass");
+        let heights: Vec<_> = line.iter().map(|p| p.elevation).collect();
+        let along: Vec<_> = line.iter().map(|p| p.distance).collect();
+        assert!(
+            line[50].elevation <= 493.0,
+            "railway stays below the bridge"
+        );
+        assert!(
+            grade_at(&heights, &along) <= MAX_GRADE + 1e-9,
+            "underpass has no abrupt ramp"
+        );
+    }
+
+    #[test]
+    fn a_grade_separated_track_does_not_copy_a_parallel_track_above_it() {
+        let upper: Vec<_> = (0..=100)
+            .map(|i| Centre {
+                position: (3.0, f64::from(i) * 5.0),
+                elevation: 550.0,
+                distance: f64::from(i) * 5.0,
+                surface: Surface::Bridge,
+                mapped: true,
+            })
+            .collect();
+        let points: Vec<_> = (0..=100)
+            .map(|i| Point {
+                position: (0.0, f64::from(i) * 5.0),
+                surface: Surface::Ground,
+                terrain: Some(500.0),
+            })
+            .collect();
+        let line = lay_out(
+            &points,
+            false,
+            &RoadIndex::from_lines(&[]),
+            &RoadIndex::from_lines(&[upper]),
+        )
+        .expect("lower railway");
+        assert!(
+            line.iter()
+                .all(|p| (p.elevation - 500.0).abs() < 1e-9 && p.surface == Surface::Ground),
+            "an independent upper line must not lift the lower track onto its bridge"
+        );
     }
 
     #[test]

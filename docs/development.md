@@ -93,6 +93,12 @@ follows that centre line and overlaps its bridge. A slightly different tunnel/br
 boundary must not leave a short mapped deck, railing or end cap across the approach. Bridges
 that leave the ridden corridor still use per-section coverage and retain their visible parts.
 
+Generator 17 keeps one railway crossing clearance across adjacent ground/bridge tag samples.
+An overpass approach must not be pinned to road level immediately beside its elevated deck;
+an underpass must stay below the road across its bridge end. Parallel tracks only share an
+elevation when their independently estimated levels are within 6 m, so vertically separated
+railways cannot pull one another into abrupt ramps. True level crossings retain their pins.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

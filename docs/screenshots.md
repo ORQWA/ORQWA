@@ -80,6 +80,19 @@ camera above and beside the transition, with vegetation and buildings omitted.
 |---|---|
 | ![Raised slab and duplicate railing at the tunnel exit](images/issues/alpenbrevet-bridge-transition-before.jpg) | ![Single road surface leading onto the bridge](images/issues/alpenbrevet-bridge-transition-after.jpg) |
 
+### Railway approaches
+
+Alpenbrevet Gold at 102.99 and 98.74 km to go (107.75 and 112.00 km into the full course).
+Generator 17 keeps one clearance across the whole crossing instead of forcing adjacent
+bridge and ground samples to incompatible heights. Independently elevated tracks also stop
+copying the heights of nearby tracks at another level. These focused geometry comparisons
+share cameras, saved course inputs and application materials, with vegetation/buildings omitted.
+
+| Abrupt ramp | Gentle bridge approach |
+|---|---|
+| ![Railway rises abruptly above the road](images/issues/alpenbrevet-rail-ramp-before.jpg) | ![Railway approaches the overpass continuously](images/issues/alpenbrevet-rail-ramp-after.jpg) |
+| ![Second crossing with conflicting height samples](images/issues/alpenbrevet-rail-second-before.jpg) | ![Second crossing with consistent clearance](images/issues/alpenbrevet-rail-second-after.jpg) |
+
 ### Support foundations
 
 Generator 16 grounds piers and bearing walls on the completed terrain triangles across the

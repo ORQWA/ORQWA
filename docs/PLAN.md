@@ -530,8 +530,9 @@ physically based materials and light, restyled group by group.
       remove the extra approach slab at Alpenbrevet 174.17 km to go (generator 15).
     - [x] Ground pier and bearing foundations across their complete footprint on the final
       shaped and carved terrain, including steep banks and channels (generator 16).
-    - [ ] Alpenbrevet railway transitions after Lukmanier before Airolo, followed by
-      bridge ends and protection crossing junctions.
+    - [x] Alpenbrevet railway ramps after Lukmanier before Airolo: consistent crossing
+      clearances and independent elevations for vertically separated tracks (generator 17).
+    - [ ] Bridge ends and protection crossing junctions.
     - [ ] Follow-up Alpenbrevet images: skewed bridge at 178.51 km to go; terrain inside
       tunnels and pavement on their roofs around 175.72 km to go; raised decks at 68.85 and
       67.26 km to go; guardrails below the road around 33.52 km to go.

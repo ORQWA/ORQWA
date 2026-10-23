@@ -128,6 +128,11 @@ channels and steep banks. A raw DEM sample can land on a ridge absent from the d
 checking only the centre or four corners can leave a downhill edge or channel exposed. Include
 both ridden/railway supports and mapped-road piers. Keep the same side camera in comparisons.
 
+For railway transitions, check Alpenbrevet around 102.99 and 98.74 km to go (107.75 and
+112.00 km from the start). Ground and bridge tag samples around one crossing must keep one
+clearance, with gentle approaches in both tracks. Nearby tracks at different vertical levels
+must not share elevation pins. Retain true level crossings and road/rail underpass clearance.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,
