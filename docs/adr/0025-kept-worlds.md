@@ -114,3 +114,7 @@ new bridge details carry sRGB tints with zero alpha, outside the positive road-s
 range. No vertex field or model name changes. Two-sided road/rail surface rendering
 and textured structure materials apply to older worlds immediately; regeneration adds
 the new geometry.
+
+Generator 13 removes duplicate mapped decks under ridden bridges whose GPX and map centre
+lines differ slightly. The ownership change leaves ground-junction coverage and separate
+crossing or parallel bridges intact; stored format remains 3.

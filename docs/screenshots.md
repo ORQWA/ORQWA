@@ -61,6 +61,14 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+The Alpenbrevet Lukmanier approach (approximately 34.8 km into the saved course) exposed a
+second mapped bridge beneath the bridge ridden. Generator 13 gives the aligned bridge one
+owner even when GPX smoothing shifts its centre line slightly; separate bridges remain.
+
+| Duplicate mapped structure | One bridge |
+|---|---|
+| ![Overlapping decks and railings](images/issues/alpenbrevet-bridge-duplicate-before.jpg) | ![One deck and railing set](images/issues/alpenbrevet-bridge-duplicate-after.jpg) |
+
 Road hierarchy and paving (R119, [ADR 0031](adr/0031-road-appearance.md)) use the same
 materials for ridden and surrounding ways. This controlled, offline scene uses the Rust
 world generator; widths and lane counts are illustrative estimates, not a mapped location:

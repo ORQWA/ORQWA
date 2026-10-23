@@ -522,6 +522,10 @@ physically based materials and light, restyled group by group.
       steel railings, capped columns, end bearing walls and closed slab ends; textured,
       scanned cast concrete and weathered masonry. Roads, streets, paths and railway beds also draw
       their exposed backs, including in kept worlds. Generator 12 adds the bridge geometry.
+    - [x] One owner for a ridden bridge whose mapped centre line is slightly offset;
+      independent crossing and parallel bridges stay visible (generator 13).
+    - [ ] Alpenbrevet artifact review: blocked Lukmanier tunnels, floating supports,
+      railway transitions and bridge ends crossing junctions.
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over
       it and keeps it covered, not in the open in front of the hill; a stone ring round the
       opening ends the cutting leading to it, no ground closes the opening, and the hill over

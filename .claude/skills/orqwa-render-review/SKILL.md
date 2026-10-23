@@ -107,6 +107,12 @@ plausible deck widths, capped supports and closed ends without stretching the te
 vertical faces. `surface_smoke.gd` uses software Vulkan to verify the four ribbon materials
 stay opaque above and below; shader flags alone are insufficient evidence.
 
+Bridge ownership needs a slightly offset GPX/map centre line in regression tests: full
+cross-section coverage can leave a second mapped deck below the ridden bridge. Preserve
+independent parallel and crossing bridges. For Alpenbrevet, the Lukmanier approach has
+bridges and tunnels around 34.7–36.8 km from the original course start; use saved course
+inputs and check the bridge from the side as well as the riding camera.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

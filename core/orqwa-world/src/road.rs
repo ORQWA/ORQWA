@@ -304,8 +304,9 @@ impl RoadIndex {
         })
     }
 
-    /// Whether an aligned street's whole cross-section is hidden by the ridden road.
-    /// Proximity alone also catches shallow branches before they reach the road's edge.
+    /// Whether the ridden road already draws this street. Ground junctions require full
+    /// cross-section coverage; a bridge with a matching centre line has one structure even
+    /// when GPX smoothing and map quantisation shift its edges slightly.
     pub(crate) fn covers_street(
         &self,
         point: (f64, f64),
@@ -320,7 +321,11 @@ impl RoadIndex {
                 let road_half = segment.appearance.unwrap_or_default().width / 2.0;
                 on == surface
                     && (forward.0 * heading.0 + forward.1 * heading.1).abs() > 0.8
-                    && distance + half <= road_half + 1e-6
+                    && if surface == Surface::Bridge {
+                        distance <= road_half.min(half).min(SAME_ROAD)
+                    } else {
+                        distance + half <= road_half + 1e-6
+                    }
             })
     }
 

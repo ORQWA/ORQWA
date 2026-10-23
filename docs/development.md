@@ -77,6 +77,11 @@ the ridden road and railway decks are built separately in `structures.rs`. Older
 worlds offer regeneration. Run `cargo test -p orqwa-world non_ridden_bridges` for coverage
 of all five road classes, grades, bends and chunk boundaries, and check a render from below.
 
+Generator 13 prevents a mapped bridge from being built again underneath the ridden bridge
+when their aligned centre lines differ slightly. Bridge ownership uses their shared centre
+corridor; ground junctions still require full cross-section coverage. Separate parallel and
+crossing bridges remain visible. Stored format stays at 3.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Bearing foundations sample drawn ground at every corner, including

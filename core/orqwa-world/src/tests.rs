@@ -3052,6 +3052,77 @@ fn assert_faces_follow_normals(mesh: &MeshData) {
 }
 
 #[tokio::test]
+async fn a_ridden_bridge_has_no_second_deck_from_the_map() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            // GPX and vector-tile centre lines need not coincide exactly. Both describe
+            // the same bridge; raw end elevations must not produce a second deck below it.
+            line: vec![at(0.4, 300.0), at(0.4, 700.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+    let duplicate = world
+        .chunks
+        .iter()
+        .flat_map(|chunk| {
+            chunk
+                .streets
+                .vertices
+                .iter()
+                .map(move |v| [v[0] + chunk.center[0], v[1], v[2] + chunk.center[2]])
+        })
+        .filter(|v| v[0].abs() < 5.0 && (-680.0..-320.0).contains(&v[2]))
+        .count();
+    assert_eq!(
+        duplicate, 0,
+        "a mapped bridge ridden on the course is built only once"
+    );
+}
+
+#[tokio::test]
+async fn separate_parallel_and_crossing_bridges_are_not_claimed_by_the_ridden_bridge() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    for (line, target) in [
+        (vec![at(12.0, 300.0), at(12.0, 700.0)], (12.0, -500.0)),
+        (vec![at(-60.0, 500.0), at(60.0, 500.0)], (30.0, -500.0)),
+    ] {
+        let map = MapData {
+            roads: vec![orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line,
+                structure: Some(StructureKind::Bridge),
+            }],
+            ..MapData::default()
+        };
+        let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+        assert!(
+            world
+                .chunks
+                .iter()
+                .any(|chunk| chunk.streets.vertices.iter().any(|v| {
+                    (v[0] + chunk.center[0] - target.0).abs() < 4.0
+                        && (v[2] + chunk.center[2] - target.1).abs() < 4.0
+                })),
+            "a separate bridge at {target:?} must remain visible"
+        );
+    }
+}
+
+#[tokio::test]
 async fn non_ridden_bridges_are_solid_from_below() {
     use orqwa_osm::{Road, RoadClass};
 
