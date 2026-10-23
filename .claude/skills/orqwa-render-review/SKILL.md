@@ -143,6 +143,12 @@ Also review Alpenbrevet's short mapped bridges near 32.05, 141.89 and 143.45 km 
 route tags must not leave a second raw-DEM deck over the ridden pavement. Preserve separate
 bridges above a tunnel and bridges that leave the ridden corridor.
 
+For tunnel interiors, inspect the full saved Alpenbrevet route around 175.72 km to go
+(35.02 km from the start) from inside and outside. Look beyond the first six metres: a
+nearby lower way can cut terrain back into the tube farther inside. Check roof paving from
+above the mouth as well. Retain the hillside outside the shell and distinct roads crossing
+above; clipping must follow the complete curved road or bundled railway tube.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

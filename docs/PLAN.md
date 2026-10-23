@@ -538,7 +538,9 @@ physically based materials and light, restyled group by group.
     - [x] Follow-up Alpenbrevet skewed village bridge at 178.51 km to go and raised decks at
       68.85 and 67.26 km to go: one surface owner even when the ridden course has a Ground
       tag on the mapped bridge (generator 19).
-    - [ ] Terrain inside tunnels and pavement on their roofs around 175.72 km to go.
+    - [x] Terrain inside tunnels and pavement on their roofs around 175.72 km to go:
+      clip surrounding terrain and paving along the complete tube, and give aligned
+      mapped ground approaches one surface owner (generator 20).
     - [ ] Guardrails below the road around 33.52 km to go.
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over
       it and keeps it covered, not in the open in front of the hill; a stone ring round the

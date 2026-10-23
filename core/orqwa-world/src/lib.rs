@@ -51,7 +51,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 19;
+pub const GENERATOR: u32 = 20;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -282,11 +282,13 @@ pub async fn generate<M: ElevationModel>(
         model,
     )
     .await;
+    let hollows = structures::hollows(&road, &ways.network.index, &portals);
     let shapers = Shapers {
         road: &road,
         rails: &ways.network.index,
         streets: &ways.levels,
         portals: &portals,
+        hollows: &hollows,
         hills: true,
     };
     let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
@@ -656,7 +658,7 @@ pub(crate) struct HeightGrid {
     fine_water_drop: HashMap<(usize, usize), Vec<f64>>,
     water_levels: std::sync::Arc<water_levels::Levels>,
     /// Openings also cut paving laid on the hill, including approach caps and junctions.
-    portals: Vec<structures::Portal>,
+    hollows: Vec<structures::TunnelCut>,
 }
 
 /// What a strip or area is laid on (`drape`): the ground, or the water's surface in its channel.
@@ -749,8 +751,8 @@ impl HeightGrid {
             water_drop: vec![0.0; bordered * bordered],
             fine_water_drop: HashMap::new(),
             water_levels: std::sync::Arc::clone(water.2),
-            portals: shapers
-                .portals
+            hollows: shapers
+                .hollows
                 .iter()
                 .copied()
                 .filter(|p| {
@@ -1020,10 +1022,10 @@ impl HeightGrid {
     /// Draped ground surfaces share the terrain's tunnel openings. Cutting only the terrain
     /// leaves the approach's paving stretched across the mouth on the uncut height grid.
     pub(crate) fn cut_paving(&self, triangle: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
-        if self.portals.is_empty() {
+        if self.hollows.is_empty() {
             return None;
         }
-        cut_out(&self.portals.iter().collect::<Vec<_>>(), triangle)
+        cut_out(&self.hollows.iter().collect::<Vec<_>>(), triangle)
     }
 
     /// Foundation height for a mapped bridge built in this chunk, over the whole footprint.
@@ -1235,8 +1237,8 @@ impl HeightGrid {
         for j in 0..side - 1 {
             for i in 0..side - 1 {
                 let (east, north) = self.position(i, j, 0.5, 0.5);
-                let portals: Vec<&structures::Portal> = shapers
-                    .portals
+                let hollows: Vec<&structures::TunnelCut> = self
+                    .hollows
                     .iter()
                     .filter(|p| p.near(east, north, GRID))
                     .collect();
@@ -1245,7 +1247,7 @@ impl HeightGrid {
                 let add = |mesh: &mut MeshData, corners: [(u32, [f64; 3]); 4]| {
                     let [sw, se, nw, ne] = corners;
                     for triangle in [[sw, nw, ne], [sw, ne, se]] {
-                        match cut_out(&portals, triangle.map(|c| c.1)) {
+                        match cut_out(&hollows, triangle.map(|c| c.1)) {
                             None => mesh.indices.extend(triangle.map(|c| c.0)),
                             Some(pieces) => {
                                 for piece in pieces {
@@ -1303,7 +1305,10 @@ impl HeightGrid {
 /// The pieces of a ground triangle (corners east, north, height) outside the openings of the
 /// tunnels at `portals`, where it reaches into one; `None` where it does not. Nothing closes an
 /// opening, and the ground meets the tube's ring round it (#135).
-fn cut_out(portals: &[&structures::Portal], triangle: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+fn cut_out(
+    portals: &[&structures::TunnelCut],
+    triangle: [[f64; 3]; 3],
+) -> Option<Vec<[[f64; 3]; 3]>> {
     let mut pieces = vec![triangle];
     let mut touched = false;
     for portal in portals {
@@ -1379,6 +1384,7 @@ pub(crate) struct Shapers<'a> {
     pub(crate) rails: &'a RoadIndex,
     pub(crate) streets: &'a streets::Levels,
     pub(crate) portals: &'a [structures::Portal],
+    pub(crate) hollows: &'a [structures::TunnelCut],
     /// Whether the road's tunnels get a hill heaped over them where the terrain has none
     /// (`shape`, #135): not while their portals are placed, which looks for the hill the
     /// terrain has.

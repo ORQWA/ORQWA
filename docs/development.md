@@ -112,6 +112,17 @@ raw DEM heights created the raised steps and skewed slabs in the Alpenbrevet fol
 An entirely underground route cannot own a separate surface bridge above it. Crossing,
 parallel and beyond-route bridges remain independent.
 
+Generator 20 subtracts the complete tunnel volume from terrain and draped paving, using the
+same road sections and bundled railway widths as the tube geometry. Short overlapping cuts
+follow bends and grades; the original mouth cuts still extend beyond the portal rings.
+This prevents shaped banks or nearby lower ways from leaving terrain faces inside a tunnel
+farther than the old six-metre mouth cut. Complete aligned mapped ground approaches that
+overlap the ridden tunnel share its pavement owner, including rounded ends, so duplicate
+ribbons cannot climb onto the roof. Interior cuts reach below the tube floor so thin terrain
+strips cannot show through the road. Railway sections compressed below a ridden-road
+embankment retain that cover rather than cutting the uncompressed ellipse out of it.
+Distinct surface roads crossing above remain visible.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

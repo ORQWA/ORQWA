@@ -973,6 +973,12 @@ async fn railway_tunnels_under_the_road_stay_below_it() {
     };
     let world = generate(&route_north(&[]).await, &mut Low, &map, &mut |_, _| {}).await;
 
+    let cover = ground_at(&world, 1.0, -500.0).expect("ground cover above the railway tube");
+    assert!(
+        cover > 499.0,
+        "clipping the tunnel must retain its compressed roof's ground cover"
+    );
+
     let tube: Vec<_> = world
         .structures
         .vertices
@@ -3963,6 +3969,67 @@ async fn a_surface_road_crossing_over_a_tunnel_remains_visible() {
                     && v[1] > 549.0
             })),
         "a distinct road crossing above the tunnel keeps its surface"
+    );
+}
+
+#[tokio::test]
+async fn terrain_and_paving_stay_out_of_the_complete_tunnel_interior() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    // A nearby lower line cuts a bank into the tunnel hillside, well beyond either mouth.
+    let map = MapData {
+        railways: vec![railway(&[(8.0, 0.0), (8.0, 1000.0)], None)],
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(8.0, 400.0), at(8.0, 600.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    for north in (450..550).step_by(3) {
+        for x in [-3.0_f32, 0.0, 3.0, 4.0] {
+            let ceiling = 500.0 + (25.0 - x * x).sqrt() - 0.2;
+            for height in [
+                ground_at(&world, x, -(north as f32)),
+                street_at(&world, x, -(north as f32)),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                assert!(
+                    height <= 499.85 || height >= ceiling,
+                    "surrounding surface at {height} intrudes into the tunnel at {x}, {north}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_complete_aligned_ground_approach_does_not_paint_the_tunnel_roof() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.4, 260.0), at(0.4, 320.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(550.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().all(|c| c.streets.vertices.is_empty()),
+        "the route owns this complete approach; no duplicate paving may climb the portal hill"
     );
 }
 

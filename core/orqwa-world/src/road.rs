@@ -357,6 +357,24 @@ impl RoadIndex {
         half: f64,
         points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
     ) -> bool {
+        self.owns_feature(half, points, |on| on != Surface::Tunnel)
+    }
+
+    /// A complete aligned ground feature overlapping the tunnel is its approach pavement.
+    pub(crate) fn owns_tunnel_approach(
+        &self,
+        half: f64,
+        points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
+    ) -> bool {
+        self.owns_feature(half, points, |on| on == Surface::Tunnel)
+    }
+
+    fn owns_feature(
+        &self,
+        half: f64,
+        points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
+        accepts: impl Fn(Surface) -> bool,
+    ) -> bool {
         let mut drawn = false;
         for (point, heading) in points {
             let Some(((distance, _, on), index)) =
@@ -372,10 +390,7 @@ impl RoadIndex {
             {
                 return false;
             }
-            // Import can discard short or DEM-unconfirmed bridge tags from the route.
-            // Its ground pavement still owns this surface. A tunnel below a surface
-            // bridge alone does not own the bridge above it.
-            drawn |= on != Surface::Tunnel;
+            drawn |= accepts(on);
         }
         drawn
     }

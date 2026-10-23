@@ -87,6 +87,17 @@ impl Street {
             )
     }
 
+    fn owned_approach(&self, road: &RoadIndex) -> bool {
+        !self.on_bridge()
+            && road.owns_tunnel_approach(
+                self.half_width(),
+                self.points
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &point)| (point, local_direction(&self.points, i))),
+            )
+    }
+
     /// How far it lies above the ground.
     pub(crate) fn lift(&self) -> f64 {
         lift(self.class, self.index)
@@ -222,6 +233,7 @@ pub(crate) fn meshes(
             || street.max.1 < low.1
             || street.min.1 > high.1
             || street.owned_bridge(road)
+            || street.owned_approach(road)
         {
             continue;
         }

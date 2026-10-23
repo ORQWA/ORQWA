@@ -152,3 +152,10 @@ route importer retained Ground tags rather than a short or DEM-unconfirmed bridg
 feature no longer adds a raw-DEM slab above that pavement. A tunnel alone cannot claim a
 surface bridge above it; crossing, parallel and off-route bridges retain their geometry.
 Stored format remains 3.
+
+Generator 20 clips surrounding terrain and draped paving along the complete tunnel volume,
+using the same road and bundled railway sections as its visible tube. Mouth cuts still
+extend beyond the ring. Aligned mapped ground approaches overlapping a ridden tunnel belong
+to that route's pavement, preventing duplicate approach ribbons from painting its roof.
+Interior cuts extend below the tube floor. Compressed railway underpasses retain their road
+embankment cover, and distinct surface crossings above remain. Stored format remains 3.

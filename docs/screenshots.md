@@ -144,6 +144,18 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Tunnel interior and roof
+
+Full saved Alpenbrevet Gold inputs around 175.72 km to go (35.02 km from the start), using
+identical cameras before and after generator 20. The complete tube is now clear of terrain,
+including thin strips at floor level, and the mapped approach no longer paints its roof.
+These focused geometry views omit vegetation and buildings.
+
+| View | Before | After |
+|---|---|---|
+| Inside | ![Rock blocks the tunnel interior](images/issues/alpenbrevet-tunnel-interior-before.jpg) | ![Clear tunnel interior](images/issues/alpenbrevet-tunnel-interior-after.jpg) |
+| Approach | ![Paving above the tunnel mouth](images/issues/alpenbrevet-tunnel-roof-before.jpg) | ![Portal hill without duplicate paving](images/issues/alpenbrevet-tunnel-roof-after.jpg) |
+
 ### Duplicate bridge decks on ground-tagged course sections
 
 Full saved Alpenbrevet Gold inputs, with identical cameras before and after generator 19.

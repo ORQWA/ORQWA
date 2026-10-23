@@ -280,7 +280,12 @@ impl Portal {
     /// opening, just before the portal and just inside it, as triangles; `None` where the
     /// opening does not touch it. The ground is cut to the tube's outline, `HOLLOW_MARGIN` out
     /// (under the ring), so nothing closes the opening and nothing is missing round it (#135).
-    pub(crate) fn cut(&self, corners: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+    fn cut(
+        &self,
+        corners: [[f64; 3]; 3],
+        (from, to): (f64, f64),
+        bottom: f64,
+    ) -> Option<Vec<[[f64; 3]; 3]>> {
         let local = corners.map(|[east, north, height]| {
             let (along, across) = self.local(east, north);
             [along, across, height - (self.floor + self.rise * along)]
@@ -288,11 +293,11 @@ impl Portal {
         let (half, crown) = (self.half + HOLLOW_MARGIN, self.crown + HOLLOW_MARGIN);
         // Wholly before, past, beside, under or over the opening: untouched.
         let all = |keep: &dyn Fn([f64; 3]) -> bool| local.iter().all(|&l| keep(l));
-        if all(&|l| l[0] <= -HOLLOW_FRONT)
-            || all(&|l| l[0] >= HOLLOW_DEPTH)
+        if all(&|l| l[0] <= from)
+            || all(&|l| l[0] >= to)
             || all(&|l| l[1] <= -half)
             || all(&|l| l[1] >= half)
-            || all(&|l| l[2] <= HOLLOW_FLOOR)
+            || all(&|l| l[2] <= bottom)
             || all(&|l| l[2] >= crown)
         {
             return None;
@@ -301,9 +306,9 @@ impl Portal {
         // before it, past it, its floor, and the pieces of its arch, from the right at the
         // floor over the crown to the left, the inside on their left.
         let mut planes = vec![
-            [1.0, 0.0, 0.0, HOLLOW_FRONT],
-            [-1.0, 0.0, 0.0, HOLLOW_DEPTH],
-            [0.0, 0.0, 1.0, -HOLLOW_FLOOR],
+            [1.0, 0.0, 0.0, -from],
+            [-1.0, 0.0, 0.0, to],
+            [0.0, 0.0, 1.0, -bottom],
         ];
         #[allow(clippy::cast_precision_loss)] // small segment counts
         let arch = |k: usize| {
@@ -358,6 +363,92 @@ impl Portal {
     }
 }
 
+/// A mouth or a short piece of the tunnel volume: surrounding surfaces stay outside it.
+#[derive(Clone, Copy)]
+pub(crate) struct TunnelCut {
+    tube: Portal,
+    extent: (f64, f64),
+    bottom: f64,
+}
+
+impl TunnelCut {
+    pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> bool {
+        let (along, across) = self.tube.local(east, north);
+        along >= self.extent.0 - reach
+            && along <= self.extent.1 + reach
+            && across.abs() <= self.tube.half + HOLLOW_MARGIN + reach
+    }
+
+    pub(crate) fn cut(&self, corners: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+        self.tube.cut(corners, self.extent, self.bottom)
+    }
+}
+
+/// Use the same sections as the visible tubes, including bundled railway widths.
+pub(crate) fn hollows(road: &RoadIndex, rails: &RoadIndex, portals: &[Portal]) -> Vec<TunnelCut> {
+    let mut cuts: Vec<_> = portals
+        .iter()
+        .map(|&tube| TunnelCut {
+            tube,
+            extent: (-HOLLOW_FRONT, HOLLOW_DEPTH),
+            bottom: HOLLOW_FLOOR,
+        })
+        .collect();
+    let own = road
+        .structure_runs()
+        .into_iter()
+        .map(|(surface, run)| (surface, sections(&run, surface, false), false));
+    let tracks = bundles(&rails.structure_runs())
+        .into_iter()
+        .map(|(surface, run)| (surface, run, true));
+    for (surface, run, railway) in own.chain(tracks) {
+        if surface != Surface::Tunnel {
+            continue;
+        }
+        for pair in run.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            let a_centre = shifted(a.centre, (a.right - a.left) / 2.0);
+            let b_centre = shifted(b.centre, (b.right - b.left) / 2.0);
+            let (de, dn) = (
+                b_centre.position.0 - a_centre.position.0,
+                b_centre.position.1 - a_centre.position.1,
+            );
+            let length = de.hypot(dn);
+            if length <= 1e-9 {
+                continue;
+            }
+            // Railway tubes compress below a road embankment (`ground_over`). Their
+            // uncompressed ellipse must not remove that cover or its surface crossing.
+            if railway
+                && [a_centre, b_centre].iter().any(|p| {
+                    road.near(p.position.0, p.position.1, LEVEL_REACH)
+                        .iter()
+                        .any(|&(_, height, surface)| {
+                            surface != Surface::Tunnel && height - p.elevation >= UNDERPASS
+                        })
+                })
+            {
+                continue;
+            }
+            cuts.push(TunnelCut {
+                tube: Portal {
+                    plane: (a_centre.position, (de / length, dn / length)),
+                    floor: a_centre.elevation,
+                    rise: (b_centre.elevation - a_centre.elevation) / length,
+                    half: f64::midpoint(a.left, a.right).max(f64::midpoint(b.left, b.right)),
+                    crown: a.crown.max(b.crown),
+                },
+                // Overlap the short pieces so a bend cannot leave a thin terrain seam.
+                extent: (-HOLLOW_MARGIN, length + HOLLOW_MARGIN),
+                // The tube's own floor covers the remaining ground; a cut above road
+                // level leaves thin strips of grass or rock visible through the pavement.
+                bottom: -ROAD_SINK - 0.02,
+            });
+        }
+    }
+    cuts
+}
+
 /// Finds where each tunnel of the road ridden and the railways enters the hill, where the
 /// ground first lies over its crown, and opens the line before that onto the ground (#135): the
 /// tube starts there, the approach runs in a cutting up to the portal and the hill over the
@@ -387,6 +478,7 @@ pub(crate) async fn open_portals<M: ElevationModel>(
             rails: &*rails,
             streets,
             portals: &[],
+            hollows: &[],
             hills: false,
         };
         for run in &road_runs {
