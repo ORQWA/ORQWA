@@ -1328,6 +1328,11 @@ impl<'a> Path<'a> {
         let span = (self.at.get(index + 1).copied().unwrap_or(along) - self.at[index]).max(1e-9);
         let t = ((along - self.at[index]) / span).clamp(0.0, 1.0);
         let (ca, cb) = (a.centre, b.centre);
+        let way = (
+            ca.direction.0 + (cb.direction.0 - ca.direction.0) * t,
+            ca.direction.1 + (cb.direction.1 - ca.direction.1) * t,
+        );
+        let length = way.0.hypot(way.1).max(f64::EPSILON);
         Section {
             centre: CentrePoint {
                 position: (
@@ -1335,7 +1340,9 @@ impl<'a> Path<'a> {
                     ca.position.1 + (cb.position.1 - ca.position.1) * t,
                 ),
                 elevation: ca.elevation + (cb.elevation - ca.elevation) * t,
-                direction: ca.direction,
+                // Interpolate the same offset edge as the beams rather than reusing the
+                // preceding section's tangent: posts otherwise jut into curved pavement.
+                direction: (way.0 / length, way.1 / length),
             },
             left: a.left + (b.left - a.left) * t,
             right: a.right + (b.right - a.right) * t,

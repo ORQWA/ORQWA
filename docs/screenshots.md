@@ -144,6 +144,20 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Protection through curves
+
+Generator 22 fits each guardrail span between shared road-edge endpoints rather than placing
+straight models on centre-line tangents. Bridge sections and post directions follow the
+wearing surface's curve. The controlled 12 m hairpin shows both the inside overlaps and
+outside gaps; the actual Alpenbrevet start/finish loop checks the curved bridge beside its
+roundabout, around 0.33 km from the start (210.41 km to go). Matched cameras use the real
+materials and prop instances; buildings and vegetation are omitted.
+
+| Before | After |
+|---|---|
+| ![Separated and overlapping guardrail blades](images/issues/guardrails-tight-curve-before.jpg) | ![Joined blades on both edges](images/issues/guardrails-tight-curve-after.jpg) |
+| ![Start-loop bridge protection before](images/issues/alpenbrevet-start-loop-before.jpg) | ![Protection following the curved bridge](images/issues/alpenbrevet-start-loop-after.jpg) |
+
 ### Roadside protection beside a lower railway
 
 Alpenbrevet Gold at 33.52 km to go (177.22 km from the start), using full saved inputs and

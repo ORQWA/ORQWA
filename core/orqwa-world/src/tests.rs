@@ -5190,6 +5190,159 @@ async fn level_ground_gets_no_guard_rails() {
 }
 
 #[tokio::test]
+async fn guard_rail_spans_meet_on_both_edges_of_a_tight_bend() {
+    let mut points: Vec<_> = (0..=10)
+        .map(|i| (0.0, f64::from(i) * 10.0, 500.0))
+        .collect();
+    points.extend((1..=24).map(|i| {
+        let angle = std::f64::consts::PI * f64::from(i) / 24.0;
+        (12.0 - 12.0 * angle.cos(), 100.0 + 12.0 * angle.sin(), 500.0)
+    }));
+    points.extend((0..10).rev().map(|i| (24.0, f64::from(i) * 10.0, 500.0)));
+    let mut map = MapData::default();
+    let route = route_through(&points, &mut map).await;
+    let world = generate(&route, &mut Level(475.0), &map, &mut |_, _| {}).await;
+    let ends: Vec<[f64; 3]> = world
+        .chunks
+        .iter()
+        .flat_map(|chunk| {
+            chunk
+                .props
+                .models
+                .get("guard_rail")
+                .into_iter()
+                .flat_map(|buffer| {
+                    buffer.as_chunks::<12>().0.iter().flat_map(|t| {
+                        [-2.0, 2.0].map(|z| {
+                            [
+                                f64::from(t[3] + chunk.center[0] + t[2] * z),
+                                f64::from(t[7] + chunk.center[1] + t[6] * z),
+                                -f64::from(t[11] + chunk.center[2] + t[10] * z),
+                            ]
+                        })
+                    })
+                })
+        })
+        .collect();
+    let mut checked = [0, 0];
+    for (i, end) in ends.iter().enumerate().filter(|(_, p)| p[2] > 104.0) {
+        let radius = (end[0] - 12.0).hypot(end[2] - 100.0);
+        assert!(
+            (radius - 12.0).abs() >= 2.85,
+            "rail stays outside the carriageway on the bend: {end:?}"
+        );
+        checked[usize::from(radius > 12.0)] += 1;
+        let gap = ends
+            .iter()
+            .enumerate()
+            .filter(|(j, _)| *j != i)
+            .map(|(_, other)| {
+                ((end[0] - other[0]).powi(2)
+                    + (end[1] - other[1]).powi(2)
+                    + (end[2] - other[2]).powi(2))
+                .sqrt()
+            })
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            gap < 0.03,
+            "adjacent blades meet on inner and outer bends: {gap} m at {end:?}"
+        );
+    }
+    assert!(
+        checked.into_iter().all(|n| n >= 4),
+        "both edges protected: {checked:?}"
+    );
+}
+
+#[tokio::test]
+async fn curved_bridge_protection_leaves_the_wearing_surface_open() {
+    let points = [
+        (0.0, 0.0, 500.0),
+        (0.0, 80.0, 500.0),
+        (0.0, 100.0, 502.0),
+        (2.0, 108.0, 503.0),
+        (12.0, 112.0, 504.0),
+        (20.0, 108.0, 505.0),
+        (24.0, 100.0, 506.0),
+        (24.0, 80.0, 506.0),
+        (24.0, 0.0, 506.0),
+    ];
+    let mut map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: points[1..8].iter().map(|&(e, n, _)| at(e, n)).collect(),
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for &(east, north, elevation) in &points {
+        let (lat, lon) = at(east, north);
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    for pair in [points[..2].to_vec(), points[7..].to_vec()] {
+        map.roads.push(orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: pair.iter().map(|&(e, n, _)| at(e, n)).collect(),
+            structure: None,
+        });
+    }
+    let route = Route::from_gpx_with::<Level>(&xml, None, &map)
+        .await
+        .unwrap();
+    let world = generate(&route, &mut Level(475.0), &map, &mut |_, _| {}).await;
+    let pavement: Vec<_> = world
+        .road
+        .indices
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .filter(|tri| {
+            tri.iter()
+                .all(|&i| matches!(i as usize % road::RING, 2 | 3))
+        })
+        .map(|tri| tri.map(|i| world.road.vertices[i as usize]))
+        .collect();
+    let steel = palette::srgb("structure.steel", 0.0);
+    let mut checked = 0;
+    for (&v, &color) in world
+        .structures
+        .vertices
+        .iter()
+        .zip(&world.structures.colors)
+    {
+        if color != steel {
+            continue;
+        }
+        checked += 1;
+        assert!(
+            pavement
+                .iter()
+                .all(|&t| triangle_height(t, v[0], v[2]).is_none()),
+            "curved railings and upright posts stay outside the carriageway: {v:?}"
+        );
+    }
+    assert!(checked > 100, "curved bridge has open steel protection");
+    for t in pavement {
+        let middle = [0, 1, 2].map(|k| (t[0][k] + t[1][k] + t[2][k]) / 3.0);
+        for face in triangles(&world.structures) {
+            if let Some(height) = triangle_height(face, middle[0], middle[2]) {
+                assert!(
+                    height < middle[1] - 0.005,
+                    "bridge concrete must not cover curved asphalt: {height} at {middle:?}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
 async fn delineators_mark_country_roads_but_not_towns() {
     // A village on the road's second half.
     let village = Area {

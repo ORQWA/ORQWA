@@ -170,8 +170,8 @@ pub(crate) fn place(
     props
 }
 
-/// Protection belongs to its road station's chunk, but its footing may cross that boundary.
-/// The owner grid only has coarse border samples there; use the neighbour's drawn terrain.
+/// Attach protection to the final terrain, including both ends of a curved rail span and
+/// feet across a chunk boundary, where the owner grid only has coarse border samples.
 #[allow(clippy::cast_possible_truncation)] // f32 instance buffers
 pub(crate) fn ground_protection(chunks: &mut [crate::TerrainChunk]) {
     let terrain = crate::foundations::Ground(chunks);
@@ -188,23 +188,57 @@ pub(crate) fn ground_protection(chunks: &mut [crate::TerrainChunk]) {
                 continue;
             };
             for (index, transform) in buffer.as_chunks::<12>().0.iter().enumerate() {
+                if name.starts_with("guard_rail") {
+                    let inside = [-2.0, 2.0].into_iter().all(|z| {
+                        (transform[3] + transform[2] * z)
+                            .abs()
+                            .max((transform[11] + transform[10] * z).abs())
+                            <= crate::CHUNK_SIZE as f32 / 2.0
+                    });
+                    if inside {
+                        continue;
+                    }
+                    let ends = [-2.0, 2.0].map(|z| {
+                        let east = f64::from(transform[3] + chunk.center[0] + transform[2] * z);
+                        let north = -f64::from(transform[11] + chunk.center[2] + transform[10] * z);
+                        terrain.at(east, north)
+                    });
+                    if let [Some(a), Some(b)] = ends {
+                        corrections.push((
+                            chunk_index,
+                            name,
+                            index,
+                            f64::midpoint(a, b) as f32 - chunk.center[1],
+                            ((b - a) / RAIL_SPAN) as f32,
+                        ));
+                    }
+                    continue;
+                }
                 if transform[3].abs().max(transform[11].abs()) <= crate::CHUNK_SIZE as f32 / 2.0 {
                     continue;
                 }
                 let east = f64::from(transform[3] + chunk.center[0]);
                 let north = -f64::from(transform[11] + chunk.center[2]);
                 if let Some(height) = terrain.at(east, north) {
-                    corrections.push((chunk_index, name, index, height as f32 - chunk.center[1]));
+                    corrections.push((
+                        chunk_index,
+                        name,
+                        index,
+                        height as f32 - chunk.center[1],
+                        transform[6],
+                    ));
                 }
             }
         }
     }
-    for (chunk, name, index, height) in corrections {
-        chunks[chunk]
+    for (chunk, name, index, height, rise) in corrections {
+        let buffer = chunks[chunk]
             .props
             .models
             .get_mut(name)
-            .expect("existing protection")[index * 12 + 7] = height;
+            .expect("existing protection");
+        buffer[index * 12 + 7] = height;
+        buffer[index * 12 + 6] = rise;
     }
 }
 
@@ -863,10 +897,68 @@ fn rails(
             if let Some(name) = model
                 && open(station, side, roadside)
             {
-                let at = beside(station, side, RAIL_OFFSET, roadside);
-                push(props, name, at, station, side, station.grade, chunk_origin);
+                rail_span(props, name, station, side, roadside, chunk_origin);
             }
         }
+    }
+}
+
+/// Fit the four-metre model between shared points on the offset edge. Using a centre-line
+/// tangent instead leaves gaps outside bends and overlapping blades on their inside.
+fn rail_span(
+    props: &mut Props,
+    name: &str,
+    station: &Station,
+    side: f64,
+    roadside: &Roadside,
+    origin: [f64; 3],
+) {
+    let ends = [-0.5, 0.5].map(|step| {
+        roadside
+            .road
+            .station_at(station.distance + step * RAIL_SPAN)
+    });
+    let [Some(a), Some(b)] = ends else {
+        return;
+    };
+    if a.surface != Surface::Ground
+        || b.surface != Surface::Ground
+        || !open(&a, side, roadside)
+        || !open(&b, side, roadside)
+    {
+        return;
+    }
+    let (a, b) = (
+        beside(&a, side, RAIL_OFFSET, roadside),
+        beside(&b, side, RAIL_OFFSET, roadside),
+    );
+    let (de, dn) = (b[0] - a[0], b[2] - a[2]);
+    let length = de.hypot(dn);
+    if length < 0.1 {
+        return;
+    }
+    let middle = [0, 1, 2].map(|k| f64::midpoint(a[k], b[k]));
+    let edge = Station {
+        direction: (de / length, dn / length),
+        ..*station
+    };
+    let transform = push(
+        props,
+        name,
+        middle,
+        &edge,
+        side,
+        (b[1] - a[1]) / length,
+        origin,
+    );
+    // Scale only the model's longitudinal basis: the sheet reaches both endpoints and its
+    // posts remain upright with their original width and height.
+    #[allow(clippy::cast_possible_truncation)] // f32 instance buffers
+    let scale = (length / RAIL_SPAN) as f32;
+    let buffer = props.models.get_mut(name).expect("just inserted span");
+    let start = buffer.len() - transform.len();
+    for k in [2, 6, 10] {
+        buffer[start + k] *= scale;
     }
 }
 

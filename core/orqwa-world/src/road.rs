@@ -642,6 +642,49 @@ impl RoadIndex {
         stations
     }
 
+    /// A point at an exact route distance, with the same cross-section direction as the
+    /// drawn ribbon. Edge attachments share these points rather than extending a centre-line
+    /// tangent, which opens gaps and overlaps on opposite sides of a bend.
+    pub(crate) fn station_at(&self, distance: f64) -> Option<Station> {
+        let index = self.segments.partition_point(|s| s.distance_b <= distance);
+        let segment = self.segments.get(index)?;
+        if distance < segment.distance_a {
+            return None;
+        }
+        let t = (distance - segment.distance_a)
+            / (segment.distance_b - segment.distance_a).max(f64::EPSILON);
+        let (a, b) = (self.cross_direction(index), self.cross_direction(index + 1));
+        let way = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+        let length = way.0.hypot(way.1).max(f64::EPSILON);
+        Some(Station {
+            appearance: segment.appearance.unwrap_or_default(),
+            position: (
+                segment.a.0 + (segment.b.0 - segment.a.0) * t,
+                segment.a.1 + (segment.b.1 - segment.a.1) * t,
+            ),
+            elevation: segment.elevation_a + (segment.elevation_b - segment.elevation_a) * t,
+            distance,
+            direction: (way.0 / length, way.1 / length),
+            grade: (segment.elevation_b - segment.elevation_a)
+                / (segment.distance_b - segment.distance_a).max(f64::EPSILON),
+            surface: segment.surface,
+        })
+    }
+
+    /// Cross-section direction at a vertex, matching the wearing surface's averaged tangent.
+    fn cross_direction(&self, index: usize) -> (f64, f64) {
+        let (a, b) = (
+            direction(&self.segments[index.saturating_sub(1)]),
+            direction(&self.segments[index.min(self.segments.len() - 1)]),
+        );
+        let length = (a.0 + b.0).hypot(a.1 + b.1);
+        if length < f64::EPSILON {
+            a
+        } else {
+            ((a.0 + b.0) / length, (a.1 + b.1) / length)
+        }
+    }
+
     /// Points along the road roughly every `spacing` metres, in metres east/north.
     pub(crate) fn samples(&self, spacing: f64) -> Vec<(f64, f64)> {
         let mut samples = Vec::new();
@@ -667,17 +710,28 @@ impl RoadIndex {
             if self.lines.iter().any(|line| line.start == index) {
                 previous = Surface::Ground;
             }
-            let point = |position: (f64, f64), elevation: f64| CentrePoint {
+            let point = |position: (f64, f64), elevation: f64, vertex: usize| CentrePoint {
                 position,
                 elevation,
-                direction: direction(segment),
+                direction: if self
+                    .lines
+                    .iter()
+                    .any(|l| l.start == vertex || l.end == vertex)
+                {
+                    direction(segment)
+                } else {
+                    self.cross_direction(vertex)
+                },
             };
             if segment.surface != Surface::Ground {
                 if segment.surface != previous {
-                    runs.push((segment.surface, vec![point(segment.a, segment.elevation_a)]));
+                    runs.push((
+                        segment.surface,
+                        vec![point(segment.a, segment.elevation_a, index)],
+                    ));
                 }
                 if let Some((_, points)) = runs.last_mut() {
-                    points.push(point(segment.b, segment.elevation_b));
+                    points.push(point(segment.b, segment.elevation_b, index + 1));
                 }
             }
             previous = segment.surface;

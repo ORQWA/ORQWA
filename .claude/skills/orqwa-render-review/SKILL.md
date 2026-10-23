@@ -94,6 +94,14 @@ gallery. Grain alone is insufficient at distance. Refresh the linked wiki images
 
 ## Pitfalls
 
+For roadside guardrail placement, include a tight hairpin from above with both edges visible.
+Four-metre models placed on centre-line tangents can overlap inside a curve and leave gaps
+outside it. Check shared blade endpoints, vertical alignment across terrain chunk boundaries,
+and that posts remain upright. Include Alpenbrevet's start/finish loop as well as its mountain
+switchbacks; a straight-road view cannot validate curve placement.
+On curved bridges, check that the slab stays below the asphalt and that railings and their
+posts remain outside the wearing surface, especially beside the start/finish roundabout.
+
 For bridge geometry (R121), include a camera below a non-ridden road bridge: top and side
 views cannot reveal a missing underside. Check its downward-facing deck across chunk joins,
 and retain a view from above to check the road surface. Motorway/local-road decks and

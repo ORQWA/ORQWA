@@ -134,6 +134,16 @@ completed terrain triangles, rather than the owner's coarse border interpolation
 Drop detection looks beyond that shaped verge so a flat shoulder does not create short
 gaps and sloping rail ends beside a continuous cliff.
 
+Generator 22 places each guardrail span between shared points on the actual offset road edge.
+The points use the wearing surface's cross-section directions; each model's longitudinal
+basis follows the edge chord and its endpoint heights, while posts remain upright. Inner
+bends no longer overlap and outer bends no longer leave gaps. Endpoints crossing a chunk
+boundary use the final neighbouring terrain so blade heights agree there as well.
+Bridge barriers and slabs also share the pavement's averaged cross-section directions,
+including the transition to ground road; posts follow the interpolated bend rather than the
+preceding section's tangent. This prevents intrusion into curved carriageways and concrete
+showing through the asphalt on Alpenbrevet's start/finish loop.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

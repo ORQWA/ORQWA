@@ -168,3 +168,11 @@ track elevations are unchanged. Protection crossing its station's chunk boundary
 neighbour's final terrain for its footing height instead of the owner's coarse border samples.
 Drop detection probes beyond the shaped shoulder to keep continuous cliff protection.
 Stored format remains 3.
+
+Generator 22 fits guardrail blades between shared endpoints on the width-adjusted road edge,
+using the drawn ribbon's interpolated cross-section rather than a centre-line tangent.
+Longitudinal scaling closes outside gaps and inside overlaps without tilting posts. Endpoint
+heights also agree across terrain chunk boundaries. Stored format remains 3.
+Bridge cross-sections use the same averaged tangents as the pavement, including at their
+ends, and bridge post directions interpolate along the curve. This keeps protection outside
+the carriageway and the slab beneath the wearing surface on the start/finish loop.

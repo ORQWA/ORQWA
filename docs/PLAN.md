@@ -538,6 +538,11 @@ physically based materials and light, restyled group by group.
     - [x] Follow-up Alpenbrevet skewed village bridge at 178.51 km to go and raised decks at
       68.85 and 67.26 km to go: one surface owner even when the ridden course has a Ground
       tag on the mapped bridge (generator 19).
+    - [x] Guardrails on tight curves: shared endpoints on both road edges and across chunk
+      boundaries; bridge barriers follow the pavement's cross-sections on Alpenbrevet's
+      start/finish loop (generator 22).
+    - [ ] Shadow rows beneath overhanging roads and bridges: reproduce on Alpenbrevet at
+      30.64 km to go and retain continuous, natural shadows without diagonal striping.
     - [x] Terrain inside tunnels and pavement on their roofs around 175.72 km to go:
       clip surrounding terrain and paving along the complete tube, and give aligned
       mapped ground approaches one surface owner (generator 20).
