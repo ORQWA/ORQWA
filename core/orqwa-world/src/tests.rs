@@ -3052,6 +3052,82 @@ fn assert_faces_follow_normals(mesh: &MeshData) {
 }
 
 #[tokio::test]
+async fn bridge_piers_reach_the_ground_mesh_instead_of_an_unsampled_dem_ridge() {
+    struct NarrowRidge;
+    impl ElevationModel for NarrowRidge {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            _lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let north = (lat - 46.0) * METERS_PER_DEGREE;
+            std::future::ready(Ok(if (north - 306.0).abs() < 0.4 {
+                480.0
+            } else {
+                430.0
+            }))
+        }
+    }
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let world = generate(
+        &route,
+        &mut NarrowRidge,
+        &MapData::default(),
+        &mut |_, _| {},
+    )
+    .await;
+    let bottom = world
+        .structures
+        .vertices
+        .iter()
+        .filter(|v| v[0].abs() < 1.5 && (v[2] + 305.0).abs() < 1.5)
+        .map(|v| v[1])
+        .fold(f32::MAX, f32::min);
+    let ground = ground_at(&world, 0.0, -305.0).expect("drawn ground beneath the pier");
+    assert!(
+        bottom < ground,
+        "pier bottom {bottom} floats over drawn terrain at {ground}"
+    );
+}
+
+#[tokio::test]
+async fn a_pier_footing_reaches_the_downhill_side_of_steep_terrain() {
+    struct SteepBank;
+    impl ElevationModel for SteepBank {
+        fn elevation(
+            &mut self,
+            _lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46_f64.to_radians().cos();
+            std::future::ready(Ok(430.0 + 20.0 * east))
+        }
+    }
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let world = generate(&route, &mut SteepBank, &MapData::default(), &mut |_, _| {}).await;
+    let bottom = world
+        .structures
+        .vertices
+        .iter()
+        .filter(|v| v[0] < -1.0 && v[0] > -1.5 && (v[2] + 305.0).abs() < 1.5)
+        .map(|v| v[1])
+        .fold(f32::MAX, f32::min);
+    let downhill = ground_at(&world, -1.1, -305.0).expect("drawn downhill bank");
+    assert!(
+        bottom < downhill,
+        "pier bottom {bottom} floats above downhill ground at {downhill}"
+    );
+}
+
+#[tokio::test]
 async fn a_ridden_bridge_has_no_second_deck_from_the_map() {
     let route = route_north(&[Structure {
         kind: StructureKind::Bridge,
@@ -3325,6 +3401,54 @@ async fn bridges_of_other_streets_stand_on_piers() {
     }
     // Five piers, 20 m apart, four corners each at the bottom.
     assert!(piers >= 16, "{piers} pier corners on the valley floor");
+}
+
+#[tokio::test]
+async fn a_mapped_bridge_pier_reaches_the_downhill_edge_of_its_footing() {
+    struct SlopingValley;
+    impl ElevationModel for SlopingValley {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46_f64.to_radians().cos();
+            let north = (lat - 46.0) * METERS_PER_DEGREE;
+            std::future::ready(Ok(if (150.0..250.0).contains(&east) {
+                480.0 + 20.0 * (north - 600.0)
+            } else {
+                500.0
+            }))
+        }
+    }
+    let route = route_north(&[]).await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(100.0, 600.0), at(300.0, 600.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut SlopingValley, &map, &mut |_, _| {}).await;
+    let bottom = world
+        .chunks
+        .iter()
+        .flat_map(|c| {
+            c.streets
+                .vertices
+                .iter()
+                .map(move |v| [v[0] + c.center[0], v[1], v[2] + c.center[2]])
+        })
+        .filter(|v| (v[0] - 210.0).abs() < 1.0 && (v[2] + 600.0).abs() < 2.0)
+        .min_by(|a, b| a[1].total_cmp(&b[1]))
+        .expect("mapped pier footing");
+    let downhill = ground_at(&world, bottom[0], bottom[2]).expect("downhill footing edge");
+    assert!(
+        bottom[1] < downhill,
+        "mapped pier at {bottom:?} hangs over downhill terrain at {downhill}"
+    );
 }
 
 #[tokio::test]

@@ -12,6 +12,7 @@ use std::sync::LazyLock;
 
 use orqwa_routes::{ElevationModel, LocalProjection, Surface};
 
+use crate::foundations::Ground;
 use crate::road::{CentrePoint, Plane, RoadIndex, TunnelRun};
 use crate::streets::{Levels, Street};
 use crate::{LEVEL_REACH, MeshData, ROAD_SINK, Shapers, palette, railways, shape};
@@ -52,7 +53,7 @@ const ARCH_CROWN: f64 = 0.5;
 const ARCH_PIECES: usize = 10;
 /// The ground under a bridge is looked at this often.
 const GROUND_STEP: f64 = 2.0;
-/// Piers and walls reach this far below the natural ground: channels may cut it (`channels`).
+/// Piers and walls are buried this far below the final, carved ground across their footing.
 const FOOTING: f64 = 2.5;
 /// Tunnels are this wide either side of their line, and at most this high.
 const TUNNEL_RADIUS: f64 = 5.0;
@@ -519,6 +520,7 @@ pub(crate) async fn build_all<M: ElevationModel>(
     (road, railways): (&RoadIndex, &RoadIndex),
     below: &Below<'_>,
     shapers: &Shapers<'_>,
+    ground: &Ground<'_>,
     projection: &LocalProjection,
     model: &mut M,
 ) -> MeshData {
@@ -540,7 +542,7 @@ pub(crate) async fn build_all<M: ElevationModel>(
         .map(|(surface, run)| (surface, run, Some(road)));
     for (surface, run, over) in own.chain(rails) {
         match surface {
-            Surface::Bridge => bridge(&mut mesh, &run, below, shapers, projection, model).await,
+            Surface::Bridge => bridge(&mut mesh, &run, below, ground),
             Surface::Tunnel => {
                 let over = over.map(|road| (road, projection, &mut *model));
                 tunnel(&mut mesh, &run, over).await;
@@ -701,22 +703,22 @@ fn across(line: &[CentrePoint], point: &CentrePoint) -> Option<(usize, f64)> {
     best.map(|b| (b.1, b.2))
 }
 
-async fn bridge<M: ElevationModel>(
-    mesh: &mut MeshData,
-    run: &[Section],
-    below: &Below<'_>,
-    shapers: &Shapers<'_>,
-    projection: &LocalProjection,
-    model: &mut M,
-) {
+fn bridge(mesh: &mut MeshData, run: &[Section], below: &Below<'_>, terrain: &Ground<'_>) {
     let path = Path::new(run);
     // The ground under the bridge, every few metres.
     let mut ground = Vec::new();
     let mut along = 0.0;
     while along <= path.length {
-        let point = path.at(along).centre;
-        let (lat, lon) = projection.unproject(point.position.0, point.position.1);
-        ground.push(model.elevation(lat, lon).await.ok());
+        let section = path.at(along);
+        ground.push(
+            [-section.left, 0.0, section.right]
+                .into_iter()
+                .filter_map(|across| {
+                    let (e, n) = aside(section.centre, across);
+                    terrain.at(e, n)
+                })
+                .reduce(f64::min),
+        );
         along += GROUND_STEP;
     }
     let ground_at = |along: f64| {
@@ -758,8 +760,8 @@ async fn bridge<M: ElevationModel>(
     if arched {
         arches(mesh, &path, &ground_at);
     } else {
-        piers(mesh, &path, &ground_at, &clear);
-        abutments(mesh, &path, &clear, shapers, projection, model).await;
+        piers(mesh, &path, &ground_at, &clear, terrain);
+        abutments(mesh, &path, &clear, terrain);
     }
 }
 
@@ -885,6 +887,7 @@ fn piers(
     path: &Path,
     ground_at: &dyn Fn(f64) -> Option<f64>,
     clear: &dyn Fn(f64, f64) -> bool,
+    terrain: &Ground<'_>,
 ) {
     let mut along = PILLAR_SPACING / 2.0;
     while along < path.length {
@@ -902,21 +905,19 @@ fn piers(
             {
                 let middle = (section.right - section.left) / 2.0;
                 let half = f64::midpoint(section.left, section.right) - PIER_INSET;
-                let cap = deck - 0.55;
-                pier(
-                    mesh,
-                    shifted(section.centre, middle),
-                    (PIER_HALF_LENGTH * 0.75, (half * 0.38).clamp(0.6, 1.3)),
-                    (ground - FOOTING, cap),
-                    *CONCRETE,
-                );
-                pier(
-                    mesh,
-                    shifted(section.centre, middle),
-                    (PIER_HALF_LENGTH, half),
-                    (cap, deck),
-                    *CONCRETE,
-                );
+                let centre = shifted(section.centre, middle);
+                let dimensions = (PIER_HALF_LENGTH * 0.75, (half * 0.38).clamp(0.6, 1.3));
+                if let Some(foot) = foundation(terrain, centre, dimensions) {
+                    let cap = deck - 0.55;
+                    pier(mesh, centre, dimensions, (foot - FOOTING, cap), *CONCRETE);
+                    pier(
+                        mesh,
+                        centre,
+                        (PIER_HALF_LENGTH, half),
+                        (cap, deck),
+                        *CONCRETE,
+                    );
+                }
             }
         }
         along += PILLAR_SPACING;
@@ -924,13 +925,11 @@ fn piers(
 }
 
 /// Solid bearing walls tie the slab ends into the hillside instead of leaving free edges.
-async fn abutments<M: ElevationModel>(
+fn abutments(
     mesh: &mut MeshData,
     path: &Path<'_>,
-    clear: &(dyn Fn(f64, f64) -> bool + Sync),
-    shapers: &Shapers<'_>,
-    projection: &LocalProjection,
-    model: &mut M,
+    clear: &dyn Fn(f64, f64) -> bool,
+    terrain: &Ground<'_>,
 ) {
     for along in [0.6, path.length - 0.6] {
         if along <= 0.0 || along >= path.length || !clear(along, 1.0) {
@@ -939,23 +938,7 @@ async fn abutments<M: ElevationModel>(
         let section = path.at(along);
         let centre = shifted(section.centre, (section.right - section.left) / 2.0);
         let half = f64::midpoint(section.left, section.right);
-        let ahead = forward(centre);
-        // Terrain is shaped around roads and interpolated between grid samples. Checking
-        // every foundation corner prevents the downhill side hanging above a cutting.
-        let mut ground = f64::MAX;
-        for length in [-0.6, 0.6] {
-            for width in [-half, half] {
-                let corner = offset(centre, width, 0.0);
-                let point = (
-                    corner[0] + ahead[0] * length,
-                    -corner[2] - ahead[2] * length,
-                );
-                if let Some(height) = crate::drawn_ground(model, projection, shapers, point).await {
-                    ground = ground.min(height);
-                }
-            }
-        }
-        if ground < f64::MAX {
+        if let Some(ground) = foundation(terrain, centre, (0.6, half)) {
             let deck = section.centre.elevation - DECK_THICKNESS;
             pier(
                 mesh,
@@ -966,6 +949,12 @@ async fn abutments<M: ElevationModel>(
             );
         }
     }
+}
+
+/// The complete footprint meets the rendered ground, including cuts between its corners.
+fn foundation(terrain: &Ground<'_>, centre: CentrePoint, dimensions: (f64, f64)) -> Option<f64> {
+    let direction = forward(centre);
+    terrain.lowest(centre.position, (direction[0], -direction[2]), dimensions)
 }
 
 /// A stone arch bridge's arches: piers between arched openings, the walls over the arches up

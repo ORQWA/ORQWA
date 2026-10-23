@@ -596,6 +596,9 @@ fn deck_piers(
                 let long = DECK_PIER_HALF_LENGTH;
                 let cap_wide = wide;
                 let wide = wide * 0.5;
+                let foot = heights
+                    .foundation((east, north), ahead, (long, wide))
+                    .unwrap_or(ground);
                 let corner = |forth: f64, aside: f64, height: f64| {
                     [
                         east + ahead.0 * forth + right.0 * aside - origin[0],
@@ -610,8 +613,8 @@ fn deck_piers(
                     ([(long, -wide), (-long, -wide)], (-right.0, -right.1)),
                 ] {
                     let corners = [
-                        corner(x0, y0, ground - 0.5),
-                        corner(x1, y1, ground - 0.5),
+                        corner(x0, y0, foot - 0.5),
+                        corner(x1, y1, foot - 0.5),
                         corner(x1, y1, top - 0.5),
                         corner(x0, y0, top - 0.5),
                     ];

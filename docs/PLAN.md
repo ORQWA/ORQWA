@@ -528,8 +528,13 @@ physically based materials and light, restyled group by group.
       junctions as well as terrain; preserve roads above tunnels (generator 14).
     - [x] Complete bridge ownership across mismatched tunnel/bridge tag boundaries:
       remove the extra approach slab at Alpenbrevet 174.17 km to go (generator 15).
-    - [ ] Alpenbrevet artifact review: floating supports,
-      railway transitions and bridge ends crossing junctions.
+    - [x] Ground pier and bearing foundations across their complete footprint on the final
+      shaped and carved terrain, including steep banks and channels (generator 16).
+    - [ ] Alpenbrevet railway transitions after Lukmanier before Airolo, followed by
+      bridge ends and protection crossing junctions.
+    - [ ] Follow-up Alpenbrevet images: skewed bridge at 178.51 km to go; terrain inside
+      tunnels and pavement on their roofs around 175.72 km to go; raised decks at 68.85 and
+      67.26 km to go; guardrails below the road around 33.52 km to go.
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over
       it and keeps it covered, not in the open in front of the hill; a stone ring round the
       opening ends the cutting leading to it, no ground closes the opening, and the hill over

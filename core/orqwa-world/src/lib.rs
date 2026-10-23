@@ -12,6 +12,7 @@ mod channels;
 mod climate;
 pub mod course_map;
 mod drape;
+mod foundations;
 mod horizon;
 mod junctions;
 mod landcover;
@@ -50,7 +51,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 15;
+pub const GENERATOR: u32 = 16;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -238,17 +239,12 @@ pub struct World {
     pub fallback_samples: usize,
 }
 
-/// The parts of the world built whole rather than by chunk: the road ridden, the bridges and
-/// tunnels and the railways.
-async fn whole<M: ElevationModel>(
-    projection: &LocalProjection,
-    (shapers, ways, below): (&Shapers<'_>, &Ways, &structures::Below<'_>),
-    model: &mut M,
-) -> World {
+/// Wearing surfaces are independent of terrain chunks. Structures follow the completed
+/// terrain so their foundations can reach the ground actually drawn.
+fn whole(shapers: &Shapers<'_>, ways: &Ways) -> World {
     let (road, rails) = (shapers.road, shapers.rails);
     World {
         road: road.mesh(ROAD_HALF_WIDTH, &streets::mouths(&ways.streets, road)),
-        structures: structures::build_all((road, rails), below, shapers, projection, model).await,
         railways: rails.mesh(railways::BED_M / 2.0, &[]),
         ..World::default()
     }
@@ -301,7 +297,7 @@ pub async fn generate<M: ElevationModel>(
         &road,
         &land,
     );
-    let mut world = whole(&projection, (&shapers, &ways, &below), model).await;
+    let mut world = whole(&shapers, &ways);
     let mouths = streets::mouths(&ways.streets, &road);
     let places: Vec<(String, (f64, f64))> = map
         .places
@@ -344,6 +340,15 @@ pub async fn generate<M: ElevationModel>(
         }
         progress(world.chunks.len(), total);
     }
+    world.structures = structures::build_all(
+        (&road, &ways.network.index),
+        &below,
+        &shapers,
+        &foundations::Ground(&world.chunks),
+        &projection,
+        model,
+    )
+    .await;
     if world.fallback_samples > 0 {
         warn!(
             samples = world.fallback_samples,
@@ -1018,6 +1023,27 @@ impl HeightGrid {
             return None;
         }
         cut_out(&self.portals.iter().collect::<Vec<_>>(), triangle)
+    }
+
+    /// Foundation height for a mapped bridge built in this chunk, over the whole footprint.
+    pub(crate) fn foundation(
+        &self,
+        centre: (f64, f64),
+        forward: (f64, f64),
+        dimensions: (f64, f64),
+    ) -> Option<f64> {
+        let reach = dimensions.0.hypot(dimensions.1);
+        let triangles = self
+            .triangles(
+                (centre.0 - reach, centre.1 - reach),
+                (centre.0 + reach, centre.1 + reach),
+            )
+            .into_iter()
+            .flat_map(|t| {
+                let corners = t.map(|(e, n)| [e, n, self.at(e, n)]);
+                self.cut_paving(corners).unwrap_or_else(|| vec![corners])
+            });
+        foundations::lowest(triangles, centre, forward, dimensions)
     }
 
     fn vertex(&self, i: isize, j: isize) -> f64 {

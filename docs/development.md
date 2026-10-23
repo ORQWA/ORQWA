@@ -95,8 +95,11 @@ that leave the ridden corridor still use per-section coverage and retain their v
 
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
-retain masonry parapets. Bearing foundations sample drawn ground at every corner, including
-the DEM grid interpolation and road shaping, to reach cuttings and sloping banks.
+retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks
+so piers and bearing walls meet the final ground triangles, including shaped banks and carved
+channels. Foundations clip terrain triangles to their complete rectangular footprint and
+extend below its lowest point; a centre sample or four corners can miss a downhill face or
+channel. Mapped-road piers use the same footprint calculation against their chunk's terrain.
 `BridgeMaterials` shares dedicated scanned cast-concrete maps and
 world-space projection across structure faces and exposed road backs; arches use masonry.
 Rebuild the bridge maps with `scripts/art.sh blender --background --factory-startup --python

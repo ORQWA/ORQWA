@@ -80,6 +80,23 @@ camera above and beside the transition, with vegetation and buildings omitted.
 |---|---|
 | ![Raised slab and duplicate railing at the tunnel exit](images/issues/alpenbrevet-bridge-transition-before.jpg) | ![Single road surface leading onto the bridge](images/issues/alpenbrevet-bridge-transition-after.jpg) |
 
+### Support foundations
+
+Generator 16 grounds piers and bearing walls on the completed terrain triangles across the
+whole footing. The controlled Rust-generated regression contains a narrow DEM ridge absent
+from the drawn grid; the old pier stopped 47.5 m above its visible ground. Cameras, terrain
+and application materials are identical in the comparison.
+
+| Floating pier | Foundation meets drawn ground |
+|---|---|
+| ![Pier ends above the terrain](images/issues/bridge-footing-before.jpg) | ![Pier reaches the drawn terrain](images/issues/bridge-footing-after.jpg) |
+
+The full saved Alpenbrevet course was also checked at the Furka bridge near 24.37 km to go
+(186.37 km from the start), including bearing walls at its ends. This focused geometry view
+omits vegetation and buildings:
+
+![Furka bridge foundations](images/issues/alpenbrevet-bridge-footing.jpg)
+
 ### Tunnel approaches
 
 Alpenbrevet Gold's Lukmanier approach at 34.97 km and the reverse view at 36.38 km.

@@ -128,3 +128,9 @@ Generator 15 extends bridge ownership across the complete aligned mapped feature
 short duplicate slabs at tunnel-to-bridge transitions where map nodes and resampled structure
 boundaries differ. A bridge leaving the ridden corridor retains its independent sections.
 Stored format stays at 3.
+
+Generator 16 grounds bridge supports against the completed terrain mesh rather than raw DEM
+samples or pre-carving helper heights. Structures are built after chunks; pier and bearing
+foundations use the lowest triangle intersection across their full footprint, including
+channels and steep banks. Mapped-road piers use the same footprint calculation in their chunk.
+Stored format remains 3: only generated geometry and build order change.

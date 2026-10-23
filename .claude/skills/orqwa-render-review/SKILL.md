@@ -123,6 +123,11 @@ length), check the tunnel-to-bridge transition from the side. Map and resampled 
 can change a metre apart: point-wise suppression can leave a short raised deck and railing
 across the approach. Use remaining course distance when the rider has jumped during review.
 
+For floating supports, compare feet with the final terrain triangles, including carved
+channels and steep banks. A raw DEM sample can land on a ridge absent from the drawn grid;
+checking only the centre or four corners can leave a downhill edge or channel exposed. Include
+both ridden/railway supports and mapped-road piers. Keep the same side camera in comparisons.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,
