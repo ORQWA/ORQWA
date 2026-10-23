@@ -51,7 +51,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 17;
+pub const GENERATOR: u32 = 18;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -160,7 +160,8 @@ impl Ways {
         road: &RoadIndex,
         model: &mut M,
     ) -> Self {
-        let streets = streets::lines(map, projection, model).await;
+        let mut streets = streets::lines(map, projection, model).await;
+        streets::connect(&mut streets, road);
         let network = railways::network(map, projection, road, model).await;
         let streams = water::streams(&map.waterways, projection, road);
         let pools = water::pools(&map.areas, projection, road);
@@ -173,7 +174,7 @@ impl Ways {
             islands: roundabouts::islands(map, projection),
             channels: channels::Channels::new(&streams, &pools, &streets),
             water_levels,
-            levels: streets::Levels::new(&streets),
+            levels: streets::Levels::new(&streets, &appearance::Index::new(map, projection)),
             streets,
             network,
             streams,
@@ -1394,6 +1395,7 @@ impl Shapers<'_> {
             .into_iter()
             .filter(|r| self.hills || r.2 != Surface::Tunnel)
             .collect();
+        found.extend(self.streets.bridges.near_shaped(east, north, reach));
         found.extend(
             self.rails
                 .near(east, north, reach)

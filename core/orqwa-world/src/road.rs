@@ -332,6 +332,23 @@ impl RoadIndex {
             })
     }
 
+    /// The ridden ground road's height at a connecting bridge end or protection edge.
+    /// A large height difference describes an overpass, not a junction.
+    pub(crate) fn ground_join(
+        &self,
+        point: (f64, f64),
+        height: f64,
+        tolerance: f64,
+    ) -> Option<f64> {
+        let ((distance, road_height, surface), index) =
+            self.nearest_segment(point.0, point.1, 24.0)?;
+        let half = self.segments[index].appearance.unwrap_or_default().width / 2.0;
+        (surface == Surface::Ground
+            && distance <= half + 0.3
+            && (height - road_height).abs() <= tolerance)
+            .then_some(road_height)
+    }
+
     /// Whether a complete mapped bridge follows the ridden road and overlaps its bridge.
     /// Ownership spans the feature: the map and resampled route can change structure tags at
     /// slightly different places, especially where a tunnel leads straight onto a bridge.

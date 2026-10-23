@@ -54,6 +54,8 @@ pub(crate) struct Street {
     max: (f64, f64),
     /// For bridges: the deck's height at both ends (the ground's there).
     deck: Option<(f64, f64)>,
+    /// Its deck was lowered to meet a ridden ground road; the bank must follow it too.
+    joined: bool,
     index: usize,
 }
 
@@ -169,10 +171,34 @@ pub(crate) async fn lines<M: ElevationModel>(
             min,
             max,
             deck,
+            joined: false,
             index,
         });
     }
     streets
+}
+
+/// Resolve complete bridge profiles before either terrain or wearing surfaces use them.
+pub(crate) fn connect(streets: &mut [Street], road: &RoadIndex) {
+    for street in streets {
+        let Some(ends) = street.deck else {
+            continue;
+        };
+        if street.owned_bridge(road) {
+            continue;
+        }
+        let lift = lift(street.class, street.index);
+        let meet = |point, height| {
+            road.ground_join(point, height + lift, 3.0)
+                .map_or(height, |road| road - lift - 0.02)
+        };
+        let joined = (
+            meet(street.points[0], ends.0),
+            meet(*street.points.last().expect("street has points"), ends.1),
+        );
+        street.joined = (joined.0 - ends.0).abs() > 1e-6 || (joined.1 - ends.1).abs() > 1e-6;
+        street.deck = Some(joined);
+    }
 }
 
 /// The paved streets and the unpaved tracks and paths within the chunk square `[origin,
@@ -375,13 +401,14 @@ fn ribbon(
     origin: [f64; 3],
 ) {
     if let Some(ends) = street.deck {
+        let lift = lift(street.class, street.index);
         drape::deck(
             mesh,
             run,
             half,
             street.appearance.color(),
             ends,
-            lift(street.class, street.index),
+            lift,
             total,
             (heights, below),
             origin,
@@ -523,13 +550,46 @@ type Piece = ((f64, f64), (f64, f64), f64);
 /// The paved streets on the ground, which level the ground across them (#116). Tracks and
 /// paths follow the land as it is; bridges stand above it.
 pub(crate) struct Levels {
+    /// Connected bridge profiles lower their approach banks without filling their valleys.
+    pub(crate) bridges: RoadIndex,
     /// Pieces of their centre lines, with their half widths.
     segments: Vec<Piece>,
     cells: HashMap<(i64, i64), Vec<usize>>,
 }
 
 impl Levels {
-    pub(crate) fn new(streets: &[Street]) -> Self {
+    pub(crate) fn new(streets: &[Street], appearance: &crate::appearance::Index) -> Self {
+        let lines: Vec<_> = streets
+            .iter()
+            .filter(|s| s.joined)
+            .map(|street| {
+                let (start, end) = street.deck.expect("joined bridge");
+                let total = along(&street.points).max(1e-6);
+                let mut distance = 0.0;
+                street
+                    .points
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &position)| {
+                        if i > 0 {
+                            let previous = street.points[i - 1];
+                            distance += (position.0 - previous.0).hypot(position.1 - previous.1);
+                        }
+                        crate::road::Centre {
+                            position,
+                            distance,
+                            elevation: start
+                                + (end - start) * distance / total
+                                + lift(street.class, street.index),
+                            surface: Surface::Bridge,
+                            mapped: true,
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        let mut bridges = RoadIndex::from_lines(&lines);
+        bridges.set_appearances(appearance);
         let mut segments = Vec::new();
         let mut cells: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
         for street in streets.iter().filter(|s| s.paved() && !s.on_bridge()) {
@@ -545,7 +605,11 @@ impl Levels {
                 }
             }
         }
-        Self { segments, cells }
+        Self {
+            bridges,
+            segments,
+            cells,
+        }
     }
 
     /// Whether there are no paved streets at all, so the ground is nowhere levelled for one.

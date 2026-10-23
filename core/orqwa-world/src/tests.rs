@@ -3348,6 +3348,99 @@ async fn non_ridden_bridges_are_solid_from_below() {
 }
 
 #[tokio::test]
+async fn bridge_junctions_meet_the_road_without_a_step_or_rail_across_it() {
+    for (terrain, joins) in [(501.5, true), (510.0, false)] {
+        let map = MapData {
+            roads: vec![orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 500.0), at(80.0, 500.0)],
+                structure: Some(StructureKind::Bridge),
+            }],
+            ..MapData::default()
+        };
+        let world = generate(
+            &route_north(&[]).await,
+            &mut Level(terrain),
+            &map,
+            &mut |_, _| {},
+        )
+        .await;
+        let vertices: Vec<_> = world
+            .chunks
+            .iter()
+            .flat_map(|c| {
+                c.streets
+                    .vertices
+                    .iter()
+                    .map(move |v| [v[0] + c.center[0], v[1], v[2] + c.center[2]])
+            })
+            .filter(|v| v[0].abs() < 2.5 && (v[2] + 500.0).abs() < 5.0)
+            .collect();
+        assert!(!vertices.is_empty(), "the connecting deck still exists");
+        if joins {
+            let deck = street_at(&world, 30.0, -500.0).expect("connected deck");
+            let ground = ground_at(&world, 30.0, -500.0).expect("approach bank");
+            assert!(
+                ground < deck,
+                "the adjusted deck must not disappear under its bank: {ground} >= {deck}"
+            );
+            assert!(
+                vertices.iter().all(|v| v[1] <= 500.1),
+                "deck or protection blocks the junction: {vertices:?}"
+            );
+        } else {
+            assert!(
+                vertices.iter().any(|v| v[1] > 511.0),
+                "a grade-separated overpass keeps its height and protection"
+            );
+        }
+        assert!(
+            world.chunks.iter().any(|c| c
+                .streets
+                .vertices
+                .iter()
+                .any(|v| v[0] + c.center[0] > 30.0 && v[1] > 501.0)),
+            "protection remains away from the junction"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_side_street_has_an_opening_in_bridge_protection_only_where_it_joins() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.0, 500.0), at(80.0, 500.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    for (terrain, joins) in [(500.0, true), (480.0, false)] {
+        let world = generate(&route, &mut Level(terrain), &map, &mut |_, _| {}).await;
+        let raised = |side: f32| {
+            world
+                .structures
+                .vertices
+                .iter()
+                .any(|v| v[0] * side > 3.0 && (v[2] + 500.0).abs() < 2.0 && v[1] > 500.1)
+        };
+        assert_eq!(
+            raised(1.0),
+            !joins,
+            "the joining side opens only at the deck's level"
+        );
+        assert!(raised(-1.0), "the opposite edge keeps its protection");
+    }
+}
+
+#[tokio::test]
 async fn bridges_of_other_streets_stand_on_piers() {
     use orqwa_osm::{Road, RoadClass};
 

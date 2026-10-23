@@ -139,3 +139,10 @@ Generator 17 gives each continuous railway/road crossing one overpass, underpass
 clearance, including adjoining samples whose structure tags differ. Parallel-track coupling
 also rejects vertically separated lines. This removes conflicting elevation pins and the
 resulting railway ramps; stored format remains 3.
+
+Generator 18 joins mapped bridge endpoints to the ridden ground road when their height
+difference is within 3 m. Kerbs, parapets and steel railings leave openings at ground-street
+connections within 0.5 m of deck level. Exact short street segments define these openings
+and support clearance, preserving the opposite edge and grade-separated crossings. Slab
+sides and undersides remain closed. Connected profiles also lower their approach banks before
+chunk generation, preventing the adjusted pavement from being buried. Stored format remains 3.

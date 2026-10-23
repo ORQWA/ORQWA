@@ -99,6 +99,13 @@ an underpass must stay below the road across its bridge end. Parallel tracks onl
 elevation when their independently estimated levels are within 6 m, so vertically separated
 railways cannot pull one another into abrupt ramps. True level crossings retain their pins.
 
+Generator 18 brings mapped bridge endpoints within 3 m of a connecting ridden ground road
+to that road's elevation. Kerbs and railings open where a ground street meets a deck within
+0.5 m of its height; exact short street segments keep these gaps off the opposite edge.
+Separate overpasses retain their height and protection. Slab faces stay closed below the
+wearing surface, including at junctions and true ends. Endpoint profiles are resolved before
+chunk generation, and the lowered approach banks follow them so they cannot bury the deck.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

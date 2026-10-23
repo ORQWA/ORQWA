@@ -133,6 +133,11 @@ For railway transitions, check Alpenbrevet around 102.99 and 98.74 km to go (107
 clearance, with gentle approaches in both tracks. Nearby tracks at different vertical levels
 must not share elevation pins. Retain true level crossings and road/rail underpass clearance.
 
+At bridge junctions, check the end height and the kerb and railing opening from the ridden
+road. Compare a connection at deck level with an overpass at a different height; only the
+former opens. Check both edges of a ridden bridge with a side street: the opposite edge must
+stay protected, and the slab underside must remain closed through the opening.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

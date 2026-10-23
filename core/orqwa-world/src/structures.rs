@@ -95,15 +95,43 @@ const PIER_SHIFT: f64 = PILLAR_SPACING / 2.0;
 /// Index cell size of the streets in [`Below`].
 const BELOW_CELL: f64 = 10.0;
 
-/// Street points with the streets' half widths, by index cell.
-type StreetPoints = HashMap<(i64, i64), Vec<(f64, f64, f64)>>;
+/// Short street segments retain their exact footprints at junctions and below piers.
+#[derive(Clone, Copy)]
+struct StreetSegment {
+    a: (f64, f64),
+    b: (f64, f64),
+    half: f64,
+}
+
+impl StreetSegment {
+    fn direction(self) -> (f64, f64) {
+        let delta = (self.b.0 - self.a.0, self.b.1 - self.a.1);
+        let length = delta.0.hypot(delta.1).max(1e-9);
+        (delta.0 / length, delta.1 / length)
+    }
+
+    fn distance(self, point: (f64, f64)) -> f64 {
+        let direction = self.direction();
+        let along = ((point.0 - self.a.0) * direction.0 + (point.1 - self.a.1) * direction.1)
+            .clamp(0.0, distance(self.a, self.b));
+        distance(
+            point,
+            (
+                self.a.0 + along * direction.0,
+                self.a.1 + along * direction.1,
+            ),
+        )
+    }
+}
+
+type StreetPoints = HashMap<(i64, i64), Vec<StreetSegment>>;
 
 /// What runs on the ground under bridges — the road ridden, the railways and the other streets —
 /// for piers and walls to keep off it (#98).
 pub(crate) struct Below<'a> {
     road: &'a RoadIndex,
     railways: &'a RoadIndex,
-    /// Street points, a few metres apart.
+    /// Street segments, a few metres long.
     streets: StreetPoints,
 }
 
@@ -111,12 +139,18 @@ impl<'a> Below<'a> {
     pub(crate) fn new(road: &'a RoadIndex, railways: &'a RoadIndex, streets: &[Street]) -> Self {
         let mut cells = StreetPoints::new();
         for street in streets.iter().filter(|s| !s.on_bridge()) {
-            for &(east, north) in street.points() {
-                cells.entry(below_cell(east, north)).or_default().push((
-                    east,
-                    north,
-                    street.half_width(),
-                ));
+            for pair in street.points().windows(2) {
+                let segment = StreetSegment {
+                    a: pair[0],
+                    b: pair[1],
+                    half: street.half_width(),
+                };
+                let a = below_cell(pair[0].0, pair[0].1);
+                let b = below_cell(pair[1].0, pair[1].1);
+                cells.entry(a).or_default().push(segment);
+                if b != a {
+                    cells.entry(b).or_default().push(segment);
+                }
             }
         }
         Self {
@@ -129,6 +163,34 @@ impl<'a> Below<'a> {
     /// The road ridden.
     pub(crate) fn road(&self) -> &RoadIndex {
         self.road
+    }
+
+    /// A ground street meeting this edge at deck level needs an opening in its protection.
+    pub(crate) fn joins(
+        &self,
+        point: (f64, f64),
+        deck: f64,
+        ground: f64,
+        heading: (f64, f64),
+    ) -> bool {
+        if self.road.ground_join(point, deck, 0.5).is_some() {
+            return true;
+        }
+        if (ground - deck).abs() > 0.5 {
+            return false;
+        }
+        self.nearby_streets(point).any(|segment| {
+            let direction = segment.direction();
+            segment.distance(point) <= segment.half + 0.3
+                && (heading.0 * direction.0 + heading.1 * direction.1).abs() < 0.8
+        })
+    }
+
+    fn nearby_streets(&self, point: (f64, f64)) -> impl Iterator<Item = &StreetSegment> {
+        let (ce, cn) = below_cell(point.0, point.1);
+        (ce - 1..=ce + 1).flat_map(move |x| {
+            (cn - 1..=cn + 1).flat_map(move |y| self.streets.get(&(x, y)).into_iter().flatten())
+        })
     }
 
     /// Whether a way passes at `position` (within `margin` of its edge) under a deck whose
@@ -156,17 +218,8 @@ impl<'a> Below<'a> {
         if ground >= low {
             return false;
         }
-        let (ce, cn) = below_cell(east, north);
-        (ce - 1..=ce + 1).any(|x| {
-            (cn - 1..=cn + 1).any(|y| {
-                self.streets.get(&(x, y)).is_some_and(|points| {
-                    // Points lie a few metres apart: allow half a step along.
-                    points
-                        .iter()
-                        .any(|&(e, n, half)| (e - east).hypot(n - north) < half + margin + 1.5)
-                })
-            })
-        })
+        self.nearby_streets((east, north))
+            .any(|segment| segment.distance((east, north)) < segment.half + margin)
     }
 }
 
@@ -756,7 +809,18 @@ fn bridge(mesh: &mut MeshData, run: &[Section], below: &Below<'_>, terrain: &Gro
         && path.length <= ARCH_BRIDGE_LENGTH
         && (MIN_PILLAR_HEIGHT..=ARCH_BRIDGE_HEIGHT).contains(&height);
     let color = if arched { *STONE } else { *CONCRETE };
-    deck(mesh, run, color, arched);
+    let opening = |section: Section, side: f64| {
+        let point = aside(section.centre, section.edge(side));
+        terrain.at(point.0, point.1).is_some_and(|ground| {
+            below.joins(
+                point,
+                section.centre.elevation,
+                ground,
+                section.centre.direction,
+            )
+        })
+    };
+    deck(mesh, run, color, arched, &opening);
     if arched {
         arches(mesh, &path, &ground_at);
     } else {
@@ -767,11 +831,18 @@ fn bridge(mesh: &mut MeshData, run: &[Section], below: &Below<'_>, terrain: &Gro
 
 /// The deck: its sides from below the road up to the parapets, the parapets' inner faces and
 /// tops, and its underside.
-fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4], arched: bool) {
+fn deck(
+    mesh: &mut MeshData,
+    run: &[Section],
+    color: [f32; 4],
+    arched: bool,
+    opening: &dyn Fn(Section, f64) -> bool,
+) {
     let barrier = if arched { PARAPET_HEIGHT } else { KERB_HEIGHT };
     for pair in run.windows(2) {
         let (a, b) = (pair[0], pair[1]);
         for side in [-1.0, 1.0] {
+            let open = opening(a, side) || opening(b, side);
             let outer = (a.edge(side), b.edge(side));
             let inner = (
                 outer.0 - PARAPET_THICKNESS * side,
@@ -783,11 +854,14 @@ fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4], arched: bool) {
                 mesh,
                 (a.centre, b.centre),
                 outer,
-                (-DECK_THICKNESS, barrier),
+                (-DECK_THICKNESS, if open { -0.04 } else { barrier }),
                 outward,
                 color,
             );
             // Parapet: inner face and top.
+            if open {
+                continue;
+            }
             wall(
                 mesh,
                 (a.centre, b.centre),
@@ -825,7 +899,7 @@ fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4], arched: bool) {
         );
     }
     if !arched {
-        railings(mesh, &Path::new(run));
+        railings(mesh, &Path::new(run), opening);
     }
     for (end, facing) in [(run.first(), -1.0), (run.last(), 1.0)] {
         if let Some(s) = end {
@@ -845,10 +919,13 @@ fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4], arched: bool) {
 }
 
 /// Open steel protection lets a railway's narrow deck read as a bridge rather than a wall.
-fn railings(mesh: &mut MeshData, path: &Path<'_>) {
+fn railings(mesh: &mut MeshData, path: &Path<'_>, opening: &dyn Fn(Section, f64) -> bool) {
     for side in [-1.0, 1.0] {
         for pair in path.run.windows(2) {
             let (a, b) = (pair[0], pair[1]);
+            if opening(a, side) || opening(b, side) {
+                continue;
+            }
             for height in [0.65, RAIL_HEIGHT] {
                 beam(
                     mesh,
@@ -861,10 +938,16 @@ fn railings(mesh: &mut MeshData, path: &Path<'_>) {
         }
         let mut along = 0.0;
         while along < path.length {
-            railing_post(mesh, path.at(along), side);
+            let section = path.at(along);
+            if !opening(section, side) {
+                railing_post(mesh, section, side);
+            }
             along += POST_SPACING;
         }
-        railing_post(mesh, path.at(path.length), side);
+        let section = path.at(path.length);
+        if !opening(section, side) {
+            railing_post(mesh, section, side);
+        }
     }
 }
 

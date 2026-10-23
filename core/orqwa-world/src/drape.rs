@@ -448,16 +448,18 @@ pub(crate) fn deck(
     // The wearing course carries road-profile metadata; railings appended afterwards
     // retain their structure tints (alpha zero, outside the road-style flag range).
     mesh.colors.resize(mesh.vertices.len(), color);
-    deck_rails(mesh, run, half, &top_at, total, origin);
+    deck_rails(mesh, run, half, &top_at, total, (heights, below), origin);
 }
 
 /// Slim edge beams and open protection replace an unguarded slab on other mapped roads.
+#[allow(clippy::too_many_arguments)]
 fn deck_rails(
     mesh: &mut MeshData,
     run: &[((f64, f64), f64)],
     half: f64,
     top_at: &dyn Fn(f64) -> f64,
     total: f64,
+    (heights, below): (&HeightGrid, &Below),
     origin: [f64; 3],
 ) {
     let mut detail = MeshData::default();
@@ -478,8 +480,26 @@ fn deck_rails(
             -north + de / length * across - origin[2],
         ]
     };
+    let opening = |i: usize, side: f64| {
+        let edge = edge(i, side, 0.0);
+        let point = (edge[0] + origin[0], -edge[2] - origin[2]);
+        let (a, b) = (
+            run[i.saturating_sub(1)].0,
+            run[(i + 1).min(run.len() - 1)].0,
+        );
+        let length = (b.0 - a.0).hypot(b.1 - a.1).max(1e-9);
+        below.joins(
+            point,
+            top_at(run[i].1),
+            heights.at(point.0, point.1),
+            ((b.0 - a.0) / length, (b.1 - a.1) / length),
+        )
+    };
     for side in [-1.0, 1.0] {
         for i in 1..run.len() {
+            if opening(i - 1, side) || opening(i, side) {
+                continue;
+            }
             for height in [0.65, 1.1] {
                 structures::beam(
                     &mut detail,

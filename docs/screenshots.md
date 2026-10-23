@@ -144,6 +144,16 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Bridge junctions
+
+Controlled offline world-generator fixture: a mapped bridge with terrain endpoints 1.5 m
+above the ridden road. Its connected end now meets the road without a step or railing
+across it; the approach bank follows the deck. Separate overpasses keep their protection.
+
+| Before | After |
+|---|---|
+| ![Raised bridge end blocks the junction](images/issues/bridge-junction-before.jpg) | ![Bridge end meets the road with open protection](images/issues/bridge-junction-after.jpg) |
+
 ### Road profiles
 
 Road hierarchy and paving (R119, [ADR 0031](adr/0031-road-appearance.md)) use the same
