@@ -22,7 +22,7 @@ use crate::{HeightGrid, MeshData, ROAD_HALF_WIDTH};
 const RAIL_SPAN: f64 = 4.0;
 const RAIL_OFFSET: f64 = ROAD_HALF_WIDTH + 0.6;
 /// The ground this far beyond the road's edge, this much below the road, calls for a rail.
-const DROP_PROBE: f64 = ROAD_HALF_WIDTH + 4.5;
+const DROP_PROBE: f64 = ROAD_HALF_WIDTH + 8.5;
 const RAIL_DROP: f64 = 2.0;
 /// Delineator posts stand this far apart and this far from the centre line, on both sides.
 const POST_SPACING: f64 = 50.0;
@@ -168,6 +168,44 @@ pub(crate) fn place(
     signs(&mut props, low, high, roadside, chunk_origin);
     power_lines(&mut props, low, high, roadside, chunk_origin);
     props
+}
+
+/// Protection belongs to its road station's chunk, but its footing may cross that boundary.
+/// The owner grid only has coarse border samples there; use the neighbour's drawn terrain.
+#[allow(clippy::cast_possible_truncation)] // f32 instance buffers
+pub(crate) fn ground_protection(chunks: &mut [crate::TerrainChunk]) {
+    let terrain = crate::foundations::Ground(chunks);
+    let mut corrections = Vec::new();
+    for (chunk_index, chunk) in chunks.iter().enumerate() {
+        for name in [
+            "guard_rail",
+            "guard_rail_start",
+            "guard_rail_end",
+            "snow_pole",
+            "delineator",
+        ] {
+            let Some(buffer) = chunk.props.models.get(name) else {
+                continue;
+            };
+            for (index, transform) in buffer.as_chunks::<12>().0.iter().enumerate() {
+                if transform[3].abs().max(transform[11].abs()) <= crate::CHUNK_SIZE as f32 / 2.0 {
+                    continue;
+                }
+                let east = f64::from(transform[3] + chunk.center[0]);
+                let north = -f64::from(transform[11] + chunk.center[2]);
+                if let Some(height) = terrain.at(east, north) {
+                    corrections.push((chunk_index, name, index, height as f32 - chunk.center[1]));
+                }
+            }
+        }
+    }
+    for (chunk, name, index, height) in corrections {
+        chunks[chunk]
+            .props
+            .models
+            .get_mut(name)
+            .expect("existing protection")[index * 12 + 7] = height;
+    }
 }
 
 /// Where a power line's pole stands at a station, if one does: along country roads in about

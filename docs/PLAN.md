@@ -541,7 +541,9 @@ physically based materials and light, restyled group by group.
     - [x] Terrain inside tunnels and pavement on their roofs around 175.72 km to go:
       clip surrounding terrain and paving along the complete tube, and give aligned
       mapped ground approaches one surface owner (generator 20).
-    - [ ] Guardrails below the road around 33.52 km to go.
+    - [x] Guardrails below the road around 33.52 km to go: preserve the ridden road's
+      verge datum beside a lower parallel railway, keeping protection grounded at road
+      level and the railway at its separate elevation (generator 21).
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over
       it and keeps it covered, not in the open in front of the hill; a stone ring round the
       opening ends the cutting leading to it, no ground closes the opening, and the hill over

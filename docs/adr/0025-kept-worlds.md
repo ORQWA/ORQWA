@@ -159,3 +159,12 @@ extend beyond the ring. Aligned mapped ground approaches overlapping a ridden tu
 to that route's pavement, preventing duplicate approach ribbons from painting its roof.
 Interior cuts extend below the tube floor. Compressed railway underpasses retain their road
 embankment cover, and distinct surface crossings above remain. Stored format remains 3.
+
+Generator 21 gives the ridden ground road priority over railway terrain shaping inside its
+width-adjusted verge. A nearby lower track can no longer pull down the shoulder and the
+protection placed on it. The bank blends between the protected verge and the separate railway
+bed rather than dropping at a hard boundary. Railway shaping still applies under bridges;
+track elevations are unchanged. Protection crossing its station's chunk boundary uses the
+neighbour's final terrain for its footing height instead of the owner's coarse border samples.
+Drop detection probes beyond the shaped shoulder to keep continuous cliff protection.
+Stored format remains 3.

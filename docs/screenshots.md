@@ -144,6 +144,17 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Roadside protection beside a lower railway
+
+Alpenbrevet Gold at 33.52 km to go (177.22 km from the start), using full saved inputs and
+the actual guardrail and post instances. Generator 21 preserves the road's verge datum
+beside the lower railway, so its protection meets the ground at carriageway height.
+Buildings and vegetation are omitted; the cameras are identical.
+
+| Before | After |
+|---|---|
+| ![Guardrails below the road](images/issues/alpenbrevet-low-guardrails-before.jpg) | ![Grounded protection at the road edge](images/issues/alpenbrevet-low-guardrails-after.jpg) |
+
 ### Tunnel interior and roof
 
 Full saved Alpenbrevet Gold inputs around 175.72 km to go (35.02 km from the start), using

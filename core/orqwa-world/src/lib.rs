@@ -51,7 +51,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 20;
+pub const GENERATOR: u32 = 21;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -343,6 +343,7 @@ pub async fn generate<M: ElevationModel>(
         }
         progress(world.chunks.len(), total);
     }
+    props::ground_protection(&mut world.chunks);
     world.structures = structures::build_all(
         (&road, &ways.network.index),
         &below,
@@ -1401,12 +1402,43 @@ impl Shapers<'_> {
             .into_iter()
             .filter(|r| self.hills || r.2 != Surface::Tunnel)
             .collect();
+        // The ridden carriageway and its verge have one datum. A lower parallel railway
+        // may cut its own bank, but must not drag the road's shoulder and protection down.
+        let ground_road = found
+            .iter()
+            .filter(|r| r.2 == Surface::Ground)
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+            .copied();
         found.extend(self.streets.bridges.near_shaped(east, north, reach));
         found.extend(
             self.rails
                 .near(east, north, reach)
                 .into_iter()
-                .filter(|r| r.2 != Surface::Tunnel),
+                .filter(|r| r.2 != Surface::Tunnel)
+                .map(|mut rail| {
+                    if let Some((distance, height, _)) = ground_road
+                        && height > rail.1
+                    {
+                        // Include the protection's footing and the fine triangles
+                        // touching it, beyond the margin needed by the asphalt alone.
+                        let roadside = (distance - VERGE - 1.0).max(0.0);
+                        let trackside =
+                            (rail.0 - railways::BED_M / 2.0 - FINE * std::f64::consts::SQRT_2)
+                                .max(0.0);
+                        let share = if roadside + trackside > 1e-9 {
+                            roadside / (roadside + trackside)
+                        } else {
+                            0.0
+                        };
+                        let blend = share * share * (3.0 - 2.0 * share);
+                        let level = height + (rail.1 - height) * blend;
+                        // Ease the railway cutting between the protected road verge and
+                        // its own bed, rather than dropping it at a hard distance threshold.
+                        let room = (rail.0 - VERGE).max(0.0);
+                        rail.1 = rail.1.max(level - room * CUT_SLOPE);
+                    }
+                    rail
+                }),
         );
         found
     }

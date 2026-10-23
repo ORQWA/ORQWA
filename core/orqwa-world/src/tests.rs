@@ -5136,6 +5136,47 @@ async fn guard_rails_line_the_side_where_the_ground_falls_away() {
 }
 
 #[tokio::test]
+async fn a_lower_parallel_railway_does_not_pull_the_road_verge_and_protection_down() {
+    struct Cliff;
+    impl ElevationModel for Cliff {
+        fn elevation(
+            &mut self,
+            _lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46f64.to_radians().cos();
+            std::future::ready(Ok(500.0 + 2.0 * east))
+        }
+    }
+    let map = MapData {
+        roads: vec![road_north()],
+        railways: vec![railway(&[(-20.0, 0.0), (-20.0, 1000.0)], None)],
+        ..MapData::default()
+    };
+    // The road lies on a chunk boundary: protection stands in the neighbouring chunk,
+    // whose fine terrain must be used instead of extrapolating the owner's coarse border.
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Cliff, &map, &mut |_, _| {}).await;
+    let rails = along_middle(&props_of(&world, "guard_rail"));
+    assert!(
+        rails.len() >= 190,
+        "the cliff still needs continuous protection"
+    );
+    for p in &rails {
+        assert!(p[1] >= 499.5, "guard rail below the ridden road: {p:?}");
+        let ground = ground_at(&world, p[0] as f32, -p[2] as f32).expect("verge under the rail");
+        assert!(
+            (f64::from(ground) - p[1]).abs() < 0.05,
+            "protection stays grounded"
+        );
+    }
+    assert!(
+        rail_bed(&world).iter().all(|v| v[1] < 470.0),
+        "the separate lower railway keeps its elevation"
+    );
+}
+
+#[tokio::test]
 async fn level_ground_gets_no_guard_rails() {
     let map = MapData {
         roads: vec![road_north()],

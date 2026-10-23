@@ -149,6 +149,13 @@ nearby lower way can cut terrain back into the tube farther inside. Check roof p
 above the mouth as well. Retain the hillside outside the shell and distinct roads crossing
 above; clipping must follow the complete curved road or bundled railway tube.
 
+At Alpenbrevet's 33.52 km-to-go protection report (177.22 km from the start), render the
+actual guardrail instances from the valley side. A lower parallel railway must not pull
+down the ridden shoulder, posts or draped paving. Check that the rails meet their ground
+at carriageway height and that the separate railway keeps its original lower elevation.
+Include a road on a chunk boundary: its protection can stand in a neighbour and must use
+that neighbour's refined ground rather than coarse border extrapolation from its owner.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

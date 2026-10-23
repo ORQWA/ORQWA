@@ -123,6 +123,17 @@ strips cannot show through the road. Railway sections compressed below a ridden-
 embankment retain that cover rather than cutting the uncompressed ellipse out of it.
 Distinct surface roads crossing above remain visible.
 
+Generator 21 keeps the ridden ground road's width-adjusted verge at its own datum before
+railway terrain shaping. On Alpenbrevet's Furka climb, a lower parallel track's cutting
+previously pulled down that shoulder, taking guardrails, posts and draped pavement with it.
+The railway cutting blends smoothly between the protected road verge and the separate track
+bed, retaining both elevations. Railway shaping still applies below road bridges. Protection remains
+on the generated ground; its transform is not lifted independently of its footing. Protection
+whose footing crosses its road station's chunk boundary is grounded against the neighbour's
+completed terrain triangles, rather than the owner's coarse border interpolation.
+Drop detection looks beyond that shaped verge so a flat shoulder does not create short
+gaps and sloping rail ends beside a continuous cliff.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks
