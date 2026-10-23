@@ -751,8 +751,8 @@ func _plants(buffer: PackedFloat32Array, flowers: bool, range_m: float) -> Multi
 
 
 func _follow_ride(state: Dictionary, delta: float) -> void:
-	var east: float = state["x"]
-	var north: float = state["y"]
+	var east: float = state["rider_x"]
+	var north: float = state["rider_y"]
 	var elevation: float = state["elevation_m"]
 	var heading: float = state["heading"]
 	var grade: float = state["grade"]
@@ -916,15 +916,14 @@ func _set_distance(factor: float) -> void:
 	_camera.far = maxf(VISIBILITY_RANGE * factor * 1.6, HORIZON_RANGE)
 
 
-## Puts the ghost rider (`ride_state()["ghost"]`) on the road, a little to the left so it never
-## merges with the rider when both are side by side.
+## The core places ghosts toward the centre of the rider's local traffic lane.
 func _place_ghost(ghost: Variant, delta: float) -> void:
 	if ghost == null:
 		_ghost.hide()
 		return
 	var info: Dictionary = ghost
-	var east: float = info["x"]
-	var north: float = info["y"]
+	var east: float = info["rider_x"]
+	var north: float = info["rider_y"]
 	var elevation: float = info["elevation_m"]
 	var heading: float = info["heading"]
 	var grade: float = info["grade"]
@@ -941,10 +940,7 @@ func _place_ghost(ghost: Variant, delta: float) -> void:
 	# The motion's pitch follows the grade as a bike settles into it, without jolts at steps.
 	var pitch: Basis = Basis(Vector3.RIGHT, _motion.pitch)
 	var roll: Basis = Basis(Vector3.FORWARD, _ghost_lean)
-	var left: Vector3 = yaw * Vector3.LEFT
-	_ghost.transform = Transform3D(
-		yaw * pitch * roll, Vector3(east, elevation, -north) + left * 1.1
-	)
+	_ghost.transform = Transform3D(yaw * pitch * roll, Vector3(east, elevation, -north))
 	_ghost.animate(delta, 85.0 if speed_kmh > 1.0 else 0.0, speed_kmh)
 	_ghost.show()
 

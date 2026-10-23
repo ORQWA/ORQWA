@@ -140,6 +140,7 @@ fn godot(engine: &EngineCredits) -> String {
 
 /// Others' models and data in the app (docs/CREDITS.md).
 fn assets() -> String {
+    let territory_license = include_str!("../../orqwa-osm/data/country-coder-LICENSE.md");
     let mut text = String::from(
         "Rider bodies: derived from the \"primitive\" bodies of Human Base Meshes v1.4.1 by \
          Blender Studio and contributors, CC0 1.0 (https://www.blender.org/download/demo-files/). \
@@ -163,6 +164,11 @@ fn assets() -> String {
         "\nCountry codes (ISO 3166-1): from Debian's iso-codes \
          (https://salsa.debian.org/iso-codes-team/iso-codes), under the GNU Lesser General \
          Public License, version 2.1 or later (the text is with FFmpeg's notice).\n",
+    );
+    let _ = write!(
+        text,
+        "\n\nTraffic territory outlines: country-coder contributors, ISC. \
+        https://github.com/rapideditor/country-coder\n\n{territory_license}"
     );
     text
 }
@@ -232,6 +238,9 @@ mod tests {
         let assets = text_of(&notices, Part::Assets);
         assert!(assets.contains("Human Base Meshes v1.4.1"));
         assert!(assets.contains("CC0 1.0"));
+        assert!(assets.contains(include_str!(
+            "../../orqwa-osm/data/country-coder-LICENSE.md"
+        )));
         for line in ATTRIBUTION {
             assert!(assets.contains(line), "{line}");
         }

@@ -132,6 +132,11 @@ edge. Keep entrances and the inner walking strip clear; review their ground cont
 
 ## Reviewing a render
 
+For rider road placement (R120), check both traffic sides, narrow paths, bends and a road
+ridden in both directions. The rider and ghost must stay inside the drawn carriageway on
+the local side; chase, first-person and drone cameras follow that lane. The original route
+and minimap remain centred. Widths come from the drawn mesh, including kept worlds.
+
 Rivers (R118, ADR 0030) use shared longitudinal profiles, independent of bank and road
 heights. Check level cross-sections, a submerged bed, continuity across chunks and water
 passing beneath bridges. Review a steep valley from road height and above, plus a lake.

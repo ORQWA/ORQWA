@@ -2578,7 +2578,7 @@ impl OrqwaApp {
 
     /// The ride state: `{elapsed_s, distance_m, speed_kmh, power, cadence, heart_rate,
     /// watts_per_kg, power_zone, heart_rate_zone, metrics, workout}`, and on a route also
-    /// `{remaining_m, grade, elevation_m, x, y, heading, curvature, ghost, climb}`; sensor
+    /// `{remaining_m, grade, elevation_m, x, y, rider_x, rider_y, heading, curvature, ghost, climb}`; sensor
     /// values and what derives from them are `null` when unknown. Empty when not riding.
     /// `workout` is `{target_power_w, target_heart_rate, intensity_pct, progress}` in a
     /// workout, else `null`: the power `null` in a free step, the heart rate `null` but in a
@@ -2589,6 +2589,8 @@ impl OrqwaApp {
     /// test), else `null`. `x`/`y` are metres east/north of the route start, as in `track()`;
     /// `heading` is the direction of travel in radians clockwise from north, `curvature` how
     /// sharply the road bends there (1 / radius, positive to the right).
+    /// `rider_x`/`rider_y` place the avatar in the local traffic lane; `x`/`y` stay on the
+    /// route centre line for the map. The ghost has both pairs too.
     #[func]
     fn ride_state(&self) -> VarDictionary {
         let Some(app) = self.app.as_ref() else {
@@ -2630,6 +2632,7 @@ impl OrqwaApp {
             return dict;
         };
         let (x, y) = LocalProjection::for_route(route).project(position.lat, position.lon);
+        let (rider_x, rider_y) = app.rider_position(state.distance, false).unwrap_or((x, y));
         dict.extend_dictionary(
             &vdict! {
                 "remaining_m" => state.remaining.map_or(0.0, |r| r.0),
@@ -2637,16 +2640,21 @@ impl OrqwaApp {
                 "elevation_m" => position.elevation.0,
                 "x" => x,
                 "y" => y,
+                "rider_x" => rider_x,
+                "rider_y" => rider_y,
                 "heading" => position.heading,
                 "curvature" => position.curvature,
                 "ghost" => &app.ghost_state().map_or_else(Variant::nil, |g| {
                     let at = route.position(g.distance);
                     let (gx, gy) = LocalProjection::for_route(route).project(at.lat, at.lon);
+                    let (ghost_x, ghost_y) = app.rider_position(g.distance, true).unwrap_or((gx, gy));
                     vdict! {
                         "name" => g.name.as_str(),
                         "distance_m" => g.distance.0,
                         "x" => gx,
                         "y" => gy,
+                        "rider_x" => ghost_x,
+                        "rider_y" => ghost_y,
                         "elevation_m" => at.elevation.0,
                         "heading" => at.heading,
                         "curvature" => at.curvature,

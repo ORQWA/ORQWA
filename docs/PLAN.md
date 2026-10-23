@@ -593,6 +593,10 @@ physically based materials and light, restyled group by group.
   - [x] Rider and bike motion (R91, `RiderMotion`): pitch and lean as damped springs, standing
     on the pedals on steep climbs and in sprints with the bike rocking under the rider, sway
     with effort, cranks level when coasting
+  - [x] Local traffic lanes (R120): rider and ghosts keep right or follow left-hand traffic
+    at the route's location. Placement follows the drawn carriageway width, including narrow
+    paths and kept worlds; country-border tiles are bundled for offline riding. Recording,
+    physics, video synchronization and minimap coordinates stay on the original route.
   - [ ] Props by the road (R92), group by group:
     - [x] Roadside safety: guard rails where the ground falls away (start and end spans, gaps
       at junctions), delineator posts on country roads, snow poles above 1,300 m

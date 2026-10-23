@@ -75,69 +75,20 @@ impl Osm {
         let Some(&origin) = points.first() else {
             return Ok(Vec::new());
         };
-        let flat = Flat::at(origin);
-        let samples = samples(points, flat);
+        let samples = samples(points, Flat::at(origin));
+        let places: Vec<_> = samples.iter().map(|s| s.position).collect();
+        let (found, mut labels) = self.locate_countries(&places).await?;
+        let passed = passed(
+            samples
+                .iter()
+                .zip(&found)
+                .map(|(s, code)| (s.length, code.as_deref())),
+        );
 
-        // Coarse borders, from tiles around the route until each place's nearest border is
-        // surely among them.
-        let (south, north, west, east) = bounds(points);
-        let (x0, y0) = tile_of(COARSE_ZOOM, north, west);
-        let (x1, y1) = tile_of(COARSE_ZOOM, south, east);
-        let mut area = TileArea { x0, y0, x1, y1 };
-        let mut coarse = CountryData::default();
-        let mut loaded = BTreeSet::new();
-        let mut found = Vec::new();
-        for ring in 0..=MAX_RINGS {
-            let wanted: BTreeSet<_> = area.tiles().difference(&loaded).copied().collect();
-            self.load_countries(COARSE_ZOOM, &wanted, &mut coarse)
-                .await?;
-            loaded.extend(wanted);
-            let borders = flatten(&coarse.borders, flat);
-            let edges = area.edges(COARSE_ZOOM, flat);
-            found = samples.iter().map(|s| nearest(s.at, &borders)).collect();
-            let unsure = samples.iter().zip(&found).any(|(s, near)| {
-                near.as_ref()
-                    .is_none_or(|near| near.distance > edges.inside(s.at))
-            });
-            if !unsure || ring == MAX_RINGS {
-                break;
-            }
-            area = area.grown(COARSE_ZOOM);
-        }
-
-        // Fine borders where the route comes near one.
-        let close: Vec<usize> = (0..samples.len())
-            .filter(|&i| found[i].as_ref().is_some_and(|n| n.distance < FINE_WITHIN))
-            .collect();
-        let mut fine = CountryData::default();
-        if !close.is_empty() {
-            let places: Vec<LatLon> = close.iter().map(|&i| samples[i].position).collect();
-            self.load_countries(
-                FINE_ZOOM,
-                &tiles_near(FINE_ZOOM, &places, FINE_REACH),
-                &mut fine,
-            )
-            .await?;
-            let borders = flatten(&fine.borders, flat);
-            for i in close {
-                if let Some(near) = nearest(samples[i].at, &borders) {
-                    found[i] = Some(near);
-                }
-            }
-        }
-
-        let codes = found
-            .iter()
-            .map(|near| near.as_ref().and_then(|n| n.country.as_deref()));
-        let passed = passed(samples.iter().map(|s| s.length).zip(codes));
-
-        // Names from the labels at hand, or from a tile labelling the whole region.
-        let mut labels = coarse.labels;
-        labels.extend(fine.labels);
+        // Names are welcome but not needed: a country stays known by its code.
         if passed.iter().any(|code| !labels.contains_key(code)) {
             let mut region = CountryData::default();
             let tile = BTreeSet::from([tile_of(NAMES_ZOOM, origin.0, origin.1)]);
-            // Names are welcome but not needed: a country stays known by its code.
             if self
                 .load_countries(NAMES_ZOOM, &tile, &mut region)
                 .await
@@ -155,6 +106,86 @@ impl Osm {
                 code,
             })
             .collect())
+    }
+
+    /// The ISO two-letter country code at each place, in input order. Unlike
+    /// [`Self::countries_along`], this keeps short stretches and repeated border crossings,
+    /// for rules such as which side of the road to ride on. Unknown places are `None`.
+    ///
+    /// # Errors
+    /// [`OsmError`] if a border tile is unavailable.
+    pub async fn countries_at(&self, points: &[LatLon]) -> Result<Vec<Option<String>>, OsmError> {
+        let (codes, _) = self.locate_countries(points).await?;
+        Ok(codes
+            .into_iter()
+            .map(|code| code.and_then(|c| iso::alpha_2(&c).map(str::to_owned)))
+            .collect())
+    }
+
+    async fn locate_countries(&self, points: &[LatLon]) -> Result<LocatedCountries, OsmError> {
+        let Some(&origin) = points.first() else {
+            return Ok((Vec::new(), BTreeMap::new()));
+        };
+        let flat = Flat::at(origin);
+        let places: Vec<_> = points.iter().map(|&p| flat.project(p)).collect();
+
+        // Coarse borders, from tiles around the route until each place's nearest border is
+        // surely among them.
+        let (south, north, west, east) = bounds(points);
+        let (x0, y0) = tile_of(COARSE_ZOOM, north, west);
+        let (x1, y1) = tile_of(COARSE_ZOOM, south, east);
+        let mut area = TileArea { x0, y0, x1, y1 };
+        let mut coarse = CountryData::default();
+        let mut loaded = BTreeSet::new();
+        let mut found = Vec::new();
+        for ring in 0..=MAX_RINGS {
+            let wanted: BTreeSet<_> = area.tiles().difference(&loaded).copied().collect();
+            self.load_countries(COARSE_ZOOM, &wanted, &mut coarse)
+                .await?;
+            loaded.extend(wanted);
+            let borders = flatten(&coarse.borders, flat);
+            let edges = area.edges(COARSE_ZOOM, flat);
+            found = places.iter().map(|&p| nearest(p, &borders)).collect();
+            let unsure = places.iter().zip(&found).any(|(&p, near)| {
+                near.as_ref()
+                    .is_none_or(|near| near.distance > edges.inside(p))
+            });
+            if !unsure || ring == MAX_RINGS {
+                break;
+            }
+            area = area.grown(COARSE_ZOOM);
+        }
+
+        // Fine borders where the route comes near one.
+        let close: Vec<usize> = (0..places.len())
+            .filter(|&i| found[i].as_ref().is_some_and(|n| n.distance < FINE_WITHIN))
+            .collect();
+        let mut fine = CountryData::default();
+        if !close.is_empty() {
+            let close_places: Vec<LatLon> = close.iter().map(|&i| points[i]).collect();
+            self.load_countries(
+                FINE_ZOOM,
+                &tiles_near(FINE_ZOOM, &close_places, FINE_REACH),
+                &mut fine,
+            )
+            .await?;
+            let borders = flatten(&fine.borders, flat);
+            for i in close {
+                if let Some(near) = nearest(places[i], &borders) {
+                    found[i] = Some(near);
+                }
+            }
+        }
+
+        let mut labels = coarse.labels;
+        labels.extend(fine.labels);
+        Ok((
+            found
+                .into_iter()
+                .map(|near| near.and_then(|n| n.country))
+                .collect(),
+            labels,
+        ))
     }
 
     /// Adds the borders and labels of `tiles` at `zoom` to `data`; all of them or an error.
@@ -185,6 +216,11 @@ impl Osm {
     }
 }
 
+type LocatedCountries = (
+    Vec<Option<String>>,
+    BTreeMap<String, BTreeMap<String, String>>,
+);
+
 /// The two-letter codes of the countries the route passes, in order, from the length of route
 /// each place stands for and the three-letter code of its country, if known.
 fn passed<'a>(places: impl Iterator<Item = (f64, Option<&'a str>)>) -> Vec<String> {
@@ -209,8 +245,6 @@ fn passed<'a>(places: impl Iterator<Item = (f64, Option<&'a str>)>) -> Vec<Strin
 /// A place of the route that is looked at.
 struct Sample {
     position: LatLon,
-    /// Where it is in [`Flat`] metres.
-    at: [f64; 2],
     /// How much of the route it stands for: the way to the next place looked at.
     length: f64,
 }
@@ -233,7 +267,6 @@ fn samples(points: &[LatLon], flat: Flat) -> Vec<Sample> {
             since = 0.0;
             samples.push(Sample {
                 position,
-                at,
                 length: 0.0,
             });
         }
@@ -572,6 +605,31 @@ mod tests {
         assert!(
             matches!(result, Err(OsmError::Unavailable(_))),
             "{result:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn traffic_rules_keep_short_stretches_and_repeated_crossings() {
+        let osm = fixture_osm("traffic");
+        let france = (47.5900, 7.5600);
+        let switzerland = (47.5596, 7.5886);
+        let unknown = (47.5950, 7.6200);
+        let codes = osm
+            .countries_at(&[france, switzerland, france, unknown])
+            .await
+            .unwrap();
+        assert_eq!(
+            codes,
+            [
+                Some("FR".into()),
+                Some("CH".into()),
+                Some("FR".into()),
+                None
+            ]
+        );
+        assert_eq!(
+            osm.countries_at(&[]).await.unwrap(),
+            Vec::<Option<String>>::new()
         );
     }
 

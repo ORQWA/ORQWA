@@ -78,6 +78,8 @@ pub struct Imported {
     pub minimap: FlatMap,
     /// The countries the route passes, when looked up ([`countries`]).
     pub countries: Option<Vec<CourseCountry>>,
+    /// Whether traffic keeps left at each route point; `None` where its country is unknown.
+    pub driving_left: Vec<Option<bool>>,
 }
 
 /// Reads a GPX file and imports it with [`import_gpx`], named after the file if the track has
@@ -160,6 +162,21 @@ pub async fn import_gpx(
         .name()
         .map_or_else(|| fallback_name.to_owned(), ToOwned::to_owned);
     let minimap = orqwa_world::minimap(&route, &map);
+    // Record these border tiles with the course too, so lane placement works offline.
+    let places: Vec<_> = route.points().iter().map(|p| (p.lat, p.lon)).collect();
+    let codes = osm.countries_at(&places).await.unwrap_or_else(|error| {
+        warn!(%error, "traffic side is unknown; keeping right");
+        vec![None; places.len()]
+    });
+    let driving_left = codes
+        .iter()
+        .zip(&places)
+        .map(|(code, &place)| {
+            orqwa_osm::traffic_territory(place)
+                .or(code.as_deref())
+                .map(|code| crate::traffic::keeps_left(Some(code)))
+        })
+        .collect();
     Ok(Imported {
         route,
         map,
@@ -168,6 +185,7 @@ pub async fn import_gpx(
         course_map: None,
         minimap,
         countries: None,
+        driving_left,
     })
 }
 
@@ -260,6 +278,45 @@ impl<M: ElevationModel + Send> ElevationModel for Counting<'_, M> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn traffic_side_comes_from_the_route_and_border_inputs_are_kept_offline() {
+        let cache =
+            std::env::temp_dir().join(format!("orqwa-traffic-import-{}", std::process::id()));
+        let tile = cache.join("osm/openfreemap-omt-v1/6/33/22.pbf");
+        std::fs::create_dir_all(tile.parent().unwrap()).unwrap();
+        // A synthetic left-driving country at the Swiss fixture's location proves that the
+        // map's country, rather than language or a geographic bounding box, sets the rule.
+        let mut borders = include_bytes!("../../fixtures/countries/6/33/22.pbf").to_vec();
+        for i in 0..borders.len().saturating_sub(2) {
+            if &borders[i..i + 3] == b"CHE" {
+                borders[i..i + 3].copy_from_slice(b"GBR");
+            }
+        }
+        std::fs::write(&tile, borders).unwrap();
+        let gpx = r#"<gpx><trk><trkseg>
+            <trkpt lat="46.948" lon="7.447"><ele>550</ele></trkpt>
+            <trkpt lat="46.949" lon="7.448"><ele>550</ele></trkpt>
+        </trkseg></trk></gpx>"#;
+        let used = UsedFiles::default();
+        let imported = import_gpx(
+            gpx.into(),
+            "Traffic",
+            (&cache, true),
+            false,
+            &used,
+            &mut |_, _, _| {},
+        )
+        .await
+        .unwrap();
+        assert_eq!(imported.driving_left.len(), imported.route.points().len());
+        assert!(imported.driving_left.iter().all(|&left| left == Some(true)));
+        assert!(
+            used.paths().contains(&tile),
+            "the course must bundle the border tile"
+        );
+        std::fs::remove_dir_all(cache).unwrap();
+    }
 
     #[tokio::test]
     async fn a_course_map_shows_the_land_around_the_whole_route() {
