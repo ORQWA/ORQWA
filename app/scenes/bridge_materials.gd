@@ -6,7 +6,8 @@ extends RefCounted
 static func configure(material: ShaderMaterial) -> void:
 	for channel: String in ["albedo", "normal", "rough"]:
 		material.set_shader_parameter(
-			"bridge_concrete_" + channel, load("res://assets/textures/bridge_concrete_%s.webp" % channel)
+			"bridge_concrete_" + channel,
+			load("res://assets/textures/bridge_concrete_%s.webp" % channel)
 		)
 	material.set_shader_parameter("concrete_color", Palette.color("structure.concrete"))
 	material.set_shader_parameter("steel_color", Palette.color("structure.steel"))

@@ -487,8 +487,7 @@ fn deck_rails(
             concrete,
         );
     }
-    // Older street meshes omitted colours. Default white keeps the asphalt and gravel;
-    // only new railings carry a metal tint, using the existing optional colour array.
+    // Wearing surfaces keep their road-style metadata; new details carry structure tints.
     mesh.append(detail);
 }
 

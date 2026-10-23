@@ -38,7 +38,7 @@ surface in view on a ride must reach the same level before the next group starts
   materials (grass into dirt, asphalt into gravel) instead of hard edges.
 - **Natural colours.** Close to real albedos (grass about 0.1–0.2, asphalt 0.05–0.1, fresh
   snow 0.8); no pure black or white, no oversaturation. The baked grass texture is about three
-  times too bright for that, so `terrain.gdshader` and `street.gdshader` darken it to a deep
+  times too bright for that, so `terrain.gdshader` and `road.gdshader` darken it to a deep
   green (the grass tufts' palette colours match); judge grass on a GPU render, as AgX
   compresses sunlit colours and small tint changes barely show.
 - **Light.** Physically based sky and sun, soft shadows, ambient occlusion in creases, aerial
@@ -132,7 +132,7 @@ edge. Keep entrances and the inner walking strip clear; review their ground cont
 
 ## Reviewing a render
 
-Bridges (R119–R120) need believable proportions from underneath and from the riding camera:
+Bridges (R120–R121) need believable proportions from underneath and from the riding camera:
 single tracks use a 4.8 m deck around the 3.2 m ballast bed, concrete viaducts have low kerbs
 and open steel protection, capped columns and end bearing walls, while stone arches retain
 masonry parapets. Use the dedicated cast-concrete scan at 2.16 m scale, with pores and

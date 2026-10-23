@@ -1,5 +1,5 @@
 extends SceneTree
-## R120: actual rendering must keep roads, streets, paths and railway beds opaque from below.
+## R121: actual rendering must keep roads, streets, paths and railway beds opaque from below.
 
 var _failed: bool = false
 
@@ -35,17 +35,33 @@ func _run() -> void:
 		[Vector2(0, 0), Vector2(0, 2), Vector2(1, 2), Vector2(1, 0)]
 	)
 	arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0, 1, 2, 0, 2, 3])
-	var mesh: ArrayMesh = ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var styles: Array[Color] = [
+		Color(0.0, 6.0 / 32.0, 0.25, 0.25),
+		Color(0.0, 4.0 / 32.0, 0.0, 0.125),
+		Color(0.125, 3.0 / 32.0, 0.0, 0.625)
+	]
 	var names: Array[String] = [
 		"_road_material", "_street_material", "_track_material", "_rail_material"
 	]
 	for index: int in names.size():
+		arrays[Mesh.ARRAY_COLOR] = (
+			PackedColorArray([styles[index], styles[index], styles[index], styles[index]])
+			if index < styles.size()
+			else null
+		)
+		var mesh: ArrayMesh = ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var instance: MeshInstance3D = MeshInstance3D.new()
 		instance.mesh = mesh
 		instance.material_override = world.get(names[index])
 		instance.position.x = -4.5 + index * 3.0
 		viewport.add_child(instance)
+	var road_material: ShaderMaterial = world.get("_road_material")
+	var paving: Texture2D = road_material.get_shader_parameter("concrete_albedo")
+	var bridge: Texture2D = road_material.get_shader_parameter("bridge_concrete_albedo")
+	if paving == null or bridge == null or paving == bridge:
+		push_error("Road paving and bridge concrete must retain separate texture bindings")
+		_failed = true
 	var camera: Camera3D = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = 4.0

@@ -3055,7 +3055,7 @@ fn assert_faces_follow_normals(mesh: &MeshData) {
 async fn non_ridden_bridges_are_solid_from_below() {
     use orqwa_osm::{Road, RoadClass};
 
-    // R119: sloping bridges across the ridden road, with a gentle bend and several chunks.
+    // R120: sloping bridges across the ridden road, with a gentle bend and several chunks.
     // Motorways use Major; tracks and paths use the separate unpaved mesh.
     let classes = [
         RoadClass::Major,
@@ -3081,6 +3081,7 @@ async fn non_ridden_bridges_are_solid_from_below() {
                     class,
                     line: vec![at(-600.0, north), at(90.0, north + 20.0), at(600.0, north)],
                     structure: Some(StructureKind::Bridge),
+                    details: orqwa_osm::RoadDetails::default(),
                 }
             })
             .collect(),
@@ -3091,6 +3092,15 @@ async fn non_ridden_bridges_are_solid_from_below() {
         for mesh in [&chunk.streets, &chunk.tracks] {
             assert_valid(mesh);
             assert_faces_follow_normals(mesh);
+            assert!(
+                mesh.colors
+                    .iter()
+                    .zip(&mesh.normals)
+                    .all(|(color, normal)| {
+                        normal[1] < 0.99 || color[3] == 0.0 || color[0] <= 6.0 / 8.0
+                    }),
+                "bridge wearing surfaces retain road-profile metadata, not default white"
+            );
         }
     }
     for (i, class) in classes.into_iter().enumerate() {
