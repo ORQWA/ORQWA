@@ -11,7 +11,7 @@ use crate::junctions::{Corner, FootwayCorner, FootwaySection};
 use crate::landcover::LandIndex;
 use crate::road::RoadIndex;
 use crate::streets::{Clearance, Street};
-use crate::{CHUNK_SIZE, HeightGrid, MeshData, On, ROAD_HALF_WIDTH, ROAD_SINK, drape, palette};
+use crate::{CHUNK_SIZE, HeightGrid, MeshData, On, ROAD_SINK, drape, palette};
 
 const CELL: f64 = 50.0;
 const WALK_WIDTH: f64 = 1.8;
@@ -143,7 +143,10 @@ impl Urban {
     }
 
     fn collect_ways(&mut self, streets: &[Street], road: &RoadIndex) {
-        for street in streets.iter().filter(|s| s.paved() && !s.on_bridge()) {
+        for street in streets
+            .iter()
+            .filter(|s| s.appearance.sidewalk && !s.on_bridge())
+        {
             for pair in street.points().windows(2) {
                 let direction = direction(pair[0], pair[1]);
                 let middle = midpoint(pair[0], pair[1]);
@@ -161,6 +164,7 @@ impl Urban {
         let stations = road.stations(3.0, (f64::MIN, f64::MIN), (f64::MAX, f64::MAX));
         for pair in stations.windows(2) {
             if pair.iter().any(|s| s.surface != Surface::Ground)
+                || !pair[0].appearance.sidewalk
                 || pair[1].distance - pair[0].distance > 3.1
             {
                 continue;
@@ -168,7 +172,7 @@ impl Urban {
             self.add_way(Way {
                 a: pair[0].position,
                 b: pair[1].position,
-                half: ROAD_HALF_WIDTH,
+                half: pair[0].appearance.width / 2.0,
                 lift: ROAD_SINK,
             });
         }
@@ -643,13 +647,10 @@ impl Urban {
                 && !clearance.blocked_urban_by(point.0, point.1, 0.02, |east, north| {
                     // Padded vegetation-clearance samples swallow sidewalks beside
                     // their own streets. Check those centre-line segments exactly below.
-                    road.nearest(east, north, ROAD_HALF_WIDTH + 0.5).is_none()
-                        && !self.on_way((east, north), true)
+                    road.edge_distance(east, north) >= 0.5 && !self.on_way((east, north), true)
                 })
                 && !self.on_way(point, false)
-                && road
-                    .nearest(point.0, point.1, ROAD_HALF_WIDTH + 0.02)
-                    .is_none()
+                && road.edge_distance(point.0, point.1) >= 0.02
                 && !self.in_building(point)
         };
         // Furniture and mesh generation must agree about which sidewalk pieces exist.

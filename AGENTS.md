@@ -9,9 +9,13 @@ Do not implement changes in the user's existing workspace or mix unrelated tasks
 Application usage documentation is maintained in the `wiki/` Git submodule. Keep it focused on
 usage guides: setup, controls, settings, rider workflows and troubleshooting. Update affected
 guides, navigation and screenshots in the same session when those user tasks change.
-Do not add implementation explanations, visual bug-fix notes, per-PR summaries or scenery
-regeneration notices. Pure visual or internal fixes do not require wiki changes. Keep technical
-details, validation and review images in the application repository and PR instead.
+Do not add implementation explanations, scenery feature descriptions, rendering or map-data
+limitations, visual bug-fix notes, per-PR summaries or scenery regeneration notices. A visual
+feature addition or internal change is not a reason to edit the wiki: update it only when a
+rider's setup, controls, settings, workflow or troubleshooting instructions change. Keep road
+surfaces, estimated widths, scenery generation, technical details, validation and review images
+in the application repository and PR instead. The general documentation-update rule does not
+override this wiki scope; do not invent a usage-guide section to satisfy it.
 Keep developer documentation, requirements, roadmap, ADRs and credits current too.
 
 - Run `make wiki-init` before reading/editing the wiki. Preserve all local changes.

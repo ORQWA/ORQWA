@@ -57,6 +57,7 @@ async fn sidewalks_have_raised_curbs_and_leave_roads_junctions_and_green_spaces_
     }
     map.roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(-100.0, 500.0), at(100.0, 500.0)],
         structure: None,
     });
@@ -152,6 +153,7 @@ async fn sidewalks_join_on_both_sides_of_a_bend() {
     let mut map = city();
     map.roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(50.0, 150.0), at(50.0, 200.0), at(80.0, 250.0)],
         structure: None,
     });
@@ -183,6 +185,7 @@ async fn sidewalks_follow_rounded_junction_corners_without_square_gaps() {
         road_north(),
         orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(-100.0, 500.0), at(0.0, 500.0)],
             structure: None,
         },
@@ -239,6 +242,7 @@ async fn acute_forks_have_a_rounded_sidewalk_nose_instead_of_cut_off_slabs() {
         road_north(),
         orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![at(-40.0, 400.0), at(0.0, 500.0)],
             structure: None,
         },
@@ -268,6 +272,7 @@ async fn outer_sidewalk_bends_are_round_and_curbstones_have_their_own_beveled_bo
     let mut map = city();
     map.roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(50.0, 150.0), at(50.0, 200.0), at(100.0, 200.0)],
         structure: None,
     });
@@ -465,6 +470,7 @@ async fn city_benches_use_free_sidewalks_without_blocking_entrances_or_junctions
     });
     map.roads.push(orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
         line: vec![at(-100.0, 620.0), at(100.0, 620.0)],
         structure: None,
     });

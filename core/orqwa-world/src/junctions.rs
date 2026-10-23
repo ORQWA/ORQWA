@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::drape;
 use crate::road::RoadIndex;
 use crate::streets::Street;
-use crate::{HeightGrid, MeshData, On, ROAD_HALF_WIDTH, ROAD_SINK};
+use crate::{HeightGrid, MeshData, On, ROAD_SINK};
 
 /// Streets this close to a point (metres) meet there.
 const MEET_M: f64 = 1.0;
@@ -221,8 +221,12 @@ fn arms_at(
             // Drawn as the road ridden here: the road is the arm (once, each way).
             // A branch starts on the road too. Check its line farther out, so a
             // shallow fork is not mistaken for a duplicate of the ridden road.
-            if road.runs_along(from.0, from.1, ROAD_HALF_WIDTH + half + 0.5, direction)
-                && road.runs_along(ahead.0, ahead.1, 1.0, direction)
+            if road.runs_along(
+                from.0,
+                from.1,
+                road.half_width_at(from.0, from.1) + half + 0.5,
+                direction,
+            ) && road.runs_along(ahead.0, ahead.1, 1.0, direction)
             {
                 road_arm = true;
                 continue;
@@ -238,15 +242,18 @@ fn arms_at(
             });
         }
     }
-    if road_arm && let Some((from, ahead)) = road.heading(at.0, at.1, ROAD_HALF_WIDTH + MEET_M) {
+    if road_arm
+        && let Some((from, ahead)) =
+            road.heading(at.0, at.1, road.half_width_at(at.0, at.1) + MEET_M)
+    {
         for direction in [ahead, (-ahead.0, -ahead.1)] {
             arms.push(Arm {
                 from,
                 direction,
-                half: ROAD_HALF_WIDTH,
+                half: road.half_width_at(from.0, from.1),
                 reach: CORNER_REACH_M,
                 lift: ROAD_SINK,
-                paved: true,
+                paved: road.appearance_at(from.0, from.1).paved(),
                 street: None,
             });
         }
@@ -425,6 +432,9 @@ pub(crate) fn meshes(
                 chunk_origin,
                 &uv,
             );
+            let material = if corner.paved { 0.0 } else { 1.0 / 8.0 };
+            mesh.colors
+                .resize(mesh.vertices.len(), [material, 6.0 / 32.0, 0.0, 1.0 / 8.0]);
         }
     }
     (paved, unpaved)

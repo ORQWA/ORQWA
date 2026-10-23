@@ -574,6 +574,7 @@ fn bales(
                 let yaw = crate::hash(salt ^ 9) * std::f64::consts::TAU;
                 let ground = roadside.heights.at(e, n);
                 let lying = Station {
+                    appearance: crate::appearance::Appearance::default(),
                     position: (e, n),
                     elevation: ground,
                     distance: 0.0,
@@ -751,12 +752,7 @@ fn room(
     }
     let (east, north) = out(station, side, offset);
     // The road ridden is one of the map's streets too: only the others count.
-    let other_street = |e: f64, n: f64| {
-        roadside
-            .road
-            .nearest(e, n, ROAD_HALF_WIDTH + ROAD_WAY_SLACK)
-            .is_none()
-    };
+    let other_street = |e: f64, n: f64| roadside.road.edge_distance(e, n) >= ROAD_WAY_SLACK;
     let blocked = roadside
         .streets
         .blocked_by(east, north, reach + TOWN_CLEAR, other_street)
@@ -922,6 +918,7 @@ fn beside(station: &Station, side: f64, offset: f64, roadside: &Roadside) -> [f6
 /// The point `offset` metres from the centre line on `side`, in metres east/north.
 fn out(station: &Station, side: f64, offset: f64) -> (f64, f64) {
     let (de, dn) = station.direction;
+    let offset = offset - ROAD_HALF_WIDTH + station.appearance.width / 2.0;
     // Right of travel is the direction turned clockwise.
     let (re, rn) = (dn * side, -de * side);
     (

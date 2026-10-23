@@ -18,6 +18,12 @@ docker build -q -t orqwa-dev -f "$root/.devcontainer/Dockerfile" "$root" >/dev/n
 # The commit for the About tab (R83): a worktree's Git directory lies outside the mounted
 # checkout, so the build inside cannot ask Git itself.
 commit="$(git -C "$root" rev-parse --short=7 HEAD 2>/dev/null || true)"
+# Linked worktrees point outside the mounted checkout. Wiki/link checks need to read that
+# index too; expose only the shared Git metadata, never write it from container tooling.
+git_common_dir="$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)"
+if command -v cygpath >/dev/null 2>&1; then
+    git_common_dir="$(cygpath -m "$git_common_dir")"
+fi
 
 tty_flags=""
 if [ -t 0 ] && [ -t 1 ]; then
@@ -31,6 +37,7 @@ status=0
 docker run --rm $tty_flags \
     -e ORQWA_COMMIT="$commit" \
     -v "$root:/workspaces/orqwa" \
+    -v "$git_common_dir:$git_common_dir:ro" \
     -v orqwa-cargo-registry:/usr/local/cargo/registry \
     -v orqwa-target:/workspaces/orqwa/core/target \
     -v orqwa-cache:/root/.cache \

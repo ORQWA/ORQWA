@@ -241,7 +241,7 @@ var _plant_material: ShaderMaterial = ShaderMaterial.new()
 ## nothing moves in the scene and the swaying grass's shadows stop flickering (#178).
 var _wind_time: float = 0.0
 var _paused: bool = false
-## Other streets of the map (asphalt) and tracks and paths (gravel).
+## Other mapped roads, sharing the ridden road's material and marking contract.
 var _street_material: ShaderMaterial = ShaderMaterial.new()
 var _track_material: ShaderMaterial = ShaderMaterial.new()
 var _rail_material: ShaderMaterial = ShaderMaterial.new()
@@ -483,12 +483,8 @@ func _ready() -> void:
 			"cover_" + cover, Vector3(colour.r, colour.g, colour.b)
 		)
 	_terrain_material.set_shader_parameter("snow_color", Palette.color("ground.snow"))
-	_road_material.shader = preload("res://shaders/road.gdshader")
-	_set_textures(_road_material, "asphalt", "asphalt")
-	_set_textures(_road_material, "gravel", "gravel")
-	_set_textures(_road_material, "grass", "grass")
-	_road_material.set_shader_parameter("asphalt_rough", TEXTURES["asphalt_rough"])
-	_road_material.set_shader_parameter("marking_color", Palette.color("road.marking"))
+	for road_material: ShaderMaterial in [_road_material, _street_material, _track_material]:
+		RoadMaterials.configure(road_material, road_material == _road_material)
 	_water_material.shader = preload("res://shaders/water.gdshader")
 	_water_material.set_shader_parameter("deep_color", Palette.color("water.deep"))
 	_water_material.set_shader_parameter("shallow_color", Palette.color("water.shallow"))
@@ -527,17 +523,6 @@ func _ready() -> void:
 	_environment.fog_aerial_perspective = 0.6
 	_plant_material.shader = preload("res://shaders/plants.gdshader")
 	_plant_material.set_shader_parameter("flower_colors", Palette.colors("plants.flowers"))
-	for surface: Array in [
-		[_street_material, "asphalt", 2.5, 0.85, 0.0], [_track_material, "gravel", 1.5, 0.95, 1.0]
-	]:
-		var material: ShaderMaterial = surface[0]
-		var texture_name: String = surface[1]
-		material.shader = preload("res://shaders/street.gdshader")
-		_set_textures(material, texture_name, "surface")
-		material.set_shader_parameter("grass_albedo", TEXTURES["grass_albedo"])
-		material.set_shader_parameter("surface_tile", surface[2])
-		material.set_shader_parameter("surface_roughness", surface[3])
-		material.set_shader_parameter("middle_grass", surface[4])
 	_rail_material.shader = preload("res://shaders/rail.gdshader")
 	_rail_material.set_shader_parameter("ballast_color", Palette.color("road.ballast"))
 	_rail_material.set_shader_parameter("sleeper_color", Palette.color("road.sleeper"))

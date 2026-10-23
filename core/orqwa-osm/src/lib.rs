@@ -105,15 +105,85 @@ pub struct Waterway {
     pub line: Vec<LatLon>,
 }
 
-/// A road for the minimap.
+/// A mapped road shared by world generation and the minimap.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Road {
     /// What kind of way it is.
     pub class: RoadClass,
+    /// Appearance metadata retained from the saved transportation tiles.
+    pub details: RoadDetails,
     /// Centre line.
     pub line: Vec<LatLon>,
     /// Carried over or under the ground here, if it is.
     pub structure: Option<StructureKind>,
+}
+
+/// Road appearance tags, separate from the broad classes used for route matching.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct RoadDetails {
+    /// Original road hierarchy, when supplied by the tile.
+    pub kind: RoadKind,
+    /// Mapped material or paved/unpaved category; unknown is not evidence of paving.
+    pub surface: RoadSurface,
+    /// One carriageway of a divided road, or another one-way street.
+    pub oneway: bool,
+    /// A connecting ramp rather than the through carriageway.
+    pub ramp: bool,
+}
+
+/// Road hierarchy retained for widths and markings, without changing routing priorities.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum RoadKind {
+    /// No detailed classification; use the broad road class.
+    #[default]
+    Unknown,
+    /// Motorway carriageway.
+    Motorway,
+    /// Trunk road.
+    Trunk,
+    /// Primary through road.
+    Primary,
+    /// Secondary through road.
+    Secondary,
+    /// Tertiary through road.
+    Tertiary,
+    /// Residential or unclassified local road.
+    Local,
+    /// Driveway or other service road.
+    Service,
+    /// Farm or forest track.
+    Track,
+    /// Dedicated cycleway.
+    Cycleway,
+    /// Shared path or trail.
+    Path,
+}
+
+/// Surface information, as detailed as the source permits. OpenMapTiles normally supplies
+/// only paved/unpaved; specific materials are accepted when present, never inferred as facts.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum RoadSurface {
+    /// Untagged or unsupported material.
+    #[default]
+    Unknown,
+    /// Paved, without a specific material.
+    Paved,
+    /// Unpaved, without a specific material.
+    Unpaved,
+    /// Asphalt.
+    Asphalt,
+    /// Concrete, including concrete slabs.
+    Concrete,
+    /// Pavers or brick paving.
+    Paving,
+    /// Setts or cobblestones.
+    Cobbles,
+    /// Gravel or compacted aggregate.
+    Gravel,
+    /// Exposed soil.
+    Dirt,
+    /// Grass.
+    Grass,
 }
 
 impl Road {
@@ -124,7 +194,8 @@ impl Road {
     }
 }
 
-/// Kinds of ways, widest first (and ordered so: `Major < Street < … < Path`).
+/// Broad routing classes, ordered from through roads to paths. Detailed appearance is
+/// retained separately in [`RoadDetails`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RoadClass {
     /// Motorways, trunk, primary and secondary roads.

@@ -24,6 +24,11 @@ Measured on a 36 km test line: 344 s, 6 of 20 tiles failed.
 
 ## Consequences
 
+Road appearance now retains transportation hierarchy, paving, one-way and ramp tags from
+these same saved tiles (R119, [ADR 0031](0031-road-appearance.md)). This adds no downloads or
+provider. Exact widths, lane counts and detailed surface materials are not supplied by the
+current schema; the renderer uses documented visual defaults for missing information.
+
 - The same 36 km line now loads in **5 s cold, 1 s for map data** with no failures.
 - Attribution: "© OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors".
 - Features crossing tile borders arrive clipped per tile; land cover and roads are unaffected,

@@ -783,6 +783,7 @@ mod tests {
         xml.push_str("</trkseg></trk></gpx>");
         let road = orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![(45.999, 7.0), (46.01, 7.0)],
             structure: None,
         };
@@ -807,6 +808,7 @@ mod tests {
     fn map_with(structure: orqwa_osm::Structure, others: Vec<orqwa_osm::Road>) -> MapData {
         let road = |line: Vec<(f64, f64)>, structure| orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
             line,
             structure,
         };
@@ -1433,6 +1435,7 @@ mod tests {
         };
         let crossing = orqwa_osm::Road {
             class: orqwa_osm::RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![
                 (46.0 + 500.0 / 111_195.0, 6.999),
                 (46.0 + 500.0 / 111_195.0, 7.001),

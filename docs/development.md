@@ -312,6 +312,8 @@ clean and its local work has been saved.
 Git operations use your host's credential helper. Documentation validation and tests run in
 the dev container; inside an already running container, use `python3 scripts/wiki/check.py`
 and `python3 -m unittest discover -s scripts/wiki -p 'test_*.py'` directly.
+For linked worktrees, `scripts/dev.sh` also mounts the shared Git metadata read-only, so
+validation can read the checkout's index without changing the original workspace.
 
 1. Initialize the wiki and create a branch before editing:
    `make wiki-init`, then `git -C wiki switch -c docs/my-change`.

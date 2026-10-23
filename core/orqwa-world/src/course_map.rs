@@ -434,6 +434,7 @@ mod tests {
         let frame = Frame::around(&track).unwrap();
         let road = |class| Road {
             class,
+            details: orqwa_osm::RoadDetails::default(),
             line: vec![
                 projection.unproject(0.0, 0.0),
                 projection.unproject(4_000.0, 0.0),

@@ -5,6 +5,7 @@
 //! the route start for the road and water, and to each chunk's centre for chunk geometry.
 //! Triangles wind clockwise seen from their front, Godot's front-face order.
 
+mod appearance;
 mod buildings;
 mod chains;
 mod channels;
@@ -47,7 +48,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 8;
+pub const GENERATOR: u32 = 10;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -99,7 +100,10 @@ pub struct MeshData {
     pub normals: Vec<[f32; 3]>,
     /// Texture coordinates; for the road `u` is 0–1 across and `v` the distance in metres.
     pub uvs: Vec<[f32; 2]>,
-    /// Vertex colours (RGB tint, alpha 1 marks water); empty when the mesh has none.
+    /// Vertex colours or material metadata; empty when the mesh has none. Roads encode
+    /// `[material / 8, width_metres / 32, marking_style / 4, (lanes + track_flag) / 8]`,
+    /// with track flag 4 for a grassy centre (ADR 0031). Other meshes retain their own
+    /// colour contracts, including alpha 1 marking water.
     pub colors: Vec<[f32; 4]>,
     /// Three vertex indices per triangle.
     pub indices: Vec<u32>,
@@ -181,9 +185,9 @@ pub struct TerrainChunk {
     pub buildings: MeshData,
     /// Buildings drawn as Blender-made models up close, by cell.
     pub modelled: Vec<BuildingCell>,
-    /// Paved streets of the map around the route (not the road ridden), on this chunk's ground.
+    /// Paved ways around the route (not the road ridden), on this chunk's ground.
     pub streets: MeshData,
-    /// Unpaved tracks and paths of the map, likewise.
+    /// Unpaved ways of the map, likewise.
     pub tracks: MeshData,
     /// Sidewalks, curbs, building access and forecourts, with urban material codes in colours.
     pub urban: MeshData,
@@ -256,6 +260,7 @@ pub async fn generate<M: ElevationModel>(
 ) -> World {
     let projection = LocalProjection::for_route(route);
     let mut road = RoadIndex::new(route, &projection);
+    road.set_appearances(&appearance::Index::new(map, &projection));
     let cells = chunks_near_route(&road);
     let total = cells.len();
     // Announce the step before the slower preparation below.
@@ -388,7 +393,7 @@ fn buildings_by_chunk<'a>(
         outline.push(outline[0]);
         let on_road = drape::densify(&outline, 2.0)
             .iter()
-            .any(|&(e, n)| road.nearest(e, n, ROAD_HALF_WIDTH + 1.0).is_some());
+            .any(|&(e, n)| road.edge_distance(e, n) < 1.0);
         if on_road
             || frontage.runs_through(&footprint)
             || road.nearest(east, north, CORRIDOR).is_none()
@@ -1330,7 +1335,7 @@ impl Shapers<'_> {
     pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> Vec<(f64, f64, Surface)> {
         let mut found: Vec<_> = self
             .road
-            .near(east, north, reach)
+            .near_shaped(east, north, reach)
             .into_iter()
             .filter(|r| self.hills || r.2 != Surface::Tunnel)
             .collect();

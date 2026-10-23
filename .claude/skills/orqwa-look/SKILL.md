@@ -90,6 +90,17 @@ Blender Python; its header shows how to run it).
 
 ## How to get it
 
+Road appearance (R119, ADR 0031) must agree between the ridden route and surrounding ways.
+Keep motorway carriageways separate as mapped; show shoulders and long lane dashes, narrower
+ramps, main-road centre lines and unmarked local streets and cycleways. Explicit paving wins
+over class defaults. Widths and lane counts are estimates where tiles omit measurements;
+never describe inferred materials as surveyed. Keep sidewalks off motorways, trunk roads,
+ramps and unpaved ways. Review narrow ridden paths and surrounding highways, junctions,
+bridges, rain and vegetation/prop clearance. Use only saved course inputs at generation.
+At shallow junctions, side roads must extend under the ridden road without grass gaps or a
+gravel shoulder across the opening. Suppress only fully covered cross-sections and retain the
+joining segment. Nearby parallel paths must remain visible; include chunk boundaries in review.
+
 Urban surfaces (R105, ADR 0027) distinguish dense-city paving, commercial/industrial asphalt
 and suburban lawns. Mapped parks and other natural land take precedence. Review sidewalk
 curbs and access openings from road height, plus an overview for garden/park preservation.
