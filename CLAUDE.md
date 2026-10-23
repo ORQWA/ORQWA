@@ -78,9 +78,11 @@ Blender references. Use them for any visual or model work.
 - **Keep the wiki focused on usage guides:** setup, controls, settings, rider workflows and
   troubleshooting. Update affected guides in the same session and PR when those user tasks
   change, including navigation and screenshots where needed. Do not add implementation
-  explanations, visual bug-fix notes, per-PR summaries or scenery regeneration notices.
-  Pure visual or internal fixes need no wiki change; technical details, validation and review
-  images belong in repository documentation and the PR.
+  explanations, scenery feature descriptions, rendering or map-data limitations, visual bug-fix
+  notes, per-PR summaries or scenery regeneration notices. Visual feature additions and internal
+  changes do not require wiki edits. Road surfaces, estimated widths and scenery generation
+  belong in repository documentation and the PR, together with technical details, validation
+  and review images. Do not invent a usage-guide section to satisfy a general docs-update rule.
   When editing the wiki:
   Run `make wiki-init` before reading or editing guides. Preserve local changes; never reset
   a dirty wiki checkout or edit on a detached HEAD: create/resume a documentation branch.
@@ -88,8 +90,10 @@ Blender references. Use them for any visual or model work.
   the wiki comparison link in the application PR. Never push to the published wiki branch:
   the workflow publishes only after the application change reaches `main`.
   See [the wiki workflow](docs/development.md#usage-wiki) for setup and recovery.
-- **Docs are always updated with the change, in the same PR.** A change is not done until
-  every doc it affects says what the code now does: the usage wiki (`wiki/*.md`, README),
+- **Update affected docs with the change, in the same PR.** Update only the documents whose
+  subject changed; the wiki is affected only when rider usage instructions change, as scoped
+  above. A change is not done until every affected doc says what the code now does: the usage
+  wiki (`wiki/*.md`, only for usage changes), README,
   `docs/PLAN.md`, `docs/REQUIREMENTS.md` (append-only), ADR amendments, `docs/CREDITS.md`,
   `docs/OPEN-QUESTIONS.md` (remove what is settled), `art/README.md` and the skills in
   `.claude/skills/`.
