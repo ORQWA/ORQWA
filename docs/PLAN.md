@@ -513,8 +513,48 @@ physically based materials and light, restyled group by group.
       post offices, police and fire stations, and buildings on school and hospital grounds),
       classic or modern — Blender models where they fit, shells otherwise
     - [x] Bridges and viaducts: short, low bridges of the road ridden are stone arch bridges
-      (arches, the walls over them, vaults), longer and higher ones viaducts on piers as wide
-      as the deck; bridges of other streets and railways stand on piers too
+      (arches, the walls over them, vaults), longer and higher ones viaducts on capped
+      columns; bridges of other streets and railways stand on piers too
+    - [x] Solid undersides on non-ridden road bridges (R121), including highways, tracks and
+      paths: downward-facing deck surfaces follow bends, slopes and chunk boundaries.
+      Generator 11 offers regeneration of kept worlds; stored format remains 3.
+    - [x] Realistic bridge structures (R122): narrower single-track decks, low kerbs and open
+      steel railings, capped columns, end bearing walls and closed slab ends; textured,
+      scanned cast concrete and weathered masonry. Roads, streets, paths and railway beds also draw
+      their exposed backs, including in kept worlds. Generator 12 adds the bridge geometry.
+    - [x] One owner for a ridden bridge whose mapped centre line is slightly offset;
+      independent crossing and parallel bridges stay visible (generator 13).
+    - [x] Open Lukmanier tunnel mouths through draped approach paving, end caps and
+      junctions as well as terrain; preserve roads above tunnels (generator 14).
+    - [x] Complete bridge ownership across mismatched tunnel/bridge tag boundaries:
+      remove the extra approach slab at Alpenbrevet 174.17 km to go (generator 15).
+    - [x] Ground pier and bearing foundations across their complete footprint on the final
+      shaped and carved terrain, including steep banks and channels (generator 16).
+    - [x] Alpenbrevet railway ramps after Lukmanier before Airolo: consistent crossing
+      clearances and independent elevations for vertically separated tracks (generator 17).
+    - [x] Bridge ends and protection crossing junctions: mapped bridge ends meet a nearby
+      ridden ground road at its height; protection opens only at same-level connections
+      (generator 18). Grade-separated crossings and the opposite edge stay protected.
+    - [x] Follow-up Alpenbrevet skewed village bridge at 178.51 km to go and raised decks at
+      68.85 and 67.26 km to go: one surface owner even when the ridden course has a Ground
+      tag on the mapped bridge (generator 19).
+    - [x] Guardrails on tight curves: shared endpoints on both road edges and across chunk
+      boundaries; bridge barriers follow the pavement's cross-sections on Alpenbrevet's
+      start/finish loop (generator 22).
+    - [ ] Shadow rows beneath overhanging roads and bridges: reproduce on Alpenbrevet at
+      30.64 km to go and retain continuous, natural shadows without diagonal striping.
+    - [x] Roundabout bridge fences: one structure owner for outbound and return curves,
+      including mismatched tag boundaries; leave the at-grade junction interior open while
+      retaining outside-edge and grade-separated protection (generator 23).
+    - [x] General barrier clearance: bridge railings, kerbs and parapets and roadside fences
+      must not cut any generated carriageway, including parallel joins and crossings between
+      span endpoints; preserve independent elevations and slab closure (generator 24).
+    - [x] Terrain inside tunnels and pavement on their roofs around 175.72 km to go:
+      clip surrounding terrain and paving along the complete tube, and give aligned
+      mapped ground approaches one surface owner (generator 20).
+    - [x] Guardrails below the road around 33.52 km to go: preserve the ridden road's
+      verge datum beside a lower parallel railway, keeping protection grounded at road
+      level and the railway at its separate elevation (generator 21).
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over
       it and keeps it covered, not in the open in front of the hill; a stone ring round the
       opening ends the cutting leading to it, no ground closes the opening, and the hill over

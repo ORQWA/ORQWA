@@ -3,17 +3,17 @@
 //! through, however it folds.
 
 use crate::structures::Below;
-use crate::{HeightGrid, MeshData, On};
+use crate::{HeightGrid, MeshData, On, palette, structures};
 
 /// Draped, a straight strip needs no points between its bends but these, at most this far
 /// apart; the ground's triangles add the rest...
 const PIECE_M: f64 = 30.0;
 /// ...and bends this sharp (radians) keep their points.
 const TURN: f64 = 0.03;
-/// Bridge decks are this thick at their edges.
+/// Bridge decks are this thick from their surface to their underside.
 const DECK_DEPTH_M: f64 = 0.7;
-/// Vertices per point of a deck: left and right edge, and each side's top and bottom.
-const DECK_POINTS: usize = 6;
+/// Vertices per point of a deck: top edges, each side's top/bottom, and underside edges.
+const DECK_POINTS: usize = 8;
 /// Piers stand under decks this far apart, at the same places along the line in every chunk,
 /// where the ground lies at least `DECK_PIER_MIN` below the deck.
 const DECK_PIER_SPACING: f64 = 20.0;
@@ -175,8 +175,56 @@ pub(crate) fn drape_polygon(
             // Clipping slivers can collapse after conversion to GPU precision.
             if area.abs() > 1e-6 {
                 let corner = base + u32::try_from(k).expect("small");
-                mesh.indices.extend([base, corner, corner + 1]);
+                let face = [base, corner, corner + 1];
+                if on == On::Ground {
+                    add_ground_face(mesh, face, heights, origin, uv);
+                } else {
+                    mesh.indices.extend(face);
+                }
             }
+        }
+    }
+}
+
+/// Cut the completed, lifted paving triangle: re-sampling a clipped corner from the height
+/// grid can choose the neighbouring cell at a steep portal and fill the opening again.
+#[allow(clippy::cast_possible_truncation)] // f32 GPU data
+fn add_ground_face(
+    mesh: &mut MeshData,
+    face: [u32; 3],
+    heights: &HeightGrid,
+    origin: [f64; 3],
+    uv: &dyn Fn((f64, f64)) -> [f32; 2],
+) {
+    let triangle = face.map(|i| {
+        let v = mesh.vertices[i as usize];
+        [
+            f64::from(v[0]) + origin[0],
+            -f64::from(v[2]) - origin[2],
+            f64::from(v[1]) + origin[1],
+        ]
+    });
+    let Some(pieces) = heights.cut_paving(triangle) else {
+        mesh.indices.extend(face);
+        return;
+    };
+    let normal = mesh.normals[face[0] as usize];
+    for piece in pieces {
+        let [a, b, c] = piece;
+        let area = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        if area.abs() <= 1e-6 {
+            continue;
+        }
+        for [east, north, height] in piece {
+            mesh.indices
+                .push(u32::try_from(mesh.vertices.len()).expect("draped meshes fit u32"));
+            mesh.vertices.push([
+                (east - origin[0]) as f32,
+                (height - origin[1]) as f32,
+                (-north - origin[2]) as f32,
+            ]);
+            mesh.normals.push(normal);
+            mesh.uvs.push(uv((east, north)));
         }
     }
 }
@@ -304,18 +352,20 @@ fn normalize([x, y, z]: [f64; 3]) -> [f64; 3] {
 }
 
 /// A bridge deck of `half` width along `run` (points with their distance along a line `total`
-/// long): straight between the heights of its ends, `lift` above them, with its sides.
+/// long): straight between the heights of its ends, `lift` above them, with sides and underside.
 #[allow(clippy::cast_possible_truncation)] // f32 GPU data
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn deck(
     mesh: &mut MeshData,
     run: &[((f64, f64), f64)],
     half: f64,
+    color: [f32; 4],
     (start, end): (f64, f64),
     lift: f64,
     total: f64,
     (heights, below): (&HeightGrid, &Below),
     origin: [f64; 3],
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) {
     if run.len() < 2 {
         return;
@@ -351,6 +401,10 @@ pub(crate) fn deck(
             push(side, top, out, u);
             push(side, top - DECK_DEPTH_M, out, u);
         }
+        // Separate normals keep the slab's lower edges sharp; edge UVs keep tracks' grass
+        // strip on top rather than on the ceiling seen while passing underneath.
+        push(-1.0, top - DECK_DEPTH_M, [0.0, -1.0, 0.0], 0.0);
+        push(1.0, top - DECK_DEPTH_M, [0.0, -1.0, 0.0], 0.0);
         if i > 0 {
             let step = u32::try_from(DECK_POINTS).expect("small");
             let at = base + u32::try_from(i * DECK_POINTS).expect("streets fit u32");
@@ -361,6 +415,9 @@ pub(crate) fn deck(
             let (side_right_0, bottom_right_0) = (previous + 4, previous + 5);
             let (side_left_1, bottom_left_1) = (at + 2, at + 3);
             let (side_right_1, bottom_right_1) = (at + 4, at + 5);
+            let (under_left_0, under_right_0) = (previous + 6, previous + 7);
+            let (under_left_1, under_right_1) = (at + 6, at + 7);
+            let side_indices = mesh.indices.len() + 6;
             mesh.indices.extend([
                 left_0,
                 left_1,
@@ -380,9 +437,155 @@ pub(crate) fn deck(
                 side_right_0,
                 bottom_right_1,
                 bottom_right_0,
+                // Clockwise from below, opposite to the road surface above.
+                under_left_0,
+                under_right_1,
+                under_left_1,
+                under_left_0,
+                under_right_0,
+                under_right_1,
             ]);
+            barriers.push(crate::pavement::Barrier::slab(
+                side_indices..side_indices + 12,
+            ));
         }
     }
+    // The wearing course carries road-profile metadata; railings appended afterwards
+    // retain their structure tints (alpha zero, outside the road-style flag range).
+    mesh.colors.resize(mesh.vertices.len(), color);
+    deck_rails(
+        mesh,
+        run,
+        half,
+        &top_at,
+        total,
+        (heights, below),
+        origin,
+        barriers,
+    );
+}
+
+/// Slim edge beams and open protection replace an unguarded slab on other mapped roads.
+#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)] // rail spans, their posts and closed slab ends stay together
+fn deck_rails(
+    mesh: &mut MeshData,
+    run: &[((f64, f64), f64)],
+    half: f64,
+    top_at: &dyn Fn(f64) -> f64,
+    total: f64,
+    (heights, below): (&HeightGrid, &Below),
+    origin: [f64; 3],
+    barriers: &mut Vec<crate::pavement::Barrier>,
+) {
+    let mut detail = MeshData::default();
+    let offset = mesh.indices.len();
+    let steel = palette::srgb("structure.steel", 0.0);
+    let concrete = palette::srgb("structure.concrete", 0.0);
+    let edge = |i: usize, side: f64, height: f64| {
+        let (before, after) = (
+            run[i.saturating_sub(1)].0,
+            run[(i + 1).min(run.len() - 1)].0,
+        );
+        let (de, dn) = (after.0 - before.0, after.1 - before.1);
+        let length = de.hypot(dn).max(1e-6);
+        let ((east, north), distance) = run[i];
+        let across = (half - 0.12) * side;
+        [
+            east + dn / length * across - origin[0],
+            top_at(distance) + height - origin[1],
+            -north + de / length * across - origin[2],
+        ]
+    };
+    let opening = |i: usize, side: f64| {
+        let edge = edge(i, side, 0.0);
+        let point = (edge[0] + origin[0], -edge[2] - origin[2]);
+        let (a, b) = (
+            run[i.saturating_sub(1)].0,
+            run[(i + 1).min(run.len() - 1)].0,
+        );
+        let length = (b.0 - a.0).hypot(b.1 - a.1).max(1e-9);
+        below.joins(
+            point,
+            top_at(run[i].1),
+            heights.at(point.0, point.1),
+            ((b.0 - a.0) / length, (b.1 - a.1) / length),
+        )
+    };
+    for side in [-1.0, 1.0] {
+        for i in 1..run.len() {
+            if opening(i - 1, side) || opening(i, side) {
+                continue;
+            }
+            let start = detail.indices.len();
+            for height in [0.65, 1.1] {
+                structures::beam(
+                    &mut detail,
+                    edge(i - 1, side, height),
+                    edge(i, side, height),
+                    0.035,
+                    steel,
+                );
+            }
+            structures::beam(
+                &mut detail,
+                edge(i - 1, side, 0.08),
+                edge(i, side, 0.08),
+                0.08,
+                concrete,
+            );
+            let (from, to) = (run[i - 1].1, run[i].1);
+            let mut along = (from / 2.4).ceil() * 2.4;
+            while along < to {
+                let share = (along - from) / (to - from).max(1e-6);
+                let (a, b) = (edge(i - 1, side, 0.16), edge(i, side, 0.16));
+                let foot = [0, 1, 2].map(|k| a[k] + (b[k] - a[k]) * share);
+                let top = [foot[0], foot[1] + 0.975, foot[2]];
+                structures::beam(&mut detail, foot, top, 0.045, steel);
+                along += 2.4;
+            }
+            barriers.push(crate::pavement::Barrier {
+                indices: offset + start..offset + detail.indices.len(),
+                a: [0, 1, 2].map(|k| edge(i - 1, side, 0.0)[k] + origin[k]),
+                b: [0, 1, 2].map(|k| edge(i, side, 0.0)[k] + origin[k]),
+                half_width: 0.08,
+                slab: false,
+            });
+        }
+    }
+    // Close only the real ends, not chunk cuts where the next piece continues the slab.
+    for (i, facing) in [(0, -1.0), (run.len() - 1, 1.0)] {
+        if run[i].1.abs() > 1e-4 && (run[i].1 - total).abs() > 1e-4 {
+            continue;
+        }
+        let (a, b) = (
+            run[i.saturating_sub(1)].0,
+            run[(i + 1).min(run.len() - 1)].0,
+        );
+        let length = (b.0 - a.0).hypot(b.1 - a.1).max(1e-6);
+        let rim = half / (half - 0.12);
+        let start = detail.indices.len();
+        structures::quad(
+            &mut detail,
+            [
+                edge(i, -rim, -DECK_DEPTH_M),
+                edge(i, rim, -DECK_DEPTH_M),
+                edge(i, rim, 0.0),
+                edge(i, -rim, 0.0),
+            ],
+            [
+                (b.0 - a.0) / length * facing,
+                0.0,
+                -(b.1 - a.1) / length * facing,
+            ],
+            concrete,
+        );
+        barriers.push(crate::pavement::Barrier::slab(
+            offset + start..offset + detail.indices.len(),
+        ));
+    }
+    // Wearing surfaces keep their road-style metadata; new details carry structure tints.
+    mesh.append(detail);
 }
 
 /// Piers under a deck along `run`, down to the ground wherever it lies low enough; one that
@@ -422,7 +625,7 @@ fn deck_piers(
         let top = top_at(along) - DECK_DEPTH_M;
         [-wide, 0.0, wide].iter().all(|&aside| {
             let at = (east + ahead.1 * aside, north - ahead.0 * aside);
-            !below.blocked(at, DECK_PIER_HALF_LENGTH + 1.0, top, heights.at(at.0, at.1))
+            !below.blocked(at, DECK_PIER_HALF_LENGTH + 1.2, top, heights.at(at.0, at.1))
         })
     };
     let mut along = ((first / DECK_PIER_SPACING).floor() + 0.5) * DECK_PIER_SPACING;
@@ -440,6 +643,11 @@ fn deck_piers(
             if top - ground >= DECK_PIER_MIN {
                 let right = (ahead.1, -ahead.0);
                 let long = DECK_PIER_HALF_LENGTH;
+                let cap_wide = wide;
+                let wide = wide * 0.5;
+                let foot = heights
+                    .foundation((east, north), ahead, (long, wide))
+                    .unwrap_or(ground);
                 let corner = |forth: f64, aside: f64, height: f64| {
                     [
                         east + ahead.0 * forth + right.0 * aside - origin[0],
@@ -454,13 +662,22 @@ fn deck_piers(
                     ([(long, -wide), (-long, -wide)], (-right.0, -right.1)),
                 ] {
                     let corners = [
-                        corner(x0, y0, ground - 0.5),
-                        corner(x1, y1, ground - 0.5),
-                        corner(x1, y1, top),
-                        corner(x0, y0, top),
+                        corner(x0, y0, foot - 0.5),
+                        corner(x1, y1, foot - 0.5),
+                        corner(x1, y1, top - 0.5),
+                        corner(x0, y0, top - 0.5),
                     ];
                     upright(mesh, corners, [ne, 0.0, -nn], at as f32);
                 }
+                let mut cap = MeshData::default();
+                structures::beam_rect(
+                    &mut cap,
+                    corner(0.0, -cap_wide, top - 0.25),
+                    corner(0.0, cap_wide, top - 0.25),
+                    (long + 0.2, 0.25),
+                    palette::srgb("structure.concrete", 0.0),
+                );
+                mesh.append(cap);
             }
         }
         along += DECK_PIER_SPACING;

@@ -38,7 +38,7 @@ surface in view on a ride must reach the same level before the next group starts
   materials (grass into dirt, asphalt into gravel) instead of hard edges.
 - **Natural colours.** Close to real albedos (grass about 0.1–0.2, asphalt 0.05–0.1, fresh
   snow 0.8); no pure black or white, no oversaturation. The baked grass texture is about three
-  times too bright for that, so `terrain.gdshader` and `street.gdshader` darken it to a deep
+  times too bright for that, so `terrain.gdshader` and `road.gdshader` darken it to a deep
   green (the grass tufts' palette colours match); judge grass on a GPU render, as AgX
   compresses sunlit colours and small tint changes barely show.
 - **Light.** Physically based sky and sun, soft shadows, ambient occlusion in creases, aerial
@@ -131,6 +131,14 @@ edge. Keep entrances and the inner walking strip clear; review their ground cont
   colours, instance buffers) raises `orqwa_world::stored::FORMAT`.
 
 ## Reviewing a render
+
+Bridges (R121–R122) need believable proportions from underneath and from the riding camera:
+single tracks use a 4.8 m deck around the 3.2 m ballast bed, concrete viaducts have low kerbs
+and open steel protection, capped columns and end bearing walls, while stone arches retain
+masonry parapets. Use the dedicated cast-concrete scan at 2.16 m scale, with pores and
+weathering rather than the sidewalk recipe's tiled joints; arches use masonry maps. Keep
+steel distinct. Close beam ends and exposed cap undersides. Roads, streets, paths and railway beds
+must remain opaque from below, including old kept geometry; markings and rails stay on top.
 
 For rider road placement (R120), check both traffic sides, narrow paths, bends and a road
 ridden in both directions. The rider and ghost must stay inside the drawn carriageway on

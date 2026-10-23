@@ -94,6 +94,83 @@ gallery. Grain alone is insufficient at distance. Refresh the linked wiki images
 
 ## Pitfalls
 
+For roadside guardrail placement, include a tight hairpin from above with both edges visible.
+Four-metre models placed on centre-line tangents can overlap inside a curve and leave gaps
+outside it. Check shared blade endpoints, vertical alignment across terrain chunk boundaries,
+and that posts remain upright. Include Alpenbrevet's start/finish loop as well as its mountain
+switchbacks; a straight-road view cannot validate curve placement.
+On curved bridges, check that the slab stays below the asphalt and that railings and their
+posts remain outside the wearing surface, especially beside the start/finish roundabout.
+At roundabouts, inspect the whole junction from above and from its entry: bridge fences must
+not follow the GPX through its interior or cross themselves there. Aligning rail pieces is
+insufficient. Confirm that genuine outside-edge protection and higher overpasses remain.
+Check barriers against all visible carriageways, including parallel joining arms and rounded
+junction fills. Both endpoints being clear is insufficient: inspect the middle of each span
+and its thickness too. Review steel rails/posts, concrete kerbs/parapets and roadside fence
+models, retaining bridge undersides and protection at different elevations.
+
+For bridge geometry (R121), include a camera below a non-ridden road bridge: top and side
+views cannot reveal a missing underside. Check its downward-facing deck across chunk joins,
+and retain a view from above to check the road surface. Motorway/local-road decks and
+unpaved track/path decks share this geometry; ridden-road and railway structures use another
+builder.
+
+For the bridge restyle (R122), compare `oberalp-railway-chase` with `oberalp-bridge-close`,
+`oberalp-bridge-under` and `oberalp-bridge-side`, plus Bern's `bridge-side`. Include a tunnel
+view when changing the shared structure material. Check low kerbs, open metal railings,
+plausible deck widths, capped supports and closed ends without stretching the texture on
+vertical faces. `surface_smoke.gd` uses software Vulkan to verify the four ribbon materials
+stay opaque above and below; shader flags alone are insufficient evidence.
+
+Bridge ownership needs a slightly offset GPX/map centre line in regression tests: full
+cross-section coverage can leave a second mapped deck below the ridden bridge. Preserve
+independent parallel and crossing bridges. For Alpenbrevet, the Lukmanier approach has
+bridges and tunnels around 34.7–36.8 km from the original course start; use saved course
+inputs and check the bridge from the side as well as the riding camera.
+
+Keep the full route when reproducing terrain-grid faults: cropping changes the projection
+origin and grid alignment. Alpenbrevet's portal approaches around 35.0 km and 39.2 km exposed
+paving stretched across the already-cut terrain openings. Check both mouths; an open terrain
+mesh alone does not prove the street ribbons, rounded caps and junctions leave them clear.
+
+At 174.17 km to go on Alpenbrevet Gold (about 36.57 km from its 210.74 km start-to-finish
+length), check the tunnel-to-bridge transition from the side. Map and resampled structure tags
+can change a metre apart: point-wise suppression can leave a short raised deck and railing
+across the approach. Use remaining course distance when the rider has jumped during review.
+
+For floating supports, compare feet with the final terrain triangles, including carved
+channels and steep banks. A raw DEM sample can land on a ridge absent from the drawn grid;
+checking only the centre or four corners can leave a downhill edge or channel exposed. Include
+both ridden/railway supports and mapped-road piers. Keep the same side camera in comparisons.
+
+For railway transitions, check Alpenbrevet around 102.99 and 98.74 km to go (107.75 and
+112.00 km from the start). Ground and bridge tag samples around one crossing must keep one
+clearance, with gentle approaches in both tracks. Nearby tracks at different vertical levels
+must not share elevation pins. Retain true level crossings and road/rail underpass clearance.
+
+At bridge junctions, check the end height and the kerb and railing opening from the ridden
+road. Compare a connection at deck level with an overpass at a different height; only the
+former opens. Check both edges of a ridden bridge with a side street: the opposite edge must
+stay protected, and the slab underside must remain closed through the opening.
+
+Also review Alpenbrevet's short mapped bridges near 32.05, 141.89 and 143.45 km from the start
+(the 178.51, 68.85 and 67.26 km-to-go screenshots can look ahead or behind the rider). Ground
+route tags must not leave a second raw-DEM deck over the ridden pavement. Preserve separate
+bridges above a tunnel and bridges that leave the ridden corridor.
+
+For tunnel interiors, inspect the full saved Alpenbrevet route around 175.72 km to go
+(35.02 km from the start) from inside and outside. Look beyond the first six metres: a
+nearby lower way can cut terrain back into the tube farther inside. Check roof paving from
+above the mouth as well. Retain the hillside outside the shell and distinct roads crossing
+above; clipping must follow the complete curved road or bundled railway tube.
+
+At Alpenbrevet's 33.52 km-to-go protection report (177.22 km from the start), render the
+actual guardrail instances from the valley side. A lower parallel railway must not pull
+down the ridden shoulder, posts or draped paving. Check that the rails meet their ground
+at carriageway height and that the separate railway keeps its original lower elevation.
+Include a road on a chunk boundary: its protection can stand in a neighbour and must use
+that neighbour's refined ground rather than coarse border extrapolation from its owner.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

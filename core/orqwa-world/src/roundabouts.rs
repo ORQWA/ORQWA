@@ -2,7 +2,7 @@
 //! Rings (small, round, closed loops of road) get a raised island of grass inside, its kerb
 //! steep enough for the terrain shader to draw it in stone, so the ring reads as one.
 
-use orqwa_osm::{LandCover, MapData, RoadClass};
+use orqwa_osm::{LandCover, MapData, RoadClass, StructureKind};
 use orqwa_routes::LocalProjection;
 
 use crate::{HeightGrid, MeshData, On, drape, landcover};
@@ -23,6 +23,15 @@ pub(crate) struct Island {
     outline: Vec<(f64, f64)>,
     min: (f64, f64),
     max: (f64, f64),
+    /// The whole junction up to its outer road edge, rather than just the planted island.
+    junction: Vec<(f64, f64)>,
+}
+
+impl Island {
+    /// Protection following a GPX turn must not divide the roundabout's junction area.
+    pub(crate) fn inside_junction(&self, point: (f64, f64)) -> bool {
+        crate::buildings::contains(&self.junction, point)
+    }
 }
 
 /// The islands of the map's roundabouts.
@@ -91,7 +100,26 @@ pub(crate) fn islands(map: &MapData, projection: &LocalProjection) -> Vec<Island
             min = (min.0.min(e), min.1.min(n));
             max = (max.0.max(e), max.1.max(n));
         }
-        islands.push(Island { outline, min, max });
+        let junction = if road.structure == Some(StructureKind::Tunnel) {
+            Vec::new()
+        } else {
+            ring.iter()
+                .zip(&distances)
+                .map(|(p, d)| {
+                    let scale = (d + inset - ISLAND_MARGIN + 0.3) / d.max(1e-9);
+                    (
+                        centre.0 + (p.0 - centre.0) * scale,
+                        centre.1 + (p.1 - centre.1) * scale,
+                    )
+                })
+                .collect()
+        };
+        islands.push(Island {
+            outline,
+            min,
+            max,
+            junction,
+        });
     }
     islands
 }

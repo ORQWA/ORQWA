@@ -71,6 +71,119 @@ both water meshes and channel beds use those shared elevations. Keep these profi
 independent of road shaping. Review a steep valley from the road and above, plus a lake,
 after changing them. Older kept worlds offer **Regenerate world** for the corrected rivers.
 
+Bridge geometry (R121–R122) uses generator 12 / stored format 3. `drape::deck` adds a
+downward-facing underside at the same depth as the side walls, including at chunk joins;
+the ridden road and railway decks are built separately in `structures.rs`. Older kept
+worlds offer regeneration. Run `cargo test -p orqwa-world non_ridden_bridges` for coverage
+of all five road classes, grades, bends and chunk boundaries, and check a render from below.
+
+Generator 13 prevents a mapped bridge from being built again underneath the ridden bridge
+when their aligned centre lines differ slightly. Bridge ownership uses their shared centre
+corridor; ground junctions still require full cross-section coverage. Separate parallel and
+crossing bridges remain visible. Stored format stays at 3.
+
+Generator 14 keeps mapped approach paving out of ridden tunnels. Ground ribbons, rounded
+ends and junction paving use the terrain's portal cut, at their own surface height, so a
+height-grid ramp cannot close the opening after the terrain itself has been hollowed out.
+Independent surface roads above tunnels remain visible. Review the full saved Alpenbrevet
+route: cropping it changes the projection origin and terrain grid, which can hide this fault.
+
+Generator 15 assigns a complete aligned mapped bridge to the ridden road when the feature
+follows that centre line and overlaps its bridge. A slightly different tunnel/bridge tag
+boundary must not leave a short mapped deck, railing or end cap across the approach. Bridges
+that leave the ridden corridor still use per-section coverage and retain their visible parts.
+
+Generator 17 keeps one railway crossing clearance across adjacent ground/bridge tag samples.
+An overpass approach must not be pinned to road level immediately beside its elevated deck;
+an underpass must stay below the road across its bridge end. Parallel tracks only share an
+elevation when their independently estimated levels are within 6 m, so vertically separated
+railways cannot pull one another into abrupt ramps. True level crossings retain their pins.
+
+Generator 18 brings mapped bridge endpoints within 3 m of a connecting ridden ground road
+to that road's elevation. Kerbs and railings open where a ground street meets a deck within
+0.5 m of its height; exact short street segments keep these gaps off the opposite edge.
+Separate overpasses retain their height and protection. Slab faces stay closed below the
+wearing surface, including at junctions and true ends. Endpoint profiles are resolved before
+chunk generation, and the lowered approach banks follow them so they cannot bury the deck.
+
+Generator 19 extends complete-feature bridge ownership to aligned stretches retained as
+Ground by route import. Their pavement already draws the surface; a second mapped deck at
+raw DEM heights created the raised steps and skewed slabs in the Alpenbrevet follow-up images.
+An entirely underground route cannot own a separate surface bridge above it. Crossing,
+parallel and beyond-route bridges remain independent.
+
+Generator 20 subtracts the complete tunnel volume from terrain and draped paving, using the
+same road sections and bundled railway widths as the tube geometry. Short overlapping cuts
+follow bends and grades; the original mouth cuts still extend beyond the portal rings.
+This prevents shaped banks or nearby lower ways from leaving terrain faces inside a tunnel
+farther than the old six-metre mouth cut. Complete aligned mapped ground approaches that
+overlap the ridden tunnel share its pavement owner, including rounded ends, so duplicate
+ribbons cannot climb onto the roof. Interior cuts reach below the tube floor so thin terrain
+strips cannot show through the road. Railway sections compressed below a ridden-road
+embankment retain that cover rather than cutting the uncompressed ellipse out of it.
+Distinct surface roads crossing above remain visible.
+
+Generator 21 keeps the ridden ground road's width-adjusted verge at its own datum before
+railway terrain shaping. On Alpenbrevet's Furka climb, a lower parallel track's cutting
+previously pulled down that shoulder, taking guardrails, posts and draped pavement with it.
+The railway cutting blends smoothly between the protected road verge and the separate track
+bed, retaining both elevations. Railway shaping still applies below road bridges. Protection remains
+on the generated ground; its transform is not lifted independently of its footing. Protection
+whose footing crosses its road station's chunk boundary is grounded against the neighbour's
+completed terrain triangles, rather than the owner's coarse border interpolation.
+Drop detection looks beyond that shaped verge so a flat shoulder does not create short
+gaps and sloping rail ends beside a continuous cliff.
+
+Generator 22 places each guardrail span between shared points on the actual offset road edge.
+The points use the wearing surface's cross-section directions; each model's longitudinal
+basis follows the edge chord and its endpoint heights, while posts remain upright. Inner
+bends no longer overlap and outer bends no longer leave gaps. Endpoints crossing a chunk
+boundary use the final neighbouring terrain so blade heights agree there as well.
+Bridge barriers and slabs also share the pavement's averaged cross-section directions,
+including the transition to ground road; posts follow the interpolated bend rather than the
+preceding section's tangent. This prevents intrusion into curved carriageways and concrete
+showing through the asphalt on Alpenbrevet's start/finish loop.
+
+Generator 23 gives a retraced bridge one structure owner, matching the pavement. The return
+GPX's different curve can no longer generate a second deck and crossing fences at the shared
+roundabout approach. It also excludes bridge barriers from the full mapped roundabout area, including its
+interior and carriageway. Boundary mismatches between Ground and Bridge share the earlier
+pavement owner at the same level. Short different ends within the six-metre pavement overlap
+margin belong to the complete earlier bridge, preventing residual fence stubs.
+Following a curved GPX with persistent bridge tags is not enough
+to infer a fence boundary there. This uses the ring's outer road footprint rather than the
+GPX offset or an angle test, so parallel portions of the junction also stay open. Outside
+protection and distinct higher overpasses remain. Tunnel service loops do not create a
+surface junction exclusion.
+
+Generator 24 applies a general road-clearance pass after all carriageways and junction fans
+have been generated. It indexes their actual triangles, excluding verges, shore gravel and
+the narrow mapped-deck kerbs. Barrier footprints are clipped against that pavement in plan
+and elevation, checking complete spans and thickness rather than just ends or street angles.
+Crossing rail/post pieces and concrete kerbs/parapets are removed together; slab sides,
+end edges and slab shoulders recede below same-level joining pavement while undersides
+and supports remain closed. Roadside guardrail and fence instances share the
+same clearance check. Temporary barrier ranges are discarded before storing, so format 3
+is unchanged. Protection on genuine overpasses and beside clear road edges remains.
+
+Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
+low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
+retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks
+so piers and bearing walls meet the final ground triangles, including shaped banks and carved
+channels. Foundations clip terrain triangles to their complete rectangular footprint and
+extend below its lowest point; a centre sample or four corners can miss a downhill face or
+channel. Mapped-road piers use the same footprint calculation against their chunk's terrain.
+`BridgeMaterials` shares dedicated scanned cast-concrete maps and
+world-space projection across structure faces and exposed road backs; arches use masonry.
+Rebuild the bridge maps with `scripts/art.sh blender --background --factory-startup --python
+art/textures/build.py -- bridge_concrete`; originals, licence and checksums are archived under
+`art/sources/concrete-wall-007/`. Wearing surfaces retain road-profile metadata. New bridge
+details use sRGB tints with zero
+alpha, outside the positive road-style flag range; steel tints shade the rails.
+Older worlds keep working; shaders draw road, street, path and railway ribbons from both
+sides immediately. `surface_smoke.gd` renders all four materials above and below and checks
+opacity. `scripts/check.sh` runs it with software Vulkan/Xvfb after the headless smoke tests.
+
 ## Refreshing screenshots
 
 Tree rendering uses the original close models plus authored medium/far forms from

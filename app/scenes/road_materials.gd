@@ -5,6 +5,7 @@ extends RefCounted
 
 static func configure(material: ShaderMaterial, shoulders: bool) -> void:
 	material.shader = preload("res://shaders/road.gdshader")
+	BridgeMaterials.configure(material)
 	for texture_name: String in ["asphalt", "gravel", "grass", "dirt", "concrete", "paving"]:
 		for channel: String in ["albedo", "normal"]:
 			material.set_shader_parameter(

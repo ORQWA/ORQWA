@@ -86,6 +86,30 @@ the course descends; the bed follows the same datum and the gravel band follows 
 Tall banks blend out over a wider reach; exposed steep channel sides use triplanar rock.
 Review steep valley rivers from road height and above with `orqwa-render-review`.
 
+Non-ridden road bridges have solid 0.7 m decks (R121), with separate downward-facing
+underside vertices to keep the slab edges sharp. Undersides use edge UVs so unpaved bridges'
+grass strips stay on top. Review the deck from road height underneath as well as from above;
+the generator adds this geometry when a kept world is regenerated.
+
+Bridge structures (R122) use the CC0 Poly Haven **Concrete Wall 007** photograph-based
+albedo, normal and roughness maps for cast concrete, with pores, worn patches and formboard
+marks at their original 2.16 m scale. `concrete_scan.py` converts the archived originals in
+`art/sources/concrete-wall-007/`; rebuild with `build.py -- bridge_concrete`. These dedicated
+maps avoid the sidewalk recipe's tiled joints. Stone arches use the existing masonry maps.
+Both use metre-based projection on horizontal and vertical faces; steel rails use the palette's
+metal tint. Single-track decks are 4.8 m wide, with room around the 3.2 m ballast bed for
+maintenance access. Low kerbs and open railings replace concrete walls on viaducts, narrower
+columns carry transverse caps, and bearing walls tie the ends to the ground. Stone arch
+bridges keep their solid masonry parapets. Beam ends, slab ends and exposed cap undersides
+are closed. Generator 12 adds this geometry; the material scan adds no dependency.
+Ridden bridges keep the wearing course inside their kerbs, without the rural road's
+gravel and grass skirts hanging off the deck.
+
+Road, street, path and railway ribbons also draw their exposed backs with plain underside
+materials, so markings, grass strips and rail heads stay on top. This rendering change
+applies to kept worlds without regeneration. Review the Oberalp railway crossing, bridge
+side views and the four materials' above/below opacity test before changing this group.
+
 ```sh
 scripts/art.sh blender --background --factory-startup --python art/textures/build.py -- --out screenshots/textures --size 512
 ```

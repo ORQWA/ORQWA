@@ -1,4 +1,5 @@
 shader_type spatial;
+render_mode cull_disabled;
 // Railways (#75, R89, ADR 0020): a bed of ballast (the gravel texture) with wooden sleepers
 // across it and two steel rails along it, their heads polished by wheels. UV.x runs 0–1 across the bed, UV.y is the
 // distance along the line in metres. Where sleepers would be finer than a pixel along the line,
@@ -18,6 +19,12 @@ const float RAIL = 0.08;
 const float SLEEPER_LENGTH = 2.5;
 const float SLEEPER_WIDTH = 0.24;
 const float SLEEPER_SPACING = 0.6;
+
+varying vec3 world_normal;
+
+void vertex() {
+	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
 
 // 1 inside [from, to], edges one pixel soft.
 float band(float x, float from, float to) {
@@ -44,4 +51,11 @@ void fragment() {
 	ROUGHNESS = mix(0.92, 0.3, rail_mix);
 	METALLIC = 0.8 * rail_mix;
 	SPECULAR = 0.4;
+	if (!FRONT_FACING) {
+		// The exposed bed has aggregate below, without painted-on rail heads or sleepers.
+		ALBEDO = ballast * ballast_color * 1.5;
+		ROUGHNESS = 0.95;
+		METALLIC = 0.0;
+		NORMAL = normalize((VIEW_MATRIX * vec4(-world_normal, 0.0)).xyz);
+	}
 }

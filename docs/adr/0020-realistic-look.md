@@ -173,3 +173,29 @@ without a generator or stored-format increment.
 The same wooded cliff face in Bern: [before](../images/issues/rock-cliff-before.jpg),
 [after](../images/issues/rock-cliff-close.jpg) and
 [overview](../images/issues/rock-cliff-overview.jpg).
+
+### Bridge structures and surface backs (2026-10-23, R121–R122)
+
+Single-track railway bridges use a 4.8 m deck around the 3.2 m bed, leaving maintenance
+space. Concrete viaducts have low kerbs and open steel safety rails, narrower columns with
+transverse bearing caps, and solid end bearing walls. Stone arches retain masonry parapets.
+Slabs, beam ends and exposed cap undersides are closed. Both structure builders retain
+their road/rail clearance rules; generator 12 offers the geometry to kept worlds.
+End-wall foundations check all four corners against the interpolated, shaped ground that
+is drawn. Raw DEM centre samples left visible gaps above the downhill side of cuttings.
+
+The shared bridge material uses Poly Haven's CC0 **Concrete Wall 007** albedo, OpenGL normal
+and roughness scan at its original 2.16 m scale, projected on walls and undersides with broad
+staining. The sidewalk recipe's square joints looked like bathroom tiles in close-up, so
+bridges have dedicated maps with photographed pores, worn patches and formboard marks.
+Untouched originals, source and checksums are archived in `art/sources/concrete-wall-007/`;
+`art/textures/concrete_scan.py` converts them. Stone arches keep the existing masonry maps;
+steel tints have a separate metal response. No dependency is added. Road-profile metadata
+remains on wearing surfaces; bridge details carry sRGB tints with
+zero alpha, outside the positive road-style flag range. Stored format 3 remains readable
+and drawable. Dedicated bridge texture bindings preserve the paved-road concrete maps.
+
+Road, street, path and railway shaders draw exposed backs too. Their back materials omit
+surface markings, grass, sleepers and polished rail heads. This applies to kept worlds
+immediately. A software-Vulkan test renders all four surface materials from each side and
+checks actual pixel opacity, since headless scene tests cannot catch back-face culling.

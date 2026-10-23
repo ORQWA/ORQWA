@@ -1,7 +1,8 @@
 //! Bridges and tunnels of the road ridden and the railways. Short, low bridges are stone arch
 //! bridges (#75): arched openings between piers, the walls over the arches and the vaults under
 //! them; longer and higher ones, and those over a road, a street or a track, are viaducts, their
-//! deck on piers as wide as itself. Piers keep off the ways below (#98). Tunnels are an arched
+//! deck on capped columns with low kerbs and open steel railings. Piers keep off the ways
+//! below (#98). Railway decks fit the track and a maintenance walkway. Tunnels are an arched
 //! tube, starting where the ground rises over it and keeps it covered: a stone ring round the
 //! opening at the end of the cutting leading to it (#135). Parallel tracks share one bridge or
 //! tunnel, as wide as they need (#99).
@@ -11,12 +12,14 @@ use std::sync::LazyLock;
 
 use orqwa_routes::{ElevationModel, LocalProjection, Surface};
 
+use crate::foundations::Ground;
 use crate::road::{CentrePoint, Plane, RoadIndex, TunnelRun};
 use crate::streets::{Levels, Street};
 use crate::{LEVEL_REACH, MeshData, ROAD_SINK, Shapers, palette, railways, shape};
 
 static CONCRETE: LazyLock<[f32; 4]> = LazyLock::new(|| palette::srgb("structure.concrete", 0.0));
 static STONE: LazyLock<[f32; 4]> = LazyLock::new(|| palette::srgb("structure.stone", 0.0));
+static STEEL: LazyLock<[f32; 4]> = LazyLock::new(|| palette::srgb("structure.steel", 0.0));
 static TUNNEL_WALL: LazyLock<[f32; 4]> = LazyLock::new(|| palette::srgb("structure.tunnel", 0.0));
 /// The tube's floor, darker than its walls: lit from above like the ground outside, in the
 /// walls' colour it lay as a pale strip either side of the road.
@@ -30,6 +33,9 @@ const DECK_HALF_WIDTH: f64 = 3.6;
 const DECK_THICKNESS: f64 = 1.2;
 const PARAPET_HEIGHT: f64 = 1.0;
 const PARAPET_THICKNESS: f64 = 0.3;
+const KERB_HEIGHT: f64 = 0.22;
+const RAIL_HEIGHT: f64 = 1.1;
+const POST_SPACING: f64 = 2.4;
 const PILLAR_SPACING: f64 = 30.0;
 /// Viaduct piers: this thick along the deck, and as wide as the deck less this on each side.
 const PIER_HALF_LENGTH: f64 = 1.0;
@@ -47,7 +53,7 @@ const ARCH_CROWN: f64 = 0.5;
 const ARCH_PIECES: usize = 10;
 /// The ground under a bridge is looked at this often.
 const GROUND_STEP: f64 = 2.0;
-/// Piers and walls reach this far below the natural ground: channels may cut it (`channels`).
+/// Piers and walls are buried this far below the final, carved ground across their footing.
 const FOOTING: f64 = 2.5;
 /// Tunnels are this wide either side of their line, and at most this high.
 const TUNNEL_RADIUS: f64 = 5.0;
@@ -89,40 +95,116 @@ const PIER_SHIFT: f64 = PILLAR_SPACING / 2.0;
 /// Index cell size of the streets in [`Below`].
 const BELOW_CELL: f64 = 10.0;
 
-/// Street points with the streets' half widths, by index cell.
-type StreetPoints = HashMap<(i64, i64), Vec<(f64, f64, f64)>>;
+/// Short street segments retain their exact footprints at junctions and below piers.
+#[derive(Clone, Copy)]
+struct StreetSegment {
+    a: (f64, f64),
+    b: (f64, f64),
+    half: f64,
+}
+
+impl StreetSegment {
+    fn direction(self) -> (f64, f64) {
+        let delta = (self.b.0 - self.a.0, self.b.1 - self.a.1);
+        let length = delta.0.hypot(delta.1).max(1e-9);
+        (delta.0 / length, delta.1 / length)
+    }
+
+    fn distance(self, point: (f64, f64)) -> f64 {
+        let direction = self.direction();
+        let along = ((point.0 - self.a.0) * direction.0 + (point.1 - self.a.1) * direction.1)
+            .clamp(0.0, distance(self.a, self.b));
+        distance(
+            point,
+            (
+                self.a.0 + along * direction.0,
+                self.a.1 + along * direction.1,
+            ),
+        )
+    }
+}
+
+type StreetPoints = HashMap<(i64, i64), Vec<StreetSegment>>;
 
 /// What runs on the ground under bridges — the road ridden, the railways and the other streets —
 /// for piers and walls to keep off it (#98).
 pub(crate) struct Below<'a> {
     road: &'a RoadIndex,
     railways: &'a RoadIndex,
-    /// Street points, a few metres apart.
+    /// Street segments, a few metres long.
     streets: StreetPoints,
+    roundabouts: &'a [crate::roundabouts::Island],
 }
 
 impl<'a> Below<'a> {
-    pub(crate) fn new(road: &'a RoadIndex, railways: &'a RoadIndex, streets: &[Street]) -> Self {
+    pub(crate) fn new(
+        road: &'a RoadIndex,
+        railways: &'a RoadIndex,
+        streets: &[Street],
+        roundabouts: &'a [crate::roundabouts::Island],
+    ) -> Self {
         let mut cells = StreetPoints::new();
         for street in streets.iter().filter(|s| !s.on_bridge()) {
-            for &(east, north) in street.points() {
-                cells.entry(below_cell(east, north)).or_default().push((
-                    east,
-                    north,
-                    street.half_width(),
-                ));
+            for pair in street.points().windows(2) {
+                let segment = StreetSegment {
+                    a: pair[0],
+                    b: pair[1],
+                    half: street.half_width(),
+                };
+                let a = below_cell(pair[0].0, pair[0].1);
+                let b = below_cell(pair[1].0, pair[1].1);
+                cells.entry(a).or_default().push(segment);
+                if b != a {
+                    cells.entry(b).or_default().push(segment);
+                }
             }
         }
         Self {
             road,
             railways,
             streets: cells,
+            roundabouts,
         }
     }
 
     /// The road ridden.
     pub(crate) fn road(&self) -> &RoadIndex {
         self.road
+    }
+
+    /// A ground street meeting this edge at deck level needs an opening in its protection.
+    pub(crate) fn joins(
+        &self,
+        point: (f64, f64),
+        deck: f64,
+        ground: f64,
+        heading: (f64, f64),
+    ) -> bool {
+        // A GPX may turn through a roundabout while still tagged as bridge. Its offset
+        // ribbon is not a fence boundary: keep the entire junction open, including the
+        // inside of the turn. A genuinely higher overpass retains its protection.
+        if (ground - deck).abs() <= 3.0 && self.roundabouts.iter().any(|r| r.inside_junction(point))
+        {
+            return true;
+        }
+        if self.road.ground_join(point, deck, 0.5).is_some() {
+            return true;
+        }
+        if (ground - deck).abs() > 0.5 {
+            return false;
+        }
+        self.nearby_streets(point).any(|segment| {
+            let direction = segment.direction();
+            segment.distance(point) <= segment.half + 0.3
+                && (heading.0 * direction.0 + heading.1 * direction.1).abs() < 0.8
+        })
+    }
+
+    fn nearby_streets(&self, point: (f64, f64)) -> impl Iterator<Item = &StreetSegment> {
+        let (ce, cn) = below_cell(point.0, point.1);
+        (ce - 1..=ce + 1).flat_map(move |x| {
+            (cn - 1..=cn + 1).flat_map(move |y| self.streets.get(&(x, y)).into_iter().flatten())
+        })
     }
 
     /// Whether a way passes at `position` (within `margin` of its edge) under a deck whose
@@ -150,17 +232,8 @@ impl<'a> Below<'a> {
         if ground >= low {
             return false;
         }
-        let (ce, cn) = below_cell(east, north);
-        (ce - 1..=ce + 1).any(|x| {
-            (cn - 1..=cn + 1).any(|y| {
-                self.streets.get(&(x, y)).is_some_and(|points| {
-                    // Points lie a few metres apart: allow half a step along.
-                    points
-                        .iter()
-                        .any(|&(e, n, half)| (e - east).hypot(n - north) < half + margin + 1.5)
-                })
-            })
-        })
+        self.nearby_streets((east, north))
+            .any(|segment| segment.distance((east, north)) < segment.half + margin)
     }
 }
 
@@ -221,7 +294,12 @@ impl Portal {
     /// opening, just before the portal and just inside it, as triangles; `None` where the
     /// opening does not touch it. The ground is cut to the tube's outline, `HOLLOW_MARGIN` out
     /// (under the ring), so nothing closes the opening and nothing is missing round it (#135).
-    pub(crate) fn cut(&self, corners: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+    fn cut(
+        &self,
+        corners: [[f64; 3]; 3],
+        (from, to): (f64, f64),
+        bottom: f64,
+    ) -> Option<Vec<[[f64; 3]; 3]>> {
         let local = corners.map(|[east, north, height]| {
             let (along, across) = self.local(east, north);
             [along, across, height - (self.floor + self.rise * along)]
@@ -229,11 +307,11 @@ impl Portal {
         let (half, crown) = (self.half + HOLLOW_MARGIN, self.crown + HOLLOW_MARGIN);
         // Wholly before, past, beside, under or over the opening: untouched.
         let all = |keep: &dyn Fn([f64; 3]) -> bool| local.iter().all(|&l| keep(l));
-        if all(&|l| l[0] <= -HOLLOW_FRONT)
-            || all(&|l| l[0] >= HOLLOW_DEPTH)
+        if all(&|l| l[0] <= from)
+            || all(&|l| l[0] >= to)
             || all(&|l| l[1] <= -half)
             || all(&|l| l[1] >= half)
-            || all(&|l| l[2] <= HOLLOW_FLOOR)
+            || all(&|l| l[2] <= bottom)
             || all(&|l| l[2] >= crown)
         {
             return None;
@@ -242,9 +320,9 @@ impl Portal {
         // before it, past it, its floor, and the pieces of its arch, from the right at the
         // floor over the crown to the left, the inside on their left.
         let mut planes = vec![
-            [1.0, 0.0, 0.0, HOLLOW_FRONT],
-            [-1.0, 0.0, 0.0, HOLLOW_DEPTH],
-            [0.0, 0.0, 1.0, -HOLLOW_FLOOR],
+            [1.0, 0.0, 0.0, -from],
+            [-1.0, 0.0, 0.0, to],
+            [0.0, 0.0, 1.0, -bottom],
         ];
         #[allow(clippy::cast_precision_loss)] // small segment counts
         let arch = |k: usize| {
@@ -299,6 +377,92 @@ impl Portal {
     }
 }
 
+/// A mouth or a short piece of the tunnel volume: surrounding surfaces stay outside it.
+#[derive(Clone, Copy)]
+pub(crate) struct TunnelCut {
+    tube: Portal,
+    extent: (f64, f64),
+    bottom: f64,
+}
+
+impl TunnelCut {
+    pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> bool {
+        let (along, across) = self.tube.local(east, north);
+        along >= self.extent.0 - reach
+            && along <= self.extent.1 + reach
+            && across.abs() <= self.tube.half + HOLLOW_MARGIN + reach
+    }
+
+    pub(crate) fn cut(&self, corners: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+        self.tube.cut(corners, self.extent, self.bottom)
+    }
+}
+
+/// Use the same sections as the visible tubes, including bundled railway widths.
+pub(crate) fn hollows(road: &RoadIndex, rails: &RoadIndex, portals: &[Portal]) -> Vec<TunnelCut> {
+    let mut cuts: Vec<_> = portals
+        .iter()
+        .map(|&tube| TunnelCut {
+            tube,
+            extent: (-HOLLOW_FRONT, HOLLOW_DEPTH),
+            bottom: HOLLOW_FLOOR,
+        })
+        .collect();
+    let own = road
+        .structure_runs()
+        .into_iter()
+        .map(|(surface, run)| (surface, sections(&run, surface, false), false));
+    let tracks = bundles(&rails.structure_runs())
+        .into_iter()
+        .map(|(surface, run)| (surface, run, true));
+    for (surface, run, railway) in own.chain(tracks) {
+        if surface != Surface::Tunnel {
+            continue;
+        }
+        for pair in run.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            let a_centre = shifted(a.centre, (a.right - a.left) / 2.0);
+            let b_centre = shifted(b.centre, (b.right - b.left) / 2.0);
+            let (de, dn) = (
+                b_centre.position.0 - a_centre.position.0,
+                b_centre.position.1 - a_centre.position.1,
+            );
+            let length = de.hypot(dn);
+            if length <= 1e-9 {
+                continue;
+            }
+            // Railway tubes compress below a road embankment (`ground_over`). Their
+            // uncompressed ellipse must not remove that cover or its surface crossing.
+            if railway
+                && [a_centre, b_centre].iter().any(|p| {
+                    road.near(p.position.0, p.position.1, LEVEL_REACH)
+                        .iter()
+                        .any(|&(_, height, surface)| {
+                            surface != Surface::Tunnel && height - p.elevation >= UNDERPASS
+                        })
+                })
+            {
+                continue;
+            }
+            cuts.push(TunnelCut {
+                tube: Portal {
+                    plane: (a_centre.position, (de / length, dn / length)),
+                    floor: a_centre.elevation,
+                    rise: (b_centre.elevation - a_centre.elevation) / length,
+                    half: f64::midpoint(a.left, a.right).max(f64::midpoint(b.left, b.right)),
+                    crown: a.crown.max(b.crown),
+                },
+                // Overlap the short pieces so a bend cannot leave a thin terrain seam.
+                extent: (-HOLLOW_MARGIN, length + HOLLOW_MARGIN),
+                // The tube's own floor covers the remaining ground; a cut above road
+                // level leaves thin strips of grass or rock visible through the pavement.
+                bottom: -ROAD_SINK - 0.02,
+            });
+        }
+    }
+    cuts
+}
+
 /// Finds where each tunnel of the road ridden and the railways enters the hill, where the
 /// ground first lies over its crown, and opens the line before that onto the ground (#135): the
 /// tube starts there, the approach runs in a cutting up to the portal and the hill over the
@@ -328,6 +492,7 @@ pub(crate) async fn open_portals<M: ElevationModel>(
             rails: &*rails,
             streets,
             portals: &[],
+            hollows: &[],
             hills: false,
         };
         for run in &road_runs {
@@ -513,9 +678,11 @@ async fn ground<M: ElevationModel>(
 pub(crate) async fn build_all<M: ElevationModel>(
     (road, railways): (&RoadIndex, &RoadIndex),
     below: &Below<'_>,
-    portals: &[Portal],
+    shapers: &Shapers<'_>,
+    ground: &Ground<'_>,
     projection: &LocalProjection,
     model: &mut M,
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) -> MeshData {
     let mut mesh = MeshData::default();
     let own = road.structure_runs().into_iter().map(|(surface, run)| {
@@ -535,7 +702,7 @@ pub(crate) async fn build_all<M: ElevationModel>(
         .map(|(surface, run)| (surface, run, Some(road)));
     for (surface, run, over) in own.chain(rails) {
         match surface {
-            Surface::Bridge => bridge(&mut mesh, &run, below, projection, model).await,
+            Surface::Bridge => bridge(&mut mesh, &run, below, ground, barriers),
             Surface::Tunnel => {
                 let over = over.map(|road| (road, projection, &mut *model));
                 tunnel(&mut mesh, &run, over).await;
@@ -543,7 +710,8 @@ pub(crate) async fn build_all<M: ElevationModel>(
                     let Some(&end) = end else {
                         continue;
                     };
-                    let at_portal = portals
+                    let at_portal = shapers
+                        .portals
                         .iter()
                         .any(|p| distance(p.plane.0, end.centre.position) < 1.0);
                     if at_portal {
@@ -562,6 +730,7 @@ fn half_width(surface: Surface, railway: bool) -> f64 {
     match (surface, railway) {
         (Surface::Tunnel, false) => TUNNEL_RADIUS,
         (Surface::Tunnel, true) => RAIL_TUNNEL_RADIUS,
+        (Surface::Bridge, true) => railways::BED_M / 2.0 + 0.8,
         _ => DECK_HALF_WIDTH,
     }
 }
@@ -694,21 +863,28 @@ fn across(line: &[CentrePoint], point: &CentrePoint) -> Option<(usize, f64)> {
     best.map(|b| (b.1, b.2))
 }
 
-async fn bridge<M: ElevationModel>(
+fn bridge(
     mesh: &mut MeshData,
     run: &[Section],
     below: &Below<'_>,
-    projection: &LocalProjection,
-    model: &mut M,
+    terrain: &Ground<'_>,
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) {
     let path = Path::new(run);
     // The ground under the bridge, every few metres.
     let mut ground = Vec::new();
     let mut along = 0.0;
     while along <= path.length {
-        let point = path.at(along).centre;
-        let (lat, lon) = projection.unproject(point.position.0, point.position.1);
-        ground.push(model.elevation(lat, lon).await.ok());
+        let section = path.at(along);
+        ground.push(
+            [-section.left, 0.0, section.right]
+                .into_iter()
+                .filter_map(|across| {
+                    let (e, n) = aside(section.centre, across);
+                    terrain.at(e, n)
+                })
+                .reduce(f64::min),
+        );
         along += GROUND_STEP;
     }
     let ground_at = |along: f64| {
@@ -746,20 +922,41 @@ async fn bridge<M: ElevationModel>(
         && path.length <= ARCH_BRIDGE_LENGTH
         && (MIN_PILLAR_HEIGHT..=ARCH_BRIDGE_HEIGHT).contains(&height);
     let color = if arched { *STONE } else { *CONCRETE };
-    deck(mesh, run, color);
+    let opening = |section: Section, side: f64| {
+        let point = aside(section.centre, section.edge(side));
+        terrain.at(point.0, point.1).is_some_and(|ground| {
+            below.joins(
+                point,
+                section.centre.elevation,
+                ground,
+                section.centre.direction,
+            )
+        })
+    };
+    deck(mesh, run, color, arched, &opening, barriers);
     if arched {
         arches(mesh, &path, &ground_at);
     } else {
-        piers(mesh, &path, &ground_at, &clear);
+        piers(mesh, &path, &ground_at, &clear, terrain);
+        abutments(mesh, &path, &clear, terrain);
     }
 }
 
 /// The deck: its sides from below the road up to the parapets, the parapets' inner faces and
 /// tops, and its underside.
-fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4]) {
+fn deck(
+    mesh: &mut MeshData,
+    run: &[Section],
+    color: [f32; 4],
+    arched: bool,
+    opening: &dyn Fn(Section, f64) -> bool,
+    barriers: &mut Vec<crate::pavement::Barrier>,
+) {
+    let barrier = if arched { PARAPET_HEIGHT } else { KERB_HEIGHT };
     for pair in run.windows(2) {
         let (a, b) = (pair[0], pair[1]);
         for side in [-1.0, 1.0] {
+            let open = opening(a, side) || opening(b, side);
             let outer = (a.edge(side), b.edge(side));
             let inner = (
                 outer.0 - PARAPET_THICKNESS * side,
@@ -767,20 +964,34 @@ fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4]) {
             );
             let outward = right(a.centre).map(|v| v * side);
             // Deck side, from the road surface down.
+            let lower = mesh.indices.len();
             wall(
                 mesh,
                 (a.centre, b.centre),
                 outer,
-                (-DECK_THICKNESS, PARAPET_HEIGHT),
+                (-DECK_THICKNESS, if open { -0.04 } else { 0.0 }),
                 outward,
                 color,
             );
+            barriers.push(crate::pavement::Barrier::slab(lower..mesh.indices.len()));
             // Parapet: inner face and top.
+            if open {
+                continue;
+            }
+            let start = mesh.indices.len();
+            wall(
+                mesh,
+                (a.centre, b.centre),
+                outer,
+                (0.0, barrier),
+                outward,
+                color,
+            );
             wall(
                 mesh,
                 (a.centre, b.centre),
                 inner,
-                (0.0, PARAPET_HEIGHT),
+                (0.0, barrier),
                 outward.map(|v| -v),
                 color,
             );
@@ -788,11 +999,30 @@ fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4]) {
                 mesh,
                 (a.centre, b.centre),
                 (inner, outer),
-                PARAPET_HEIGHT,
+                barrier,
                 1.0,
                 color,
             );
+            barriers.push(crate::pavement::Barrier {
+                indices: start..mesh.indices.len(),
+                a: offset(a.centre, a.edge(side) - side * 0.15, 0.0),
+                b: offset(b.centre, b.edge(side) - side * 0.15, 0.0),
+                half_width: PARAPET_THICKNESS / 2.0,
+                slab: false,
+            });
         }
+        // The wearing surface and ballast cover the centre; the shoulders close the slab
+        // underneath them without competing with the road or track above.
+        let lower = mesh.indices.len();
+        flat(
+            mesh,
+            (a.centre, b.centre),
+            ((-a.left, -b.left), (a.right, b.right)),
+            -0.04,
+            1.0,
+            color,
+        );
+        barriers.push(crate::pavement::Barrier::slab(lower..mesh.indices.len()));
         flat(
             mesh,
             (a.centre, b.centre),
@@ -802,15 +1032,108 @@ fn deck(mesh: &mut MeshData, run: &[Section], color: [f32; 4]) {
             color,
         );
     }
+    if !arched {
+        railings(mesh, &Path::new(run), opening, barriers);
+    }
+    for (end, facing) in [(run.first(), -1.0), (run.last(), 1.0)] {
+        if let Some(s) = end {
+            let lower = mesh.indices.len();
+            quad(
+                mesh,
+                [
+                    offset(s.centre, -s.left, -DECK_THICKNESS),
+                    offset(s.centre, s.right, -DECK_THICKNESS),
+                    offset(s.centre, s.right, -0.04),
+                    offset(s.centre, -s.left, -0.04),
+                ],
+                forward(s.centre).map(|v| v * facing),
+                color,
+            );
+            barriers.push(crate::pavement::Barrier::slab(lower..mesh.indices.len()));
+        }
+    }
 }
 
-/// A viaduct's piers: slabs as wide as the deck, down to the ground wherever it lies low
+/// Open steel protection lets a railway's narrow deck read as a bridge rather than a wall.
+fn railings(
+    mesh: &mut MeshData,
+    path: &Path<'_>,
+    opening: &dyn Fn(Section, f64) -> bool,
+    barriers: &mut Vec<crate::pavement::Barrier>,
+) {
+    for side in [-1.0, 1.0] {
+        for pair in path.run.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            if opening(a, side) || opening(b, side) {
+                continue;
+            }
+            let start = mesh.indices.len();
+            for height in [0.65, RAIL_HEIGHT] {
+                beam(
+                    mesh,
+                    offset(a.centre, a.edge(side) - side * 0.12, height),
+                    offset(b.centre, b.edge(side) - side * 0.12, height),
+                    0.035,
+                    *STEEL,
+                );
+            }
+            barriers.push(crate::pavement::Barrier {
+                indices: start..mesh.indices.len(),
+                a: offset(a.centre, a.edge(side) - side * 0.12, 0.0),
+                b: offset(b.centre, b.edge(side) - side * 0.12, 0.0),
+                half_width: 0.035,
+                slab: false,
+            });
+        }
+        let mut along = 0.0;
+        while along < path.length {
+            let section = path.at(along);
+            if !opening(section, side) {
+                railing_post(mesh, section, side, barriers);
+            }
+            along += POST_SPACING;
+        }
+        let section = path.at(path.length);
+        if !opening(section, side) {
+            railing_post(mesh, section, side, barriers);
+        }
+    }
+}
+
+fn railing_post(
+    mesh: &mut MeshData,
+    section: Section,
+    side: f64,
+    barriers: &mut Vec<crate::pavement::Barrier>,
+) {
+    let across = section.edge(side) - side * 0.12;
+    let start = mesh.indices.len();
+    beam(
+        mesh,
+        offset(section.centre, across, KERB_HEIGHT),
+        offset(section.centre, across, RAIL_HEIGHT + 0.035),
+        0.045,
+        *STEEL,
+    );
+    let foot = offset(section.centre, across, 0.0);
+    barriers.push(crate::pavement::Barrier {
+        indices: start..mesh.indices.len(),
+        a: foot,
+        b: foot,
+        half_width: 0.045,
+        slab: false,
+    });
+}
+
+/// A viaduct's piers: narrower columns under transverse bearing caps, down to the ground
+/// wherever it lies low
 /// enough; one that would stand on a way below moves along the bridge off it, or is left out.
 fn piers(
     mesh: &mut MeshData,
     path: &Path,
     ground_at: &dyn Fn(f64) -> Option<f64>,
     clear: &dyn Fn(f64, f64) -> bool,
+    terrain: &Ground<'_>,
 ) {
     let mut along = PILLAR_SPACING / 2.0;
     while along < path.length {
@@ -828,17 +1151,56 @@ fn piers(
             {
                 let middle = (section.right - section.left) / 2.0;
                 let half = f64::midpoint(section.left, section.right) - PIER_INSET;
-                pier(
-                    mesh,
-                    shifted(section.centre, middle),
-                    (PIER_HALF_LENGTH, half),
-                    (ground - FOOTING, deck),
-                    *CONCRETE,
-                );
+                let centre = shifted(section.centre, middle);
+                let dimensions = (PIER_HALF_LENGTH * 0.75, (half * 0.38).clamp(0.6, 1.3));
+                if let Some(foot) = foundation(terrain, centre, dimensions) {
+                    let cap = deck - 0.55;
+                    pier(mesh, centre, dimensions, (foot - FOOTING, cap), *CONCRETE);
+                    pier(
+                        mesh,
+                        centre,
+                        (PIER_HALF_LENGTH, half),
+                        (cap, deck),
+                        *CONCRETE,
+                    );
+                }
             }
         }
         along += PILLAR_SPACING;
     }
+}
+
+/// Solid bearing walls tie the slab ends into the hillside instead of leaving free edges.
+fn abutments(
+    mesh: &mut MeshData,
+    path: &Path<'_>,
+    clear: &dyn Fn(f64, f64) -> bool,
+    terrain: &Ground<'_>,
+) {
+    for along in [0.6, path.length - 0.6] {
+        if along <= 0.0 || along >= path.length || !clear(along, 1.0) {
+            continue;
+        }
+        let section = path.at(along);
+        let centre = shifted(section.centre, (section.right - section.left) / 2.0);
+        let half = f64::midpoint(section.left, section.right);
+        if let Some(ground) = foundation(terrain, centre, (0.6, half)) {
+            let deck = section.centre.elevation - DECK_THICKNESS;
+            pier(
+                mesh,
+                centre,
+                (0.6, half),
+                (ground.min(deck) - FOOTING, deck),
+                *CONCRETE,
+            );
+        }
+    }
+}
+
+/// The complete footprint meets the rendered ground, including cuts between its corners.
+fn foundation(terrain: &Ground<'_>, centre: CentrePoint, dimensions: (f64, f64)) -> Option<f64> {
+    let direction = forward(centre);
+    terrain.lowest(centre.position, (direction[0], -direction[2]), dimensions)
 }
 
 /// A stone arch bridge's arches: piers between arched openings, the walls over the arches up
@@ -1037,6 +1399,11 @@ impl<'a> Path<'a> {
         let span = (self.at.get(index + 1).copied().unwrap_or(along) - self.at[index]).max(1e-9);
         let t = ((along - self.at[index]) / span).clamp(0.0, 1.0);
         let (ca, cb) = (a.centre, b.centre);
+        let way = (
+            ca.direction.0 + (cb.direction.0 - ca.direction.0) * t,
+            ca.direction.1 + (cb.direction.1 - ca.direction.1) * t,
+        );
+        let length = way.0.hypot(way.1).max(f64::EPSILON);
         Section {
             centre: CentrePoint {
                 position: (
@@ -1044,7 +1411,9 @@ impl<'a> Path<'a> {
                     ca.position.1 + (cb.position.1 - ca.position.1) * t,
                 ),
                 elevation: ca.elevation + (cb.elevation - ca.elevation) * t,
-                direction: ca.direction,
+                // Interpolate the same offset edge as the beams rather than reusing the
+                // preceding section's tangent: posts otherwise jut into curved pavement.
+                direction: (way.0 / length, way.1 / length),
             },
             left: a.left + (b.left - a.left) * t,
             right: a.right + (b.right - a.right) * t,
@@ -1338,6 +1707,86 @@ fn pier(
                 corner(a1, c1, bottom),
                 corner(a1, c1, top),
                 corner(a0, c0, top),
+            ],
+            normal,
+            color,
+        );
+    }
+    // Pier caps overhang their columns: their lower face is exposed to riders below.
+    for (height, facing) in [(bottom, -1.0), (top, 1.0)] {
+        quad(
+            mesh,
+            [
+                corner(-l, -w, height),
+                corner(l, -w, height),
+                corner(l, w, height),
+                corner(-l, w, height),
+            ],
+            [0.0, facing, 0.0],
+            color,
+        );
+    }
+}
+
+/// A closed rectangular beam with hard edges, used for bridge rails and posts.
+pub(crate) fn beam(mesh: &mut MeshData, from: [f64; 3], to: [f64; 3], half: f64, color: [f32; 4]) {
+    beam_rect(mesh, from, to, (half, half), color);
+}
+
+/// A closed beam with separate half widths across and vertically from its axis.
+pub(crate) fn beam_rect(
+    mesh: &mut MeshData,
+    from: [f64; 3],
+    to: [f64; 3],
+    half: (f64, f64),
+    color: [f32; 4],
+) {
+    let delta = [0, 1, 2].map(|k| to[k] - from[k]);
+    let length = delta[0].hypot(delta[1]).hypot(delta[2]);
+    if length < 1e-6 {
+        return;
+    }
+    let ahead = delta.map(|v| v / length);
+    let horizontal = ahead[0].hypot(ahead[2]);
+    let side = if horizontal > 1e-6 {
+        [-ahead[2] / horizontal, 0.0, ahead[0] / horizontal]
+    } else {
+        [1.0, 0.0, 0.0]
+    };
+    let up = [
+        side[1] * ahead[2] - side[2] * ahead[1],
+        side[2] * ahead[0] - side[0] * ahead[2],
+        side[0] * ahead[1] - side[1] * ahead[0],
+    ];
+    let corner = |at: [f64; 3], across: f64, vertical: f64| {
+        [0, 1, 2].map(|k| at[k] + half.0 * side[k] * across + half.1 * up[k] * vertical)
+    };
+    for (a, b, normal) in [
+        ((-1.0, -1.0), (1.0, -1.0), up.map(|v| -v)),
+        ((1.0, -1.0), (1.0, 1.0), side),
+        ((1.0, 1.0), (-1.0, 1.0), up),
+        ((-1.0, 1.0), (-1.0, -1.0), side.map(|v| -v)),
+    ] {
+        quad(
+            mesh,
+            [
+                corner(from, a.0, a.1),
+                corner(to, a.0, a.1),
+                corner(to, b.0, b.1),
+                corner(from, b.0, b.1),
+            ],
+            normal,
+            color,
+        );
+    }
+    for (at, normal) in [(from, ahead.map(|v| -v)), (to, ahead)] {
+        quad(
+            mesh,
+            [
+                corner(at, -1.0, -1.0),
+                corner(at, 1.0, -1.0),
+                corner(at, 1.0, 1.0),
+                corner(at, -1.0, 1.0),
             ],
             normal,
             color,

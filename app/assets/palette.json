@@ -47,8 +47,9 @@
     "rail": "#6a6866"
   },
   "structure": {
-    "concrete": "#ddd6ca",
-    "stone": "#c9b9a6",
+    "concrete": "#a6a69f",
+    "stone": "#b3a48d",
+    "steel": "#566161",
     "tunnel": "#a9a196"
   },
   "plants": {

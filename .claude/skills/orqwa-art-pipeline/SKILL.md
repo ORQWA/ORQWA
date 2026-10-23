@@ -74,6 +74,11 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
   are under `art/sources/rock-boulder-dry/`. It replaced procedural noise after comparison
   on identical boulders in the same light. `rock.gdshaderinc` adds broad fractures at an 8 m
   scale for cliffs and 0.65 m for boulders. Review close and overview distances (R115).
+- `build.py -- bridge_concrete` converts CC0 Poly Haven **Concrete Wall 007** using
+  `concrete_scan.py`. Originals, licence and checksums live in `art/sources/concrete-wall-007/`.
+  Keep its 2.16 m physical scale and dedicated albedo/normal/roughness maps: the urban
+  concrete recipe's paving joints made bridge walls look tiled. Review pores and weathering
+  below the deck and from the Oberalp close/side views, as well as the original chase (R122).
 
 ## bpy pitfalls
 

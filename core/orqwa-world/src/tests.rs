@@ -973,6 +973,12 @@ async fn railway_tunnels_under_the_road_stay_below_it() {
     };
     let world = generate(&route_north(&[]).await, &mut Low, &map, &mut |_, _| {}).await;
 
+    let cover = ground_at(&world, 1.0, -500.0).expect("ground cover above the railway tube");
+    assert!(
+        cover > 499.0,
+        "clipping the tunnel must retain its compressed roof's ground cover"
+    );
+
     let tube: Vec<_> = world
         .structures
         .vertices
@@ -1083,6 +1089,17 @@ async fn railway_bridges_clear_the_road_and_meet_their_track() {
         .filter(|v| v[0].abs() < 30.0 && (v[2] + 500.0).abs() < 5.0)
         .count();
     assert!(deck > 10, "no bridge over the road");
+    assert!(
+        world
+            .structures
+            .vertices
+            .iter()
+            .filter(|v| v[0].abs() < 25.0)
+            .all(|v| (v[2] + 500.0).abs() < 2.5),
+        "a single-track bridge fits its ballast and a maintenance walkway"
+    );
+    assert_valid(&world.structures);
+    assert_faces_follow_normals(&world.structures);
 }
 
 /// The triangles of a chunked mesh in absolute coordinates.
@@ -1390,16 +1407,19 @@ fn height_on(
             && (z - c.center[2]).abs() <= CHUNK_SIZE as f32 / 2.0
     })?;
     let (px, pz) = (x - chunk.center[0], z - chunk.center[2]);
-    triangles(pick(chunk)).find_map(|[a, b, c]| {
-        let det = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2]);
-        if det.abs() < 1e-9 {
-            return None;
-        }
-        let wa = ((b[2] - c[2]) * (px - c[0]) + (c[0] - b[0]) * (pz - c[2])) / det;
-        let wb = ((c[2] - a[2]) * (px - c[0]) + (a[0] - c[0]) * (pz - c[2])) / det;
-        let wc = 1.0 - wa - wb;
-        (wa >= -1e-4 && wb >= -1e-4 && wc >= -1e-4).then(|| wa * a[1] + wb * b[1] + wc * c[1])
-    })
+    triangles(pick(chunk)).find_map(|t| triangle_height(t, px, pz))
+}
+
+/// Height where a vertical ray through (`x`, `z`) meets a triangle.
+fn triangle_height([a, b, c]: [[f32; 3]; 3], point_x: f32, point_z: f32) -> Option<f32> {
+    let det = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2]);
+    if det.abs() < 1e-9 {
+        return None;
+    }
+    let wa = ((b[2] - c[2]) * (point_x - c[0]) + (c[0] - b[0]) * (point_z - c[2])) / det;
+    let wb = ((c[2] - a[2]) * (point_x - c[0]) + (a[0] - c[0]) * (point_z - c[2])) / det;
+    let wc = 1.0 - wa - wb;
+    (wa >= -1e-4 && wb >= -1e-4 && wc >= -1e-4).then(|| wa * a[1] + wb * b[1] + wc * c[1])
 }
 
 #[tokio::test]
@@ -2041,15 +2061,19 @@ async fn other_streets_join_the_road_ridden_and_lie_on_the_ground() {
         ..MapData::default()
     })
     .await;
+    let steel = palette::srgb("structure.steel", 0.0);
     let vertices = |pick: fn(&crate::TerrainChunk) -> &MeshData| -> Vec<[f32; 3]> {
         world
             .chunks
             .iter()
             .flat_map(|c| {
-                pick(c)
-                    .vertices
+                let mesh = pick(c);
+                mesh.vertices
                     .iter()
-                    .map(move |v| [v[0] + c.center[0], v[1] + c.center[1], v[2] + c.center[2]])
+                    .enumerate()
+                    // The road and slab follow the ground; safety rails stand above them.
+                    .filter(move |(i, _)| mesh.colors.get(*i).is_none_or(|color| *color != steel))
+                    .map(move |(_, v)| [v[0] + c.center[0], v[1] + c.center[1], v[2] + c.center[2]])
                     .collect::<Vec<_>>()
             })
             .collect()
@@ -3034,6 +3058,439 @@ fn assert_faces_follow_normals(mesh: &MeshData) {
 }
 
 #[tokio::test]
+async fn bridge_piers_reach_the_ground_mesh_instead_of_an_unsampled_dem_ridge() {
+    struct NarrowRidge;
+    impl ElevationModel for NarrowRidge {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            _lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let north = (lat - 46.0) * METERS_PER_DEGREE;
+            std::future::ready(Ok(if (north - 306.0).abs() < 0.4 {
+                480.0
+            } else {
+                430.0
+            }))
+        }
+    }
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let world = generate(
+        &route,
+        &mut NarrowRidge,
+        &MapData::default(),
+        &mut |_, _| {},
+    )
+    .await;
+    let bottom = world
+        .structures
+        .vertices
+        .iter()
+        .filter(|v| v[0].abs() < 1.5 && (v[2] + 305.0).abs() < 1.5)
+        .map(|v| v[1])
+        .fold(f32::MAX, f32::min);
+    let ground = ground_at(&world, 0.0, -305.0).expect("drawn ground beneath the pier");
+    assert!(
+        bottom < ground,
+        "pier bottom {bottom} floats over drawn terrain at {ground}"
+    );
+}
+
+#[tokio::test]
+async fn a_pier_footing_reaches_the_downhill_side_of_steep_terrain() {
+    struct SteepBank;
+    impl ElevationModel for SteepBank {
+        fn elevation(
+            &mut self,
+            _lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46_f64.to_radians().cos();
+            std::future::ready(Ok(430.0 + 20.0 * east))
+        }
+    }
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let world = generate(&route, &mut SteepBank, &MapData::default(), &mut |_, _| {}).await;
+    let bottom = world
+        .structures
+        .vertices
+        .iter()
+        .filter(|v| v[0] < -1.0 && v[0] > -1.5 && (v[2] + 305.0).abs() < 1.5)
+        .map(|v| v[1])
+        .fold(f32::MAX, f32::min);
+    let downhill = ground_at(&world, -1.1, -305.0).expect("drawn downhill bank");
+    assert!(
+        bottom < downhill,
+        "pier bottom {bottom} floats above downhill ground at {downhill}"
+    );
+}
+
+#[tokio::test]
+async fn a_ridden_bridge_has_no_second_deck_from_the_map() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            // GPX and vector-tile centre lines need not coincide exactly. Both describe
+            // the same bridge; raw end elevations must not produce a second deck below it.
+            line: vec![at(0.4, 300.0), at(0.4, 700.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+    let duplicate = world
+        .chunks
+        .iter()
+        .flat_map(|chunk| {
+            chunk
+                .streets
+                .vertices
+                .iter()
+                .map(move |v| [v[0] + chunk.center[0], v[1], v[2] + chunk.center[2]])
+        })
+        .filter(|v| v[0].abs() < 5.0 && (-680.0..-320.0).contains(&v[2]))
+        .count();
+    assert_eq!(
+        duplicate, 0,
+        "a mapped bridge ridden on the course is built only once"
+    );
+}
+
+#[tokio::test]
+async fn a_mapped_bridge_on_a_ground_route_does_not_add_a_raised_second_surface() {
+    let route = route_north(&[]).await;
+    for length in [13.0, 40.0] {
+        let map = MapData {
+            roads: vec![orqwa_osm::Road {
+                class: RoadClass::Major,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.4, 500.0), at(0.4, 500.0 + length)],
+                structure: Some(StructureKind::Bridge),
+            }],
+            ..MapData::default()
+        };
+        let world = generate(&route, &mut Level(501.5), &map, &mut |_, _| {}).await;
+        assert!(
+            world.chunks.iter().all(|c| c.streets.vertices.is_empty()),
+            "a complete aligned mapped feature must not add a raised deck over a Ground route"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_surface_bridge_above_a_ridden_tunnel_retains_its_deck() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.4, 400.0), at(0.4, 600.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(520.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().any(|c| !c.streets.vertices.is_empty()),
+        "the underground route must not claim a separate surface bridge"
+    );
+}
+
+#[tokio::test]
+async fn a_bridge_tag_boundary_does_not_create_an_extra_approach_deck() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            // The mapped end is just before the resampled route changes to Bridge.
+            // Point-wise ownership leaves a raised slab and railing across the approach.
+            line: vec![at(0.4, 289.0), at(0.4, 700.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().all(|c| c.streets.vertices.is_empty()),
+        "one mapped bridge following the ridden centre line must have one complete owner"
+    );
+}
+
+#[tokio::test]
+async fn a_bridge_extending_beyond_the_ridden_route_keeps_its_separate_section() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.4, 300.0), at(0.4, 1100.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().any(|c| c
+            .streets
+            .vertices
+            .iter()
+            .any(|v| v[2] + c.center[2] < -1040.0)),
+        "a mapped bridge continuing beyond the route retains its own deck"
+    );
+}
+
+#[tokio::test]
+async fn separate_parallel_and_crossing_bridges_are_not_claimed_by_the_ridden_bridge() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    for (line, target) in [
+        (vec![at(12.0, 300.0), at(12.0, 700.0)], (12.0, -500.0)),
+        (vec![at(-60.0, 500.0), at(60.0, 500.0)], (30.0, -500.0)),
+    ] {
+        let map = MapData {
+            roads: vec![orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line,
+                structure: Some(StructureKind::Bridge),
+            }],
+            ..MapData::default()
+        };
+        let world = generate(&route, &mut Level(480.0), &map, &mut |_, _| {}).await;
+        assert!(
+            world
+                .chunks
+                .iter()
+                .any(|chunk| chunk.streets.vertices.iter().any(|v| {
+                    (v[0] + chunk.center[0] - target.0).abs() < 4.0
+                        && (v[2] + chunk.center[2] - target.1).abs() < 4.0
+                })),
+            "a separate bridge at {target:?} must remain visible"
+        );
+    }
+}
+
+#[tokio::test]
+async fn non_ridden_bridges_are_solid_from_below() {
+    use orqwa_osm::{Road, RoadClass};
+
+    // R121: sloping bridges across the ridden road, with a gentle bend and several chunks.
+    // Motorways use Major; tracks and paths use the separate unpaved mesh.
+    let classes = [
+        RoadClass::Major,
+        RoadClass::Street,
+        RoadClass::Service,
+        RoadClass::Track,
+        RoadClass::Path,
+    ];
+    let map = MapData {
+        // Shore gravel shares the track mesh with the coloured railings: combining them
+        // must preserve complete vertex arrays as well as the bridge geometry.
+        areas: vec![Area {
+            cover: LandCover::Water,
+            outer: vec![square(250.0, 820.0, 35.0)],
+            inner: vec![],
+        }],
+        roads: classes
+            .iter()
+            .enumerate()
+            .map(|(i, &class)| {
+                let north = 100.0 + i as f64 * 180.0;
+                Road {
+                    class,
+                    line: vec![at(-600.0, north), at(90.0, north + 20.0), at(600.0, north)],
+                    structure: Some(StructureKind::Bridge),
+                    details: orqwa_osm::RoadDetails::default(),
+                }
+            })
+            .collect(),
+        ..MapData::default()
+    };
+    let world = world(&map).await;
+    for chunk in &world.chunks {
+        for mesh in [&chunk.streets, &chunk.tracks] {
+            assert_valid(mesh);
+            assert_faces_follow_normals(mesh);
+            assert!(
+                mesh.colors
+                    .iter()
+                    .zip(&mesh.normals)
+                    .all(|(color, normal)| {
+                        normal[1] < 0.99 || color[3] == 0.0 || color[0] <= 6.0 / 8.0
+                    }),
+                "bridge wearing surfaces retain road-profile metadata, not default white"
+            );
+        }
+    }
+    for (i, class) in classes.into_iter().enumerate() {
+        let north = 100.0 + i as f32 * 180.0;
+        let pick: fn(&TerrainChunk) -> &MeshData =
+            if matches!(class, RoadClass::Track | RoadClass::Path) {
+                |c: &TerrainChunk| &c.tracks
+            } else {
+                |c: &TerrainChunk| &c.streets
+            };
+        let faces: Vec<_> = chunk_triangles(&world, pick).collect();
+        // Include both sides of chunk boundaries, the bend, and both edges of the deck.
+        for east in [
+            -500.0_f32, -480.1, -479.9, -240.1, -239.9, -0.1, 0.1, 90.0, 239.9, 240.1, 479.9,
+            480.1, 500.0,
+        ] {
+            for across in [-0.6_f32, 0.0, 0.6] {
+                let bend = if east < 90.0 {
+                    (east + 600.0) / 690.0
+                } else {
+                    (600.0 - east) / 510.0
+                };
+                let z = -(north + 20.0 * bend) + across;
+                let top = faces
+                    .iter()
+                    .find_map(|&t| {
+                        (face_normal(t)[1] < -0.01)
+                            .then(|| triangle_height(t, east, z))
+                            .flatten()
+                    })
+                    .unwrap_or_else(|| panic!("no {class:?} bridge top at {east}, {z}"));
+                let underside = faces.iter().find_map(|&t| {
+                    (face_normal(t)[1] > 0.01)
+                        .then(|| triangle_height(t, east, z))
+                        .flatten()
+                });
+                let bottom =
+                    underside.unwrap_or_else(|| panic!("no {class:?} underside at {east}, {z}"));
+                assert!(
+                    (top - bottom - 0.7).abs() < 0.01,
+                    "{class:?} deck thickness at {east}, {z}: top {top}, bottom {bottom}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn bridge_junctions_meet_the_road_without_a_step_or_rail_across_it() {
+    for (terrain, joins) in [(501.5, true), (510.0, false)] {
+        let map = MapData {
+            roads: vec![orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 500.0), at(80.0, 500.0)],
+                structure: Some(StructureKind::Bridge),
+            }],
+            ..MapData::default()
+        };
+        let world = generate(
+            &route_north(&[]).await,
+            &mut Level(terrain),
+            &map,
+            &mut |_, _| {},
+        )
+        .await;
+        let vertices: Vec<_> = world
+            .chunks
+            .iter()
+            .flat_map(|c| {
+                c.streets
+                    .vertices
+                    .iter()
+                    .map(move |v| [v[0] + c.center[0], v[1], v[2] + c.center[2]])
+            })
+            .filter(|v| v[0].abs() < 2.5 && (v[2] + 500.0).abs() < 5.0)
+            .collect();
+        assert!(!vertices.is_empty(), "the connecting deck still exists");
+        if joins {
+            let deck = street_at(&world, 30.0, -500.0).expect("connected deck");
+            let ground = ground_at(&world, 30.0, -500.0).expect("approach bank");
+            assert!(
+                ground < deck,
+                "the adjusted deck must not disappear under its bank: {ground} >= {deck}"
+            );
+            assert!(
+                vertices.iter().all(|v| v[1] <= 500.1),
+                "deck or protection blocks the junction: {vertices:?}"
+            );
+        } else {
+            assert!(
+                vertices.iter().any(|v| v[1] > 511.0),
+                "a grade-separated overpass keeps its height and protection"
+            );
+        }
+        assert!(
+            world.chunks.iter().any(|c| c
+                .streets
+                .vertices
+                .iter()
+                .any(|v| v[0] + c.center[0] > 30.0 && v[1] > 501.0)),
+            "protection remains away from the junction"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_side_street_has_an_opening_in_bridge_protection_only_where_it_joins() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.0, 500.0), at(80.0, 500.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    for (terrain, joins) in [(500.0, true), (480.0, false)] {
+        let world = generate(&route, &mut Level(terrain), &map, &mut |_, _| {}).await;
+        let raised = |side: f32| {
+            world
+                .structures
+                .vertices
+                .iter()
+                .any(|v| v[0] * side > 3.0 && (v[2] + 500.0).abs() < 2.0 && v[1] > 500.1)
+        };
+        assert_eq!(
+            raised(1.0),
+            !joins,
+            "the joining side opens only at the deck's level"
+        );
+        assert!(raised(-1.0), "the opposite edge keeps its protection");
+    }
+}
+
+#[tokio::test]
 async fn bridges_of_other_streets_stand_on_piers() {
     use orqwa_osm::{Road, RoadClass};
 
@@ -3090,6 +3547,54 @@ async fn bridges_of_other_streets_stand_on_piers() {
 }
 
 #[tokio::test]
+async fn a_mapped_bridge_pier_reaches_the_downhill_edge_of_its_footing() {
+    struct SlopingValley;
+    impl ElevationModel for SlopingValley {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46_f64.to_radians().cos();
+            let north = (lat - 46.0) * METERS_PER_DEGREE;
+            std::future::ready(Ok(if (150.0..250.0).contains(&east) {
+                480.0 + 20.0 * (north - 600.0)
+            } else {
+                500.0
+            }))
+        }
+    }
+    let route = route_north(&[]).await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(100.0, 600.0), at(300.0, 600.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut SlopingValley, &map, &mut |_, _| {}).await;
+    let bottom = world
+        .chunks
+        .iter()
+        .flat_map(|c| {
+            c.streets
+                .vertices
+                .iter()
+                .map(move |v| [v[0] + c.center[0], v[1], v[2] + c.center[2]])
+        })
+        .filter(|v| (v[0] - 210.0).abs() < 1.0 && (v[2] + 600.0).abs() < 2.0)
+        .min_by(|a, b| a[1].total_cmp(&b[1]))
+        .expect("mapped pier footing");
+    let downhill = ground_at(&world, bottom[0], bottom[2]).expect("downhill footing edge");
+    assert!(
+        bottom[1] < downhill,
+        "mapped pier at {bottom:?} hangs over downhill terrain at {downhill}"
+    );
+}
+
+#[tokio::test]
 async fn a_bridge_cut_by_a_tile_border_is_one_deck_between_its_ends() {
     use orqwa_osm::{Road, RoadClass};
 
@@ -3130,13 +3635,16 @@ async fn a_bridge_cut_by_a_tile_border_is_one_deck_between_its_ends() {
 
     let mut deck = 0;
     for chunk in &world.chunks {
-        for v in &chunk.streets.vertices {
+        for (v, normal) in chunk.streets.vertices.iter().zip(&chunk.streets.normals) {
+            if normal[1] < 0.5 {
+                continue;
+            }
             let (x, y, z) = (v[0] + chunk.center[0], v[1], v[2] + chunk.center[2]);
             if !(160.0..=240.0).contains(&x) || (z + 600.0).abs() > 5.0 {
                 continue;
             }
-            // Over the valley floor only the deck at its ends' height (its top and the bottom
-            // of its sides) and the piers' feet: nothing in between.
+            // The deck and bearing caps stay at the bridge's end height across the tile
+            // join. Vertical supports and railings have their own exposed lower faces.
             assert!(!(481.0..499.0).contains(&y), "the deck dips to {y} at {x}");
             if y > 499.9 {
                 deck += 1;
@@ -3231,6 +3739,58 @@ async fn short_low_bridges_are_stone_arches() {
 }
 
 #[tokio::test]
+async fn bridge_bearing_walls_meet_the_drawn_ground() {
+    // The source DEM has a sharp bank just inside the span. Rendered terrain interpolates
+    // grid samples: a footing based only on the nearest raw centre sample can hang above it.
+    struct Bank;
+    impl ElevationModel for Bank {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            _lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let north = (lat - 46.0) * METERS_PER_DEGREE;
+            std::future::ready(Ok(if (301.0..699.0).contains(&north) {
+                470.0
+            } else {
+                500.0
+            }))
+        }
+    }
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let world = generate(&route, &mut Bank, &MapData::default(), &mut |_, _| {}).await;
+    let mut corners = 0;
+    for (vertex, normal) in world
+        .structures
+        .vertices
+        .iter()
+        .zip(&world.structures.normals)
+    {
+        if normal[1] > -0.99 || vertex[1] > 498.0 {
+            continue;
+        }
+        // End walls span the deck; intermediate columns are narrower.
+        if vertex[0].abs() < 3.5 {
+            continue;
+        }
+        let ground = ground_at(&world, vertex[0], vertex[2]).expect("ground under bearing wall");
+        assert!(
+            vertex[1] <= ground + 0.1,
+            "foundation {vertex:?} above ground {ground}"
+        );
+        corners += 1;
+    }
+    assert!(
+        corners >= 8,
+        "both bearing walls have buried foundation corners"
+    );
+}
+
+#[tokio::test]
 async fn bridges_have_a_deck_and_pillars_down_to_the_valley() {
     // A 400 m bridge over a valley: the model is 30 m lower under the bridge.
     struct Valley;
@@ -3265,14 +3825,211 @@ async fn bridges_have_a_deck_and_pillars_down_to_the_valley() {
     );
     let highest = mesh.vertices.iter().map(|v| v[1]).fold(f32::MIN, f32::max);
     assert!(
-        (highest - 501.0).abs() < 0.1,
-        "parapets 1 m above the road: {highest}"
+        (501.0..=501.2).contains(&highest),
+        "open safety rails at human height: {highest}"
     );
+    let steel = palette::srgb("structure.steel", 0.0);
+    assert!(
+        mesh.vertices
+            .iter()
+            .zip(&mesh.colors)
+            .any(|(v, c)| *c == steel && v[1] > 501.0),
+        "metal protection follows the deck edges"
+    );
+    assert!(
+        mesh.vertices
+            .iter()
+            .zip(&mesh.colors)
+            .all(|(v, c)| *c == steel || v[1] < 500.3),
+        "concrete kerbs stay low so open railings do not read as solid walls"
+    );
+    for (vertex, uv) in world.road.vertices.iter().zip(&world.road.uvs) {
+        if (320.0..680.0).contains(&uv[1]) {
+            assert!(
+                vertex[0].abs() < 3.3,
+                "wearing course fits inside the deck: {vertex:?}"
+            );
+            assert!(
+                (0.0..=1.0).contains(&uv[0]),
+                "no gravel or grass skirt hangs off the bridge"
+            );
+        }
+    }
     // Nothing outside the bridge.
     assert!(
         mesh.vertices
             .iter()
             .all(|v| (-720.0..=-280.0).contains(&v[2]))
+    );
+}
+
+#[tokio::test]
+async fn a_mapped_road_does_not_climb_over_the_ridden_tunnel() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            // Approach pieces can overlap the mapped tunnel and differ slightly from
+            // its smoothed GPX line. Draping them onto the tunnel hill blocks its mouth.
+            line: vec![at(0.4, 0.0), at(0.4, 1000.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let over_tunnel = world.chunks.iter().any(|chunk| {
+        chunk.streets.vertices.iter().any(|v| {
+            let (x, z) = (v[0] + chunk.center[0], v[2] + chunk.center[2]);
+            x.abs() < 3.5 && (-690.0..-310.0).contains(&z) && v[1] > 500.5
+        })
+    });
+    assert!(
+        !over_tunnel,
+        "the ridden tunnel must not have a second road draped over its roof"
+    );
+}
+
+#[tokio::test]
+async fn mapped_approach_paving_does_not_close_tunnel_portals() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: [(0.0, 300.0), (700.0, 1000.0)]
+            .into_iter()
+            .map(|(start, end)| orqwa_osm::Road {
+                class: RoadClass::Major,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.4, start), at(0.4, end)],
+                structure: None,
+            })
+            .collect(),
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let inside = palette::srgb("structure.tunnel", 0.0);
+    let tube: Vec<_> = world
+        .structures
+        .vertices
+        .iter()
+        .zip(&world.structures.colors)
+        .filter(|(_, color)| **color == inside)
+        .map(|(v, _)| -v[2])
+        .collect();
+    let entrance = tube.iter().copied().fold(f32::MAX, f32::min);
+    let exit = tube.iter().copied().fold(f32::MIN, f32::max);
+    for portal in [entrance, exit] {
+        for x in [-2.0, 0.0, 2.0] {
+            for step in -12..=12 {
+                let north = portal + step as f32 * 0.5;
+                if let Some(paving) = street_at(&world, x, -north) {
+                    assert!(
+                        !(500.3..504.0).contains(&paving),
+                        "paving at {paving} blocks the portal at {portal}, x={x}, north={north}: {:?}",
+                        chunk_triangles(&world, |c| &c.streets)
+                            .find(|&t| triangle_height(t, x, -north).is_some())
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_surface_road_crossing_over_a_tunnel_remains_visible() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(-80.0, 500.0), at(80.0, 500.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(550.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world
+            .chunks
+            .iter()
+            .any(|chunk| chunk.streets.vertices.iter().any(|v| {
+                (v[0] + chunk.center[0]).abs() < 5.0
+                    && (v[2] + chunk.center[2] + 500.0).abs() < 5.0
+                    && v[1] > 549.0
+            })),
+        "a distinct road crossing above the tunnel keeps its surface"
+    );
+}
+
+#[tokio::test]
+async fn terrain_and_paving_stay_out_of_the_complete_tunnel_interior() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    // A nearby lower line cuts a bank into the tunnel hillside, well beyond either mouth.
+    let map = MapData {
+        railways: vec![railway(&[(8.0, 0.0), (8.0, 1000.0)], None)],
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(8.0, 400.0), at(8.0, 600.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    for north in (450..550).step_by(3) {
+        for x in [-3.0_f32, 0.0, 3.0, 4.0] {
+            let ceiling = 500.0 + (25.0 - x * x).sqrt() - 0.2;
+            for height in [
+                ground_at(&world, x, -(north as f32)),
+                street_at(&world, x, -(north as f32)),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                assert!(
+                    height <= 499.85 || height >= ceiling,
+                    "surrounding surface at {height} intrudes into the tunnel at {x}, {north}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_complete_aligned_ground_approach_does_not_paint_the_tunnel_roof() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.4, 260.0), at(0.4, 320.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(550.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().all(|c| c.streets.vertices.is_empty()),
+        "the route owns this complete approach; no duplicate paving may climb the portal hill"
     );
 }
 
@@ -4379,6 +5136,47 @@ async fn guard_rails_line_the_side_where_the_ground_falls_away() {
 }
 
 #[tokio::test]
+async fn a_lower_parallel_railway_does_not_pull_the_road_verge_and_protection_down() {
+    struct Cliff;
+    impl ElevationModel for Cliff {
+        fn elevation(
+            &mut self,
+            _lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46f64.to_radians().cos();
+            std::future::ready(Ok(500.0 + 2.0 * east))
+        }
+    }
+    let map = MapData {
+        roads: vec![road_north()],
+        railways: vec![railway(&[(-20.0, 0.0), (-20.0, 1000.0)], None)],
+        ..MapData::default()
+    };
+    // The road lies on a chunk boundary: protection stands in the neighbouring chunk,
+    // whose fine terrain must be used instead of extrapolating the owner's coarse border.
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Cliff, &map, &mut |_, _| {}).await;
+    let rails = along_middle(&props_of(&world, "guard_rail"));
+    assert!(
+        rails.len() >= 190,
+        "the cliff still needs continuous protection"
+    );
+    for p in &rails {
+        assert!(p[1] >= 499.5, "guard rail below the ridden road: {p:?}");
+        let ground = ground_at(&world, p[0] as f32, -p[2] as f32).expect("verge under the rail");
+        assert!(
+            (f64::from(ground) - p[1]).abs() < 0.05,
+            "protection stays grounded"
+        );
+    }
+    assert!(
+        rail_bed(&world).iter().all(|v| v[1] < 470.0),
+        "the separate lower railway keeps its elevation"
+    );
+}
+
+#[tokio::test]
 async fn level_ground_gets_no_guard_rails() {
     let map = MapData {
         roads: vec![road_north()],
@@ -4388,6 +5186,493 @@ async fn level_ground_gets_no_guard_rails() {
     let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
     for name in ["guard_rail", "guard_rail_start", "guard_rail_end"] {
         assert!(props_of(&world, name).is_empty(), "{name}");
+    }
+}
+
+#[tokio::test]
+async fn guard_rail_spans_meet_on_both_edges_of_a_tight_bend() {
+    let mut points: Vec<_> = (0..=10)
+        .map(|i| (0.0, f64::from(i) * 10.0, 500.0))
+        .collect();
+    points.extend((1..=24).map(|i| {
+        let angle = std::f64::consts::PI * f64::from(i) / 24.0;
+        (12.0 - 12.0 * angle.cos(), 100.0 + 12.0 * angle.sin(), 500.0)
+    }));
+    points.extend((0..10).rev().map(|i| (24.0, f64::from(i) * 10.0, 500.0)));
+    let mut map = MapData::default();
+    let route = route_through(&points, &mut map).await;
+    let world = generate(&route, &mut Level(475.0), &map, &mut |_, _| {}).await;
+    let ends: Vec<[f64; 3]> = world
+        .chunks
+        .iter()
+        .flat_map(|chunk| {
+            chunk
+                .props
+                .models
+                .get("guard_rail")
+                .into_iter()
+                .flat_map(|buffer| {
+                    buffer.as_chunks::<12>().0.iter().flat_map(|t| {
+                        [-2.0, 2.0].map(|z| {
+                            [
+                                f64::from(t[3] + chunk.center[0] + t[2] * z),
+                                f64::from(t[7] + chunk.center[1] + t[6] * z),
+                                -f64::from(t[11] + chunk.center[2] + t[10] * z),
+                            ]
+                        })
+                    })
+                })
+        })
+        .collect();
+    let mut checked = [0, 0];
+    for (i, end) in ends.iter().enumerate().filter(|(_, p)| p[2] > 104.0) {
+        let radius = (end[0] - 12.0).hypot(end[2] - 100.0);
+        assert!(
+            (radius - 12.0).abs() >= 2.85,
+            "rail stays outside the carriageway on the bend: {end:?}"
+        );
+        checked[usize::from(radius > 12.0)] += 1;
+        let gap = ends
+            .iter()
+            .enumerate()
+            .filter(|(j, _)| *j != i)
+            .map(|(_, other)| {
+                ((end[0] - other[0]).powi(2)
+                    + (end[1] - other[1]).powi(2)
+                    + (end[2] - other[2]).powi(2))
+                .sqrt()
+            })
+            .fold(f64::INFINITY, f64::min);
+        assert!(
+            gap < 0.03,
+            "adjacent blades meet on inner and outer bends: {gap} m at {end:?}"
+        );
+    }
+    assert!(
+        checked.into_iter().all(|n| n >= 4),
+        "both edges protected: {checked:?}"
+    );
+}
+
+#[tokio::test]
+async fn curved_bridge_protection_leaves_the_wearing_surface_open() {
+    let points = [
+        (0.0, 0.0, 500.0),
+        (0.0, 80.0, 500.0),
+        (0.0, 100.0, 502.0),
+        (2.0, 108.0, 503.0),
+        (12.0, 112.0, 504.0),
+        (20.0, 108.0, 505.0),
+        (24.0, 100.0, 506.0),
+        (24.0, 80.0, 506.0),
+        (24.0, 0.0, 506.0),
+    ];
+    let mut map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: points[1..8].iter().map(|&(e, n, _)| at(e, n)).collect(),
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for &(east, north, elevation) in &points {
+        let (lat, lon) = at(east, north);
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    for pair in [points[..2].to_vec(), points[7..].to_vec()] {
+        map.roads.push(orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: pair.iter().map(|&(e, n, _)| at(e, n)).collect(),
+            structure: None,
+        });
+    }
+    let route = Route::from_gpx_with::<Level>(&xml, None, &map)
+        .await
+        .unwrap();
+    let world = generate(&route, &mut Level(475.0), &map, &mut |_, _| {}).await;
+    let pavement: Vec<_> = world
+        .road
+        .indices
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .filter(|tri| {
+            tri.iter()
+                .all(|&i| matches!(i as usize % road::RING, 2 | 3))
+        })
+        .map(|tri| tri.map(|i| world.road.vertices[i as usize]))
+        .collect();
+    let steel = palette::srgb("structure.steel", 0.0);
+    let mut checked = 0;
+    for (&v, &color) in world
+        .structures
+        .vertices
+        .iter()
+        .zip(&world.structures.colors)
+    {
+        if color != steel {
+            continue;
+        }
+        checked += 1;
+        assert!(
+            pavement
+                .iter()
+                .all(|&t| triangle_height(t, v[0], v[2]).is_none()),
+            "curved railings and upright posts stay outside the carriageway: {v:?}"
+        );
+    }
+    assert!(checked > 100, "curved bridge has open steel protection");
+    for t in pavement {
+        let middle = [0, 1, 2].map(|k| (t[0][k] + t[1][k] + t[2][k]) / 3.0);
+        for face in triangles(&world.structures) {
+            if let Some(height) = triangle_height(face, middle[0], middle[2]) {
+                assert!(
+                    height < middle[1] - 0.005,
+                    "bridge concrete must not cover curved asphalt: {height} at {middle:?}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
+    let ring = (0..=48)
+        .map(|i| {
+            let angle = std::f64::consts::TAU * f64::from(i) / 48.0;
+            at(20.0 + 20.0 * angle.cos(), 480.0 + 20.0 * angle.sin())
+        })
+        .collect();
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: ring,
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let route = route_north(&[]).await;
+    let projection = LocalProjection::for_route(&route);
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let islands = roundabouts::islands(&map, &projection);
+    assert_eq!(islands.len(), 1);
+    let rails = road::RoadIndex::from_lines(&[]);
+    let streets = streets::lines(&map, &projection, &mut Level(500.0)).await;
+    let levels = streets::Levels::new(&streets, &appearance::Index::new(&map, &projection));
+    let ground = foundations::Ground(&world.chunks);
+    let mut line: Vec<_> = (0..=40)
+        .map(|i| (0.0, 400.0 + f64::from(i) * 2.0))
+        .collect();
+    line.extend((1..=48).map(|i| {
+        let angle = std::f64::consts::PI * f64::from(i) / 48.0;
+        (20.0 - 20.0 * angle.cos(), 480.0 + 20.0 * angle.sin())
+    }));
+    line.extend((0..40).rev().map(|i| (40.0, 400.0 + f64::from(i) * 2.0)));
+    for height in [500.0, 508.0] {
+        let mut distance = 0.0;
+        let points = line
+            .iter()
+            .enumerate()
+            .map(|(i, &point)| {
+                if i > 0 {
+                    distance += (point.0 - line[i - 1].0).hypot(point.1 - line[i - 1].1);
+                }
+                road::Centre {
+                    position: point,
+                    elevation: height,
+                    distance,
+                    surface: Surface::Bridge,
+                    mapped: true,
+                }
+            })
+            .collect();
+        let road = road::RoadIndex::from_lines(&[points]);
+        let below = structures::Below::new(&road, &rails, &streets, &islands);
+        let shapers = Shapers {
+            road: &road,
+            rails: &rails,
+            streets: &levels,
+            portals: &[],
+            hollows: &[],
+            hills: true,
+        };
+        let mesh = structures::build_all(
+            (&road, &rails),
+            &below,
+            &shapers,
+            &ground,
+            &projection,
+            &mut Level(500.0),
+            &mut Vec::new(),
+        )
+        .await;
+        let mut inside = 0;
+        let mut outside = 0;
+        let steel = palette::srgb("structure.steel", 0.0);
+        for (&v, &c) in mesh.vertices.iter().zip(&mesh.colors) {
+            if c != steel {
+                continue;
+            }
+            let radius = (v[0] - 20.0).hypot(-v[2] - 480.0);
+            if radius < 21.0 {
+                inside += 1;
+            } else if radius > 24.0 {
+                outside += 1;
+            }
+        }
+        assert!(
+            outside > 100,
+            "bridge outside the roundabout stays protected"
+        );
+        if height == 500.0 {
+            assert_eq!(
+                inside, 0,
+                "no fence follows the GPX inside the at-grade roundabout"
+            );
+        } else {
+            assert!(inside > 100, "a separate overpass keeps both railings");
+        }
+    }
+}
+
+#[tokio::test]
+async fn riding_back_over_a_bridge_does_not_add_a_second_set_of_fences() {
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for i in (0..=100).chain((0..100).rev()) {
+        let (lat, lon) = at(0.0, f64::from(i) * 10.0);
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>500</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let map = MapData {
+        roads: vec![
+            orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 0.0), at(0.0, 300.0)],
+                structure: None,
+            },
+            orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+                structure: Some(StructureKind::Bridge),
+            },
+            orqwa_osm::Road {
+                class: RoadClass::Street,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.0, 700.0), at(0.0, 1000.0)],
+                structure: None,
+            },
+        ],
+        ..MapData::default()
+    };
+    let route = Route::from_gpx_with::<Level>(&xml, None, &map)
+        .await
+        .unwrap();
+    let projection = LocalProjection::for_route(&route);
+    let road = road::RoadIndex::new(&route, &projection);
+    let bridges: Vec<_> = road
+        .structure_runs()
+        .into_iter()
+        .filter(|(s, _)| *s == Surface::Bridge)
+        .collect();
+    assert_eq!(
+        bridges.len(),
+        1,
+        "one physical bridge, ridden twice, has one deck and one set of barriers"
+    );
+    assert!(
+        bridges[0].1.len() > 100,
+        "the complete first bridge remains"
+    );
+}
+
+#[tokio::test]
+async fn bridge_fences_cannot_cut_a_parallel_road_joining_the_carriageway() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let side = orqwa_osm::Road {
+        class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
+        line: vec![
+            at(7.0, 450.0),
+            at(4.0, 480.0),
+            at(4.0, 520.0),
+            at(10.0, 550.0),
+        ],
+        structure: None,
+    };
+    let world = generate(
+        &route,
+        &mut Level(500.0),
+        &MapData {
+            roads: vec![side],
+            ..MapData::default()
+        },
+        &mut |_, _| {},
+    )
+    .await;
+    let steel = palette::srgb("structure.steel", 0.0);
+    let rails: Vec<_> = world
+        .structures
+        .indices
+        .iter()
+        .map(|&i| i as usize)
+        .filter(|&i| world.structures.colors[i] == steel)
+        .map(|i| world.structures.vertices[i])
+        .collect();
+    assert!(
+        rails
+            .iter()
+            .any(|v| v[0] < -3.0 && (v[2] + 500.0).abs() < 10.0),
+        "opposite bridge edge remains protected"
+    );
+    assert!(
+        rails
+            .iter()
+            .any(|v| v[0] > 3.0 && (v[2] + 400.0).abs() < 10.0),
+        "protection remains outside the junction"
+    );
+    assert!(
+        rails
+            .iter()
+            .all(|v| !(v[0] > 1.25 && v[0] < 6.75 && (v[2] + 500.0).abs() < 15.0)),
+        "no beam, post or kerb may cut the joining carriageway"
+    );
+    assert!(
+        world.structures.indices.iter().all(|&i| {
+            let v = world.structures.vertices[i as usize];
+            !(v[0] > 1.25 && v[0] < 6.75 && (v[2] + 500.0).abs() < 15.0 && v[1] > 500.05)
+        }),
+        "concrete kerbs and parapets must also leave the carriageway open"
+    );
+}
+
+#[tokio::test]
+async fn mapped_bridge_fences_leave_parallel_joining_pavement_open() {
+    let street = |line: Vec<(f64, f64)>, structure| orqwa_osm::Road {
+        class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
+        line: line.into_iter().map(|(e, n)| at(e, n)).collect(),
+        structure,
+    };
+    let map = MapData {
+        roads: vec![
+            street(
+                vec![(0.0, 500.0), (80.0, 500.0)],
+                Some(StructureKind::Bridge),
+            ),
+            street(vec![(15.0, 503.0), (55.0, 503.0)], None),
+        ],
+        ..MapData::default()
+    };
+    let world = generate(
+        &route_north(&[]).await,
+        &mut Level(500.0),
+        &map,
+        &mut |_, _| {},
+    )
+    .await;
+    let steel = palette::srgb("structure.steel", 0.0);
+    let rails: Vec<_> = world
+        .chunks
+        .iter()
+        .flat_map(|c| {
+            c.streets
+                .indices
+                .iter()
+                .map(|&i| i as usize)
+                .filter(|&i| c.streets.colors[i] == steel)
+                .map(|i| {
+                    [
+                        c.streets.vertices[i][0] + c.center[0],
+                        c.streets.vertices[i][1],
+                        c.streets.vertices[i][2] + c.center[2],
+                    ]
+                })
+        })
+        .collect();
+    assert!(
+        rails
+            .iter()
+            .any(|v| v[0] > 25.0 && v[0] < 45.0 && v[2] > -500.0),
+        "the opposite edge remains protected"
+    );
+    assert!(
+        rails
+            .iter()
+            .all(|v| !(v[0] > 20.0 && v[0] < 50.0 && v[2] < -500.25 && v[2] > -505.75)),
+        "mapped bridge barriers cannot divide the actual joining pavement"
+    );
+}
+
+#[tokio::test]
+async fn roadside_fence_models_cannot_span_the_carriageway() {
+    let mut world = generate(
+        &route_north(&[]).await,
+        &mut Level(500.0),
+        &MapData::default(),
+        &mut |_, _| {},
+    )
+    .await;
+    let pavement =
+        pavement::Pavement::new(&world, world.chunks.iter().map(|c| c.tracks.indices.len()));
+    let chunk = world
+        .chunks
+        .iter_mut()
+        .find(|c| c.center[0].abs() <= 240.0 && (c.center[2] + 500.0).abs() <= 240.0)
+        .unwrap();
+    let center = chunk.center;
+    let mut buffer = Vec::new();
+    for (east, height) in [(0.0, 499.85), (8.0, 499.85), (0.0, 506.0)] {
+        buffer.extend([
+            0.0,
+            0.0,
+            2.0,
+            east - center[0],
+            0.0,
+            1.0,
+            0.0,
+            height,
+            1.0,
+            0.0,
+            0.0,
+            -500.0 - center[2],
+        ]);
+    }
+    for name in ["guard_rail", "fence"] {
+        chunk.props.models.insert(name.into(), buffer.clone());
+    }
+    props::clear_fences(&mut world.chunks, &pavement);
+    let chunk = world.chunks.iter().find(|c| c.center == center).unwrap();
+    for name in ["guard_rail", "fence"] {
+        let remaining = &chunk.props.models[name];
+        assert_eq!(
+            remaining.len(),
+            24,
+            "remove the crossing span while retaining the off-road and higher spans"
+        );
+        assert!(
+            remaining
+                .as_chunks::<12>()
+                .0
+                .iter()
+                .all(|t| t[3] + center[0] > 7.0 || t[7] > 505.0)
+        );
     }
 }
 

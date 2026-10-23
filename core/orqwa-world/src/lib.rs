@@ -12,11 +12,13 @@ mod channels;
 mod climate;
 pub mod course_map;
 mod drape;
+mod foundations;
 mod horizon;
 mod junctions;
 mod landcover;
 mod minimap;
 mod palette;
+mod pavement;
 mod props;
 mod railways;
 mod riding;
@@ -50,7 +52,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 10;
+pub const GENERATOR: u32 = 24;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -112,12 +114,17 @@ pub struct MeshData {
 }
 
 impl MeshData {
-    /// Adds another mesh's triangles.
+    /// Adds another mesh's triangles. Missing colours default to white when either mesh
+    /// carries colours, keeping the optional vertex array complete.
     ///
     /// # Panics
     /// If the combined mesh has more than `u32::MAX` vertices.
-    pub fn append(&mut self, other: MeshData) {
+    pub fn append(&mut self, mut other: MeshData) {
         let offset = u32::try_from(self.vertices.len()).expect("mesh fits u32");
+        if !self.colors.is_empty() || !other.colors.is_empty() {
+            self.colors.resize(self.vertices.len(), [1.0; 4]);
+            other.colors.resize(other.vertices.len(), [1.0; 4]);
+        }
         self.vertices.extend(other.vertices);
         self.normals.extend(other.normals);
         self.uvs.extend(other.uvs);
@@ -154,7 +161,8 @@ impl Ways {
         road: &RoadIndex,
         model: &mut M,
     ) -> Self {
-        let streets = streets::lines(map, projection, model).await;
+        let mut streets = streets::lines(map, projection, model).await;
+        streets::connect(&mut streets, road);
         let network = railways::network(map, projection, road, model).await;
         let streams = water::streams(&map.waterways, projection, road);
         let pools = water::pools(&map.areas, projection, road);
@@ -167,7 +175,7 @@ impl Ways {
             islands: roundabouts::islands(map, projection),
             channels: channels::Channels::new(&streams, &pools, &streets),
             water_levels,
-            levels: streets::Levels::new(&streets),
+            levels: streets::Levels::new(&streets, &appearance::Index::new(map, projection)),
             streets,
             network,
             streams,
@@ -233,18 +241,12 @@ pub struct World {
     pub fallback_samples: usize,
 }
 
-/// The parts of the world built whole rather than by chunk: the road ridden, the bridges and
-/// tunnels and the railways.
-async fn whole<M: ElevationModel>(
-    projection: &LocalProjection,
-    (shapers, ways, below): (&Shapers<'_>, &Ways, &structures::Below<'_>),
-    model: &mut M,
-) -> World {
+/// Wearing surfaces are independent of terrain chunks. Structures follow the completed
+/// terrain so their foundations can reach the ground actually drawn.
+fn whole(shapers: &Shapers<'_>, ways: &Ways) -> World {
     let (road, rails) = (shapers.road, shapers.rails);
     World {
         road: road.mesh(ROAD_HALF_WIDTH, &streets::mouths(&ways.streets, road)),
-        structures: structures::build_all((road, rails), below, shapers.portals, projection, model)
-            .await,
         railways: rails.mesh(railways::BED_M / 2.0, &[]),
         ..World::default()
     }
@@ -281,14 +283,16 @@ pub async fn generate<M: ElevationModel>(
         model,
     )
     .await;
+    let hollows = structures::hollows(&road, &ways.network.index, &portals);
     let shapers = Shapers {
         road: &road,
         rails: &ways.network.index,
         streets: &ways.levels,
         portals: &portals,
+        hollows: &hollows,
         hills: true,
     };
-    let below = structures::Below::new(&road, &ways.network.index, &ways.streets);
+    let below = structures::Below::new(&road, &ways.network.index, &ways.streets, &ways.islands);
     let urban = urban::Urban::build(
         buildings.values().flatten(),
         &ways.streets,
@@ -297,7 +301,8 @@ pub async fn generate<M: ElevationModel>(
         &road,
         &land,
     );
-    let mut world = whole(&projection, (&shapers, &ways, &below), model).await;
+    let mut world = whole(&shapers, &ways);
+    let mut chunk_barriers = Vec::new();
     let mouths = streets::mouths(&ways.streets, &road);
     let places: Vec<(String, (f64, f64))> = map
         .places
@@ -334,12 +339,32 @@ pub async fn generate<M: ElevationModel>(
         let chunks = in_parallel(&jobs, threads, |(cx, cn, elevations)| {
             corridor.chunk(*cx, *cn, elevations)
         });
-        for (chunk, fallbacks) in chunks {
+        for (chunk, fallbacks, barriers) in chunks {
             world.chunks.push(chunk);
+            chunk_barriers.push(barriers);
             world.fallback_samples += fallbacks;
         }
         progress(world.chunks.len(), total);
     }
+    props::ground_protection(&mut world.chunks);
+    let pavement = pavement::Pavement::new(&world, chunk_barriers.iter().map(|(_, n)| *n));
+    for (chunk, ([paved, unpaved], _)) in world.chunks.iter_mut().zip(chunk_barriers) {
+        pavement.clear(&mut chunk.streets, paved, chunk.center);
+        pavement.clear(&mut chunk.tracks, unpaved, chunk.center);
+    }
+    props::clear_fences(&mut world.chunks, &pavement);
+    let mut barriers = Vec::new();
+    world.structures = structures::build_all(
+        (&road, &ways.network.index),
+        &below,
+        &shapers,
+        &foundations::Ground(&world.chunks),
+        &projection,
+        model,
+        &mut barriers,
+    )
+    .await;
+    pavement.clear(&mut world.structures, barriers, [0.0; 3]);
     if world.fallback_samples > 0 {
         warn!(
             samples = world.fallback_samples,
@@ -470,7 +495,12 @@ struct Corridor<'a> {
 impl Corridor<'_> {
     /// Chunk (`cx`, `cn`) from its [`HeightGrid::elevations`], and how many of its terrain
     /// samples had no elevation data.
-    fn chunk(&self, cx: i32, cn: i32, elevations: &[Option<f64>]) -> (TerrainChunk, usize) {
+    fn chunk(
+        &self,
+        cx: i32,
+        cn: i32,
+        elevations: &[Option<f64>],
+    ) -> (TerrainChunk, usize, ([Vec<pavement::Barrier>; 2], usize)) {
         let Ways {
             streets,
             streams,
@@ -525,7 +555,7 @@ impl Corridor<'_> {
         };
         let props = props::place(heights.origin, CHUNK_SIZE, &roadside, origin);
         vegetation::place_grass(&mut trees, heights.origin, CHUNK_SIZE, &ground, origin);
-        let (paved, mut unpaved) = streets::meshes(
+        let (paved, mut unpaved, barriers) = streets::meshes(
             (streets, &self.ways.corners),
             heights.origin,
             CHUNK_SIZE,
@@ -533,6 +563,7 @@ impl Corridor<'_> {
             self.below,
             origin,
         );
+        let track_length = unpaved.indices.len();
         unpaved.append(water::shore_mesh(
             pools,
             heights.origin,
@@ -554,7 +585,7 @@ impl Corridor<'_> {
             trees,
             props,
         };
-        (chunk, fallbacks)
+        (chunk, fallbacks, (barriers, track_length))
     }
 }
 
@@ -645,6 +676,8 @@ pub(crate) struct HeightGrid {
     water_drop: Vec<f64>,
     fine_water_drop: HashMap<(usize, usize), Vec<f64>>,
     water_levels: std::sync::Arc<water_levels::Levels>,
+    /// Openings also cut paving laid on the hill, including approach caps and junctions.
+    hollows: Vec<structures::TunnelCut>,
 }
 
 /// What a strip or area is laid on (`drape`): the ground, or the water's surface in its channel.
@@ -737,6 +770,18 @@ impl HeightGrid {
             water_drop: vec![0.0; bordered * bordered],
             fine_water_drop: HashMap::new(),
             water_levels: std::sync::Arc::clone(water.2),
+            hollows: shapers
+                .hollows
+                .iter()
+                .copied()
+                .filter(|p| {
+                    p.near(
+                        origin.0 + CHUNK_SIZE / 2.0,
+                        origin.1 + CHUNK_SIZE / 2.0,
+                        CHUNK_SIZE,
+                    )
+                })
+                .collect(),
         };
         // Streets level the ground across them from the natural ground at their centre lines:
         // all of it is known first.
@@ -993,6 +1038,36 @@ impl HeightGrid {
         triangles
     }
 
+    /// Draped ground surfaces share the terrain's tunnel openings. Cutting only the terrain
+    /// leaves the approach's paving stretched across the mouth on the uncut height grid.
+    pub(crate) fn cut_paving(&self, triangle: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+        if self.hollows.is_empty() {
+            return None;
+        }
+        cut_out(&self.hollows.iter().collect::<Vec<_>>(), triangle)
+    }
+
+    /// Foundation height for a mapped bridge built in this chunk, over the whole footprint.
+    pub(crate) fn foundation(
+        &self,
+        centre: (f64, f64),
+        forward: (f64, f64),
+        dimensions: (f64, f64),
+    ) -> Option<f64> {
+        let reach = dimensions.0.hypot(dimensions.1);
+        let triangles = self
+            .triangles(
+                (centre.0 - reach, centre.1 - reach),
+                (centre.0 + reach, centre.1 + reach),
+            )
+            .into_iter()
+            .flat_map(|t| {
+                let corners = t.map(|(e, n)| [e, n, self.at(e, n)]);
+                self.cut_paving(corners).unwrap_or_else(|| vec![corners])
+            });
+        foundations::lowest(triangles, centre, forward, dimensions)
+    }
+
     fn vertex(&self, i: isize, j: isize) -> f64 {
         self.heights[self.slot(i, j)]
     }
@@ -1181,8 +1256,8 @@ impl HeightGrid {
         for j in 0..side - 1 {
             for i in 0..side - 1 {
                 let (east, north) = self.position(i, j, 0.5, 0.5);
-                let portals: Vec<&structures::Portal> = shapers
-                    .portals
+                let hollows: Vec<&structures::TunnelCut> = self
+                    .hollows
                     .iter()
                     .filter(|p| p.near(east, north, GRID))
                     .collect();
@@ -1191,7 +1266,7 @@ impl HeightGrid {
                 let add = |mesh: &mut MeshData, corners: [(u32, [f64; 3]); 4]| {
                     let [sw, se, nw, ne] = corners;
                     for triangle in [[sw, nw, ne], [sw, ne, se]] {
-                        match cut_out(&portals, triangle.map(|c| c.1)) {
+                        match cut_out(&hollows, triangle.map(|c| c.1)) {
                             None => mesh.indices.extend(triangle.map(|c| c.0)),
                             Some(pieces) => {
                                 for piece in pieces {
@@ -1249,7 +1324,10 @@ impl HeightGrid {
 /// The pieces of a ground triangle (corners east, north, height) outside the openings of the
 /// tunnels at `portals`, where it reaches into one; `None` where it does not. Nothing closes an
 /// opening, and the ground meets the tube's ring round it (#135).
-fn cut_out(portals: &[&structures::Portal], triangle: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+fn cut_out(
+    portals: &[&structures::TunnelCut],
+    triangle: [[f64; 3]; 3],
+) -> Option<Vec<[[f64; 3]; 3]>> {
     let mut pieces = vec![triangle];
     let mut touched = false;
     for portal in portals {
@@ -1325,6 +1403,7 @@ pub(crate) struct Shapers<'a> {
     pub(crate) rails: &'a RoadIndex,
     pub(crate) streets: &'a streets::Levels,
     pub(crate) portals: &'a [structures::Portal],
+    pub(crate) hollows: &'a [structures::TunnelCut],
     /// Whether the road's tunnels get a hill heaped over them where the terrain has none
     /// (`shape`, #135): not while their portals are placed, which looks for the hill the
     /// terrain has.
@@ -1341,11 +1420,43 @@ impl Shapers<'_> {
             .into_iter()
             .filter(|r| self.hills || r.2 != Surface::Tunnel)
             .collect();
+        // The ridden carriageway and its verge have one datum. A lower parallel railway
+        // may cut its own bank, but must not drag the road's shoulder and protection down.
+        let ground_road = found
+            .iter()
+            .filter(|r| r.2 == Surface::Ground)
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+            .copied();
+        found.extend(self.streets.bridges.near_shaped(east, north, reach));
         found.extend(
             self.rails
                 .near(east, north, reach)
                 .into_iter()
-                .filter(|r| r.2 != Surface::Tunnel),
+                .filter(|r| r.2 != Surface::Tunnel)
+                .map(|mut rail| {
+                    if let Some((distance, height, _)) = ground_road
+                        && height > rail.1
+                    {
+                        // Include the protection's footing and the fine triangles
+                        // touching it, beyond the margin needed by the asphalt alone.
+                        let roadside = (distance - VERGE - 1.0).max(0.0);
+                        let trackside =
+                            (rail.0 - railways::BED_M / 2.0 - FINE * std::f64::consts::SQRT_2)
+                                .max(0.0);
+                        let share = if roadside + trackside > 1e-9 {
+                            roadside / (roadside + trackside)
+                        } else {
+                            0.0
+                        };
+                        let blend = share * share * (3.0 - 2.0 * share);
+                        let level = height + (rail.1 - height) * blend;
+                        // Ease the railway cutting between the protected road verge and
+                        // its own bed, rather than dropping it at a hard distance threshold.
+                        let room = (rail.0 - VERGE).max(0.0);
+                        rail.1 = rail.1.max(level - room * CUT_SLOPE);
+                    }
+                    rail
+                }),
         );
         found
     }

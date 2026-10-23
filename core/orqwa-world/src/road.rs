@@ -213,15 +213,25 @@ impl RoadIndex {
                 .flat_map(|cell| self.cells.get(&cell).into_iter().flatten())
                 .any(|&j| {
                     let earlier = &self.segments[j];
+                    let (distance, height, _) = closest_on_segment(earlier, middle.0, middle.1);
+                    // A return traversal can enter/leave the same bridge a sample earlier.
+                    // Ground/bridge tag boundaries do not give that shared pavement a
+                    // second owner; genuinely separated levels still do.
+                    let same_surface = earlier.surface == segment.surface
+                        || (earlier.surface != Surface::Tunnel
+                            && segment.surface != Surface::Tunnel
+                            && (height - f64::midpoint(segment.elevation_a, segment.elevation_b))
+                                .abs()
+                                <= 0.5);
                     let gap = segment.distance_a - earlier.distance_b;
                     let back = {
                         let other = direction(earlier);
                         way.0 * other.0 + way.1 * other.1 < -0.7
                     };
                     j < i
-                        && earlier.surface == segment.surface
+                        && same_surface
                         && (gap >= APART || (back && gap >= 2.0 * SAME_ROAD))
-                        && closest_on_segment(earlier, middle.0, middle.1).0 < SAME_ROAD
+                        && distance < SAME_ROAD
                 });
             self.segments[i].repeat = repeat;
         }
@@ -304,8 +314,9 @@ impl RoadIndex {
         })
     }
 
-    /// Whether an aligned street's whole cross-section is hidden by the ridden road.
-    /// Proximity alone also catches shallow branches before they reach the road's edge.
+    /// Whether the ridden road already draws this street. Ground junctions require full
+    /// cross-section coverage; a bridge with a matching centre line has one structure even
+    /// when GPX smoothing and map quantisation shift its edges slightly.
     pub(crate) fn covers_street(
         &self,
         point: (f64, f64),
@@ -318,10 +329,80 @@ impl RoadIndex {
                 let segment = &self.segments[index];
                 let forward = direction(segment);
                 let road_half = segment.appearance.unwrap_or_default().width / 2.0;
-                on == surface
+                // A mapped approach can overlap the tunnel's tagged/smoothed boundary.
+                // Drawing it on the tunnel hill creates an asphalt wall across the portal.
+                let tunnel_approach = surface == Surface::Ground && on == Surface::Tunnel;
+                (on == surface || tunnel_approach)
                     && (forward.0 * heading.0 + forward.1 * heading.1).abs() > 0.8
-                    && distance + half <= road_half + 1e-6
+                    && if surface == Surface::Bridge || tunnel_approach {
+                        distance <= road_half.min(half).min(SAME_ROAD)
+                    } else {
+                        distance + half <= road_half + 1e-6
+                    }
             })
+    }
+
+    /// The ridden ground road's height at a connecting bridge end or protection edge.
+    /// A large height difference describes an overpass, not a junction.
+    pub(crate) fn ground_join(
+        &self,
+        point: (f64, f64),
+        height: f64,
+        tolerance: f64,
+    ) -> Option<f64> {
+        let ((distance, road_height, surface), index) =
+            self.nearest_segment(point.0, point.1, 24.0)?;
+        let half = self.segments[index].appearance.unwrap_or_default().width / 2.0;
+        (surface == Surface::Ground
+            && distance <= half + 0.3
+            && (height - road_height).abs() <= tolerance)
+            .then_some(road_height)
+    }
+
+    /// Whether a complete mapped bridge follows the road already drawn by the route.
+    /// Ownership spans the feature: the map and resampled route can change structure tags at
+    /// slightly different places, especially where a tunnel leads straight onto a bridge.
+    pub(crate) fn owns_bridge(
+        &self,
+        half: f64,
+        points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
+    ) -> bool {
+        self.owns_feature(half, points, |on| on != Surface::Tunnel)
+    }
+
+    /// A complete aligned ground feature overlapping the tunnel is its approach pavement.
+    pub(crate) fn owns_tunnel_approach(
+        &self,
+        half: f64,
+        points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
+    ) -> bool {
+        self.owns_feature(half, points, |on| on == Surface::Tunnel)
+    }
+
+    fn owns_feature(
+        &self,
+        half: f64,
+        points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
+        accepts: impl Fn(Surface) -> bool,
+    ) -> bool {
+        let mut drawn = false;
+        for (point, heading) in points {
+            let Some(((distance, _, on), index)) =
+                self.nearest_segment(point.0, point.1, SAME_ROAD)
+            else {
+                return false;
+            };
+            let segment = &self.segments[index];
+            let forward = direction(segment);
+            let road_half = segment.appearance.unwrap_or_default().width / 2.0;
+            if distance > road_half.min(half).min(SAME_ROAD)
+                || (forward.0 * heading.0 + forward.1 * heading.1).abs() <= 0.8
+            {
+                return false;
+            }
+            drawn |= accepts(on);
+        }
+        drawn
     }
 
     /// Every piece of road within `reach`: its distance, the road's elevation there and what
@@ -571,6 +652,49 @@ impl RoadIndex {
         stations
     }
 
+    /// A point at an exact route distance, with the same cross-section direction as the
+    /// drawn ribbon. Edge attachments share these points rather than extending a centre-line
+    /// tangent, which opens gaps and overlaps on opposite sides of a bend.
+    pub(crate) fn station_at(&self, distance: f64) -> Option<Station> {
+        let index = self.segments.partition_point(|s| s.distance_b <= distance);
+        let segment = self.segments.get(index)?;
+        if distance < segment.distance_a {
+            return None;
+        }
+        let t = (distance - segment.distance_a)
+            / (segment.distance_b - segment.distance_a).max(f64::EPSILON);
+        let (a, b) = (self.cross_direction(index), self.cross_direction(index + 1));
+        let way = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+        let length = way.0.hypot(way.1).max(f64::EPSILON);
+        Some(Station {
+            appearance: segment.appearance.unwrap_or_default(),
+            position: (
+                segment.a.0 + (segment.b.0 - segment.a.0) * t,
+                segment.a.1 + (segment.b.1 - segment.a.1) * t,
+            ),
+            elevation: segment.elevation_a + (segment.elevation_b - segment.elevation_a) * t,
+            distance,
+            direction: (way.0 / length, way.1 / length),
+            grade: (segment.elevation_b - segment.elevation_a)
+                / (segment.distance_b - segment.distance_a).max(f64::EPSILON),
+            surface: segment.surface,
+        })
+    }
+
+    /// Cross-section direction at a vertex, matching the wearing surface's averaged tangent.
+    fn cross_direction(&self, index: usize) -> (f64, f64) {
+        let (a, b) = (
+            direction(&self.segments[index.saturating_sub(1)]),
+            direction(&self.segments[index.min(self.segments.len() - 1)]),
+        );
+        let length = (a.0 + b.0).hypot(a.1 + b.1);
+        if length < f64::EPSILON {
+            a
+        } else {
+            ((a.0 + b.0) / length, (a.1 + b.1) / length)
+        }
+    }
+
     /// Points along the road roughly every `spacing` metres, in metres east/north.
     pub(crate) fn samples(&self, spacing: f64) -> Vec<(f64, f64)> {
         let mut samples = Vec::new();
@@ -591,22 +715,68 @@ impl RoadIndex {
     pub(crate) fn structure_runs(&self) -> Vec<(Surface, Vec<CentrePoint>)> {
         let mut runs: Vec<(Surface, Vec<CentrePoint>)> = Vec::new();
         let mut previous = Surface::Ground;
+        let mut shared_end = 0;
         for (index, segment) in self.segments.iter().enumerate() {
+            if index < shared_end {
+                continue;
+            }
+            let starts_bridge = segment.surface == Surface::Bridge
+                && (index == 0
+                    || self.segments[index - 1].surface != Surface::Bridge
+                    || self.lines.iter().any(|line| line.start == index));
+            if starts_bridge {
+                let line_end = self
+                    .lines
+                    .iter()
+                    .find(|line| line.contains(&index))
+                    .expect("segment belongs to a line")
+                    .end;
+                let run: Vec<_> = self.segments[index..line_end]
+                    .iter()
+                    .take_while(|s| s.surface == Surface::Bridge)
+                    .collect();
+                let fresh: f64 = run.iter().filter(|s| !s.repeat).map(|s| length(s)).sum();
+                // The wearing surface overlaps retraced pavement by this same margin.
+                // A few metres of different GPX curve at a junction do not justify a
+                // separate tiny slab and fence across that shared pavement.
+                if run.iter().any(|s| s.repeat) && fresh <= 2.0 * SAME_ROAD {
+                    shared_end = index + run.len();
+                    previous = Surface::Ground;
+                    continue;
+                }
+            }
+            // The first ride already owns this bridge, just as it owns its pavement.
+            // A return GPX's slightly different curve must not add crossing fences.
+            if segment.surface == Surface::Bridge && segment.repeat {
+                previous = Surface::Ground;
+                continue;
+            }
             // A structure never runs on from one line into another.
             if self.lines.iter().any(|line| line.start == index) {
                 previous = Surface::Ground;
             }
-            let point = |position: (f64, f64), elevation: f64| CentrePoint {
+            let point = |position: (f64, f64), elevation: f64, vertex: usize| CentrePoint {
                 position,
                 elevation,
-                direction: direction(segment),
+                direction: if self
+                    .lines
+                    .iter()
+                    .any(|l| l.start == vertex || l.end == vertex)
+                {
+                    direction(segment)
+                } else {
+                    self.cross_direction(vertex)
+                },
             };
             if segment.surface != Surface::Ground {
                 if segment.surface != previous {
-                    runs.push((segment.surface, vec![point(segment.a, segment.elevation_a)]));
+                    runs.push((
+                        segment.surface,
+                        vec![point(segment.a, segment.elevation_a, index)],
+                    ));
                 }
                 if let Some((_, points)) = runs.last_mut() {
-                    points.push(point(segment.b, segment.elevation_b));
+                    points.push(point(segment.b, segment.elevation_b, index + 1));
                 }
             }
             previous = segment.surface;
@@ -822,6 +992,7 @@ fn line_mesh(segments: &[Segment], half_width: f64, mouths: &[Mouth]) -> MeshDat
                 (re, rn),
                 after.appearance.map_or(half_width, |a| a.width / 2.0),
                 (joined(distance, -1.0), joined(distance, 1.0)),
+                before.surface == Surface::Bridge || after.surface == Surface::Bridge,
             );
             if let Some(appearance) = after.appearance {
                 mesh.colors.extend([appearance.color(); RING]);
@@ -843,6 +1014,7 @@ fn ring(
     (re, rn): (f64, f64),
     half_width: f64,
     (joined_left, joined_right): (bool, bool),
+    on_bridge: bool,
 ) {
     let at = |across: f64, drop: f64| {
         [
@@ -851,30 +1023,41 @@ fn ring(
             (-(north + rn * across)) as f32,
         ]
     };
-    let (bevel, skirt) = (half_width + BEVEL_REACH, half_width + SKIRT_REACH);
-    let left = if joined_left { 0.0 } else { -0.08 };
-    let right = if joined_right { 1.0 } else { 1.08 };
-    let tilt = BEVEL_DROP / BEVEL_REACH;
+    // A bridge has a narrow wearing course above its slab, without the rural road's
+    // gravel/grass skirt hanging outside the concrete deck.
+    let (bevel_reach, skirt_reach, bevel_drop, skirt_depth) = if on_bridge {
+        (0.14, 0.28, 0.025, 0.04)
+    } else {
+        (BEVEL_REACH, SKIRT_REACH, BEVEL_DROP, SKIRT_DEPTH)
+    };
+    let (bevel, skirt) = (half_width + bevel_reach, half_width + skirt_reach);
+    let left = if joined_left || on_bridge { 0.0 } else { -0.08 };
+    let right = if joined_right || on_bridge { 1.0 } else { 1.08 };
+    let tilt = bevel_drop / bevel_reach;
     // Left skirt, left bevel, left edge, right edge, right bevel, right skirt.
     let ring = [
         (
-            at(-skirt, SKIRT_DEPTH),
+            at(-skirt, skirt_depth),
             [-re as f32, 0.5, rn as f32],
-            -0.2_f32,
+            if on_bridge { 0.0 } else { -0.2_f32 },
         ),
         (
-            at(-bevel, BEVEL_DROP),
+            at(-bevel, bevel_drop),
             [(-re * tilt) as f32, 1.0, (rn * tilt) as f32],
             left,
         ),
         (at(-half_width, 0.0), [0.0, 1.0, 0.0], 0.0),
         (at(half_width, 0.0), [0.0, 1.0, 0.0], 1.0),
         (
-            at(bevel, BEVEL_DROP),
+            at(bevel, bevel_drop),
             [(re * tilt) as f32, 1.0, (-rn * tilt) as f32],
             right,
         ),
-        (at(skirt, SKIRT_DEPTH), [re as f32, 0.5, -rn as f32], 1.2),
+        (
+            at(skirt, skirt_depth),
+            [re as f32, 0.5, -rn as f32],
+            if on_bridge { 1.0 } else { 1.2 },
+        ),
     ];
     for (vertex, normal, u) in ring {
         mesh.vertices.push(vertex);
@@ -1013,5 +1196,57 @@ fn centre_point(segment: &Segment, position: (f64, f64), elevation: f64) -> Cent
         position,
         elevation,
         direction: direction(segment),
+    }
+}
+
+#[cfg(test)]
+mod ownership_tests {
+    use super::*;
+
+    #[test]
+    fn retraced_bridge_boundary_does_not_leave_a_short_fence_across_the_junction() {
+        let mut points: Vec<_> = (0..=300)
+            .map(|i| (f64::from(i) * 2.0, (200..=250).contains(&i)))
+            .collect();
+        points.extend(
+            (0..300)
+                .rev()
+                .map(|i| (f64::from(i) * 2.0, (195..=260).contains(&i))),
+        );
+        let mut distance = 0.0;
+        let line = points
+            .iter()
+            .enumerate()
+            .map(|(i, &(north, bridge))| {
+                if i > 0 {
+                    distance += (north - points[i - 1].0).abs();
+                }
+                Centre {
+                    position: (
+                        if distance > 600.0 && (490.0..=494.0).contains(&north) {
+                            4.0
+                        } else {
+                            0.0
+                        },
+                        north,
+                    ),
+                    elevation: 500.0,
+                    distance,
+                    surface: if bridge {
+                        Surface::Bridge
+                    } else {
+                        Surface::Ground
+                    },
+                    mapped: true,
+                }
+            })
+            .collect();
+        let mut road = RoadIndex::from_lines(&[line]);
+        road.mark_repeats();
+        assert_eq!(
+            road.structure_runs().len(),
+            1,
+            "mismatched return tags must not create short extra decks or fences at the roundabout entry"
+        );
     }
 }

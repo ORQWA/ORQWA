@@ -54,6 +54,8 @@ pub(crate) struct Street {
     max: (f64, f64),
     /// For bridges: the deck's height at both ends (the ground's there).
     deck: Option<(f64, f64)>,
+    /// Its deck was lowered to meet a ridden ground road; the bank must follow it too.
+    joined: bool,
     index: usize,
 }
 
@@ -71,6 +73,29 @@ impl Street {
     /// Whether it is a bridge.
     pub(crate) fn on_bridge(&self) -> bool {
         self.deck.is_some()
+    }
+
+    /// The ridden pavement owns a complete aligned bridge, even with a ground route tag.
+    fn owned_bridge(&self, road: &RoadIndex) -> bool {
+        self.on_bridge()
+            && road.owns_bridge(
+                self.half_width(),
+                self.points
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &point)| (point, local_direction(&self.points, i))),
+            )
+    }
+
+    fn owned_approach(&self, road: &RoadIndex) -> bool {
+        !self.on_bridge()
+            && road.owns_tunnel_approach(
+                self.half_width(),
+                self.points
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &point)| (point, local_direction(&self.points, i))),
+            )
     }
 
     /// How far it lies above the ground.
@@ -157,16 +182,41 @@ pub(crate) async fn lines<M: ElevationModel>(
             min,
             max,
             deck,
+            joined: false,
             index,
         });
     }
     streets
 }
 
+/// Resolve complete bridge profiles before either terrain or wearing surfaces use them.
+pub(crate) fn connect(streets: &mut [Street], road: &RoadIndex) {
+    for street in streets {
+        let Some(ends) = street.deck else {
+            continue;
+        };
+        if street.owned_bridge(road) {
+            continue;
+        }
+        let lift = lift(street.class, street.index);
+        let meet = |point, height| {
+            road.ground_join(point, height + lift, 3.0)
+                .map_or(height, |road| road - lift - 0.02)
+        };
+        let joined = (
+            meet(street.points[0], ends.0),
+            meet(*street.points.last().expect("street has points"), ends.1),
+        );
+        street.joined = (joined.0 - ends.0).abs() > 1e-6 || (joined.1 - ends.1).abs() > 1e-6;
+        street.deck = Some(joined);
+    }
+}
+
 /// The paved streets and the unpaved tracks and paths within the chunk square `[origin,
 /// origin + size]`, relative to `chunk_origin`, with the `corners` of their junctions.
 /// Fully covered stretches running along the road ridden are left out; streets joining or
 /// crossing it retain their joining segments and run on under it.
+#[allow(clippy::too_many_lines)] // keep pavement and its temporary barrier ranges aligned
 pub(crate) fn meshes(
     (streets, corners): (&[Street], &[Corner]),
     origin: (f64, f64),
@@ -174,15 +224,18 @@ pub(crate) fn meshes(
     heights: &HeightGrid,
     below: &Below,
     chunk_origin: [f64; 3],
-) -> (MeshData, MeshData) {
+) -> (MeshData, MeshData, [Vec<crate::pavement::Barrier>; 2]) {
     let road = below.road();
     let (mut paved_mesh, mut unpaved_mesh) = (MeshData::default(), MeshData::default());
+    let (mut paved_barriers, mut unpaved_barriers) = (Vec::new(), Vec::new());
     let (low, high) = (origin, (origin.0 + size, origin.1 + size));
     for street in streets {
         if street.max.0 < low.0
             || street.min.0 > high.0
             || street.max.1 < low.1
             || street.min.1 > high.1
+            || street.owned_bridge(road)
+            || street.owned_approach(road)
         {
             continue;
         }
@@ -191,6 +244,11 @@ pub(crate) fn meshes(
             &mut paved_mesh
         } else {
             &mut unpaved_mesh
+        };
+        let barriers = if street.paved() {
+            &mut paved_barriers
+        } else {
+            &mut unpaved_barriers
         };
         let total = along(&street.points);
         let surface = if street.on_bridge() {
@@ -217,6 +275,7 @@ pub(crate) fn meshes(
                             total,
                             (heights, below),
                             chunk_origin,
+                            barriers,
                         );
                         run.clear();
                     }
@@ -238,6 +297,7 @@ pub(crate) fn meshes(
                 total,
                 (heights, below),
                 chunk_origin,
+                barriers,
             );
         }
         if street.deck.is_none() {
@@ -275,7 +335,7 @@ pub(crate) fn meshes(
         junctions::meshes(corners, origin, size, heights, chunk_origin);
     paved_mesh.append(paved_corners);
     unpaved_mesh.append(unpaved_corners);
-    (paved_mesh, unpaved_mesh)
+    (paved_mesh, unpaved_mesh, [paved_barriers, unpaved_barriers])
 }
 
 /// Where a street is round: its ends and its sharp bends, with its direction there.
@@ -351,7 +411,8 @@ fn local_direction(points: &[(f64, f64)], i: usize) -> (f64, f64) {
 }
 
 /// A strip of `half` width along `run` (points with their distance along the street): draped
-/// on the ground, or for a bridge a deck straight between its ends' heights, with its sides.
+/// on the ground, or for a bridge a solid deck straight between its ends' heights.
+#[allow(clippy::too_many_arguments)] // terrain context plus temporary barrier ranges
 fn ribbon(
     mesh: &mut MeshData,
     run: &[((f64, f64), f64)],
@@ -360,17 +421,21 @@ fn ribbon(
     total: f64,
     (heights, below): (&HeightGrid, &Below),
     origin: [f64; 3],
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) {
     if let Some(ends) = street.deck {
+        let lift = lift(street.class, street.index);
         drape::deck(
             mesh,
             run,
             half,
+            street.appearance.color(),
             ends,
-            lift(street.class, street.index),
+            lift,
             total,
             (heights, below),
             origin,
+            barriers,
         );
     } else {
         drape::drape(
@@ -509,13 +574,46 @@ type Piece = ((f64, f64), (f64, f64), f64);
 /// The paved streets on the ground, which level the ground across them (#116). Tracks and
 /// paths follow the land as it is; bridges stand above it.
 pub(crate) struct Levels {
+    /// Connected bridge profiles lower their approach banks without filling their valleys.
+    pub(crate) bridges: RoadIndex,
     /// Pieces of their centre lines, with their half widths.
     segments: Vec<Piece>,
     cells: HashMap<(i64, i64), Vec<usize>>,
 }
 
 impl Levels {
-    pub(crate) fn new(streets: &[Street]) -> Self {
+    pub(crate) fn new(streets: &[Street], appearance: &crate::appearance::Index) -> Self {
+        let lines: Vec<_> = streets
+            .iter()
+            .filter(|s| s.joined)
+            .map(|street| {
+                let (start, end) = street.deck.expect("joined bridge");
+                let total = along(&street.points).max(1e-6);
+                let mut distance = 0.0;
+                street
+                    .points
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &position)| {
+                        if i > 0 {
+                            let previous = street.points[i - 1];
+                            distance += (position.0 - previous.0).hypot(position.1 - previous.1);
+                        }
+                        crate::road::Centre {
+                            position,
+                            distance,
+                            elevation: start
+                                + (end - start) * distance / total
+                                + lift(street.class, street.index),
+                            surface: Surface::Bridge,
+                            mapped: true,
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        let mut bridges = RoadIndex::from_lines(&lines);
+        bridges.set_appearances(appearance);
         let mut segments = Vec::new();
         let mut cells: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
         for street in streets.iter().filter(|s| s.paved() && !s.on_bridge()) {
@@ -531,7 +629,11 @@ impl Levels {
                 }
             }
         }
-        Self { segments, cells }
+        Self {
+            bridges,
+            segments,
+            cells,
+        }
     }
 
     /// Whether there are no paved streets at all, so the ground is nowhere levelled for one.
