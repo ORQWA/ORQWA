@@ -351,7 +351,7 @@ fn local_direction(points: &[(f64, f64)], i: usize) -> (f64, f64) {
 }
 
 /// A strip of `half` width along `run` (points with their distance along the street): draped
-/// on the ground, or for a bridge a deck straight between its ends' heights, with its sides.
+/// on the ground, or for a bridge a solid deck straight between its ends' heights.
 fn ribbon(
     mesh: &mut MeshData,
     run: &[((f64, f64), f64)],

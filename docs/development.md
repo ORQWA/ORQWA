@@ -71,6 +71,12 @@ both water meshes and channel beds use those shared elevations. Keep these profi
 independent of road shaping. Review a steep valley from the road and above, plus a lake,
 after changing them. Older kept worlds offer **Regenerate world** for the corrected rivers.
 
+Non-ridden road bridges (R119) use generator 9 / stored format 2. `drape::deck` adds a
+downward-facing underside at the same depth as the side walls, including at chunk joins;
+the ridden road and railway decks are built separately in `structures.rs`. Older kept
+worlds offer regeneration. Run `cargo test -p orqwa-world non_ridden_bridges` for coverage
+of all five road classes, grades, bends and chunk boundaries, and check a render from below.
+
 ## Refreshing screenshots
 
 Tree rendering uses the original close models plus authored medium/far forms from

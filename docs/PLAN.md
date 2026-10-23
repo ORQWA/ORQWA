@@ -515,6 +515,9 @@ physically based materials and light, restyled group by group.
     - [x] Bridges and viaducts: short, low bridges of the road ridden are stone arch bridges
       (arches, the walls over them, vaults), longer and higher ones viaducts on piers as wide
       as the deck; bridges of other streets and railways stand on piers too
+    - [x] Solid undersides on non-ridden road bridges (R119), including highways, tracks and
+      paths: downward-facing deck surfaces follow bends, slopes and chunk boundaries.
+      Generator 9 offers regeneration of kept worlds; stored format remains 2.
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over
       it and keeps it covered, not in the open in front of the hill; a stone ring round the
       opening ends the cutting leading to it, no ground closes the opening, and the hill over

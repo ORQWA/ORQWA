@@ -100,3 +100,9 @@ Format-1 worlds rebuild when next ridden; the course-file format is unchanged.
 
 [River levels (ADR 0030)](0030-river-levels.md) raise the generator to 8. The stored format
 stays at 2; older kept worlds remain rideable and offer regeneration for the corrected rivers.
+
+## Amendment — 2026-10-23
+
+Solid undersides for non-ridden road bridges (R119) raise the generator to 9. The added
+vertices and triangles use the existing mesh layout, so stored format stays at 2. Older kept
+worlds remain rideable and offer regeneration to close the decks seen from below.

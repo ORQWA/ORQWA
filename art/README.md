@@ -86,6 +86,11 @@ the course descends; the bed follows the same datum and the gravel band follows 
 Tall banks blend out over a wider reach; exposed steep channel sides use triplanar rock.
 Review steep valley rivers from road height and above with `orqwa-render-review`.
 
+Non-ridden road bridges have solid 0.7 m decks (R119), with separate downward-facing
+underside vertices to keep the slab edges sharp. Undersides use edge UVs so unpaved bridges'
+grass strips stay on top. Review the deck from road height underneath as well as from above;
+the generator adds this geometry when a kept world is regenerated.
+
 ```sh
 scripts/art.sh blender --background --factory-startup --python art/textures/build.py -- --out screenshots/textures --size 512
 ```

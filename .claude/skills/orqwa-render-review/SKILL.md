@@ -94,6 +94,12 @@ gallery. Grain alone is insufficient at distance. Refresh the linked wiki images
 
 ## Pitfalls
 
+For bridge geometry (R119), include a camera below a non-ridden road bridge: top and side
+views cannot reveal a missing underside. Check its downward-facing deck across chunk joins,
+and retain a view from above to check the road surface. Motorway/local-road decks and
+unpaved track/path decks share this geometry; ridden-road and railway structures use another
+builder.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

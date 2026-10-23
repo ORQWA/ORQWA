@@ -82,6 +82,15 @@ Reproduce with `COURSE=core/orqwa-gd/courses/twann-chasseral.tqc`
 and `SHOTS="lamboing:4200:2:0,180,-20"` in `scripts/render-views.sh`. The course uses its
 saved inputs offline. Matching before/after review images are in `docs/images/roads/`.
 
+The non-ridden bridge regression scene checks the deck from underneath and above (R119).
+It uses generated test geometry with the application's road, street and terrain materials.
+
+| Before: sky visible through the deck | After: solid underside |
+|---|---|
+| ![Missing bridge underside](images/issues/bridge-underside-before.jpg) | ![Solid bridge underside](images/issues/bridge-underside-after.jpg) |
+
+![Bridge deck from above](images/issues/bridge-deck-above.jpg)
+
 The [river geometry correction](adr/0030-river-levels.md) is checked against the
 Alpenbrevet Gold course near 104.57 km remaining and farther upstream:
 

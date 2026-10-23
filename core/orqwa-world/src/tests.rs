@@ -1390,16 +1390,19 @@ fn height_on(
             && (z - c.center[2]).abs() <= CHUNK_SIZE as f32 / 2.0
     })?;
     let (px, pz) = (x - chunk.center[0], z - chunk.center[2]);
-    triangles(pick(chunk)).find_map(|[a, b, c]| {
-        let det = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2]);
-        if det.abs() < 1e-9 {
-            return None;
-        }
-        let wa = ((b[2] - c[2]) * (px - c[0]) + (c[0] - b[0]) * (pz - c[2])) / det;
-        let wb = ((c[2] - a[2]) * (px - c[0]) + (a[0] - c[0]) * (pz - c[2])) / det;
-        let wc = 1.0 - wa - wb;
-        (wa >= -1e-4 && wb >= -1e-4 && wc >= -1e-4).then(|| wa * a[1] + wb * b[1] + wc * c[1])
-    })
+    triangles(pick(chunk)).find_map(|t| triangle_height(t, px, pz))
+}
+
+/// Height where a vertical ray through (`x`, `z`) meets a triangle.
+fn triangle_height([a, b, c]: [[f32; 3]; 3], point_x: f32, point_z: f32) -> Option<f32> {
+    let det = (b[2] - c[2]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[2] - c[2]);
+    if det.abs() < 1e-9 {
+        return None;
+    }
+    let wa = ((b[2] - c[2]) * (point_x - c[0]) + (c[0] - b[0]) * (point_z - c[2])) / det;
+    let wb = ((c[2] - a[2]) * (point_x - c[0]) + (a[0] - c[0]) * (point_z - c[2])) / det;
+    let wc = 1.0 - wa - wb;
+    (wa >= -1e-4 && wb >= -1e-4 && wc >= -1e-4).then(|| wa * a[1] + wb * b[1] + wc * c[1])
 }
 
 #[tokio::test]
@@ -3030,6 +3033,86 @@ fn assert_faces_follow_normals(mesh: &MeshData) {
             dot < 0.0,
             "triangle {triangle:?} faces away from {normal:?}"
         );
+    }
+}
+
+#[tokio::test]
+async fn non_ridden_bridges_are_solid_from_below() {
+    use orqwa_osm::{Road, RoadClass};
+
+    // R119: sloping bridges across the ridden road, with a gentle bend and several chunks.
+    // Motorways use Major; tracks and paths use the separate unpaved mesh.
+    let classes = [
+        RoadClass::Major,
+        RoadClass::Street,
+        RoadClass::Service,
+        RoadClass::Track,
+        RoadClass::Path,
+    ];
+    let map = MapData {
+        roads: classes
+            .iter()
+            .enumerate()
+            .map(|(i, &class)| {
+                let north = 100.0 + i as f64 * 180.0;
+                Road {
+                    class,
+                    line: vec![at(-600.0, north), at(90.0, north + 20.0), at(600.0, north)],
+                    structure: Some(StructureKind::Bridge),
+                }
+            })
+            .collect(),
+        ..MapData::default()
+    };
+    let world = world(&map).await;
+    for chunk in &world.chunks {
+        for mesh in [&chunk.streets, &chunk.tracks] {
+            assert_valid(mesh);
+            assert_faces_follow_normals(mesh);
+        }
+    }
+    for (i, class) in classes.into_iter().enumerate() {
+        let north = 100.0 + i as f32 * 180.0;
+        let pick: fn(&TerrainChunk) -> &MeshData =
+            if matches!(class, RoadClass::Track | RoadClass::Path) {
+                |c: &TerrainChunk| &c.tracks
+            } else {
+                |c: &TerrainChunk| &c.streets
+            };
+        let faces: Vec<_> = chunk_triangles(&world, pick).collect();
+        // Include both sides of chunk boundaries, the bend, and both edges of the deck.
+        for east in [
+            -500.0_f32, -480.1, -479.9, -240.1, -239.9, -0.1, 0.1, 90.0, 239.9, 240.1, 479.9,
+            480.1, 500.0,
+        ] {
+            for across in [-0.6_f32, 0.0, 0.6] {
+                let bend = if east < 90.0 {
+                    (east + 600.0) / 690.0
+                } else {
+                    (600.0 - east) / 510.0
+                };
+                let z = -(north + 20.0 * bend) + across;
+                let top = faces
+                    .iter()
+                    .find_map(|&t| {
+                        (face_normal(t)[1] < -0.01)
+                            .then(|| triangle_height(t, east, z))
+                            .flatten()
+                    })
+                    .unwrap_or_else(|| panic!("no {class:?} bridge top at {east}, {z}"));
+                let underside = faces.iter().find_map(|&t| {
+                    (face_normal(t)[1] > 0.01)
+                        .then(|| triangle_height(t, east, z))
+                        .flatten()
+                });
+                let bottom =
+                    underside.unwrap_or_else(|| panic!("no {class:?} underside at {east}, {z}"));
+                assert!(
+                    (top - bottom - 0.7).abs() < 0.01,
+                    "{class:?} deck thickness at {east}, {z}: top {top}, bottom {bottom}"
+                );
+            }
+        }
     }
 }
 

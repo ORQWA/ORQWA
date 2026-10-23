@@ -10,10 +10,10 @@ use crate::{HeightGrid, MeshData, On};
 const PIECE_M: f64 = 30.0;
 /// ...and bends this sharp (radians) keep their points.
 const TURN: f64 = 0.03;
-/// Bridge decks are this thick at their edges.
+/// Bridge decks are this thick from their surface to their underside.
 const DECK_DEPTH_M: f64 = 0.7;
-/// Vertices per point of a deck: left and right edge, and each side's top and bottom.
-const DECK_POINTS: usize = 6;
+/// Vertices per point of a deck: top edges, each side's top/bottom, and underside edges.
+const DECK_POINTS: usize = 8;
 /// Piers stand under decks this far apart, at the same places along the line in every chunk,
 /// where the ground lies at least `DECK_PIER_MIN` below the deck.
 const DECK_PIER_SPACING: f64 = 20.0;
@@ -304,7 +304,7 @@ fn normalize([x, y, z]: [f64; 3]) -> [f64; 3] {
 }
 
 /// A bridge deck of `half` width along `run` (points with their distance along a line `total`
-/// long): straight between the heights of its ends, `lift` above them, with its sides.
+/// long): straight between the heights of its ends, `lift` above them, with sides and underside.
 #[allow(clippy::cast_possible_truncation)] // f32 GPU data
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn deck(
@@ -351,6 +351,10 @@ pub(crate) fn deck(
             push(side, top, out, u);
             push(side, top - DECK_DEPTH_M, out, u);
         }
+        // Separate normals keep the slab's lower edges sharp; edge UVs keep tracks' grass
+        // strip on top rather than on the ceiling seen while passing underneath.
+        push(-1.0, top - DECK_DEPTH_M, [0.0, -1.0, 0.0], 0.0);
+        push(1.0, top - DECK_DEPTH_M, [0.0, -1.0, 0.0], 0.0);
         if i > 0 {
             let step = u32::try_from(DECK_POINTS).expect("small");
             let at = base + u32::try_from(i * DECK_POINTS).expect("streets fit u32");
@@ -361,6 +365,8 @@ pub(crate) fn deck(
             let (side_right_0, bottom_right_0) = (previous + 4, previous + 5);
             let (side_left_1, bottom_left_1) = (at + 2, at + 3);
             let (side_right_1, bottom_right_1) = (at + 4, at + 5);
+            let (under_left_0, under_right_0) = (previous + 6, previous + 7);
+            let (under_left_1, under_right_1) = (at + 6, at + 7);
             mesh.indices.extend([
                 left_0,
                 left_1,
@@ -380,6 +386,13 @@ pub(crate) fn deck(
                 side_right_0,
                 bottom_right_1,
                 bottom_right_0,
+                // Clockwise from below, opposite to the road surface above.
+                under_left_0,
+                under_right_1,
+                under_left_1,
+                under_left_0,
+                under_right_0,
+                under_right_1,
             ]);
         }
     }
