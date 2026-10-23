@@ -104,6 +104,10 @@ posts remain outside the wearing surface, especially beside the start/finish rou
 At roundabouts, inspect the whole junction from above and from its entry: bridge fences must
 not follow the GPX through its interior or cross themselves there. Aligning rail pieces is
 insufficient. Confirm that genuine outside-edge protection and higher overpasses remain.
+Check barriers against all visible carriageways, including parallel joining arms and rounded
+junction fills. Both endpoints being clear is insufficient: inspect the middle of each span
+and its thickness too. Review steel rails/posts, concrete kerbs/parapets and roadside fence
+models, retaining bridge undersides and protection at different elevations.
 
 For bridge geometry (R121), include a camera below a non-ridden road bridge: top and side
 views cannot reveal a missing underside. Check its downward-facing deck across chunk joins,

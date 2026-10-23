@@ -216,6 +216,7 @@ pub(crate) fn connect(streets: &mut [Street], road: &RoadIndex) {
 /// origin + size]`, relative to `chunk_origin`, with the `corners` of their junctions.
 /// Fully covered stretches running along the road ridden are left out; streets joining or
 /// crossing it retain their joining segments and run on under it.
+#[allow(clippy::too_many_lines)] // keep pavement and its temporary barrier ranges aligned
 pub(crate) fn meshes(
     (streets, corners): (&[Street], &[Corner]),
     origin: (f64, f64),
@@ -223,9 +224,10 @@ pub(crate) fn meshes(
     heights: &HeightGrid,
     below: &Below,
     chunk_origin: [f64; 3],
-) -> (MeshData, MeshData) {
+) -> (MeshData, MeshData, [Vec<crate::pavement::Barrier>; 2]) {
     let road = below.road();
     let (mut paved_mesh, mut unpaved_mesh) = (MeshData::default(), MeshData::default());
+    let (mut paved_barriers, mut unpaved_barriers) = (Vec::new(), Vec::new());
     let (low, high) = (origin, (origin.0 + size, origin.1 + size));
     for street in streets {
         if street.max.0 < low.0
@@ -242,6 +244,11 @@ pub(crate) fn meshes(
             &mut paved_mesh
         } else {
             &mut unpaved_mesh
+        };
+        let barriers = if street.paved() {
+            &mut paved_barriers
+        } else {
+            &mut unpaved_barriers
         };
         let total = along(&street.points);
         let surface = if street.on_bridge() {
@@ -268,6 +275,7 @@ pub(crate) fn meshes(
                             total,
                             (heights, below),
                             chunk_origin,
+                            barriers,
                         );
                         run.clear();
                     }
@@ -289,6 +297,7 @@ pub(crate) fn meshes(
                 total,
                 (heights, below),
                 chunk_origin,
+                barriers,
             );
         }
         if street.deck.is_none() {
@@ -326,7 +335,7 @@ pub(crate) fn meshes(
         junctions::meshes(corners, origin, size, heights, chunk_origin);
     paved_mesh.append(paved_corners);
     unpaved_mesh.append(unpaved_corners);
-    (paved_mesh, unpaved_mesh)
+    (paved_mesh, unpaved_mesh, [paved_barriers, unpaved_barriers])
 }
 
 /// Where a street is round: its ends and its sharp bends, with its direction there.
@@ -403,6 +412,7 @@ fn local_direction(points: &[(f64, f64)], i: usize) -> (f64, f64) {
 
 /// A strip of `half` width along `run` (points with their distance along the street): draped
 /// on the ground, or for a bridge a solid deck straight between its ends' heights.
+#[allow(clippy::too_many_arguments)] // terrain context plus temporary barrier ranges
 fn ribbon(
     mesh: &mut MeshData,
     run: &[((f64, f64), f64)],
@@ -411,6 +421,7 @@ fn ribbon(
     total: f64,
     (heights, below): (&HeightGrid, &Below),
     origin: [f64; 3],
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) {
     if let Some(ends) = street.deck {
         let lift = lift(street.class, street.index);
@@ -424,6 +435,7 @@ fn ribbon(
             total,
             (heights, below),
             origin,
+            barriers,
         );
     } else {
         drape::drape(

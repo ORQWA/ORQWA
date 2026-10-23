@@ -156,6 +156,16 @@ GPX offset or an angle test, so parallel portions of the junction also stay open
 protection and distinct higher overpasses remain. Tunnel service loops do not create a
 surface junction exclusion.
 
+Generator 24 applies a general road-clearance pass after all carriageways and junction fans
+have been generated. It indexes their actual triangles, excluding verges, shore gravel and
+the narrow mapped-deck kerbs. Barrier footprints are clipped against that pavement in plan
+and elevation, checking complete spans and thickness rather than just ends or street angles.
+Crossing rail/post pieces and concrete kerbs/parapets are removed together; slab sides,
+end edges and slab shoulders recede below same-level joining pavement while undersides
+and supports remain closed. Roadside guardrail and fence instances share the
+same clearance check. Temporary barrier ranges are discarded before storing, so format 3
+is unchanged. Protection on genuine overpasses and beside clear road edges remains.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

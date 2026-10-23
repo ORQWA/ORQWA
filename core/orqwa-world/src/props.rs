@@ -242,6 +242,45 @@ pub(crate) fn ground_protection(chunks: &mut [crate::TerrainChunk]) {
     }
 }
 
+/// A fixed model cannot be clipped halfway through a blade or plank. Remove spans crossing
+/// actual pavement, including roads joining between their endpoints.
+pub(crate) fn clear_fences(
+    chunks: &mut [crate::TerrainChunk],
+    pavement: &crate::pavement::Pavement,
+) {
+    for chunk in chunks {
+        for (name, buffer) in &mut chunk.props.models {
+            let half = match name.as_str() {
+                "guard_rail" | "guard_rail_start" | "guard_rail_end" => RAIL_SPAN / 2.0,
+                "fence" => FENCE_SPAN / 2.0,
+                _ => continue,
+            };
+            *buffer = buffer
+                .as_chunks::<12>()
+                .0
+                .iter()
+                .filter(|t| {
+                    let ends = [-half, half].map(|z| {
+                        [0, 1, 2].map(|k| {
+                            f64::from(t[k * 4 + 3])
+                                + f64::from(chunk.center[k])
+                                + f64::from(t[k * 4 + 2]) * z
+                        })
+                    });
+                    if name.starts_with("guard_rail_") {
+                        // Terminal blades flare 35 cm away from the road, beyond the post.
+                        !pavement.crosses_width(ends[0], ends[1], 0.5)
+                    } else {
+                        !pavement.crosses(ends[0], ends[1])
+                    }
+                })
+                .flatten()
+                .copied()
+                .collect();
+        }
+    }
+}
+
 /// Where a power line's pole stands at a station, if one does: along country roads in about
 /// one in `LINE_SHARE` of the `LINE_STRETCH` stretches, on the side the stretch draws, every
 /// `LINE_POLE_SPACING`, where there is room. Decided from the station alone, so the next pole's

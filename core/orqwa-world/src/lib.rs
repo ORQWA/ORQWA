@@ -18,6 +18,7 @@ mod junctions;
 mod landcover;
 mod minimap;
 mod palette;
+mod pavement;
 mod props;
 mod railways;
 mod riding;
@@ -51,7 +52,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 23;
+pub const GENERATOR: u32 = 24;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -301,6 +302,7 @@ pub async fn generate<M: ElevationModel>(
         &land,
     );
     let mut world = whole(&shapers, &ways);
+    let mut chunk_barriers = Vec::new();
     let mouths = streets::mouths(&ways.streets, &road);
     let places: Vec<(String, (f64, f64))> = map
         .places
@@ -337,13 +339,21 @@ pub async fn generate<M: ElevationModel>(
         let chunks = in_parallel(&jobs, threads, |(cx, cn, elevations)| {
             corridor.chunk(*cx, *cn, elevations)
         });
-        for (chunk, fallbacks) in chunks {
+        for (chunk, fallbacks, barriers) in chunks {
             world.chunks.push(chunk);
+            chunk_barriers.push(barriers);
             world.fallback_samples += fallbacks;
         }
         progress(world.chunks.len(), total);
     }
     props::ground_protection(&mut world.chunks);
+    let pavement = pavement::Pavement::new(&world, chunk_barriers.iter().map(|(_, n)| *n));
+    for (chunk, ([paved, unpaved], _)) in world.chunks.iter_mut().zip(chunk_barriers) {
+        pavement.clear(&mut chunk.streets, paved, chunk.center);
+        pavement.clear(&mut chunk.tracks, unpaved, chunk.center);
+    }
+    props::clear_fences(&mut world.chunks, &pavement);
+    let mut barriers = Vec::new();
     world.structures = structures::build_all(
         (&road, &ways.network.index),
         &below,
@@ -351,8 +361,10 @@ pub async fn generate<M: ElevationModel>(
         &foundations::Ground(&world.chunks),
         &projection,
         model,
+        &mut barriers,
     )
     .await;
+    pavement.clear(&mut world.structures, barriers, [0.0; 3]);
     if world.fallback_samples > 0 {
         warn!(
             samples = world.fallback_samples,
@@ -483,7 +495,12 @@ struct Corridor<'a> {
 impl Corridor<'_> {
     /// Chunk (`cx`, `cn`) from its [`HeightGrid::elevations`], and how many of its terrain
     /// samples had no elevation data.
-    fn chunk(&self, cx: i32, cn: i32, elevations: &[Option<f64>]) -> (TerrainChunk, usize) {
+    fn chunk(
+        &self,
+        cx: i32,
+        cn: i32,
+        elevations: &[Option<f64>],
+    ) -> (TerrainChunk, usize, ([Vec<pavement::Barrier>; 2], usize)) {
         let Ways {
             streets,
             streams,
@@ -538,7 +555,7 @@ impl Corridor<'_> {
         };
         let props = props::place(heights.origin, CHUNK_SIZE, &roadside, origin);
         vegetation::place_grass(&mut trees, heights.origin, CHUNK_SIZE, &ground, origin);
-        let (paved, mut unpaved) = streets::meshes(
+        let (paved, mut unpaved, barriers) = streets::meshes(
             (streets, &self.ways.corners),
             heights.origin,
             CHUNK_SIZE,
@@ -546,6 +563,7 @@ impl Corridor<'_> {
             self.below,
             origin,
         );
+        let track_length = unpaved.indices.len();
         unpaved.append(water::shore_mesh(
             pools,
             heights.origin,
@@ -567,7 +585,7 @@ impl Corridor<'_> {
             trees,
             props,
         };
-        (chunk, fallbacks)
+        (chunk, fallbacks, (barriers, track_length))
     }
 }
 

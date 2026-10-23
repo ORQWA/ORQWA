@@ -682,6 +682,7 @@ pub(crate) async fn build_all<M: ElevationModel>(
     ground: &Ground<'_>,
     projection: &LocalProjection,
     model: &mut M,
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) -> MeshData {
     let mut mesh = MeshData::default();
     let own = road.structure_runs().into_iter().map(|(surface, run)| {
@@ -701,7 +702,7 @@ pub(crate) async fn build_all<M: ElevationModel>(
         .map(|(surface, run)| (surface, run, Some(road)));
     for (surface, run, over) in own.chain(rails) {
         match surface {
-            Surface::Bridge => bridge(&mut mesh, &run, below, ground),
+            Surface::Bridge => bridge(&mut mesh, &run, below, ground, barriers),
             Surface::Tunnel => {
                 let over = over.map(|road| (road, projection, &mut *model));
                 tunnel(&mut mesh, &run, over).await;
@@ -862,7 +863,13 @@ fn across(line: &[CentrePoint], point: &CentrePoint) -> Option<(usize, f64)> {
     best.map(|b| (b.1, b.2))
 }
 
-fn bridge(mesh: &mut MeshData, run: &[Section], below: &Below<'_>, terrain: &Ground<'_>) {
+fn bridge(
+    mesh: &mut MeshData,
+    run: &[Section],
+    below: &Below<'_>,
+    terrain: &Ground<'_>,
+    barriers: &mut Vec<crate::pavement::Barrier>,
+) {
     let path = Path::new(run);
     // The ground under the bridge, every few metres.
     let mut ground = Vec::new();
@@ -926,7 +933,7 @@ fn bridge(mesh: &mut MeshData, run: &[Section], below: &Below<'_>, terrain: &Gro
             )
         })
     };
-    deck(mesh, run, color, arched, &opening);
+    deck(mesh, run, color, arched, &opening, barriers);
     if arched {
         arches(mesh, &path, &ground_at);
     } else {
@@ -943,6 +950,7 @@ fn deck(
     color: [f32; 4],
     arched: bool,
     opening: &dyn Fn(Section, f64) -> bool,
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) {
     let barrier = if arched { PARAPET_HEIGHT } else { KERB_HEIGHT };
     for pair in run.windows(2) {
@@ -956,18 +964,29 @@ fn deck(
             );
             let outward = right(a.centre).map(|v| v * side);
             // Deck side, from the road surface down.
+            let lower = mesh.indices.len();
             wall(
                 mesh,
                 (a.centre, b.centre),
                 outer,
-                (-DECK_THICKNESS, if open { -0.04 } else { barrier }),
+                (-DECK_THICKNESS, if open { -0.04 } else { 0.0 }),
                 outward,
                 color,
             );
+            barriers.push(crate::pavement::Barrier::slab(lower..mesh.indices.len()));
             // Parapet: inner face and top.
             if open {
                 continue;
             }
+            let start = mesh.indices.len();
+            wall(
+                mesh,
+                (a.centre, b.centre),
+                outer,
+                (0.0, barrier),
+                outward,
+                color,
+            );
             wall(
                 mesh,
                 (a.centre, b.centre),
@@ -984,9 +1003,17 @@ fn deck(
                 1.0,
                 color,
             );
+            barriers.push(crate::pavement::Barrier {
+                indices: start..mesh.indices.len(),
+                a: offset(a.centre, a.edge(side) - side * 0.15, 0.0),
+                b: offset(b.centre, b.edge(side) - side * 0.15, 0.0),
+                half_width: PARAPET_THICKNESS / 2.0,
+                slab: false,
+            });
         }
         // The wearing surface and ballast cover the centre; the shoulders close the slab
         // underneath them without competing with the road or track above.
+        let lower = mesh.indices.len();
         flat(
             mesh,
             (a.centre, b.centre),
@@ -995,6 +1022,7 @@ fn deck(
             1.0,
             color,
         );
+        barriers.push(crate::pavement::Barrier::slab(lower..mesh.indices.len()));
         flat(
             mesh,
             (a.centre, b.centre),
@@ -1005,10 +1033,11 @@ fn deck(
         );
     }
     if !arched {
-        railings(mesh, &Path::new(run), opening);
+        railings(mesh, &Path::new(run), opening, barriers);
     }
     for (end, facing) in [(run.first(), -1.0), (run.last(), 1.0)] {
         if let Some(s) = end {
+            let lower = mesh.indices.len();
             quad(
                 mesh,
                 [
@@ -1020,18 +1049,25 @@ fn deck(
                 forward(s.centre).map(|v| v * facing),
                 color,
             );
+            barriers.push(crate::pavement::Barrier::slab(lower..mesh.indices.len()));
         }
     }
 }
 
 /// Open steel protection lets a railway's narrow deck read as a bridge rather than a wall.
-fn railings(mesh: &mut MeshData, path: &Path<'_>, opening: &dyn Fn(Section, f64) -> bool) {
+fn railings(
+    mesh: &mut MeshData,
+    path: &Path<'_>,
+    opening: &dyn Fn(Section, f64) -> bool,
+    barriers: &mut Vec<crate::pavement::Barrier>,
+) {
     for side in [-1.0, 1.0] {
         for pair in path.run.windows(2) {
             let (a, b) = (pair[0], pair[1]);
             if opening(a, side) || opening(b, side) {
                 continue;
             }
+            let start = mesh.indices.len();
             for height in [0.65, RAIL_HEIGHT] {
                 beam(
                     mesh,
@@ -1041,24 +1077,37 @@ fn railings(mesh: &mut MeshData, path: &Path<'_>, opening: &dyn Fn(Section, f64)
                     *STEEL,
                 );
             }
+            barriers.push(crate::pavement::Barrier {
+                indices: start..mesh.indices.len(),
+                a: offset(a.centre, a.edge(side) - side * 0.12, 0.0),
+                b: offset(b.centre, b.edge(side) - side * 0.12, 0.0),
+                half_width: 0.035,
+                slab: false,
+            });
         }
         let mut along = 0.0;
         while along < path.length {
             let section = path.at(along);
             if !opening(section, side) {
-                railing_post(mesh, section, side);
+                railing_post(mesh, section, side, barriers);
             }
             along += POST_SPACING;
         }
         let section = path.at(path.length);
         if !opening(section, side) {
-            railing_post(mesh, section, side);
+            railing_post(mesh, section, side, barriers);
         }
     }
 }
 
-fn railing_post(mesh: &mut MeshData, section: Section, side: f64) {
+fn railing_post(
+    mesh: &mut MeshData,
+    section: Section,
+    side: f64,
+    barriers: &mut Vec<crate::pavement::Barrier>,
+) {
     let across = section.edge(side) - side * 0.12;
+    let start = mesh.indices.len();
     beam(
         mesh,
         offset(section.centre, across, KERB_HEIGHT),
@@ -1066,6 +1115,14 @@ fn railing_post(mesh: &mut MeshData, section: Section, side: f64) {
         0.045,
         *STEEL,
     );
+    let foot = offset(section.centre, across, 0.0);
+    barriers.push(crate::pavement::Barrier {
+        indices: start..mesh.indices.len(),
+        a: foot,
+        b: foot,
+        half_width: 0.045,
+        slab: false,
+    });
 }
 
 /// A viaduct's piers: narrower columns under transverse bearing caps, down to the ground

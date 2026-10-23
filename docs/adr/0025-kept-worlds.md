@@ -189,3 +189,15 @@ inside that area, even when the mapped ring runs parallel to the local GPX tange
 parapets and steel rails share the exclusion. Outside protection and overpasses more than
 3 m above the junction remain; underground service loops do not suppress surface protection.
 Stored format remains 3.
+
+Generator 24 checks generated barrier footprints against the completed carriageway triangles,
+including mapped streets, tracks and junction fans. Exact polygon clipping checks the whole
+span, thickness and interpolated elevation, so clear endpoints or parallel headings cannot
+hide a road crossing. Ephemeral triangle ranges identify steel rails/posts and concrete
+kerbs/parapets separately from slab sides, undersides and supports. Conflicting pieces are
+removed and meshes compacted; roadside guardrail and fence instances use the same index.
+Exposed slab sides, shoulders and end edges recede below same-level joining pavement
+instead of leaving a low concrete ridge or removing the closed side of the slab.
+The mapped deck's narrow kerb is excluded from its own carriageway, and shore gravel is not
+a road. Independent levels retain their protection. No temporary metadata enters kept worlds;
+stored format remains 3.

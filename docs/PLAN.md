@@ -546,6 +546,9 @@ physically based materials and light, restyled group by group.
     - [x] Roundabout bridge fences: one structure owner for outbound and return curves,
       including mismatched tag boundaries; leave the at-grade junction interior open while
       retaining outside-edge and grade-separated protection (generator 23).
+    - [x] General barrier clearance: bridge railings, kerbs and parapets and roadside fences
+      must not cut any generated carriageway, including parallel joins and crossings between
+      span endpoints; preserve independent elevations and slab closure (generator 24).
     - [x] Terrain inside tunnels and pavement on their roofs around 175.72 km to go:
       clip surrounding terrain and paving along the complete tube, and give aligned
       mapped ground approaches one surface owner (generator 20).

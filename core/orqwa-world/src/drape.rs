@@ -365,6 +365,7 @@ pub(crate) fn deck(
     total: f64,
     (heights, below): (&HeightGrid, &Below),
     origin: [f64; 3],
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) {
     if run.len() < 2 {
         return;
@@ -416,6 +417,7 @@ pub(crate) fn deck(
             let (side_right_1, bottom_right_1) = (at + 4, at + 5);
             let (under_left_0, under_right_0) = (previous + 6, previous + 7);
             let (under_left_1, under_right_1) = (at + 6, at + 7);
+            let side_indices = mesh.indices.len() + 6;
             mesh.indices.extend([
                 left_0,
                 left_1,
@@ -443,16 +445,29 @@ pub(crate) fn deck(
                 under_right_0,
                 under_right_1,
             ]);
+            barriers.push(crate::pavement::Barrier::slab(
+                side_indices..side_indices + 12,
+            ));
         }
     }
     // The wearing course carries road-profile metadata; railings appended afterwards
     // retain their structure tints (alpha zero, outside the road-style flag range).
     mesh.colors.resize(mesh.vertices.len(), color);
-    deck_rails(mesh, run, half, &top_at, total, (heights, below), origin);
+    deck_rails(
+        mesh,
+        run,
+        half,
+        &top_at,
+        total,
+        (heights, below),
+        origin,
+        barriers,
+    );
 }
 
 /// Slim edge beams and open protection replace an unguarded slab on other mapped roads.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)] // rail spans, their posts and closed slab ends stay together
 fn deck_rails(
     mesh: &mut MeshData,
     run: &[((f64, f64), f64)],
@@ -461,8 +476,10 @@ fn deck_rails(
     total: f64,
     (heights, below): (&HeightGrid, &Below),
     origin: [f64; 3],
+    barriers: &mut Vec<crate::pavement::Barrier>,
 ) {
     let mut detail = MeshData::default();
+    let offset = mesh.indices.len();
     let steel = palette::srgb("structure.steel", 0.0);
     let concrete = palette::srgb("structure.concrete", 0.0);
     let edge = |i: usize, side: f64, height: f64| {
@@ -500,6 +517,7 @@ fn deck_rails(
             if opening(i - 1, side) || opening(i, side) {
                 continue;
             }
+            let start = detail.indices.len();
             for height in [0.65, 1.1] {
                 structures::beam(
                     &mut detail,
@@ -526,6 +544,13 @@ fn deck_rails(
                 structures::beam(&mut detail, foot, top, 0.045, steel);
                 along += 2.4;
             }
+            barriers.push(crate::pavement::Barrier {
+                indices: offset + start..offset + detail.indices.len(),
+                a: [0, 1, 2].map(|k| edge(i - 1, side, 0.0)[k] + origin[k]),
+                b: [0, 1, 2].map(|k| edge(i, side, 0.0)[k] + origin[k]),
+                half_width: 0.08,
+                slab: false,
+            });
         }
     }
     // Close only the real ends, not chunk cuts where the next piece continues the slab.
@@ -539,6 +564,7 @@ fn deck_rails(
         );
         let length = (b.0 - a.0).hypot(b.1 - a.1).max(1e-6);
         let rim = half / (half - 0.12);
+        let start = detail.indices.len();
         structures::quad(
             &mut detail,
             [
@@ -554,6 +580,9 @@ fn deck_rails(
             ],
             concrete,
         );
+        barriers.push(crate::pavement::Barrier::slab(
+            offset + start..offset + detail.indices.len(),
+        ));
     }
     // Wearing surfaces keep their road-style metadata; new details carry structure tints.
     mesh.append(detail);

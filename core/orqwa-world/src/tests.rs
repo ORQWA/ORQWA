@@ -5411,6 +5411,7 @@ async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
             &ground,
             &projection,
             &mut Level(500.0),
+            &mut Vec::new(),
         )
         .await;
         let mut inside = 0;
@@ -5495,6 +5496,184 @@ async fn riding_back_over_a_bridge_does_not_add_a_second_set_of_fences() {
         bridges[0].1.len() > 100,
         "the complete first bridge remains"
     );
+}
+
+#[tokio::test]
+async fn bridge_fences_cannot_cut_a_parallel_road_joining_the_carriageway() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let side = orqwa_osm::Road {
+        class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
+        line: vec![
+            at(7.0, 450.0),
+            at(4.0, 480.0),
+            at(4.0, 520.0),
+            at(10.0, 550.0),
+        ],
+        structure: None,
+    };
+    let world = generate(
+        &route,
+        &mut Level(500.0),
+        &MapData {
+            roads: vec![side],
+            ..MapData::default()
+        },
+        &mut |_, _| {},
+    )
+    .await;
+    let steel = palette::srgb("structure.steel", 0.0);
+    let rails: Vec<_> = world
+        .structures
+        .indices
+        .iter()
+        .map(|&i| i as usize)
+        .filter(|&i| world.structures.colors[i] == steel)
+        .map(|i| world.structures.vertices[i])
+        .collect();
+    assert!(
+        rails
+            .iter()
+            .any(|v| v[0] < -3.0 && (v[2] + 500.0).abs() < 10.0),
+        "opposite bridge edge remains protected"
+    );
+    assert!(
+        rails
+            .iter()
+            .any(|v| v[0] > 3.0 && (v[2] + 400.0).abs() < 10.0),
+        "protection remains outside the junction"
+    );
+    assert!(
+        rails
+            .iter()
+            .all(|v| !(v[0] > 1.25 && v[0] < 6.75 && (v[2] + 500.0).abs() < 15.0)),
+        "no beam, post or kerb may cut the joining carriageway"
+    );
+    assert!(
+        world.structures.indices.iter().all(|&i| {
+            let v = world.structures.vertices[i as usize];
+            !(v[0] > 1.25 && v[0] < 6.75 && (v[2] + 500.0).abs() < 15.0 && v[1] > 500.05)
+        }),
+        "concrete kerbs and parapets must also leave the carriageway open"
+    );
+}
+
+#[tokio::test]
+async fn mapped_bridge_fences_leave_parallel_joining_pavement_open() {
+    let street = |line: Vec<(f64, f64)>, structure| orqwa_osm::Road {
+        class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
+        line: line.into_iter().map(|(e, n)| at(e, n)).collect(),
+        structure,
+    };
+    let map = MapData {
+        roads: vec![
+            street(
+                vec![(0.0, 500.0), (80.0, 500.0)],
+                Some(StructureKind::Bridge),
+            ),
+            street(vec![(15.0, 503.0), (55.0, 503.0)], None),
+        ],
+        ..MapData::default()
+    };
+    let world = generate(
+        &route_north(&[]).await,
+        &mut Level(500.0),
+        &map,
+        &mut |_, _| {},
+    )
+    .await;
+    let steel = palette::srgb("structure.steel", 0.0);
+    let rails: Vec<_> = world
+        .chunks
+        .iter()
+        .flat_map(|c| {
+            c.streets
+                .indices
+                .iter()
+                .map(|&i| i as usize)
+                .filter(|&i| c.streets.colors[i] == steel)
+                .map(|i| {
+                    [
+                        c.streets.vertices[i][0] + c.center[0],
+                        c.streets.vertices[i][1],
+                        c.streets.vertices[i][2] + c.center[2],
+                    ]
+                })
+        })
+        .collect();
+    assert!(
+        rails
+            .iter()
+            .any(|v| v[0] > 25.0 && v[0] < 45.0 && v[2] > -500.0),
+        "the opposite edge remains protected"
+    );
+    assert!(
+        rails
+            .iter()
+            .all(|v| !(v[0] > 20.0 && v[0] < 50.0 && v[2] < -500.25 && v[2] > -505.75)),
+        "mapped bridge barriers cannot divide the actual joining pavement"
+    );
+}
+
+#[tokio::test]
+async fn roadside_fence_models_cannot_span_the_carriageway() {
+    let mut world = generate(
+        &route_north(&[]).await,
+        &mut Level(500.0),
+        &MapData::default(),
+        &mut |_, _| {},
+    )
+    .await;
+    let pavement =
+        pavement::Pavement::new(&world, world.chunks.iter().map(|c| c.tracks.indices.len()));
+    let chunk = world
+        .chunks
+        .iter_mut()
+        .find(|c| c.center[0].abs() <= 240.0 && (c.center[2] + 500.0).abs() <= 240.0)
+        .unwrap();
+    let center = chunk.center;
+    let mut buffer = Vec::new();
+    for (east, height) in [(0.0, 499.85), (8.0, 499.85), (0.0, 506.0)] {
+        buffer.extend([
+            0.0,
+            0.0,
+            2.0,
+            east - center[0],
+            0.0,
+            1.0,
+            0.0,
+            height,
+            1.0,
+            0.0,
+            0.0,
+            -500.0 - center[2],
+        ]);
+    }
+    for name in ["guard_rail", "fence"] {
+        chunk.props.models.insert(name.into(), buffer.clone());
+    }
+    props::clear_fences(&mut world.chunks, &pavement);
+    let chunk = world.chunks.iter().find(|c| c.center == center).unwrap();
+    for name in ["guard_rail", "fence"] {
+        let remaining = &chunk.props.models[name];
+        assert_eq!(
+            remaining.len(),
+            24,
+            "remove the crossing span while retaining the off-road and higher spans"
+        );
+        assert!(
+            remaining
+                .as_chunks::<12>()
+                .0
+                .iter()
+                .all(|t| t[3] + center[0] > 7.0 || t[7] > 505.0)
+        );
+    }
 }
 
 #[tokio::test]

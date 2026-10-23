@@ -144,19 +144,25 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
-### Bridge fences at the start/finish roundabout
+### General road clearance for bridge and roadside fences
 
-Alpenbrevet's outbound and return GPX curves share this bridge but differ near its connection
-to the roundabout. Previously each traversal generated barriers, which crossed each other
-and left fences through the junction. Generator 23 gives the shared bridge one structure
-owner, including its slightly different tag boundaries, and excludes protection from the
-roundabout's interior. The bridge outside the junction and higher overpasses remain protected.
-These identical close cameras show the actual saved course around 0.33 km from the start
-(210.41 km to go), also traversed near the finish. Buildings and vegetation are omitted.
+Generator 24 checks complete barrier footprints against the actual generated carriageways
+and junction fills. Rails, posts, kerbs and parapets cannot cut a road even at a parallel
+join or between clear span endpoints. Low slab edges also recede below joining pavement,
+keeping their closed sides and undersides. Independent higher bridges retain protection.
+Roadside guardrail and fence models use the same clearance rule.
+
+The actual Alpenbrevet start/finish junction is shown around 0.33 km from the start
+(210.41 km to go). Generator 23 had removed the duplicate return bridge, but a single fence
+still followed the GPX across the joining carriageway. These matching close cameras show
+the general clearance correction. Buildings and vegetation are omitted.
+The second pair is an independent mapped bridge with a parallel road joining one side,
+using no roundabout detection or course-specific conditions.
 
 | Before | After |
 |---|---|
-| ![Crossing bridge fences at the roundabout entry](images/issues/alpenbrevet-roundabout-fence-before.jpg) | ![Open roundabout connection with one set of bridge barriers](images/issues/alpenbrevet-roundabout-fence-after.jpg) |
+| ![Fence dividing the joining carriageways](images/issues/alpenbrevet-pavement-fence-before.jpg) | ![Open carriageways with protection outside them](images/issues/alpenbrevet-pavement-fence-after.jpg) |
+| ![Parallel joining road blocked by a mapped bridge fence](images/issues/bridge-parallel-join-before.jpg) | ![Parallel joining pavement open with the opposite bridge edge protected](images/issues/bridge-parallel-join-after.jpg) |
 
 ### Protection through curves
 
