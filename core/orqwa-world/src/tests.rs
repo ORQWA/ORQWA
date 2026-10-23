@@ -3545,6 +3545,115 @@ async fn bridges_have_a_deck_and_pillars_down_to_the_valley() {
 }
 
 #[tokio::test]
+async fn a_mapped_road_does_not_climb_over_the_ridden_tunnel() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            // Approach pieces can overlap the mapped tunnel and differ slightly from
+            // its smoothed GPX line. Draping them onto the tunnel hill blocks its mouth.
+            line: vec![at(0.4, 0.0), at(0.4, 1000.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let over_tunnel = world.chunks.iter().any(|chunk| {
+        chunk.streets.vertices.iter().any(|v| {
+            let (x, z) = (v[0] + chunk.center[0], v[2] + chunk.center[2]);
+            x.abs() < 3.5 && (-690.0..-310.0).contains(&z) && v[1] > 500.5
+        })
+    });
+    assert!(
+        !over_tunnel,
+        "the ridden tunnel must not have a second road draped over its roof"
+    );
+}
+
+#[tokio::test]
+async fn mapped_approach_paving_does_not_close_tunnel_portals() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: [(0.0, 300.0), (700.0, 1000.0)]
+            .into_iter()
+            .map(|(start, end)| orqwa_osm::Road {
+                class: RoadClass::Major,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.4, start), at(0.4, end)],
+                structure: None,
+            })
+            .collect(),
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let inside = palette::srgb("structure.tunnel", 0.0);
+    let tube: Vec<_> = world
+        .structures
+        .vertices
+        .iter()
+        .zip(&world.structures.colors)
+        .filter(|(_, color)| **color == inside)
+        .map(|(v, _)| -v[2])
+        .collect();
+    let entrance = tube.iter().copied().fold(f32::MAX, f32::min);
+    let exit = tube.iter().copied().fold(f32::MIN, f32::max);
+    for portal in [entrance, exit] {
+        for x in [-2.0, 0.0, 2.0] {
+            for step in -12..=12 {
+                let north = portal + step as f32 * 0.5;
+                if let Some(paving) = street_at(&world, x, -north) {
+                    assert!(
+                        !(500.3..504.0).contains(&paving),
+                        "paving at {paving} blocks the portal at {portal}, x={x}, north={north}: {:?}",
+                        chunk_triangles(&world, |c| &c.streets)
+                            .find(|&t| triangle_height(t, x, -north).is_some())
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_surface_road_crossing_over_a_tunnel_remains_visible() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Street,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(-80.0, 500.0), at(80.0, 500.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(550.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world
+            .chunks
+            .iter()
+            .any(|chunk| chunk.streets.vertices.iter().any(|v| {
+                (v[0] + chunk.center[0]).abs() < 5.0
+                    && (v[2] + chunk.center[2] + 500.0).abs() < 5.0
+                    && v[1] > 549.0
+            })),
+        "a distinct road crossing above the tunnel keeps its surface"
+    );
+}
+
+#[tokio::test]
 async fn tunnels_are_tubes_visible_from_inside() {
     let tunnel = Structure {
         kind: StructureKind::Tunnel,

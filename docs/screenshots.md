@@ -71,6 +71,19 @@ owner even when GPX smoothing shifts its centre line slightly; separate bridges 
 |---|---|
 | ![Overlapping decks and railings](images/issues/alpenbrevet-bridge-duplicate-before.jpg) | ![One deck and railing set](images/issues/alpenbrevet-bridge-duplicate-after.jpg) |
 
+### Tunnel approaches
+
+Alpenbrevet Gold's Lukmanier approach at 34.97 km and the reverse view at 36.38 km.
+These focused renders use the full saved course inputs, generated terrain and road meshes,
+and the app's materials; vegetation and buildings are omitted to expose the obstruction.
+Generator 14 cuts approach paving, rounded ends and junctions to the portal opening as well
+as cutting the terrain. Cameras and projection remain identical in each pair.
+
+| Approach before | Approach after |
+|---|---|
+| ![Paving closes the Lukmanier mouth](images/issues/alpenbrevet-tunnel-before.jpg) | ![Open mouth with the road continuing inside](images/issues/alpenbrevet-tunnel-after.jpg) |
+| ![Reverse view of the asphalt wall](images/issues/alpenbrevet-tunnel-exit-before.jpg) | ![Reverse view through the clear portal](images/issues/alpenbrevet-tunnel-exit-after.jpg) |
+
 ### Local traffic lanes
 
 The rider follows the local traffic side and the drawn carriageway width (R120), including

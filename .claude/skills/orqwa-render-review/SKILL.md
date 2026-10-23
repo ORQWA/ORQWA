@@ -113,6 +113,11 @@ independent parallel and crossing bridges. For Alpenbrevet, the Lukmanier approa
 bridges and tunnels around 34.7–36.8 km from the original course start; use saved course
 inputs and check the bridge from the side as well as the riding camera.
 
+Keep the full route when reproducing terrain-grid faults: cropping changes the projection
+origin and grid alignment. Alpenbrevet's portal approaches around 35.0 km and 39.2 km exposed
+paving stretched across the already-cut terrain openings. Check both mouths; an open terrain
+mesh alone does not prove the street ribbons, rounded caps and junctions leave them clear.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

@@ -118,3 +118,8 @@ the new geometry.
 Generator 13 removes duplicate mapped decks under ridden bridges whose GPX and map centre
 lines differ slightly. The ownership change leaves ground-junction coverage and separate
 crossing or parallel bridges intact; stored format remains 3.
+
+Generator 14 cuts draped ground paving to tunnel openings too, including approach end caps
+and junctions, and suppresses aligned mapped roads over the ridden tunnel. Previously only
+the terrain mesh was hollowed out, leaving road-textured ramps across some portals. Stored
+format remains 3; regenerated worlds receive the corrected geometry.

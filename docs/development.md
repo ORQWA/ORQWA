@@ -82,6 +82,12 @@ when their aligned centre lines differ slightly. Bridge ownership uses their sha
 corridor; ground junctions still require full cross-section coverage. Separate parallel and
 crossing bridges remain visible. Stored format stays at 3.
 
+Generator 14 keeps mapped approach paving out of ridden tunnels. Ground ribbons, rounded
+ends and junction paving use the terrain's portal cut, at their own surface height, so a
+height-grid ramp cannot close the opening after the terrain itself has been hollowed out.
+Independent surface roads above tunnels remain visible. Review the full saved Alpenbrevet
+route: cropping it changes the projection origin and terrain grid, which can hide this fault.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Bearing foundations sample drawn ground at every corner, including

@@ -175,8 +175,56 @@ pub(crate) fn drape_polygon(
             // Clipping slivers can collapse after conversion to GPU precision.
             if area.abs() > 1e-6 {
                 let corner = base + u32::try_from(k).expect("small");
-                mesh.indices.extend([base, corner, corner + 1]);
+                let face = [base, corner, corner + 1];
+                if on == On::Ground {
+                    add_ground_face(mesh, face, heights, origin, uv);
+                } else {
+                    mesh.indices.extend(face);
+                }
             }
+        }
+    }
+}
+
+/// Cut the completed, lifted paving triangle: re-sampling a clipped corner from the height
+/// grid can choose the neighbouring cell at a steep portal and fill the opening again.
+#[allow(clippy::cast_possible_truncation)] // f32 GPU data
+fn add_ground_face(
+    mesh: &mut MeshData,
+    face: [u32; 3],
+    heights: &HeightGrid,
+    origin: [f64; 3],
+    uv: &dyn Fn((f64, f64)) -> [f32; 2],
+) {
+    let triangle = face.map(|i| {
+        let v = mesh.vertices[i as usize];
+        [
+            f64::from(v[0]) + origin[0],
+            -f64::from(v[2]) - origin[2],
+            f64::from(v[1]) + origin[1],
+        ]
+    });
+    let Some(pieces) = heights.cut_paving(triangle) else {
+        mesh.indices.extend(face);
+        return;
+    };
+    let normal = mesh.normals[face[0] as usize];
+    for piece in pieces {
+        let [a, b, c] = piece;
+        let area = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+        if area.abs() <= 1e-6 {
+            continue;
+        }
+        for [east, north, height] in piece {
+            mesh.indices
+                .push(u32::try_from(mesh.vertices.len()).expect("draped meshes fit u32"));
+            mesh.vertices.push([
+                (east - origin[0]) as f32,
+                (height - origin[1]) as f32,
+                (-north - origin[2]) as f32,
+            ]);
+            mesh.normals.push(normal);
+            mesh.uvs.push(uv((east, north)));
         }
     }
 }

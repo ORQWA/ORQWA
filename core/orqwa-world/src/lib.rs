@@ -50,7 +50,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 13;
+pub const GENERATOR: u32 = 14;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -649,6 +649,8 @@ pub(crate) struct HeightGrid {
     water_drop: Vec<f64>,
     fine_water_drop: HashMap<(usize, usize), Vec<f64>>,
     water_levels: std::sync::Arc<water_levels::Levels>,
+    /// Openings also cut paving laid on the hill, including approach caps and junctions.
+    portals: Vec<structures::Portal>,
 }
 
 /// What a strip or area is laid on (`drape`): the ground, or the water's surface in its channel.
@@ -741,6 +743,18 @@ impl HeightGrid {
             water_drop: vec![0.0; bordered * bordered],
             fine_water_drop: HashMap::new(),
             water_levels: std::sync::Arc::clone(water.2),
+            portals: shapers
+                .portals
+                .iter()
+                .copied()
+                .filter(|p| {
+                    p.near(
+                        origin.0 + CHUNK_SIZE / 2.0,
+                        origin.1 + CHUNK_SIZE / 2.0,
+                        CHUNK_SIZE,
+                    )
+                })
+                .collect(),
         };
         // Streets level the ground across them from the natural ground at their centre lines:
         // all of it is known first.
@@ -995,6 +1009,15 @@ impl HeightGrid {
             }
         }
         triangles
+    }
+
+    /// Draped ground surfaces share the terrain's tunnel openings. Cutting only the terrain
+    /// leaves the approach's paving stretched across the mouth on the uncut height grid.
+    pub(crate) fn cut_paving(&self, triangle: [[f64; 3]; 3]) -> Option<Vec<[[f64; 3]; 3]>> {
+        if self.portals.is_empty() {
+            return None;
+        }
+        cut_out(&self.portals.iter().collect::<Vec<_>>(), triangle)
     }
 
     fn vertex(&self, i: isize, j: isize) -> f64 {

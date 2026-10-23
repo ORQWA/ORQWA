@@ -319,9 +319,12 @@ impl RoadIndex {
                 let segment = &self.segments[index];
                 let forward = direction(segment);
                 let road_half = segment.appearance.unwrap_or_default().width / 2.0;
-                on == surface
+                // A mapped approach can overlap the tunnel's tagged/smoothed boundary.
+                // Drawing it on the tunnel hill creates an asphalt wall across the portal.
+                let tunnel_approach = surface == Surface::Ground && on == Surface::Tunnel;
+                (on == surface || tunnel_approach)
                     && (forward.0 * heading.0 + forward.1 * heading.1).abs() > 0.8
-                    && if surface == Surface::Bridge {
+                    && if surface == Surface::Bridge || tunnel_approach {
                         distance <= road_half.min(half).min(SAME_ROAD)
                     } else {
                         distance + half <= road_half + 1e-6
