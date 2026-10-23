@@ -61,6 +61,29 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+### Local traffic lanes
+
+The rider follows the local traffic side and the drawn carriageway width (R120), including
+on narrow cycleways. Ghosts stay toward the centre on the same side. The map and recorded
+route retain their original centre line.
+
+| Right-hand traffic: Oberalp | Left-hand traffic: narrow London road |
+|---|---|
+| ![Rider in the right-hand tunnel lane](images/traffic/right-tunnel.jpg) | ![Rider keeping left on a narrow road](images/traffic/left-narrow-road.jpg) |
+
+[Tunnel before the fix](images/traffic/right-tunnel-before.jpg) ·
+[London street](images/traffic/left-street.jpg) ·
+[First person](images/traffic/left-first-person.jpg) ·
+[Drone](images/traffic/left-drone.jpg)
+
+Reproduce the London views in the dev container with
+`GPX=core/fixtures/london-cycleway.gpx SHOTS="london-left-chase:120:0 london-left-first-person:120:1 london-left-drone:120:2 london-left-narrow:600:0" scripts/render-views.sh`.
+The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-chase oberalp-hairpins-drone"`.
+The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
+0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
+
+### Road profiles
+
 Road hierarchy and paving (R119, [ADR 0031](adr/0031-road-appearance.md)) use the same
 materials for ridden and surrounding ways. This controlled, offline scene uses the Rust
 world generator; widths and lane counts are illustrative estimates, not a mapped location:

@@ -69,3 +69,25 @@ Lane count, paint and width are inferred from hierarchy and direction. National 
 rules, surveyed lane layouts, exact surface materials, medians and motorway barriers are not
 reconstructed from tags that the provider omits. Some mapped data is missing or inaccurate;
 the renderer makes a plausible world without claiming a surveyed road model.
+
+## Amendment — local traffic lanes (2026-10-23, R120)
+
+The avatar rides halfway into the local half of the carriageway. A spatial width index reads
+the flat road mesh between its bevels, interpolates width changes and distinguishes stacked
+roads by elevation. This follows the road actually drawn, including kept worlds and a road
+ridden again in the opposite direction. Ghosts stay nearer the centre on that same side;
+on very narrow paths their translucent models may overlap.
+
+Country-border lookup retains the country at each route point, including short stretches and
+repeat crossings. ISO country/territory defaults determine the traffic side, independently of
+language and steering-wheel position. Border tiles used on GPX preparation are recorded with
+the other course inputs. Course opening reads the existing cache offline; unavailable or
+unknown countries keep right. Bundled, simplified outlines distinguish Hong Kong, Macau and
+the US Virgin Islands from their parent countries, whose traffic side differs (ISC data,
+credited in `docs/CREDITS.md`); these need no downloads. Road-specific exceptions are not
+inferred. An older course lacking border tiles uses its saved country when it knows exactly
+one; otherwise unknown stretches keep right until the border inputs are available.
+
+Only avatar coordinates change. The original centre-line route still drives recording,
+physics, distance, video synchronization and the minimap. Geometry and its stored contract
+are unchanged, so generator 10 / format 3 remain valid and no world regeneration is needed.

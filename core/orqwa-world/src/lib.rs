@@ -19,6 +19,7 @@ mod minimap;
 mod palette;
 mod props;
 mod railways;
+mod riding;
 mod road;
 mod roundabouts;
 pub mod stored;
@@ -41,6 +42,7 @@ pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
 pub use minimap::{FlatMap, MapFeature, minimap};
 pub use props::{Label, Props};
+pub use riding::RoadWidths;
 use road::RoadIndex;
 pub use vegetation::Trees;
 

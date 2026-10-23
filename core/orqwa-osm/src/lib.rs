@@ -8,8 +8,10 @@
 mod countries;
 mod iso;
 mod mvt;
+mod traffic_territories;
 
 pub use countries::Country;
+pub use traffic_territories::traffic_territory;
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};

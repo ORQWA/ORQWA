@@ -21,7 +21,7 @@ const SKIRT_DEPTH: f64 = 1.2;
 const SKIRT_REACH: f64 = 0.8;
 
 /// Vertices across the road: skirt, bevel and edge on either side.
-const RING: usize = 6;
+pub(crate) const RING: usize = 6;
 /// Where the road turns more than this at a point (radians), it turns in a fan of rings this
 /// far apart.
 const FAN_STEP: f64 = 0.4;
