@@ -72,6 +72,10 @@ keeps the 3D world of a library course once it is built (R101):
 
 ## Consequences
 
+Road appearance (R119, [ADR 0031](0031-road-appearance.md)) raises the generator to 9 and
+stored format to 3: road/street vertex colours now carry width, surface and marking data.
+Older kept worlds rebuild from their saved course inputs, with no new network requests.
+
 - A ride on a kept course starts within a second or two instead of after tens of seconds.
 - Riders who keep worlds give about 10 MB per kilometre of route; the settings show the total.
   There is no cap: the rider chooses which courses stay in the library.

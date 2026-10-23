@@ -18,6 +18,14 @@ shots, run them in the background, and read the PNGs with the Read tool. Output 
 
 ## Ready-made
 
+For road hierarchy and paving (R119), generate the offline comparison meshes with
+`cargo test --manifest-path core/Cargo.toml -p orqwa-world road_profiles_render_fixture -- --ignored`,
+then render `app/tools/render_roads.gd` with `OUT` set to an absolute PNG path. It shares
+`RoadMaterials` and the real Rust generator with the app, rather than redrawing profiles.
+Review motorway/ramp shoulders and dashes, unmarked local ways, narrow ridden cycleways and
+grass only in unpaved tracks. Pair the controlled scene with fixed real-route views, including
+Oberalp and rain; compare against current main using the same cameras and software settings.
+
 - `scripts/dev.sh scripts/render-views.sh` — the **standard views** (`app/tools/render_views.gd`):
   fixed shots on the fixture routes (village, climb, hairpin, lake, rain, morning, evening,
   shops, junctions, river, old town, roundabout, bridges and the Oberalp reference route) into

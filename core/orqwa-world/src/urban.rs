@@ -151,7 +151,6 @@ impl Urban {
                 let direction = direction(pair[0], pair[1]);
                 let middle = midpoint(pair[0], pair[1]);
                 if road.runs_along(middle.0, middle.1, 1.0, direction) {
-
                     continue;
                 }
                 self.add_way(Way {
@@ -648,12 +647,10 @@ impl Urban {
                 && !clearance.blocked_urban_by(point.0, point.1, 0.02, |east, north| {
                     // Padded vegetation-clearance samples swallow sidewalks beside
                     // their own streets. Check those centre-line segments exactly below.
-                    road.edge_distance(east, north) >= 0.5
-                        && !self.on_way((east, north), true)
+                    road.edge_distance(east, north) >= 0.5 && !self.on_way((east, north), true)
                 })
                 && !self.on_way(point, false)
                 && road.edge_distance(point.0, point.1) >= 0.02
-
                 && !self.in_building(point)
         };
         // Furniture and mesh generation must agree about which sidewalk pieces exist.

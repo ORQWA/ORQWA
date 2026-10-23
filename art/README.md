@@ -52,6 +52,12 @@ grass-to-rock transition.
 
 ## Textures (`textures/`)
 
+Ridden and surrounding roads share `app/shaders/road.gdshader` (R119, ADR 0031). Rust encodes
+their surface, width, marking style and lane/track flags in mesh colours; reuse the existing
+asphalt, gravel, dirt, grass, concrete and paving textures. Widths and lane layouts are visual
+estimates from road hierarchy, direction and ramps; current tiles normally retain only paved
+versus unpaved. No new textures or per-course asset downloads are needed.
+
 `build.py` bakes tileable PBR textures (albedo, normal, roughness; WebP, normal maps lossless)
 from procedural Blender materials into `app/assets/textures/`: for the ground and roads `grass`,
 `dirt`, `gravel`, `rock` and `asphalt` (`sand` too, unused so far), for trees `bark`, for

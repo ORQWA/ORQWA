@@ -356,12 +356,14 @@ pub(crate) fn place(
                 if (cover == Some(LandCover::Forest)) != forest {
                     continue;
                 }
-                let road_distance = road.nearest(e, n, NEAR_DISTANCE).map(|(d, _, _)| d);
+                let profile = road.nearest_profile(e, n, NEAR_DISTANCE);
+                let road_distance = profile.map(|p| p.0);
                 let Some(kind) = choose(cover, road_distance, heights.at(e, n), seed, ground, e, n)
                 else {
                     continue;
                 };
-                let too_close = road_distance.is_some_and(|d| d < kind.clearance());
+                let too_close =
+                    profile.is_some_and(|(d, look)| d - look.width / 2.0 < kind.clearance() - 3.0);
                 if too_close || streets.blocked(e, n, 2.0) || ground.by_building(e, n, 2.0) {
                     continue;
                 }
@@ -513,10 +515,13 @@ pub(crate) fn place_grass(
             east += GRASS_SPACING;
             let inside =
                 e >= origin.0 && e < origin.0 + size && n >= origin.1 && n < origin.1 + size;
-            let Some((distance, _, _)) = road.nearest(e, n, GRASS_DISTANCE) else {
+            let Some((distance, look)) = road.nearest_profile(e, n, GRASS_DISTANCE) else {
                 continue;
             };
-            if !inside || distance < GRASS_CLEARANCE || streets.blocked(e, n, 0.2) {
+            if !inside
+                || distance - look.width / 2.0 < GRASS_CLEARANCE - 3.0
+                || streets.blocked(e, n, 0.2)
+            {
                 continue;
             }
             let cover = land.cover_at(e, n);

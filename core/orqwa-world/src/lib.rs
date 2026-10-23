@@ -100,7 +100,10 @@ pub struct MeshData {
     pub normals: Vec<[f32; 3]>,
     /// Texture coordinates; for the road `u` is 0–1 across and `v` the distance in metres.
     pub uvs: Vec<[f32; 2]>,
-    /// Vertex colours (RGB tint, alpha 1 marks water); empty when the mesh has none.
+    /// Vertex colours or material metadata; empty when the mesh has none. Roads encode
+    /// `[material / 8, width_metres / 32, marking_style / 4, (lanes + track_flag) / 8]`,
+    /// with track flag 4 for a grassy centre (ADR 0031). Other meshes retain their own
+    /// colour contracts, including alpha 1 marking water.
     pub colors: Vec<[f32; 4]>,
     /// Three vertex indices per triangle.
     pub indices: Vec<u32>,
@@ -182,9 +185,9 @@ pub struct TerrainChunk {
     pub buildings: MeshData,
     /// Buildings drawn as Blender-made models up close, by cell.
     pub modelled: Vec<BuildingCell>,
-    /// Paved streets of the map around the route (not the road ridden), on this chunk's ground.
+    /// Paved ways around the route (not the road ridden), on this chunk's ground.
     pub streets: MeshData,
-    /// Unpaved tracks and paths of the map, likewise.
+    /// Unpaved ways of the map, likewise.
     pub tracks: MeshData,
     /// Sidewalks, curbs, building access and forecourts, with urban material codes in colours.
     pub urban: MeshData,

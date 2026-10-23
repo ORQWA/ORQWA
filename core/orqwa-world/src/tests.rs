@@ -131,24 +131,64 @@ async fn ridden_cycleways_and_surrounding_highways_keep_their_own_widths_and_sur
     use orqwa_osm::{RoadDetails, RoadKind, RoadSurface};
     let mut cycleway = road_north();
     cycleway.class = RoadClass::Path;
-    cycleway.details = RoadDetails { kind: RoadKind::Cycleway, surface: RoadSurface::Paved, ..RoadDetails::default() };
+    cycleway.details = RoadDetails {
+        kind: RoadKind::Cycleway,
+        surface: RoadSurface::Paved,
+        ..RoadDetails::default()
+    };
     let mut highway = road_north();
     highway.class = RoadClass::Major;
-    highway.details = RoadDetails { kind: RoadKind::Motorway, surface: RoadSurface::Paved, oneway: true, ..RoadDetails::default() };
+    highway.details = RoadDetails {
+        kind: RoadKind::Motorway,
+        surface: RoadSurface::Paved,
+        oneway: true,
+        ..RoadDetails::default()
+    };
     highway.line = vec![at(50.0, 100.0), at(50.0, 900.0)];
     let mut unpaved = road_north();
     unpaved.details.surface = RoadSurface::Unpaved;
     unpaved.line = vec![at(-50.0, 100.0), at(-50.0, 900.0)];
-    let world = world(&MapData { roads: vec![cycleway, highway, unpaved], ..MapData::default() }).await;
-    let top: Vec<_> = world.road.vertices.iter().zip(&world.road.uvs).filter(|(_, uv)| uv[0] == 0.0 || uv[0] == 1.0).collect();
-    assert!(top.iter().all(|(v, _)| v[0].abs() < 1.3), "a ridden cycleway stays narrow");
-    assert!(world.road.colors.iter().all(|c| c[0] == 0.0 && c[2] == 0.0), "paved cycleway, no invented paint");
+    let world = world(&MapData {
+        roads: vec![cycleway, highway, unpaved],
+        ..MapData::default()
+    })
+    .await;
+    let top: Vec<_> = world
+        .road
+        .vertices
+        .iter()
+        .zip(&world.road.uvs)
+        .filter(|(_, uv)| uv[0] == 0.0 || uv[0] == 1.0)
+        .collect();
+    assert!(
+        top.iter().all(|(v, _)| v[0].abs() < 1.3),
+        "a ridden cycleway stays narrow"
+    );
+    assert!(
+        world.road.colors.iter().all(|c| c[0] == 0.0 && c[2] == 0.0),
+        "paved cycleway, no invented paint"
+    );
     for chunk in &world.chunks {
-        for mesh in [&chunk.streets, &chunk.tracks] { assert_eq!(mesh.vertices.len(), mesh.colors.len()); }
+        for mesh in [&chunk.streets, &chunk.tracks] {
+            assert_eq!(mesh.vertices.len(), mesh.colors.len());
+        }
     }
-    let highway_widths: Vec<_> = world.chunks.iter().flat_map(|c| &c.streets.colors).filter(|c| c[2] == 0.5).map(|c| c[1] * 32.0).collect();
+    let highway_widths: Vec<_> = world
+        .chunks
+        .iter()
+        .flat_map(|c| &c.streets.colors)
+        .filter(|c| c[2] == 0.5)
+        .map(|c| c[1] * 32.0)
+        .collect();
     assert!(!highway_widths.is_empty() && highway_widths.iter().all(|&w| w > 9.0));
-    assert!(world.chunks.iter().flat_map(|c| &c.tracks.colors).any(|c| c[0] == 0.125 && c[2] == 0.0), "explicit unpaved local road uses gravel");
+    assert!(
+        world
+            .chunks
+            .iter()
+            .flat_map(|c| &c.tracks.colors)
+            .any(|c| c[0] == 0.125 && c[2] == 0.0),
+        "explicit unpaved local road uses gravel"
+    );
 }
 
 #[tokio::test]
@@ -157,7 +197,11 @@ async fn road_appearance_matching_ignores_crossings_parallel_neighbours_and_othe
     let route = route_north(&[]).await;
     let projection = LocalProjection::for_route(&route);
     let mut path = road_north();
-    path.details = RoadDetails { kind: RoadKind::Cycleway, surface: RoadSurface::Paved, ..RoadDetails::default() };
+    path.details = RoadDetails {
+        kind: RoadKind::Cycleway,
+        surface: RoadSurface::Paved,
+        ..RoadDetails::default()
+    };
     let mut crossing = road_north();
     crossing.details.kind = RoadKind::Motorway;
     crossing.line = vec![at(-100.0, 500.0), at(100.0, 500.0)];
@@ -167,11 +211,143 @@ async fn road_appearance_matching_ignores_crossings_parallel_neighbours_and_othe
     let mut neighbour = path.clone();
     neighbour.details.kind = RoadKind::Primary;
     neighbour.line = vec![at(5.0, 0.0), at(5.0, 1000.0)];
-    let index = appearance::Index::new(&MapData { roads: vec![crossing, upper, neighbour, path], ..MapData::default() }, &projection);
+    let index = appearance::Index::new(
+        &MapData {
+            roads: vec![crossing, upper, neighbour, path],
+            ..MapData::default()
+        },
+        &projection,
+    );
     let point = projection.project(at(0.0, 500.0).0, at(0.0, 500.0).1);
     assert!(index.at(point, (0.0, 1.0), Surface::Ground).width < 3.0);
     assert!(index.at(point, (0.0, 1.0), Surface::Bridge).width > 9.0);
-    assert!((index.at((1000.0, 1000.0), (0.0, 1.0), Surface::Ground).width - 6.0).abs() < 0.01, "unmapped route has a stable fallback");
+    assert!(
+        (index
+            .at((1000.0, 1000.0), (0.0, 1.0), Surface::Ground)
+            .width
+            - 6.0)
+            .abs()
+            < 0.01,
+        "unmapped route has a stable fallback"
+    );
+}
+
+/// Offline, controlled scene rendered by `app/tools/render_roads.gd`. These are generated
+/// meshes from the real appearance policy, rather than cross-sections redrawn in GDScript.
+#[tokio::test]
+#[ignore = "writes screenshots/road-profiles.json for visual review"]
+#[allow(clippy::too_many_lines)] // one complete table of review profiles and their mesh export
+async fn road_profiles_render_fixture() {
+    use orqwa_osm::{Road, RoadDetails, RoadKind, RoadSurface};
+    let specs = [
+        (
+            "Ridden cycleway",
+            RoadClass::Path,
+            RoadKind::Cycleway,
+            RoadSurface::Paved,
+            false,
+        ),
+        (
+            "Motorway carriageway",
+            RoadClass::Major,
+            RoadKind::Motorway,
+            RoadSurface::Paved,
+            false,
+        ),
+        (
+            "Motorway ramp",
+            RoadClass::Major,
+            RoadKind::Motorway,
+            RoadSurface::Paved,
+            true,
+        ),
+        (
+            "Primary road",
+            RoadClass::Major,
+            RoadKind::Primary,
+            RoadSurface::Paved,
+            false,
+        ),
+        (
+            "Local street",
+            RoadClass::Street,
+            RoadKind::Local,
+            RoadSurface::Paved,
+            false,
+        ),
+        (
+            "Service road",
+            RoadClass::Service,
+            RoadKind::Service,
+            RoadSurface::Paved,
+            false,
+        ),
+        (
+            "Unpaved track",
+            RoadClass::Track,
+            RoadKind::Track,
+            RoadSurface::Unpaved,
+            false,
+        ),
+        (
+            "Unpaved path",
+            RoadClass::Path,
+            RoadKind::Path,
+            RoadSurface::Unpaved,
+            false,
+        ),
+    ];
+    let roads = specs
+        .iter()
+        .enumerate()
+        .map(|(i, &(_, class, kind, surface, ramp))| {
+            let east = i as f64 * 19.0;
+            Road {
+                class,
+                details: RoadDetails {
+                    kind,
+                    surface,
+                    ramp,
+                    oneway: kind == RoadKind::Motorway,
+                },
+                line: vec![at(east, -20.0), at(east, 1020.0)],
+                structure: None,
+            }
+        })
+        .collect();
+    let map = MapData {
+        roads,
+        ..MapData::default()
+    };
+    let route = route_north_at(500.0, &map).await;
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let arrays = |mesh: &MeshData, center: [f32; 3], shoulders| {
+        serde_json::json!({
+            "vertices": mesh.vertices.iter().map(|v| [v[0]+center[0], v[1]+center[1]-500.0, v[2]+center[2]]).collect::<Vec<_>>(),
+            "normals": mesh.normals, "uvs": mesh.uvs, "colors": mesh.colors, "indices": mesh.indices, "shoulders": shoulders,
+        })
+    };
+    let mut meshes = vec![arrays(&world.road, [0.0; 3], true)];
+    for chunk in &world.chunks {
+        for mesh in [&chunk.streets, &chunk.tracks] {
+            if !mesh.vertices.is_empty() {
+                meshes.push(arrays(mesh, chunk.center, false));
+            }
+        }
+    }
+    let labels: Vec<_> = specs
+        .iter()
+        .enumerate()
+        .map(|(i, spec)| serde_json::json!({ "text": spec.0, "east": i as f64 * 19.0 }))
+        .collect();
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../screenshots/road-profiles.json");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(
+        path,
+        serde_json::to_vec(&serde_json::json!({"meshes":meshes, "labels": labels})).unwrap(),
+    )
+    .unwrap();
 }
 
 /// All terrain vertices in absolute coordinates.
@@ -4040,11 +4216,15 @@ async fn route_north_at(elevation: f64, map: &MapData) -> Route {
         .unwrap()
 }
 
-/// The road ridden by [`route_north_at`], as a street of the map.
+/// The six-metre tertiary road ridden by [`route_north_at`]. Its explicit class keeps
+/// roadside and junction checks independent of unknown-width fallback choices.
 fn road_north() -> orqwa_osm::Road {
     orqwa_osm::Road {
         class: orqwa_osm::RoadClass::Street,
-        details: orqwa_osm::RoadDetails::default(),
+        details: orqwa_osm::RoadDetails {
+            kind: orqwa_osm::RoadKind::Tertiary,
+            ..orqwa_osm::RoadDetails::default()
+        },
         line: vec![at(0.0, -20.0), at(0.0, 1020.0)],
         structure: None,
     }

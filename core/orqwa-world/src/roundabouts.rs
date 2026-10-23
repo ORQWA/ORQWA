@@ -5,7 +5,7 @@
 use orqwa_osm::{LandCover, MapData, RoadClass};
 use orqwa_routes::LocalProjection;
 
-use crate::{HeightGrid, MeshData, On, drape, landcover, streets};
+use crate::{HeightGrid, MeshData, On, drape, landcover};
 
 /// Rings this small and large (radius to the road's middle, metres) are roundabouts.
 const RADIUS: (f64, f64) = (6.0, 45.0);
@@ -63,7 +63,7 @@ pub(crate) fn islands(map: &MapData, projection: &LocalProjection) -> Vec<Island
         if !round || !(RADIUS.0..=RADIUS.1).contains(&radius) {
             continue;
         }
-        let inset = streets::width(road.class) / 2.0 + ISLAND_MARGIN;
+        let inset = crate::appearance::Appearance::of(road).width / 2.0 + ISLAND_MARGIN;
         if radius - inset < SMALLEST_ISLAND {
             continue;
         }

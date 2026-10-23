@@ -84,18 +84,6 @@ impl Street {
     }
 }
 
-/// Width in metres by kind of way.
-pub(crate) fn width(class: RoadClass) -> f64 {
-    match class {
-        RoadClass::Major => 7.0,
-        RoadClass::Street => 5.5,
-        RoadClass::Service => 3.5,
-        RoadClass::Track => 2.8,
-        RoadClass::Path => 1.6,
-    }
-}
-
-/// Whether a way is paved (asphalt) rather than gravel or dirt.
 /// The map's streets around the route, their pieces joined end to end where they go on as one
 /// way of a kind (`chains`), densified, with bridge decks' end heights from `model`: a bridge
 /// cut by a tile border is one deck between its real ends, not two dipping to the ground where
@@ -548,7 +536,7 @@ impl Levels {
     ) -> Option<(f64, f64, (f64, f64))> {
         let reach = LEVEL_VERGE_M + LEVEL_REACH_M + extra;
         // The widest street's centre, and a piece's far end a step beyond its nearest point.
-        let scan = reach + width(RoadClass::Major) / 2.0 + STEP_M;
+        let scan = reach + 5.25 + STEP_M;
         let (low, high) = (
             level_cell((east - scan, north - scan)),
             level_cell((east + scan, north + scan)),

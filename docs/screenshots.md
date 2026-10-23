@@ -61,6 +61,18 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+Road hierarchy and paving (R119, [ADR 0031](adr/0031-road-appearance.md)) use the same
+materials for ridden and surrounding ways. This controlled, offline scene uses the Rust
+world generator; widths and lane counts are illustrative estimates, not a mapped location:
+
+![Ridden cycleway, motorway carriageway and ramp, primary road, street, service road, track and path](images/roads/profiles.jpg)
+
+In the dev container, reproduce it with
+`cargo test --manifest-path core/Cargo.toml -p orqwa-world road_profiles_render_fixture -- --ignored`,
+then `OUT=/workspaces/orqwa/screenshots/road-profiles.png xvfb-run -a godot --path app --resolution 1600x1000 -s res://tools/render_roads.gd`.
+
+![Road hierarchy on a prepared real route](images/roads/road-types.jpg)
+
 The [river geometry correction](adr/0030-river-levels.md) is checked against the
 Alpenbrevet Gold course near 104.57 km remaining and farther upstream:
 

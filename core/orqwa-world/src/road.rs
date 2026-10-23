@@ -385,6 +385,31 @@ impl RoadIndex {
         north: f64,
         max_distance: f64,
     ) -> Option<(f64, f64, Surface)> {
+        self.nearest_segment(east, north, max_distance).map(|b| b.0)
+    }
+
+    /// Centre distance and appearance from the same spatial query, for plant clearance.
+    pub(crate) fn nearest_profile(
+        &self,
+        east: f64,
+        north: f64,
+        reach: f64,
+    ) -> Option<(f64, Appearance)> {
+        self.nearest_segment(east, north, reach)
+            .map(|(candidate, index)| {
+                (
+                    candidate.0,
+                    self.segments[index].appearance.unwrap_or_default(),
+                )
+            })
+    }
+
+    fn nearest_segment(
+        &self,
+        east: f64,
+        north: f64,
+        max_distance: f64,
+    ) -> Option<((f64, f64, Surface), usize)> {
         let reach = if max_distance.is_finite() {
             max_distance
         } else {
@@ -392,12 +417,13 @@ impl RoadIndex {
             return self
                 .segments
                 .iter()
-                .map(|s| closest_on_segment(s, east, north))
-                .min_by(|a, b| a.0.total_cmp(&b.0));
+                .enumerate()
+                .map(|(i, s)| (closest_on_segment(s, east, north), i))
+                .min_by(|a, b| a.0.0.total_cmp(&b.0.0));
         };
         let (low_e, low_n) = cell_of(east - reach, north - reach);
         let (high_e, high_n) = cell_of(east + reach, north + reach);
-        let mut best: Option<(f64, f64, Surface)> = None;
+        let mut best: Option<((f64, f64, Surface), usize)> = None;
         for ce in low_e..=high_e {
             for cn in low_n..=high_n {
                 let Some(indices) = self.cells.get(&(ce, cn)) else {
@@ -405,8 +431,8 @@ impl RoadIndex {
                 };
                 for &index in indices {
                     let candidate = closest_on_segment(&self.segments[index], east, north);
-                    if candidate.0 <= reach && best.is_none_or(|b| candidate.0 < b.0) {
-                        best = Some(candidate);
+                    if candidate.0 <= reach && best.is_none_or(|b| candidate.0 < b.0.0) {
+                        best = Some((candidate, index));
                     }
                 }
             }

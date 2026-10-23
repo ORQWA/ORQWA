@@ -105,7 +105,7 @@ pub struct Waterway {
     pub line: Vec<LatLon>,
 }
 
-/// A road for the minimap.
+/// A mapped road shared by world generation and the minimap.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Road {
     /// What kind of way it is.
@@ -194,7 +194,8 @@ impl Road {
     }
 }
 
-/// Kinds of ways, widest first (and ordered so: `Major < Street < … < Path`).
+/// Broad routing classes, ordered from through roads to paths. Detailed appearance is
+/// retained separately in [`RoadDetails`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RoadClass {
     /// Motorways, trunk, primary and secondary roads.

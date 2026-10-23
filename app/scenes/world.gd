@@ -484,18 +484,7 @@ func _ready() -> void:
 		)
 	_terrain_material.set_shader_parameter("snow_color", Palette.color("ground.snow"))
 	for road_material: ShaderMaterial in [_road_material, _street_material, _track_material]:
-		road_material.shader = preload("res://shaders/road.gdshader")
-		for texture_name: String in ["asphalt", "gravel", "grass", "dirt"]:
-			_set_textures(road_material, texture_name, texture_name)
-		for texture_name: String in ["concrete", "paving"]:
-			for channel: String in ["albedo", "normal"]:
-				road_material.set_shader_parameter(
-					texture_name + "_" + channel,
-					load("res://assets/textures/%s_%s.webp" % [texture_name, channel])
-				)
-		road_material.set_shader_parameter("asphalt_rough", TEXTURES["asphalt_rough"])
-		road_material.set_shader_parameter("marking_color", Palette.color("road.marking"))
-		road_material.set_shader_parameter("shoulders", road_material == _road_material)
+		RoadMaterials.configure(road_material, road_material == _road_material)
 	_water_material.shader = preload("res://shaders/water.gdshader")
 	_water_material.set_shader_parameter("deep_color", Palette.color("water.deep"))
 	_water_material.set_shader_parameter("shallow_color", Palette.color("water.shallow"))
