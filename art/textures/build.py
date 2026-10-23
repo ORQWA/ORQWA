@@ -5,8 +5,8 @@ Run in the art container:
     scripts/art.sh blender --background --factory-startup --python art/textures/build.py \
         -- [name …] [--size 1024] [--out screenshots/textures]
 
-Materials are procedural node trees, except rock, converted from the archived CC0 scan
-(rock_scan.py, R115). To make a procedural tile seamless, the plane's UV (u, v)
+Materials are procedural node trees, except rock and bridge concrete, converted from
+archived CC0 scans (rock_scan.py, concrete_scan.py). To make a procedural tile seamless, the plane's UV (u, v)
 is wrapped onto a torus in 4D, (cos 2πu, sin 2πu, cos 2πv, sin 2πv), and every noise and
 Voronoi node samples that 4D point, so the texture has no edges to hide. Outputs, by default
 into app/assets/textures: <name>_albedo.webp (sRGB), <name>_normal.webp (OpenGL tangent space,
@@ -29,6 +29,7 @@ OUT = os.path.normpath(os.path.join(HERE, "..", "..", "app", "assets", "textures
 sys.path.insert(0, HERE)
 
 from rock_scan import convert as convert_rock  # noqa: E402
+from concrete_scan import convert as convert_concrete  # noqa: E402
 
 
 class Tree:
@@ -436,7 +437,7 @@ def paving(t):
 
 
 MATERIALS = {
-    "rock": None, "grass": grass, "dirt": dirt, "sand": sand, "bark": bark, "asphalt": asphalt,
+    "rock": None, "bridge_concrete": None, "grass": grass, "dirt": dirt, "sand": sand, "bark": bark, "asphalt": asphalt,
     "gravel": gravel, "plaster": plaster, "roof_tiles": roof_tiles, "planks": planks,
     "masonry": masonry, "slate": slate, "concrete": concrete, "paving": paving,
 }
@@ -515,6 +516,8 @@ def main():
     for name in args or list(MATERIALS):
         if name == "rock":
             convert_rock(size, out)
+        elif name == "bridge_concrete":
+            convert_concrete(size, out)
         else:
             bake(obj, name, MATERIALS[name], size, out)
 

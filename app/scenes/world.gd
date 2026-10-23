@@ -233,7 +233,7 @@ var _terrain_material: ShaderMaterial = ShaderMaterial.new()
 var _road_material: ShaderMaterial = ShaderMaterial.new()
 var _water_material: ShaderMaterial = ShaderMaterial.new()
 var _building_material: ShaderMaterial = ShaderMaterial.new()
-var _structure_material: StandardMaterial3D = StandardMaterial3D.new()
+var _structure_material: ShaderMaterial = BridgeMaterials.structure()
 var _grass_mesh: ArrayMesh = GrassTufts.mesh(false)
 var _flower_mesh: ArrayMesh = GrassTufts.mesh(true)
 var _plant_material: ShaderMaterial = ShaderMaterial.new()
@@ -353,7 +353,9 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 	var raining: float = 1.0 if weather == "Rain" else 0.0
 	UrbanSurfaces.set_conditions(raining, sky_horizon)
 	_rain.emitting = raining > 0.0
-	for material: ShaderMaterial in [_road_material, _street_material, _track_material]:
+	for material: ShaderMaterial in [
+		_road_material, _street_material, _track_material, _structure_material
+	]:
 		material.set_shader_parameter("wetness", raining)
 		material.set_shader_parameter("puddles", raining)
 		material.set_shader_parameter("puddle_color", sky_horizon)
@@ -504,9 +506,6 @@ func _ready() -> void:
 	for uniform: String in shell_textures:
 		var path: String = "res://assets/textures/%s_albedo.webp" % shell_textures[uniform]
 		_building_material.set_shader_parameter(uniform, load(path))
-	_structure_material.vertex_color_use_as_albedo = true
-	_structure_material.vertex_color_is_srgb = true
-	_structure_material.roughness = 0.9
 	_sky.shader = preload("res://shaders/sky.gdshader")
 	_sky.set_shader_parameter("ground_color", Palette.color("plants.grass_base"))
 	_sky.set_shader_parameter("cloud_color", Palette.color("sky.cloud"))

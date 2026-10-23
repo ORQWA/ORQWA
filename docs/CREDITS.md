@@ -16,6 +16,13 @@ The fractured boulders and shared cliff/boulder weathering shader (R115) are own
 1K originals and their source are kept in `art/sources/rock-boulder-dry/`;
 `art/textures/rock_scan.py` converts them to the shared rock WebP maps.
 
+Bridge concrete (R120) uses [Concrete Wall 007](https://polyhaven.com/a/concrete_wall_007)
+by **Charlotte Baglioni** (photography), **Dario Barresi** (processing) and **Rico Cilliers**
+(tiling), Poly Haven, **CC0 1.0**. Untouched 1K albedo, OpenGL normal and roughness maps,
+source URLs and checksums are kept in `art/sources/concrete-wall-007/`.
+`art/textures/concrete_scan.py` converts them to dedicated bridge WebP maps. The app
+bundles these assets and downloads nothing for them at runtime.
+
 Urban concrete and paving textures are own work, baked from the procedural materials in
 `art/textures/build.py` (GPL-3.0); sidewalks, curbs and building surroundings are generated
 by `core/orqwa-world/src/urban.rs`.

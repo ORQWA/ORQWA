@@ -1,4 +1,5 @@
 shader_type spatial;
+render_mode cull_disabled;
 // All roads (R119): Rust supplies material, width and marking style in mesh COLOR.
 // Textured asphalt is slightly darker and smoother where wheels
 // run, white markings worn by traffic — solid edge lines and a dashed centre line, anti-aliased
@@ -8,6 +9,7 @@ shader_type spatial;
 // road (beyond, the skirts), UV.y is the distance along the route in metres.
 
 #include "res://shaders/ground.gdshaderinc"
+#include "res://shaders/bridge_surface.gdshaderinc"
 
 uniform sampler2D asphalt_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D asphalt_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -149,4 +151,15 @@ void fragment() {
 	ROUGHNESS = mix(roughness, 0.08, water);
 	SPECULAR = mix(0.4, 0.5, max(wet, water));
 	NORMAL = normalize((VIEW_MATRIX * vec4(normalize(mix(normal, world_normal, water)), 0.0)).xyz);
+	float structure = 1.0 - step(0.01, COLOR.a);
+	float steel = structure * (1.0 - step(0.025, distance(COLOR.rgb, steel_srgb)));
+	if (!FRONT_FACING || world_normal.y < 0.1 || structure > 0.5) {
+		// Markings and puddles belong to the wearing surface, not its exposed underside.
+		vec3 facing = FRONT_FACING ? world_normal : -world_normal;
+		bridge_concrete(world_position, facing, albedo, normal, roughness);
+		ALBEDO = mix(albedo, steel_color, steel) * (1.0 - wetness * 0.22);
+		ROUGHNESS = mix(roughness, 0.45, steel);
+		METALLIC = 0.65 * steel;
+		NORMAL = normalize((VIEW_MATRIX * vec4(mix(normal, facing, steel), 0.0)).xyz);
+	}
 }

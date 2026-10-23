@@ -41,6 +41,9 @@ const VIEWS: Dictionary[String, Array] = {
 	# The reference route (#167): a planner's file over a pass, its hard places.
 	"oberalp-tunnel-chase": ["oberalp", 3700.0, 0, "Midday", "Clear"],
 	"oberalp-railway-chase": ["oberalp", 4500.0, 0, "Midday", "Clear"],
+	"oberalp-bridge-close": ["oberalp", 4550.0, 0, "Midday", "Clear"],
+	"oberalp-bridge-under": ["oberalp", 4568.0, 1, "Midday", "Clear"],
+	"oberalp-bridge-side": ["oberalp", 4576.0, 0, "Midday", "Clear", Vector3(-16.0, 7.0, 18.0)],
 	"oberalp-hairpins-drone": ["oberalp", 6100.0, 2, "Midday", "Clear"],
 	"oberalp-lake-drone": ["oberalp", 10900.0, 2, "Midday", "Clear"],
 	"oberalp-portal-drone": ["oberalp", 11600.0, 2, "Midday", "Clear"],

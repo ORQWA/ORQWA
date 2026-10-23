@@ -822,6 +822,7 @@ fn line_mesh(segments: &[Segment], half_width: f64, mouths: &[Mouth]) -> MeshDat
                 (re, rn),
                 after.appearance.map_or(half_width, |a| a.width / 2.0),
                 (joined(distance, -1.0), joined(distance, 1.0)),
+                before.surface == Surface::Bridge || after.surface == Surface::Bridge,
             );
             if let Some(appearance) = after.appearance {
                 mesh.colors.extend([appearance.color(); RING]);
@@ -843,6 +844,7 @@ fn ring(
     (re, rn): (f64, f64),
     half_width: f64,
     (joined_left, joined_right): (bool, bool),
+    on_bridge: bool,
 ) {
     let at = |across: f64, drop: f64| {
         [
@@ -851,30 +853,41 @@ fn ring(
             (-(north + rn * across)) as f32,
         ]
     };
-    let (bevel, skirt) = (half_width + BEVEL_REACH, half_width + SKIRT_REACH);
-    let left = if joined_left { 0.0 } else { -0.08 };
-    let right = if joined_right { 1.0 } else { 1.08 };
-    let tilt = BEVEL_DROP / BEVEL_REACH;
+    // A bridge has a narrow wearing course above its slab, without the rural road's
+    // gravel/grass skirt hanging outside the concrete deck.
+    let (bevel_reach, skirt_reach, bevel_drop, skirt_depth) = if on_bridge {
+        (0.14, 0.28, 0.025, 0.04)
+    } else {
+        (BEVEL_REACH, SKIRT_REACH, BEVEL_DROP, SKIRT_DEPTH)
+    };
+    let (bevel, skirt) = (half_width + bevel_reach, half_width + skirt_reach);
+    let left = if joined_left || on_bridge { 0.0 } else { -0.08 };
+    let right = if joined_right || on_bridge { 1.0 } else { 1.08 };
+    let tilt = bevel_drop / bevel_reach;
     // Left skirt, left bevel, left edge, right edge, right bevel, right skirt.
     let ring = [
         (
-            at(-skirt, SKIRT_DEPTH),
+            at(-skirt, skirt_depth),
             [-re as f32, 0.5, rn as f32],
-            -0.2_f32,
+            if on_bridge { 0.0 } else { -0.2_f32 },
         ),
         (
-            at(-bevel, BEVEL_DROP),
+            at(-bevel, bevel_drop),
             [(-re * tilt) as f32, 1.0, (rn * tilt) as f32],
             left,
         ),
         (at(-half_width, 0.0), [0.0, 1.0, 0.0], 0.0),
         (at(half_width, 0.0), [0.0, 1.0, 0.0], 1.0),
         (
-            at(bevel, BEVEL_DROP),
+            at(bevel, bevel_drop),
             [(re * tilt) as f32, 1.0, (-rn * tilt) as f32],
             right,
         ),
-        (at(skirt, SKIRT_DEPTH), [re as f32, 0.5, -rn as f32], 1.2),
+        (
+            at(skirt, skirt_depth),
+            [re as f32, 0.5, -rn as f32],
+            if on_bridge { 1.0 } else { 1.2 },
+        ),
     ];
     for (vertex, normal, u) in ring {
         mesh.vertices.push(vertex);

@@ -3,7 +3,7 @@
 //! through, however it folds.
 
 use crate::structures::Below;
-use crate::{HeightGrid, MeshData, On};
+use crate::{HeightGrid, MeshData, On, palette, structures};
 
 /// Draped, a straight strip needs no points between its bends but these, at most this far
 /// apart; the ground's triangles add the rest...
@@ -311,6 +311,7 @@ pub(crate) fn deck(
     mesh: &mut MeshData,
     run: &[((f64, f64), f64)],
     half: f64,
+    color: [f32; 4],
     (start, end): (f64, f64),
     lift: f64,
     total: f64,
@@ -396,6 +397,99 @@ pub(crate) fn deck(
             ]);
         }
     }
+    // The wearing course carries road-profile metadata; railings appended afterwards
+    // retain their structure tints (alpha zero, outside the road-style flag range).
+    mesh.colors.resize(mesh.vertices.len(), color);
+    deck_rails(mesh, run, half, &top_at, total, origin);
+}
+
+/// Slim edge beams and open protection replace an unguarded slab on other mapped roads.
+fn deck_rails(
+    mesh: &mut MeshData,
+    run: &[((f64, f64), f64)],
+    half: f64,
+    top_at: &dyn Fn(f64) -> f64,
+    total: f64,
+    origin: [f64; 3],
+) {
+    let mut detail = MeshData::default();
+    let steel = palette::srgb("structure.steel", 0.0);
+    let concrete = palette::srgb("structure.concrete", 0.0);
+    let edge = |i: usize, side: f64, height: f64| {
+        let (before, after) = (
+            run[i.saturating_sub(1)].0,
+            run[(i + 1).min(run.len() - 1)].0,
+        );
+        let (de, dn) = (after.0 - before.0, after.1 - before.1);
+        let length = de.hypot(dn).max(1e-6);
+        let ((east, north), distance) = run[i];
+        let across = (half - 0.12) * side;
+        [
+            east + dn / length * across - origin[0],
+            top_at(distance) + height - origin[1],
+            -north + de / length * across - origin[2],
+        ]
+    };
+    for side in [-1.0, 1.0] {
+        for i in 1..run.len() {
+            for height in [0.65, 1.1] {
+                structures::beam(
+                    &mut detail,
+                    edge(i - 1, side, height),
+                    edge(i, side, height),
+                    0.035,
+                    steel,
+                );
+            }
+            structures::beam(
+                &mut detail,
+                edge(i - 1, side, 0.08),
+                edge(i, side, 0.08),
+                0.08,
+                concrete,
+            );
+            let (from, to) = (run[i - 1].1, run[i].1);
+            let mut along = (from / 2.4).ceil() * 2.4;
+            while along < to {
+                let share = (along - from) / (to - from).max(1e-6);
+                let (a, b) = (edge(i - 1, side, 0.16), edge(i, side, 0.16));
+                let foot = [0, 1, 2].map(|k| a[k] + (b[k] - a[k]) * share);
+                let top = [foot[0], foot[1] + 0.975, foot[2]];
+                structures::beam(&mut detail, foot, top, 0.045, steel);
+                along += 2.4;
+            }
+        }
+    }
+    // Close only the real ends, not chunk cuts where the next piece continues the slab.
+    for (i, facing) in [(0, -1.0), (run.len() - 1, 1.0)] {
+        if run[i].1.abs() > 1e-4 && (run[i].1 - total).abs() > 1e-4 {
+            continue;
+        }
+        let (a, b) = (
+            run[i.saturating_sub(1)].0,
+            run[(i + 1).min(run.len() - 1)].0,
+        );
+        let length = (b.0 - a.0).hypot(b.1 - a.1).max(1e-6);
+        let rim = half / (half - 0.12);
+        structures::quad(
+            &mut detail,
+            [
+                edge(i, -rim, -DECK_DEPTH_M),
+                edge(i, rim, -DECK_DEPTH_M),
+                edge(i, rim, 0.0),
+                edge(i, -rim, 0.0),
+            ],
+            [
+                (b.0 - a.0) / length * facing,
+                0.0,
+                -(b.1 - a.1) / length * facing,
+            ],
+            concrete,
+        );
+    }
+    // Older street meshes omitted colours. Default white keeps the asphalt and gravel;
+    // only new railings carry a metal tint, using the existing optional colour array.
+    mesh.append(detail);
 }
 
 /// Piers under a deck along `run`, down to the ground wherever it lies low enough; one that
@@ -435,7 +529,7 @@ fn deck_piers(
         let top = top_at(along) - DECK_DEPTH_M;
         [-wide, 0.0, wide].iter().all(|&aside| {
             let at = (east + ahead.1 * aside, north - ahead.0 * aside);
-            !below.blocked(at, DECK_PIER_HALF_LENGTH + 1.0, top, heights.at(at.0, at.1))
+            !below.blocked(at, DECK_PIER_HALF_LENGTH + 1.2, top, heights.at(at.0, at.1))
         })
     };
     let mut along = ((first / DECK_PIER_SPACING).floor() + 0.5) * DECK_PIER_SPACING;
@@ -453,6 +547,8 @@ fn deck_piers(
             if top - ground >= DECK_PIER_MIN {
                 let right = (ahead.1, -ahead.0);
                 let long = DECK_PIER_HALF_LENGTH;
+                let cap_wide = wide;
+                let wide = wide * 0.5;
                 let corner = |forth: f64, aside: f64, height: f64| {
                     [
                         east + ahead.0 * forth + right.0 * aside - origin[0],
@@ -469,11 +565,20 @@ fn deck_piers(
                     let corners = [
                         corner(x0, y0, ground - 0.5),
                         corner(x1, y1, ground - 0.5),
-                        corner(x1, y1, top),
-                        corner(x0, y0, top),
+                        corner(x1, y1, top - 0.5),
+                        corner(x0, y0, top - 0.5),
                     ];
                     upright(mesh, corners, [ne, 0.0, -nn], at as f32);
                 }
+                let mut cap = MeshData::default();
+                structures::beam_rect(
+                    &mut cap,
+                    corner(0.0, -cap_wide, top - 0.25),
+                    corner(0.0, cap_wide, top - 0.25),
+                    (long + 0.2, 0.25),
+                    palette::srgb("structure.concrete", 0.0),
+                );
+                mesh.append(cap);
             }
         }
         along += DECK_PIER_SPACING;

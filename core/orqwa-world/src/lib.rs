@@ -48,7 +48,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 11;
+pub const GENERATOR: u32 = 12;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -110,12 +110,17 @@ pub struct MeshData {
 }
 
 impl MeshData {
-    /// Adds another mesh's triangles.
+    /// Adds another mesh's triangles. Missing colours default to white when either mesh
+    /// carries colours, keeping the optional vertex array complete.
     ///
     /// # Panics
     /// If the combined mesh has more than `u32::MAX` vertices.
-    pub fn append(&mut self, other: MeshData) {
+    pub fn append(&mut self, mut other: MeshData) {
         let offset = u32::try_from(self.vertices.len()).expect("mesh fits u32");
+        if !self.colors.is_empty() || !other.colors.is_empty() {
+            self.colors.resize(self.vertices.len(), [1.0; 4]);
+            other.colors.resize(other.vertices.len(), [1.0; 4]);
+        }
         self.vertices.extend(other.vertices);
         self.normals.extend(other.normals);
         self.uvs.extend(other.uvs);
@@ -241,8 +246,7 @@ async fn whole<M: ElevationModel>(
     let (road, rails) = (shapers.road, shapers.rails);
     World {
         road: road.mesh(ROAD_HALF_WIDTH, &streets::mouths(&ways.streets, road)),
-        structures: structures::build_all((road, rails), below, shapers.portals, projection, model)
-            .await,
+        structures: structures::build_all((road, rails), below, shapers, projection, model).await,
         railways: rails.mesh(railways::BED_M / 2.0, &[]),
         ..World::default()
     }

@@ -82,6 +82,19 @@ Reproduce with `COURSE=core/orqwa-gd/courses/twann-chasseral.tqc`
 and `SHOTS="lamboing:4200:2:0,180,-20"` in `scripts/render-views.sh`. The course uses its
 saved inputs offline. Matching before/after review images are in `docs/images/roads/`.
 
+The Oberalp railway bridge (R120), seen from the same riding camera before and after the
+proportion and material changes. The close views check open railings, supports and the soffit.
+
+| Before: broad deck with solid walls | After: narrower deck and open railings |
+|---|---|
+| ![Previous Oberalp railway bridge](images/issues/oberalp-bridge-before.jpg) | ![Revised Oberalp railway bridge](images/views/oberalp-railway-chase.jpg) |
+
+| Approach | From below |
+|---|---|
+| ![Railway bridge close up](images/views/oberalp-bridge-close.jpg) | ![Railway bridge underside](images/views/oberalp-bridge-under.jpg) |
+
+![Railway bridge from the side](images/views/oberalp-bridge-side.jpg)
+
 The non-ridden bridge regression scene checks the deck from underneath and above (R119).
 It uses generated test geometry with the application's road, street and terrain materials.
 

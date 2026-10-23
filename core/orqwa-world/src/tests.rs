@@ -1083,6 +1083,17 @@ async fn railway_bridges_clear_the_road_and_meet_their_track() {
         .filter(|v| v[0].abs() < 30.0 && (v[2] + 500.0).abs() < 5.0)
         .count();
     assert!(deck > 10, "no bridge over the road");
+    assert!(
+        world
+            .structures
+            .vertices
+            .iter()
+            .filter(|v| v[0].abs() < 25.0)
+            .all(|v| (v[2] + 500.0).abs() < 2.5),
+        "a single-track bridge fits its ballast and a maintenance walkway"
+    );
+    assert_valid(&world.structures);
+    assert_faces_follow_normals(&world.structures);
 }
 
 /// The triangles of a chunked mesh in absolute coordinates.
@@ -2044,15 +2055,19 @@ async fn other_streets_join_the_road_ridden_and_lie_on_the_ground() {
         ..MapData::default()
     })
     .await;
+    let steel = palette::srgb("structure.steel", 0.0);
     let vertices = |pick: fn(&crate::TerrainChunk) -> &MeshData| -> Vec<[f32; 3]> {
         world
             .chunks
             .iter()
             .flat_map(|c| {
-                pick(c)
-                    .vertices
+                let mesh = pick(c);
+                mesh.vertices
                     .iter()
-                    .map(move |v| [v[0] + c.center[0], v[1] + c.center[1], v[2] + c.center[2]])
+                    .enumerate()
+                    // The road and slab follow the ground; safety rails stand above them.
+                    .filter(move |(i, _)| mesh.colors.get(*i).is_none_or(|color| *color != steel))
+                    .map(move |(_, v)| [v[0] + c.center[0], v[1] + c.center[1], v[2] + c.center[2]])
                     .collect::<Vec<_>>()
             })
             .collect()
@@ -3050,6 +3065,13 @@ async fn non_ridden_bridges_are_solid_from_below() {
         RoadClass::Path,
     ];
     let map = MapData {
+        // Shore gravel shares the track mesh with the coloured railings: combining them
+        // must preserve complete vertex arrays as well as the bridge geometry.
+        areas: vec![Area {
+            cover: LandCover::Water,
+            outer: vec![square(250.0, 820.0, 35.0)],
+            inner: vec![],
+        }],
         roads: classes
             .iter()
             .enumerate()
@@ -3213,13 +3235,16 @@ async fn a_bridge_cut_by_a_tile_border_is_one_deck_between_its_ends() {
 
     let mut deck = 0;
     for chunk in &world.chunks {
-        for v in &chunk.streets.vertices {
+        for (v, normal) in chunk.streets.vertices.iter().zip(&chunk.streets.normals) {
+            if normal[1] < 0.5 {
+                continue;
+            }
             let (x, y, z) = (v[0] + chunk.center[0], v[1], v[2] + chunk.center[2]);
             if !(160.0..=240.0).contains(&x) || (z + 600.0).abs() > 5.0 {
                 continue;
             }
-            // Over the valley floor only the deck at its ends' height (its top and the bottom
-            // of its sides) and the piers' feet: nothing in between.
+            // The deck and bearing caps stay at the bridge's end height across the tile
+            // join. Vertical supports and railings have their own exposed lower faces.
             assert!(!(481.0..499.0).contains(&y), "the deck dips to {y} at {x}");
             if y > 499.9 {
                 deck += 1;
@@ -3314,6 +3339,58 @@ async fn short_low_bridges_are_stone_arches() {
 }
 
 #[tokio::test]
+async fn bridge_bearing_walls_meet_the_drawn_ground() {
+    // The source DEM has a sharp bank just inside the span. Rendered terrain interpolates
+    // grid samples: a footing based only on the nearest raw centre sample can hang above it.
+    struct Bank;
+    impl ElevationModel for Bank {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            _lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let north = (lat - 46.0) * METERS_PER_DEGREE;
+            std::future::ready(Ok(if (301.0..699.0).contains(&north) {
+                470.0
+            } else {
+                500.0
+            }))
+        }
+    }
+    let route = route_north(&[Structure {
+        kind: StructureKind::Bridge,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let world = generate(&route, &mut Bank, &MapData::default(), &mut |_, _| {}).await;
+    let mut corners = 0;
+    for (vertex, normal) in world
+        .structures
+        .vertices
+        .iter()
+        .zip(&world.structures.normals)
+    {
+        if normal[1] > -0.99 || vertex[1] > 498.0 {
+            continue;
+        }
+        // End walls span the deck; intermediate columns are narrower.
+        if vertex[0].abs() < 3.5 {
+            continue;
+        }
+        let ground = ground_at(&world, vertex[0], vertex[2]).expect("ground under bearing wall");
+        assert!(
+            vertex[1] <= ground + 0.1,
+            "foundation {vertex:?} above ground {ground}"
+        );
+        corners += 1;
+    }
+    assert!(
+        corners >= 8,
+        "both bearing walls have buried foundation corners"
+    );
+}
+
+#[tokio::test]
 async fn bridges_have_a_deck_and_pillars_down_to_the_valley() {
     // A 400 m bridge over a valley: the model is 30 m lower under the bridge.
     struct Valley;
@@ -3348,9 +3425,36 @@ async fn bridges_have_a_deck_and_pillars_down_to_the_valley() {
     );
     let highest = mesh.vertices.iter().map(|v| v[1]).fold(f32::MIN, f32::max);
     assert!(
-        (highest - 501.0).abs() < 0.1,
-        "parapets 1 m above the road: {highest}"
+        (501.0..=501.2).contains(&highest),
+        "open safety rails at human height: {highest}"
     );
+    let steel = palette::srgb("structure.steel", 0.0);
+    assert!(
+        mesh.vertices
+            .iter()
+            .zip(&mesh.colors)
+            .any(|(v, c)| *c == steel && v[1] > 501.0),
+        "metal protection follows the deck edges"
+    );
+    assert!(
+        mesh.vertices
+            .iter()
+            .zip(&mesh.colors)
+            .all(|(v, c)| *c == steel || v[1] < 500.3),
+        "concrete kerbs stay low so open railings do not read as solid walls"
+    );
+    for (vertex, uv) in world.road.vertices.iter().zip(&world.road.uvs) {
+        if (320.0..680.0).contains(&uv[1]) {
+            assert!(
+                vertex[0].abs() < 3.3,
+                "wearing course fits inside the deck: {vertex:?}"
+            );
+            assert!(
+                (0.0..=1.0).contains(&uv[0]),
+                "no gravel or grass skirt hangs off the bridge"
+            );
+        }
+    }
     // Nothing outside the bridge.
     assert!(
         mesh.vertices

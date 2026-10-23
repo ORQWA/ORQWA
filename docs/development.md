@@ -71,11 +71,25 @@ both water meshes and channel beds use those shared elevations. Keep these profi
 independent of road shaping. Review a steep valley from the road and above, plus a lake,
 after changing them. Older kept worlds offer **Regenerate world** for the corrected rivers.
 
-Non-ridden road bridges (R119) use generator 9 / stored format 2. `drape::deck` adds a
+Bridge geometry (R119–R120) uses generator 10 / stored format 2. `drape::deck` adds a
 downward-facing underside at the same depth as the side walls, including at chunk joins;
 the ridden road and railway decks are built separately in `structures.rs`. Older kept
 worlds offer regeneration. Run `cargo test -p orqwa-world non_ridden_bridges` for coverage
 of all five road classes, grades, bends and chunk boundaries, and check a render from below.
+
+Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
+low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
+retain masonry parapets. Bearing foundations sample drawn ground at every corner, including
+the DEM grid interpolation and road shaping, to reach cuttings and sloping banks.
+`BridgeMaterials` shares dedicated scanned cast-concrete maps and
+world-space projection across structure faces and exposed road backs; arches use masonry.
+Rebuild the bridge maps with `scripts/art.sh blender --background --factory-startup --python
+art/textures/build.py -- bridge_concrete`; originals, licence and checksums are archived under
+`art/sources/concrete-wall-007/`. Street colours remain
+optional sRGB tints: white leaves the wearing surface unchanged, steel tints shade new rails.
+Older worlds keep working; shaders draw road, street, path and railway ribbons from both
+sides immediately. `surface_smoke.gd` renders all four materials above and below and checks
+opacity. `scripts/check.sh` runs it with software Vulkan/Xvfb after the headless smoke tests.
 
 ## Refreshing screenshots
 

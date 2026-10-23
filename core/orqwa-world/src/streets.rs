@@ -366,6 +366,7 @@ fn ribbon(
             mesh,
             run,
             half,
+            street.appearance.color(),
             ends,
             lift(street.class, street.index),
             total,

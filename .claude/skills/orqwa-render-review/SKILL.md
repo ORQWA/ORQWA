@@ -100,6 +100,13 @@ and retain a view from above to check the road surface. Motorway/local-road deck
 unpaved track/path decks share this geometry; ridden-road and railway structures use another
 builder.
 
+For the bridge restyle (R120), compare `oberalp-railway-chase` with `oberalp-bridge-close`,
+`oberalp-bridge-under` and `oberalp-bridge-side`, plus Bern's `bridge-side`. Include a tunnel
+view when changing the shared structure material. Check low kerbs, open metal railings,
+plausible deck widths, capped supports and closed ends without stretching the texture on
+vertical faces. `surface_smoke.gd` uses software Vulkan to verify the four ribbon materials
+stay opaque above and below; shader flags alone are insufficient evidence.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,
