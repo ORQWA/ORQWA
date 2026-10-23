@@ -75,7 +75,7 @@ impl Street {
         self.deck.is_some()
     }
 
-    /// The ridden road owns the whole aligned bridge, including differently tagged ends.
+    /// The ridden pavement owns a complete aligned bridge, even with a ground route tag.
     fn owned_bridge(&self, road: &RoadIndex) -> bool {
         self.on_bridge()
             && road.owns_bridge(

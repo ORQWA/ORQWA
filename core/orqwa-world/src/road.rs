@@ -349,7 +349,7 @@ impl RoadIndex {
             .then_some(road_height)
     }
 
-    /// Whether a complete mapped bridge follows the ridden road and overlaps its bridge.
+    /// Whether a complete mapped bridge follows the road already drawn by the route.
     /// Ownership spans the feature: the map and resampled route can change structure tags at
     /// slightly different places, especially where a tunnel leads straight onto a bridge.
     pub(crate) fn owns_bridge(
@@ -357,7 +357,7 @@ impl RoadIndex {
         half: f64,
         points: impl Iterator<Item = ((f64, f64), (f64, f64))>,
     ) -> bool {
-        let mut bridge = false;
+        let mut drawn = false;
         for (point, heading) in points {
             let Some(((distance, _, on), index)) =
                 self.nearest_segment(point.0, point.1, SAME_ROAD)
@@ -372,9 +372,12 @@ impl RoadIndex {
             {
                 return false;
             }
-            bridge |= on == Surface::Bridge;
+            // Import can discard short or DEM-unconfirmed bridge tags from the route.
+            // Its ground pavement still owns this surface. A tunnel below a surface
+            // bridge alone does not own the bridge above it.
+            drawn |= on != Surface::Tunnel;
         }
-        bridge
+        drawn
     }
 
     /// Every piece of road within `reach`: its distance, the road's elevation there and what

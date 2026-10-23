@@ -144,6 +144,19 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Duplicate bridge decks on ground-tagged course sections
+
+Full saved Alpenbrevet Gold inputs, with identical cameras before and after generator 19.
+The village bridge is near 32.05 km from the start; the rider's 178.51 km-to-go screenshot
+looks back toward it. The other comparisons cover the 68.85 and 67.26 km-to-go reports.
+These focused geometry views omit vegetation and buildings.
+
+| Location | Before | After |
+|---|---|---|
+| Village | ![Skewed village bridge](images/issues/alpenbrevet-village-deck-before.jpg) | ![Single village road surface](images/issues/alpenbrevet-village-deck-after.jpg) |
+| 68.85 km to go | ![Raised bridge across the road](images/issues/alpenbrevet-ground-deck-before.jpg) | ![Unobstructed ridden pavement](images/issues/alpenbrevet-ground-deck-after.jpg) |
+| 67.26 km to go | ![Second raised bridge approach](images/issues/alpenbrevet-second-deck-before.jpg) | ![Continuous road at the second bridge](images/issues/alpenbrevet-second-deck-after.jpg) |
+
 ### Bridge junctions
 
 Controlled offline world-generator fixture: a mapped bridge with terrain endpoints 1.5 m

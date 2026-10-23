@@ -535,9 +535,11 @@ physically based materials and light, restyled group by group.
     - [x] Bridge ends and protection crossing junctions: mapped bridge ends meet a nearby
       ridden ground road at its height; protection opens only at same-level connections
       (generator 18). Grade-separated crossings and the opposite edge stay protected.
-    - [ ] Follow-up Alpenbrevet images: skewed bridge at 178.51 km to go; terrain inside
-      tunnels and pavement on their roofs around 175.72 km to go; raised decks at 68.85 and
-      67.26 km to go; guardrails below the road around 33.52 km to go.
+    - [x] Follow-up Alpenbrevet skewed village bridge at 178.51 km to go and raised decks at
+      68.85 and 67.26 km to go: one surface owner even when the ridden course has a Ground
+      tag on the mapped bridge (generator 19).
+    - [ ] Terrain inside tunnels and pavement on their roofs around 175.72 km to go.
+    - [ ] Guardrails below the road around 33.52 km to go.
     - [x] Tunnel portals (#135): a tunnel's tube starts where the ground as drawn rises over
       it and keeps it covered, not in the open in front of the hill; a stone ring round the
       opening ends the cutting leading to it, no ground closes the opening, and the hill over

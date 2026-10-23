@@ -146,3 +146,9 @@ connections within 0.5 m of deck level. Exact short street segments define these
 and support clearance, preserving the opposite edge and grade-separated crossings. Slab
 sides and undersides remain closed. Connected profiles also lower their approach banks before
 chunk generation, preventing the adjusted pavement from being buried. Stored format remains 3.
+
+Generator 19 assigns a complete aligned mapped bridge to the ridden pavement even when the
+route importer retained Ground tags rather than a short or DEM-unconfirmed bridge. The mapped
+feature no longer adds a raw-DEM slab above that pavement. A tunnel alone cannot claim a
+surface bridge above it; crossing, parallel and off-route bridges retain their geometry.
+Stored format remains 3.

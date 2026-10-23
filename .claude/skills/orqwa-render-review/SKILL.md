@@ -138,6 +138,11 @@ road. Compare a connection at deck level with an overpass at a different height;
 former opens. Check both edges of a ridden bridge with a side street: the opposite edge must
 stay protected, and the slab underside must remain closed through the opening.
 
+Also review Alpenbrevet's short mapped bridges near 32.05, 141.89 and 143.45 km from the start
+(the 178.51, 68.85 and 67.26 km-to-go screenshots can look ahead or behind the rider). Ground
+route tags must not leave a second raw-DEM deck over the ridden pavement. Preserve separate
+bridges above a tunnel and bridges that leave the ridden corridor.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,

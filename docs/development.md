@@ -106,6 +106,12 @@ Separate overpasses retain their height and protection. Slab faces stay closed b
 wearing surface, including at junctions and true ends. Endpoint profiles are resolved before
 chunk generation, and the lowered approach banks follow them so they cannot bury the deck.
 
+Generator 19 extends complete-feature bridge ownership to aligned stretches retained as
+Ground by route import. Their pavement already draws the surface; a second mapped deck at
+raw DEM heights created the raised steps and skewed slabs in the Alpenbrevet follow-up images.
+An entirely underground route cannot own a separate surface bridge above it. Crossing,
+parallel and beyond-route bridges remain independent.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

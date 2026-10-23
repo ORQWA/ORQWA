@@ -3165,6 +3165,50 @@ async fn a_ridden_bridge_has_no_second_deck_from_the_map() {
 }
 
 #[tokio::test]
+async fn a_mapped_bridge_on_a_ground_route_does_not_add_a_raised_second_surface() {
+    let route = route_north(&[]).await;
+    for length in [13.0, 40.0] {
+        let map = MapData {
+            roads: vec![orqwa_osm::Road {
+                class: RoadClass::Major,
+                details: orqwa_osm::RoadDetails::default(),
+                line: vec![at(0.4, 500.0), at(0.4, 500.0 + length)],
+                structure: Some(StructureKind::Bridge),
+            }],
+            ..MapData::default()
+        };
+        let world = generate(&route, &mut Level(501.5), &map, &mut |_, _| {}).await;
+        assert!(
+            world.chunks.iter().all(|c| c.streets.vertices.is_empty()),
+            "a complete aligned mapped feature must not add a raised deck over a Ground route"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_surface_bridge_above_a_ridden_tunnel_retains_its_deck() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![orqwa_osm::Road {
+            class: RoadClass::Major,
+            details: orqwa_osm::RoadDetails::default(),
+            line: vec![at(0.4, 400.0), at(0.4, 600.0)],
+            structure: Some(StructureKind::Bridge),
+        }],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(520.0), &map, &mut |_, _| {}).await;
+    assert!(
+        world.chunks.iter().any(|c| !c.streets.vertices.is_empty()),
+        "the underground route must not claim a separate surface bridge"
+    );
+}
+
+#[tokio::test]
 async fn a_bridge_tag_boundary_does_not_create_an_extra_approach_deck() {
     let route = route_north(&[Structure {
         kind: StructureKind::Bridge,
