@@ -1,4 +1,4 @@
-//! Link settings for the GDExtension library, and the commit it is built from.
+//! Link settings for the GDExtension library, and the branch and commit it is built from.
 
 use std::path::Path;
 use std::process::Command;
@@ -14,25 +14,46 @@ fn main() {
         println!("cargo:rustc-cdylib-link-arg=-Wl,-Bsymbolic");
     }
     commit();
+    branch();
     println!("cargo:rerun-if-changed=build.rs");
 }
 
-/// The commit the About tab shows (R83, ADR 0018), as `ORQWA_COMMIT`: that variable's value
-/// when set, as `scripts/dev.sh` sets it for worktrees, whose Git directory the container
-/// cannot see; else Git's; empty without either, e.g. built from a source archive.
+/// The commit the About tab shows (R83, R130, ADR 0018), as `ORQWA_COMMIT`, cut to seven
+/// characters: that variable's value when set, else Git's; empty without either, e.g. built
+/// from a source archive. `scripts/dev.sh` sets the variable for worktrees, whose Git directory
+/// the container cannot see, and CI to a pull request's own last commit, as it checks out a
+/// merge of it that no branch has.
 fn commit() {
     println!("cargo:rerun-if-env-changed=ORQWA_COMMIT");
-    let commit = std::env::var("ORQWA_COMMIT")
-        .ok()
-        .filter(|commit| !commit.is_empty())
-        .or_else(git_commit)
-        .unwrap_or_default();
+    let commit: String = from_env("ORQWA_COMMIT")
+        .or_else(|| from_git(&["rev-parse", "--short=7", "HEAD"]))
+        .unwrap_or_default()
+        .chars()
+        .take(7)
+        .collect();
     println!("cargo:rustc-env=ORQWA_COMMIT={commit}");
 }
 
-fn git_commit() -> Option<String> {
-    let commit = git(&["rev-parse", "--short=7", "HEAD"])?;
-    // A commit or a checkout rewrites HEAD or adds to its log: build again for the new one.
+/// The branch the About tab names with the commit (R130, ADR 0018), as `ORQWA_BRANCH`: that
+/// variable's value when set, as `scripts/dev.sh` and CI set it, else Git's; empty on a detached
+/// checkout, such as a release built from its tag.
+fn branch() {
+    println!("cargo:rerun-if-env-changed=ORQWA_BRANCH");
+    let branch = from_env("ORQWA_BRANCH")
+        .or_else(|| from_git(&["rev-parse", "--abbrev-ref", "HEAD"]))
+        .filter(|branch| branch != "HEAD")
+        .unwrap_or_default();
+    println!("cargo:rustc-env=ORQWA_BRANCH={branch}");
+}
+
+/// The variable's value, `None` when unset or empty.
+fn from_env(name: &str) -> Option<String> {
+    std::env::var(name).ok().filter(|value| !value.is_empty())
+}
+
+/// Git's answer about this checkout, building again when it can change.
+fn from_git(args: &[&str]) -> Option<String> {
+    // A commit or a checkout rewrites HEAD or adds to its log.
     for name in ["HEAD", "logs/HEAD"] {
         if let Some(path) = git(&["rev-parse", "--path-format=absolute", "--git-path", name])
             && Path::new(&path).exists()
@@ -40,7 +61,7 @@ fn git_commit() -> Option<String> {
             println!("cargo:rerun-if-changed={path}");
         }
     }
-    Some(commit)
+    git(args)
 }
 
 /// Git's answer, trimmed; `None` if Git is missing or fails.

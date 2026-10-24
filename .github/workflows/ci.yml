@@ -16,6 +16,12 @@ concurrency:
 permissions:
   contents: read
 
+# What the About tab names (R130, ADR 0018): a pull request's own branch and last commit, not
+# the merge with main that checkout builds and no branch has; a tag names no branch.
+env:
+  ORQWA_BRANCH: ${{ github.head_ref || (github.ref_type == 'branch' && github.ref_name || '') }}
+  ORQWA_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   image:
     name: Dev image
@@ -95,6 +101,8 @@ jobs:
           mkdir -p ~/.cargo/registry core/target app/.godot
           docker run --rm \
             -e CARGO_INCREMENTAL=0 \
+            -e ORQWA_BRANCH \
+            -e ORQWA_COMMIT \
             -v "$PWD:/workspaces/orqwa" \
             -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \
             -w /workspaces/orqwa \
@@ -508,6 +516,8 @@ jobs:
           # shellcheck disable=SC2086 # signing is a list of docker options, or empty
           docker run --rm \
             -e CARGO_INCREMENTAL=0 \
+            -e ORQWA_BRANCH \
+            -e ORQWA_COMMIT \
             $signing \
             -v "$PWD:/workspaces/orqwa" \
             -v "$HOME/.cargo/registry:/usr/local/cargo/registry" \

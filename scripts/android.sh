@@ -9,6 +9,7 @@ docker build -q -t orqwa-dev -f "$root/.devcontainer/Dockerfile" "$root" >/dev/n
 docker build -q -t orqwa-android -f "$root/android/Dockerfile" "$root" >/dev/null
 
 commit="$(git -C "$root" rev-parse --short=7 HEAD 2>/dev/null || true)"
+branch="$(git -C "$root" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 
 . "$root/scripts/give-back-files.sh"
 
@@ -16,6 +17,7 @@ status=0
 # The dev container's volumes, plus Gradle's downloads, so builds after the first stay offline.
 docker run --rm \
     -e ORQWA_COMMIT="$commit" \
+    -e ORQWA_BRANCH="$branch" \
     -v "$root:/workspaces/orqwa" \
     -v orqwa-cargo-registry:/usr/local/cargo/registry \
     -v orqwa-target:/workspaces/orqwa/core/target \
