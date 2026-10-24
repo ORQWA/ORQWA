@@ -186,6 +186,16 @@ their fillets.
 Regressions include different road widths, reversed loop geometry, a terrain-chunk boundary
 and a narrow joining arm. Stored format stays 3.
 
+### Exposed sidewalk sides amendment (2026-10-24)
+
+Generator 32 closes only exposed edges of the combined walking footprint. Side segments
+covered by another walking piece are clipped away before extrusion; internal boolean cuts
+and material partitions do not become walls through the tread. Partial exposed segments
+retain their interpolated absolute top height and still meet the drawn terrain.
+Repeated mask vertices and submicrometre edges do not define clipping half-planes: they
+could duplicate an outside polygon or leave an internal wall. Position comparisons allow
+0.1 mm for the already quantised GPU top edges. Stored format remains 3.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,

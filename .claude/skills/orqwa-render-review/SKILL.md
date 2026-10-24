@@ -110,6 +110,10 @@ leave isolated tiles where no eligible sidewalk approaches exist.
 Check the entire island perimeter at close range: a surviving raised rim with a channel
 inside it is still incorrect. Junction construction wedges must not excavate an existing
 walking run; rounded carriageway fans must remain clear of paving.
+Inspect internal clipping seams from road height too. Shared footway pieces must not
+extrude side walls through their joined tread; retain closed sides only on the exposed
+perimeter. If a dark triangle remains, inspect its mesh and repeat without shadows before
+attributing it to lighting.
 Include widening and narrowing streets and a wall touching only the outer part of a walk.
 The usable strip must remain continuous and keep clear of the actual asphalt, while clipped
 outer faces reach terrain. Inspect the same sloping, partially clipped corner for reversed

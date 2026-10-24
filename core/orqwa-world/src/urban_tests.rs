@@ -575,6 +575,32 @@ fn assert_continuous_walking_tread(world: &World, shift: f32) {
     for chunk in &world.chunks {
         let mesh = &chunk.urban;
         for face in mesh.indices.as_chunks::<3>().0 {
+            if face
+                .iter()
+                .all(|&i| mesh.normals[i as usize][1].abs() < 0.1)
+            {
+                let p = face.map(|i| {
+                    let v = mesh.vertices[i as usize];
+                    (v[0] + chunk.center[0], v[2] + chunk.center[2])
+                });
+                let center = (
+                    (p[0].0 + p[1].0 + p[2].0) / 3.0,
+                    (p[0].1 + p[1].1 + p[2].1) / 3.0,
+                );
+                if (48.0..52.0).contains(&center.0)
+                    && (198.0 + shift..202.0 + shift).contains(&-center.1)
+                {
+                    let normal = mesh.normals[face[0] as usize];
+                    assert!(
+                        ![-1.0, 1.0].into_iter().all(|sign| walking_height(
+                            center.0 + normal[0] * 0.002 * sign,
+                            center.1 + normal[2] * 0.002 * sign
+                        )
+                        .is_some()),
+                        "internal side wall through walking surface at {center:?}: {p:?}"
+                    );
+                }
+            }
             if face.iter().any(|&i| mesh.normals[i as usize][1] < 0.2) {
                 continue;
             }

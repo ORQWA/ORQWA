@@ -64,7 +64,7 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ### Andermatt sidewalks
 
-Generators 27–31 give sidewalk copies one owner using the local mapped section matched to
+Generators 27–32 give sidewalk copies one owner using the local mapped section matched to
 the ride. Coarse GPX bends no longer leave duplicate footways or phantom clearance cuts;
 independent nearby streets and unridden parallel arms of the same map feature remain.
 Walking tops follow their owning street's height and grade instead of draping down a bank
@@ -78,6 +78,8 @@ matching footprints no longer conceal a height step at the tangent cross-section
 Overlapping walking pieces share one surface and grade. Continuous mapped streets keep
 their own bend geometry rather than receiving another junction fan inside their loops;
 narrow service arms cannot create isolated corner tiles without walking approaches.
+Side walls close only the exposed walking perimeter; internal clipping seams no longer
+extrude through the tread. Repeated boolean-cut vertices cannot duplicate paving.
 
 These matching overview cameras use the full saved Alpenbrevet Gold inputs at
 209.36 km to go (about 1.38 km from the start), near Andermatt. Nearby geometry alone is

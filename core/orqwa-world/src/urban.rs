@@ -1169,6 +1169,45 @@ impl Urban {
         })
     }
 
+    fn exposed_walk_edge(&self, a: Point, b: Point, current: &[Point]) -> Vec<(Point, Point)> {
+        let mut spans = vec![(0.0_f64, 1.0_f64)];
+        let mut neighbours: Vec<_> = cells(&[a, b], CELL, 0.01)
+            .into_iter()
+            .flat_map(|key| self.patch_cells.get(&key).into_iter().flatten().copied())
+            .collect();
+        neighbours.sort_unstable();
+        neighbours.dedup();
+        for index in neighbours {
+            if !self.patches[index].curb {
+                continue;
+            }
+            for shape in &self.shapes[index] {
+                if std::ptr::eq(shape.as_slice(), current) {
+                    continue;
+                }
+                if let Some((low, high)) = segment_inside(a, b, shape) {
+                    spans = spans
+                        .into_iter()
+                        .flat_map(|(start, end)| {
+                            [(start, end.min(low)), (start.max(high), end)]
+                                .into_iter()
+                                .filter(|&(a, b)| b - a > 1e-8)
+                        })
+                        .collect();
+                }
+            }
+            if spans.is_empty() {
+                break;
+            }
+        }
+        let along = |t: f64| (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
+        spans
+            .into_iter()
+            .map(|(a, b)| (along(a), along(b)))
+            .filter(|&(a, b)| distance(a, b) > 1e-4)
+            .collect()
+    }
+
     pub(crate) fn mesh(&self, heights: &HeightGrid, origin: [f64; 3]) -> MeshData {
         let mut mesh = MeshData::default();
         let grades = Grades::default();
@@ -1205,7 +1244,15 @@ impl Urban {
                         &|point| self.walk_height(index, point, heights, &grades),
                     );
                     if patch.curb {
-                        walk_sides(&mut mesh, first_index, shape, patch, heights, origin);
+                        walk_sides(
+                            &mut mesh,
+                            first_index,
+                            shape,
+                            patch,
+                            heights,
+                            origin,
+                            &|a, b| self.exposed_walk_edge(a, b, shape),
+                        );
                     } else if patch.wall {
                         for k in 0..patch.polygon.len() {
                             vertical(
@@ -1495,6 +1542,11 @@ fn split_by_mask(subject: &[Point], mask: &[Point]) -> (Vec<Vec<Point>>, Vec<Poi
         .zip(mask.iter().cycle().skip(1))
         .take(mask.len())
     {
+        // Boolean cuts can repeat a vertex. A zero-length edge must not return the
+        // entire inside remainder as another outside piece.
+        if distance(a, b) < 1e-6 {
+            continue;
+        }
         if inside.is_empty() {
             break;
         }
@@ -1658,6 +1710,7 @@ fn profile_height(profile: Profile, along: f64, heights: &HeightGrid) -> f64 {
     a + (b - a) * along
 }
 
+#[allow(clippy::too_many_arguments)] // the existing top plus its exposed boundary
 fn walk_sides(
     mesh: &mut MeshData,
     first_index: usize,
@@ -1665,6 +1718,7 @@ fn walk_sides(
     patch: &Patch,
     heights: &HeightGrid,
     origin: [f64; 3],
+    exposed: &impl Fn(Point, Point) -> Vec<(Point, Point)>,
 ) {
     let mut sides = Vec::new();
     // Reuse the top's terrain cuts: a long straight side can otherwise bridge a
@@ -1700,19 +1754,59 @@ fn walk_sides(
         }
     }
     for (a, b, top) in sides {
-        let first = mesh.vertices.len();
-        vertical_piece(mesh, a, b, -0.02, top, heights, origin);
-        let curb = [a, b].into_iter().all(|point| {
-            distance(point, project(point, patch.polygon[0], patch.polygon[1])) < 1e-4
-        });
-        if curb {
-            for (i, point) in [a, a, b, b].into_iter().enumerate() {
-                mesh.uvs[first + i][0] = curb_uv(patch, point)[0];
+        let absolute = [top[0] + heights.at(a.0, a.1), top[1] + heights.at(b.0, b.1)];
+        for (start, end) in exposed(a, b) {
+            let lift = |p: Point| {
+                let t = distance(a, p) / distance(a, b);
+                absolute[0] + (absolute[1] - absolute[0]) * t - heights.at(p.0, p.1)
+            };
+            let (a, b, top) = (start, end, [lift(start), lift(end)]);
+            let first = mesh.vertices.len();
+            vertical_piece(mesh, a, b, -0.02, top, heights, origin);
+            let curb = [a, b].into_iter().all(|point| {
+                distance(point, project(point, patch.polygon[0], patch.polygon[1])) < 1e-4
+            });
+            if curb {
+                for (i, point) in [a, a, b, b].into_iter().enumerate() {
+                    mesh.uvs[first + i][0] = curb_uv(patch, point)[0];
+                }
+            } else {
+                mesh.colors[first..].fill(Material::Concrete.color());
             }
-        } else {
-            mesh.colors[first..].fill(Material::Concrete.color());
         }
     }
+}
+
+fn segment_inside(a: Point, b: Point, polygon: &[Point]) -> Option<(f64, f64)> {
+    let sign = signed_area(polygon).signum();
+    let (mut low, mut high) = (0.0_f64, 1.0_f64);
+    for (&p, &q) in polygon
+        .iter()
+        .zip(polygon.iter().cycle().skip(1))
+        .take(polygon.len())
+    {
+        if distance(p, q) < 1e-6 {
+            continue;
+        }
+        // Top edges have already been quantised for the GPU, unlike these footprint masks.
+        let side = |v: Point| {
+            sign * ((q.0 - p.0) * (v.1 - p.1) - (q.1 - p.1) * (v.0 - p.0)) + distance(p, q) * 0.0001
+        };
+        let (fa, fb) = (side(a), side(b));
+        if fa < 0.0 && fb < 0.0 {
+            return None;
+        }
+        if fa < 0.0 {
+            low = low.max(fa / (fa - fb));
+        }
+        if fb < 0.0 {
+            high = high.min(fa / (fa - fb));
+        }
+        if high <= low {
+            return None;
+        }
+    }
+    Some((low, high))
 }
 
 fn overlaps(first: &[Point], second: &[Point]) -> bool {
@@ -1823,4 +1917,30 @@ fn vertical_piece(
     // Godot's clockwise front faces point against the right-hand cross product.
     mesh.indices
         .extend([base, base + 2, base + 1, base, base + 3, base + 2]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repeated_cut_vertices_do_not_duplicate_or_hide_paving() {
+        let subject = [(0.0, 0.0), (0.0, 4.0), (4.0, 4.0), (4.0, 0.0)];
+        let mask = [
+            (1.0, 1.0),
+            (1.0, 3.0),
+            (3.0, 3.0),
+            (3.0, 3.0),
+            (3.0 + 1e-14, 3.0),
+            (3.0, 1.0),
+        ];
+        let (outside, inside) = split_by_mask(&subject, &mask);
+        assert!((outside.iter().map(|p| polygon_area(p)).sum::<f64>() - 12.0).abs() < 1e-8);
+        assert!((polygon_area(&inside) - 4.0).abs() < 1e-8);
+        let (a, b) = segment_inside((0.0, 2.0), (4.0, 2.0), &mask).unwrap();
+        assert!(
+            (a - 0.25).abs() < 0.0001 && (b - 0.75).abs() < 0.0001,
+            "repeated vertices must not invent a clipping plane"
+        );
+    }
 }

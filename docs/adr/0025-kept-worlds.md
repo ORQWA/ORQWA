@@ -252,3 +252,7 @@ cracks between different triangulations. Corner pieces require both walking appr
 Folded inner offsets are resolved before clipping, and shared profile endpoint heights
 are sampled globally at overlaps and chunk boundaries.
 Temporary grading metadata adds no stored fields; stored format remains 3.
+
+Generator 32 extrudes only exposed sidewalk boundaries, removing internal side walls
+between joined walking pieces. Degenerate clipping edges cannot duplicate paving or invent
+a mask plane. The metadata is temporary; stored format remains 3.

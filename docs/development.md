@@ -101,6 +101,9 @@ isolated sidewalk tiles beside a service road. Junction fans are reserved for di
 street arms; a continuous street already owns its bend geometry, including inside a loop.
 Walking overlap components are determined before ownership trimming and include touching
 overlap groups, so clipping cannot split their grade. Stored format remains 3.
+Generator 32 clips side extrusions to the exposed walking perimeter and ignores repeated
+mask vertices, preventing internal side walls and duplicate boolean pieces. Stored format
+remains 3.
 
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
