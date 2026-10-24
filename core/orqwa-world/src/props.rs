@@ -15,7 +15,7 @@ use crate::landcover::LandIndex;
 use crate::road::{Mouth, RoadIndex, Station};
 use crate::streets::Clearance;
 use crate::vegetation::Footprint;
-use crate::{HeightGrid, MeshData, ROAD_HALF_WIDTH};
+use crate::{HeightGrid, MeshData, ROAD_HALF_WIDTH, ROAD_SINK};
 
 /// A guard rail's span (`guard_rail`, one post at its middle) and how far its face stands from
 /// the road's centre line.
@@ -170,75 +170,36 @@ pub(crate) fn place(
     props
 }
 
-/// Attach protection to the final terrain, including both ends of a curved rail span and
-/// feet across a chunk boundary, where the owner grid only has coarse border samples.
+/// Attach ground-mounted markers across chunk boundaries to the final terrain. Guardrails
+/// are fitted to their owning carriageway instead: another hairpin can cut the bank below it.
 #[allow(clippy::cast_possible_truncation)] // f32 instance buffers
 pub(crate) fn ground_protection(chunks: &mut [crate::TerrainChunk]) {
     let terrain = crate::foundations::Ground(chunks);
     let mut corrections = Vec::new();
     for (chunk_index, chunk) in chunks.iter().enumerate() {
-        for name in [
-            "guard_rail",
-            "guard_rail_start",
-            "guard_rail_end",
-            "snow_pole",
-            "delineator",
-        ] {
+        for name in ["snow_pole", "delineator"] {
             let Some(buffer) = chunk.props.models.get(name) else {
                 continue;
             };
             for (index, transform) in buffer.as_chunks::<12>().0.iter().enumerate() {
-                if name.starts_with("guard_rail") {
-                    let inside = [-2.0, 2.0].into_iter().all(|z| {
-                        (transform[3] + transform[2] * z)
-                            .abs()
-                            .max((transform[11] + transform[10] * z).abs())
-                            <= crate::CHUNK_SIZE as f32 / 2.0
-                    });
-                    if inside {
-                        continue;
-                    }
-                    let ends = [-2.0, 2.0].map(|z| {
-                        let east = f64::from(transform[3] + chunk.center[0] + transform[2] * z);
-                        let north = -f64::from(transform[11] + chunk.center[2] + transform[10] * z);
-                        terrain.at(east, north)
-                    });
-                    if let [Some(a), Some(b)] = ends {
-                        corrections.push((
-                            chunk_index,
-                            name,
-                            index,
-                            f64::midpoint(a, b) as f32 - chunk.center[1],
-                            ((b - a) / RAIL_SPAN) as f32,
-                        ));
-                    }
-                    continue;
-                }
                 if transform[3].abs().max(transform[11].abs()) <= crate::CHUNK_SIZE as f32 / 2.0 {
                     continue;
                 }
                 let east = f64::from(transform[3] + chunk.center[0]);
                 let north = -f64::from(transform[11] + chunk.center[2]);
                 if let Some(height) = terrain.at(east, north) {
-                    corrections.push((
-                        chunk_index,
-                        name,
-                        index,
-                        height as f32 - chunk.center[1],
-                        transform[6],
-                    ));
+                    corrections.push((chunk_index, name, index, height as f32 - chunk.center[1]));
                 }
             }
         }
     }
-    for (chunk, name, index, height, rise) in corrections {
+    for (chunk, name, index, height) in corrections {
         let buffer = chunks[chunk]
             .props
             .models
             .get_mut(name)
             .expect("existing protection");
         buffer[index * 12 + 7] = height;
-        buffer[index * 12 + 6] = rise;
     }
 }
 
@@ -967,10 +928,13 @@ fn rail_span(
     {
         return;
     }
-    let (a, b) = (
-        beside(&a, side, RAIL_OFFSET, roadside),
-        beside(&b, side, RAIL_OFFSET, roadside),
-    );
+    // Buried post feet anchor in the road's closed edge/skirt. Sampling the cut bank can
+    // put the entire blade below the asphalt when another arm of a hairpin runs lower.
+    let anchor = |station: &Station| {
+        let (east, north) = out(station, side, RAIL_OFFSET);
+        [east, station.elevation - ROAD_SINK, north]
+    };
+    let (a, b) = (anchor(&a), anchor(&b));
     let (de, dn) = (b[0] - a[0], b[2] - a[2]);
     let length = de.hypot(dn);
     if length < 0.1 {

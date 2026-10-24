@@ -5242,6 +5242,62 @@ async fn a_lower_parallel_railway_does_not_pull_the_road_verge_and_protection_do
 }
 
 #[tokio::test]
+async fn guardrails_stay_at_the_upper_carriageway_beside_a_lower_hairpin_arm() {
+    let mut points = Vec::new();
+    for i in 0..=100 {
+        points.push((0.0, f64::from(i) * 10.0));
+    }
+    for k in 1..12 {
+        let angle = std::f64::consts::PI * f64::from(k) / 12.0;
+        points.push((8.0 - 8.0 * angle.cos(), 1000.0 + 8.0 * angle.sin()));
+    }
+    for i in (0..=100).rev() {
+        points.push((16.0, f64::from(i) * 10.0));
+    }
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for (east, north) in points {
+        let (lat, lon) = at(east, north);
+        let elevation = 500.0 - east * 1.7;
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let route = Route::from_gpx_with::<Level>(&xml, None, &MapData::default())
+        .await
+        .unwrap();
+    let world = generate(
+        &route,
+        &mut Level(440.0),
+        &MapData::default(),
+        &mut |_, _| {},
+    )
+    .await;
+    let upper: Vec<_> = along_middle(&props_of(&world, "guard_rail"))
+        .into_iter()
+        .filter(|p| p[0].abs() < 5.0)
+        .collect();
+    assert!(upper.len() > 100, "the upper arm still needs protection");
+    for p in upper {
+        assert!(
+            p[1] > 499.5,
+            "rail follows the cut bank below its road: {p:?}"
+        );
+        assert!(
+            (3.45..3.75).contains(&p[0].abs()),
+            "post stays beside the road edge: {p:?}"
+        );
+    }
+    for section in world.road.vertices.as_chunks::<6>().0 {
+        for p in [section[2], section[3]] {
+            let ground = ground_at(&world, p[0], p[2]).expect("terrain under each carriageway");
+            assert!(ground <= p[1] + 0.01, "the lower arm remains clear");
+        }
+    }
+}
+
+#[tokio::test]
 async fn level_ground_gets_no_guard_rails() {
     let map = MapData {
         roads: vec![road_north()],

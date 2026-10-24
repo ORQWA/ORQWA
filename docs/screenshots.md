@@ -144,6 +144,21 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Guardrails beside lower hairpin arms
+
+Generator 26 fits guardrail endpoint heights to their owning carriageway, retaining the
+existing lateral clearance. Buried post feet meet the road edge/skirt; the lower bank no
+longer dictates blade height. Curved spans and chunk joins share their fitted endpoints.
+
+This matching close camera uses the saved Alpenbrevet Gold route at 30.64 km to go.
+Generator 25 has already removed the duplicate asphalt in both images, making the remaining
+low guardrail visible separately. After generator 26 the blade follows the upper wearing
+surface and the lower road remains clear. Vegetation and buildings are omitted.
+
+| Before | After |
+|---|---|
+| ![Guardrail below the upper hairpin's asphalt](images/issues/alpenbrevet-hairpin-guard-before.jpg) | ![Guardrail anchored beside its owning carriageway](images/issues/alpenbrevet-hairpin-guard-after.jpg) |
+
 ### Duplicate terrain-draped streets
 
 Generator 25 gives a close, aligned mapped copy of the ridden carriageway the same pavement

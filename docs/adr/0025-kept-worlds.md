@@ -209,3 +209,10 @@ Source identity distinguishes that copy from a shallow joining street or a wider
 beside a narrow ridden cycleway. Original map feature IDs survive street-chain assembly,
 and rounded caps and shoulder openings use the same ownership test. These IDs are temporary;
 stored format remains 3.
+
+Generator 26 anchors guardrail span endpoints to their owning carriageway's elevation minus
+the 15 cm shoulder sink. Buried post feet meet the existing road edge/skirt instead of moving
+the blade down to a bank cut by a lower hairpin arm. Lateral clearance, upright posts and
+shared curved endpoints remain; their fitted heights no longer depend on terrain chunks.
+Final-ground corrections still apply to ground-mounted snow poles and delineators.
+Terrain shaping and the lower carriageway are unchanged. Stored format remains 3.

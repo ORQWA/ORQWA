@@ -544,6 +544,8 @@ physically based materials and light, restyled group by group.
     - [x] Duplicate streets draped down terrain: matched map features share the ridden
       pavement owner despite GPX offsets; verify Alpenbrevet at 30.64 km to go, keeping
       shallow joining arms, crossings and independent parallel ways (generator 25, R124).
+    - [x] Guardrails beside lower hairpin arms: keep blade heights at the owning road,
+      with post feet anchored to its edge and curved/chunk joins retained (generator 26, R125).
     - [x] Roundabout bridge fences: one structure owner for outbound and return curves,
       including mismatched tag boundaries; leave the at-grade junction interior open while
       retaining outside-edge and grade-separated protection (generator 23).

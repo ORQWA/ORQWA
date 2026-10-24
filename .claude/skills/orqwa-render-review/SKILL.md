@@ -176,6 +176,10 @@ Asphalt with lane dashes below the ridden road is duplicate terrain-draped pavin
 shadow. Compare mapped street triangles as well as the image, using the saved full course.
 Offset GPX/map centre lines must share a pavement owner without removing shallow side-road
 arms, crossings, independent parallel cycleways or wider highways beside a ridden cycleway.
+Also compare guardrails with the upper switchback's asphalt height. A neighbouring lower
+road can cut the bank below that edge even without a railway: the blade must follow its
+own carriageway and buried post feet must meet the road edge/skirt. Check both arms remain
+clear, curved span endpoints still meet, and chunk boundaries do not change the datum.
 
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):

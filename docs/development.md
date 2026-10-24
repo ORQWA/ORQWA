@@ -174,6 +174,13 @@ joining street has a different source, as do independent parallel ways and a wid
 beside a narrow ridden cycleway; they retain their pavement. Source IDs are used only during
 generation, including after mapped features are chained. Stored format remains 3.
 
+Generator 26 fits guardrail endpoint heights to the owning carriageway, 15 cm below its
+surface. Posts retain their lateral clearance and embed their buried feet in the road edge
+and skirt. A lower hairpin arm can cut the bank without pulling the upper road's blade below
+the asphalt. Shared curved endpoints agree independently of terrain chunk ownership; only
+ground-mounted snow poles and delineators use the final-ground correction. The terrain and
+lower road remain clear. Stored format remains 3.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks
