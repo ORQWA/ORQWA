@@ -85,6 +85,10 @@ These matching overview cameras use the full saved Alpenbrevet Gold inputs at
 209.36 km to go (about 1.38 km from the start), near Andermatt. Nearby geometry alone is
 sent to the renderer; the complete route determines terrain shaping and projection.
 Buildings use their generated shells for context; vegetation is omitted.
+Generic regression fixtures vary road width, loop direction and terrain-chunk placement;
+they check coverage, walking height on both sides of internal joins and exposed side walls.
+The fixed village, lakeside junction, city-bench and Oberalp hairpin/tunnel views below were
+also regenerated and reviewed with the correction.
 
 | Before | Continuous sidewalk at street height |
 |---|---|
