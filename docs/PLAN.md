@@ -541,8 +541,9 @@ physically based materials and light, restyled group by group.
     - [x] Guardrails on tight curves: shared endpoints on both road edges and across chunk
       boundaries; bridge barriers follow the pavement's cross-sections on Alpenbrevet's
       start/finish loop (generator 22).
-    - [ ] Shadow rows beneath overhanging roads and bridges: reproduce on Alpenbrevet at
-      30.64 km to go and retain continuous, natural shadows without diagonal striping.
+    - [x] Duplicate streets draped down terrain: matched map features share the ridden
+      pavement owner despite GPX offsets; verify Alpenbrevet at 30.64 km to go, keeping
+      shallow joining arms, crossings and independent parallel ways (generator 25, R124).
     - [x] Roundabout bridge fences: one structure owner for outbound and return curves,
       including mismatched tag boundaries; leave the at-grade junction interior open while
       retaining outside-edge and grade-separated protection (generator 23).

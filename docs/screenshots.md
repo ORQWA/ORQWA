@@ -144,6 +144,25 @@ The Swiss comparisons use `VIEWS="village-chase hairpin-chase oberalp-tunnel-cha
 The London review checks an offset of 1.5 m on the drawn 6 m carriageway at 120 m and
 0.875 m on the drawn 3.5 m carriageway at 600 m; both offsets are left of travel.
 
+### Duplicate terrain-draped streets
+
+Generator 25 gives a close, aligned mapped copy of the ridden carriageway the same pavement
+owner, using the original map feature matched for road appearance. Small GPX/map offsets
+no longer leave duplicate asphalt, edge paint or lane markings on the bank below it.
+Shallow joining roads, crossings and independent parallel ways retain their pavement.
+
+These identical cameras use the full saved Alpenbrevet Gold inputs at 30.64 km to go
+(180.10 km from the start), looking at the upper switchback beside the rider. Buildings and
+vegetation are omitted. Within 150 m of that position, the duplicate mapped paving falls
+from 3,608 triangles to zero; this includes 118 asphalt faces steeper than 45 degrees.
+The second pair isolates a two-metre map/GPX offset on a steep bank: the extra strip and
+its painted edge disappear while the ridden road remains.
+
+| Before | After |
+|---|---|
+| ![Duplicate asphalt on the Alpenbrevet switchback bank](images/issues/alpenbrevet-terrain-street-before.jpg) | ![Single ridden road with the terrain bank exposed](images/issues/alpenbrevet-terrain-street-after.jpg) |
+| ![Offset mapped road adds another painted asphalt strip](images/issues/offset-terrain-street-before.jpg) | ![One carriageway with its original verge](images/issues/offset-terrain-street-after.jpg) |
+
 ### General road clearance for bridge and roadside fences
 
 Generator 24 checks complete barrier footprints against the actual generated carriageways

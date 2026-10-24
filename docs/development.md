@@ -166,6 +166,14 @@ and supports remain closed. Roadside guardrail and fence instances share the
 same clearance check. Temporary barrier ranges are discarded before storing, so format 3
 is unchanged. Protection on genuine overpasses and beside clear road edges remains.
 
+Generator 25 retains the original map feature selected for each ridden segment's appearance.
+Close, aligned mapped copies of that feature share the ridden pavement owner even when their
+cross-sections are slightly offset. This removes duplicate ground ribbons, rounded caps and
+false shoulder openings that can paint asphalt and markings down steep terrain. A shallow
+joining street has a different source, as do independent parallel ways and a wider highway
+beside a narrow ridden cycleway; they retain their pavement. Source IDs are used only during
+generation, including after mapped features are chained. Stored format remains 3.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

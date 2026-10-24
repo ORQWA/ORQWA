@@ -121,6 +121,7 @@ impl Appearance {
 }
 
 struct Piece {
+    source: usize,
     a: (f64, f64),
     b: (f64, f64),
     structure: Option<StructureKind>,
@@ -139,7 +140,7 @@ impl Index {
             pieces: Vec::new(),
             cells: HashMap::new(),
         };
-        for road in &map.roads {
+        for (source, road) in map.roads.iter().enumerate() {
             let line: Vec<_> = road
                 .line
                 .iter()
@@ -148,6 +149,7 @@ impl Index {
             for pair in drape::densify(&line, 20.0).windows(2) {
                 let i = index.pieces.len();
                 index.pieces.push(Piece {
+                    source,
                     a: pair[0],
                     b: pair[1],
                     structure: road.structure,
@@ -168,9 +170,9 @@ impl Index {
         point: (f64, f64),
         direction: (f64, f64),
         surface: Surface,
-    ) -> Appearance {
+    ) -> (Appearance, Option<usize>) {
         let (cx, cy) = cell(point);
-        let mut best: Option<(f64, Appearance)> = None;
+        let mut best: Option<(f64, Appearance, usize)> = None;
         for x in cx - 1..=cx + 1 {
             for y in cy - 1..=cy + 1 {
                 for &i in self.cells.get(&(x, y)).into_iter().flatten() {
@@ -202,12 +204,12 @@ impl Index {
                     }
                     let score = distance + 20.0 * (1.0 - alignment);
                     if best.is_none_or(|b| score < b.0) {
-                        best = Some((score, piece.appearance));
+                        best = Some((score, piece.appearance, piece.source));
                     }
                 }
             }
         }
-        best.map_or_else(Appearance::default, |b| b.1)
+        best.map_or_else(|| (Appearance::default(), None), |b| (b.1, Some(b.2)))
     }
 }
 

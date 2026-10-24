@@ -171,6 +171,12 @@ at carriageway height and that the separate railway keeps its original lower ele
 Include a road on a chunk boundary: its protection can stand in a neighbour and must use
 that neighbour's refined ground rather than coarse border extrapolation from its owner.
 
+At 30.64 km to go (180.10 km from the start), inspect the switchbacks from the valley side.
+Asphalt with lane dashes below the ridden road is duplicate terrain-draped paving, not a
+shadow. Compare mapped street triangles as well as the image, using the saved full course.
+Offset GPX/map centre lines must share a pavement owner without removing shallow side-road
+arms, crossings, independent parallel cycleways or wider highways beside a ridden cycleway.
+
 For a complete documentation refresh, follow
 [`docs/development.md#refreshing-screenshots`](../../../docs/development.md#refreshing-screenshots):
 isolate sample data, capture device/error/planned-workout fixtures and licensed local video,
