@@ -283,6 +283,7 @@ mod tests {
             fit: vec![14, 16, 0xD4, 0x08, b'.', b'F', b'I', b'T'],
             name: "Gurten & back".to_owned(),
             external_id: "orqwa-20261012-071500".to_owned(),
+            along_route: true,
         }
     }
 
