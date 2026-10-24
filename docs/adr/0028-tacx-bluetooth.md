@@ -22,8 +22,11 @@ ANT+ support, which was dropped; it uses the existing Bluetooth adapter and no d
   Bluetooth driver continues to own the device handle, subscriptions and reconnection.
   Existing callers see the same controllable trainer and telemetry events.
 - Validate ANT sync, length, message type and XOR checksum. Read speed from page 16 and
-  power/cadence from page 25, masking power's status bits and ignoring unavailable values.
-  Unknown pages contribute no readings; rejected commands on page 71 are logged.
+  power/cadence from page 25, masking power's status bits; an unavailable value is unknown,
+  not zero. The trainer sends the two pages in turn, so each passes on the latest of all
+  three readings, as one FTMS notification does: the Devices tab shows only the last
+  reading (R80). Unknown pages contribute no readings; rejected commands on page 71 are
+  logged.
 - Encode resistance (page 48, half-percent), ERG (49, quarter-watts) and simulation
   (50 for wind, 51 for grade/rolling resistance). Clamp to valid FE-C ranges, excluding
   unavailable-value sentinels. Grade uses a +200 percent offset; wind uses km/h +127.

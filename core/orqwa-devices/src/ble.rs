@@ -189,6 +189,7 @@ impl Bluetooth {
                 resistance_range: ResistanceRange::default(),
                 trainer: Box::new(ResistanceRange::default()),
                 tacx_controls: tacx::Controls::default(),
+                tacx_readings: tacx::Readings::default(),
                 buttons: di2::Buttons::default(),
                 click: zwift_click::Buttons::default(),
                 click_v2: zwift_click_v2::Buttons::default(),
@@ -283,6 +284,8 @@ struct Driver {
     resistance_range: ResistanceRange,
     trainer: Box<dyn TrainerDriver>,
     tacx_controls: tacx::Controls,
+    /// A Tacx trainer's readings, sent on separate pages in turn.
+    tacx_readings: tacx::Readings,
     /// Decodes a Di2 shifter's button indications.
     buttons: di2::Buttons,
     /// Decodes a Zwift Click's button states.
@@ -401,6 +404,7 @@ impl Driver {
         self.answered.clear();
         self.battery = Battery::default();
         self.tacx_controls = tacx::Controls::default();
+        self.tacx_readings = tacx::Readings::default();
         let set_up = timeout(CONNECT_TIMEOUT, self.set_up(&peripheral)).await;
         let (mut notifications, control_point) = match set_up {
             Ok(Ok(set_up)) => set_up,
@@ -787,7 +791,8 @@ impl Driver {
             if page[0] == 0x47 && matches!(page[3], 1..=3) {
                 warn!(device = %name, command = page[1], status = page[3], "Tacx control rejected");
             }
-            tacx::parse_telemetry(value)
+            self.tacx_readings
+                .update(value)
                 .ok()
                 .flatten()
                 .map(DeviceEvent::Telemetry)

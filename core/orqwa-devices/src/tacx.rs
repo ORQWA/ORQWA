@@ -135,32 +135,36 @@ pub fn parse_page(bytes: &[u8]) -> Result<&[u8], ParseError> {
     Ok(&bytes[4..12])
 }
 
-/// Decodes general FE data (page 16) and trainer power/cadence (page 25).
-/// Unknown pages and unavailable values contribute no measurements.
-///
-/// # Errors
-/// Returns [`ParseError`] for truncated or corrupt messages.
-pub fn parse_telemetry(bytes: &[u8]) -> Result<Option<Telemetry>, ParseError> {
-    let page = parse_page(bytes)?;
-    let telemetry = match page[0] {
-        0x10 => {
-            let speed = u16::from_le_bytes([page[4], page[5]]);
-            Telemetry {
-                speed: (speed != u16::MAX).then(|| MetersPerSecond(f64::from(speed) * 0.001)),
-                ..Telemetry::default()
+/// The trainer's latest readings, put together from general FE data (page 16: speed) and
+/// trainer data (page 25: power and cadence). The trainer sends these pages in turn, so each
+/// page alone would leave the other's readings out.
+#[derive(Debug, Clone, Default)]
+pub struct Readings(Telemetry);
+
+impl Readings {
+    /// Takes a message; returns all current readings after a telemetry page, `None` after any
+    /// other page or while every reading is unavailable. A page replaces the readings it
+    /// carries, so a value the trainer reports unavailable is not kept from an older page.
+    ///
+    /// # Errors
+    /// Returns [`ParseError`] for truncated or corrupt messages.
+    pub fn update(&mut self, bytes: &[u8]) -> Result<Option<Telemetry>, ParseError> {
+        let page = parse_page(bytes)?;
+        match page[0] {
+            0x10 => {
+                let speed = u16::from_le_bytes([page[4], page[5]]);
+                self.0.speed =
+                    (speed != u16::MAX).then(|| MetersPerSecond(f64::from(speed) * 0.001));
             }
-        }
-        0x19 => {
-            let power = u16::from_le_bytes([page[5], page[6]]) & 0x0fff;
-            Telemetry {
-                power: (power != 0x0fff).then(|| Watts(f64::from(power))),
-                cadence: (page[2] != 0xff).then(|| Rpm(f64::from(page[2]))),
-                ..Telemetry::default()
+            0x19 => {
+                let power = u16::from_le_bytes([page[5], page[6]]) & 0x0fff;
+                self.0.power = (power != 0x0fff).then(|| Watts(f64::from(power)));
+                self.0.cadence = (page[2] != 0xff).then(|| Rpm(f64::from(page[2])));
             }
+            _ => return Ok(None),
         }
-        _ => return Ok(None),
-    };
-    Ok((telemetry != Telemetry::default()).then_some(telemetry))
+        Ok((self.0 != Telemetry::default()).then_some(self.0))
+    }
 }
 
 #[cfg(test)]
@@ -256,53 +260,68 @@ mod tests {
     }
 
     #[test]
-    fn power_is_twelve_bits_and_pages_merge_without_erasing_other_measurements() {
-        let mut telemetry = parse_telemetry(&frame([0x19, 1, 90, 0, 0, 250, 0xa0, 0x30]))
-            .unwrap()
-            .unwrap();
-        assert_eq!(telemetry.power, Some(Watts(250.0)));
-        assert_eq!(telemetry.cadence, Some(Rpm(90.0)));
-        telemetry.merge(
-            &parse_telemetry(&frame([0x10, 0x19, 0, 0, 0x10, 0x27, 255, 0x30]))
-                .unwrap()
-                .unwrap(),
-        );
-        assert_eq!(telemetry.speed, Some(MetersPerSecond(10.0)));
-        assert_eq!(telemetry.power, Some(Watts(250.0)));
+    fn every_reading_tells_power_cadence_and_speed_although_pages_alternate() {
+        // Each reading replaces the last one shown on the Devices tab (R80): one without
+        // power and cadence would blank them until the next page.
+        let mut readings = Readings::default();
+        // Power's upper four bits are trainer status, not watts.
+        let power = frame([0x19, 1, 90, 0, 0, 250, 0xa0, 0x30]);
+        let speed = frame([0x10, 0x19, 0, 0, 0x10, 0x27, 255, 0x30]);
+        let first = readings.update(&power).unwrap().unwrap();
+        assert_eq!(first.power, Some(Watts(250.0)));
+        assert_eq!(first.cadence, Some(Rpm(90.0)));
+        for page in [&speed, &power, &speed] {
+            let reading = readings.update(page).unwrap().unwrap();
+            assert_eq!(reading.power, Some(Watts(250.0)));
+            assert_eq!(reading.cadence, Some(Rpm(90.0)));
+            assert_eq!(reading.speed, Some(MetersPerSecond(10.0)));
+        }
     }
 
     #[test]
-    fn unavailable_is_not_zero_and_non_telemetry_pages_are_ignored() {
+    fn unavailable_is_neither_zero_nor_an_older_value() {
+        let mut readings = Readings::default();
         assert_eq!(
-            parse_telemetry(&frame([0x19, 1, 255, 0, 0, 255, 255, 0x30])),
+            readings.update(&frame([0x19, 1, 255, 0, 0, 255, 255, 0x30])),
             Ok(None)
         );
         assert_eq!(
-            parse_telemetry(&frame([0x10, 0x19, 0, 0, 255, 255, 255, 0x30])),
+            readings.update(&frame([0x10, 0x19, 0, 0, 255, 255, 255, 0x30])),
             Ok(None)
         );
-        assert_eq!(parse_telemetry(&frame([0x50; 8])), Ok(None));
-        let zero = parse_telemetry(&frame([0x19, 1, 0, 0, 0, 0, 0, 0x30]))
+        assert_eq!(readings.update(&frame([0x50; 8])), Ok(None));
+        let zero = readings
+            .update(&frame([0x19, 1, 0, 0, 0, 0, 0, 0x30]))
             .unwrap()
             .unwrap();
         assert_eq!(zero.power, Some(Watts(0.0)));
         assert_eq!(zero.cadence, Some(Rpm(0.0)));
+        readings
+            .update(&frame([0x10, 0x19, 0, 0, 0x10, 0x27, 255, 0x30]))
+            .unwrap();
+        let unavailable = readings
+            .update(&frame([0x19, 1, 255, 0, 0, 255, 255, 0x30]))
+            .unwrap()
+            .unwrap();
+        assert_eq!(unavailable.power, None);
+        assert_eq!(unavailable.cadence, None);
+        assert_eq!(unavailable.speed, Some(MetersPerSecond(10.0)));
     }
 
     #[test]
     fn malformed_packets_are_rejected() {
         let valid = frame([0x19, 1, 90, 0, 0, 250, 0, 0x30]);
         for len in 0..valid.len() {
-            assert!(parse_telemetry(&valid[..len]).is_err());
+            assert!(Readings::default().update(&valid[..len]).is_err());
         }
         for i in 0..valid.len() {
             let mut corrupt = valid.clone();
             corrupt[i] ^= 1;
-            assert!(parse_telemetry(&corrupt).is_err());
+            assert!(Readings::default().update(&corrupt).is_err());
         }
         let mut broadcast = valid;
         broadcast[2] = 0x4e;
         broadcast[12] ^= 1;
-        assert!(parse_telemetry(&broadcast).unwrap().is_some());
+        assert!(Readings::default().update(&broadcast).unwrap().is_some());
     }
 }
