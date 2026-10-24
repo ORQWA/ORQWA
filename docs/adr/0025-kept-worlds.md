@@ -231,3 +231,8 @@ Its sidewalk tops also follow owning street profiles rather than the cut bank. R
 elevations are retained temporarily, mapped profiles sample their street centre, and
 entrance/furniture height queries share the drawn walking surface. Closed sides still reach
 terrain without inverted buried faces; the stored mesh layout is unchanged.
+
+Generator 28 tapers sidewalk endpoint widths with the street and uses actual road triangles
+for carriageway clearance. Partial building overlaps trim their occupied area, preserving
+the clear walking width; drawn building outlines use precomputed triangle masks. Submillimetre
+GPU clipping slivers are discarded before normal generation. Stored format remains 3.

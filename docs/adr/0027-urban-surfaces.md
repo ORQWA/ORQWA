@@ -110,6 +110,19 @@ their bottoms stay below their tops rather than creating inverted faces. Lowered
 and entrance ramps share the street datum. Bench and bin queries return the same drawn
 walking height. No stored fields change; stored format remains 3.
 
+### Width transitions and partial obstructions amendment (2026-10-24)
+
+Generator 28 carries both endpoint widths through each sidewalk section. The walking band,
+shared joins, access offsets and street masks taper together. Clearance uses the existing
+drawn carriageway triangles, indexed before urban generation, rather than the conservative
+terrain-shaping envelope that can extend wider than a changing road.
+
+Partial building overlaps trim only their occupied polygon area. The same drawn outlines
+used by building models and shells are triangulated once, retaining the remaining
+walking strip and closing its exposed edges. Submillimetre clipping slivers that cannot
+retain reliable GPU winding or slope are discarded before computing surface normals.
+This adds no stored fields; stored format remains 3.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,

@@ -143,6 +143,80 @@ async fn sidewalks_stay_level_with_their_road_above_a_lower_hairpin_cutting() {
 }
 
 #[tokio::test]
+async fn sidewalks_keep_their_full_length_through_ridden_width_changes() {
+    use orqwa_osm::RoadKind::{Local, Primary, Tertiary};
+    for (from, to) in [(Tertiary, Primary), (Primary, Local), (Local, Primary)] {
+        let mut map = city();
+        let mut narrow = road_north();
+        narrow.details.kind = from;
+        narrow.line[1] = at(0.0, 500.0);
+        let mut wider = road_north();
+        wider.class = RoadClass::Major;
+        wider.details.kind = to;
+        wider.line = vec![at(0.0, 500.0), at(0.0, 1000.0)];
+        map.roads = vec![narrow, wider];
+        let world = world(&map).await;
+        for i in 0..=400 {
+            let north = 480.0 + i as f32 * 0.1;
+            for side in [-1.0, 1.0] {
+                assert!(
+                    height_on(&world, |c| &c.urban, side * 4.1, -north).is_some(),
+                    "sidewalk gap at width transition: {side}, {north}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn sidewalks_keep_a_clear_walking_strip_beside_partial_building_overlaps() {
+    let mut map = city();
+    map.roads.push(road_north());
+    map.buildings.push(house(401, 7.5, 500.0, 3.0));
+    let world = world(&map).await;
+    for i in 0..=100 {
+        let north = 495.0 + i as f32 * 0.1;
+        assert!(
+            height_on(&world, |c| &c.urban, 3.3, -north).is_some(),
+            "a building at the outer edge must not remove the clear walking strip at {north}"
+        );
+    }
+    assert!(
+        height_on(&world, |c| &c.urban, 5.0, -498.0).is_none(),
+        "building remains clear"
+    );
+}
+
+#[tokio::test]
+async fn sidewalk_clipping_respects_the_drawn_outline_of_an_irregular_building() {
+    let mut map = city();
+    map.roads.push(road_north());
+    let mut building = house(402, 7.5, 500.0, 3.0);
+    building.outline = [
+        (4.5, 497.0),
+        (10.0, 497.0),
+        (10.0, 503.0),
+        (7.0, 503.0),
+        (7.0, 500.0),
+        (4.5, 500.0),
+        (4.5, 497.0),
+    ]
+    .into_iter()
+    .map(|(e, n)| at(e, n))
+    .collect();
+    map.buildings.push(building);
+    let world = world(&map).await;
+    assert!(
+        height_on(&world, |c| &c.urban, 3.3, -501.5).is_some(),
+        "the strip outside the drawn building remains open"
+    );
+    assert!(
+        height_on(&world, |c| &c.urban, 4.7, -501.5).is_none(),
+        "the fitted model occupies the notch in its mapped footprint"
+    );
+}
+
+#[tokio::test]
 async fn sidewalks_have_raised_curbs_and_leave_roads_junctions_and_green_spaces_open() {
     let mut map = city();
     map.roads.push(road_north());

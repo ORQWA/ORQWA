@@ -99,6 +99,10 @@ from the start) in Andermatt. Inspect the elevated bend and the nearby village j
 one overview, then move closer to the walking edge. Offset GPX/map copies must not make
 duplicate strips or trim each other into pieces. Retain independent streets' walks, include
 tile-piece and terrain-chunk joins, and check curbs and lowered access from road height.
+Include widening and narrowing streets and a wall touching only the outer part of a walk.
+The usable strip must remain continuous and keep clear of the actual asphalt, while clipped
+outer faces reach terrain. Inspect the same sloping, partially clipped corner for reversed
+faces or seams; the wider terrain-shaping envelope is not the walking boundary.
 
 For roadside guardrail placement, include a tight hairpin from above with both edges visible.
 Four-metre models placed on centre-line tangents can overlap inside a curve and leave gaps

@@ -60,6 +60,11 @@ files keep their existing format. Format-2 worlds from generator 4 offer regener
 add the more regular city benches. Generator 6 joins sidewalk edges around bends, closes
 their sides down to the drawn terrain and slopes neighbouring pieces into lowered entrances.
 Existing format-2 worlds offer regeneration for the corrected sidewalks; the layout is unchanged.
+Generator 7 shares the carriageway's tangent arcs with the sidewalk at junctions, rounds outer
+bends and clips footway polygons against the road instead of discarding complete sections.
+The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.
+Bench and vegetation queries use the same clipped footprints as the rendered meshes.
+
 Generator 27 keeps the matched original map feature alongside each ridden road segment's
 appearance, plus its projected position on the matched local map section. Copies of that
 section share one sidewalk and pavement owner, so coarse GPX bends and chained tile pieces
@@ -72,10 +77,12 @@ Ridden endpoints use road elevations, mapped walks use centre-line terrain sampl
 junction curves use their inner edge. Both sides share the same grade and cross-section
 datum; access ramps and bench/bin height queries agree with that surface. Solid sides
 extend down to terrain, with buried edges kept correctly wound. Stored format remains 3.
-Generator 7 shares the carriageway's tangent arcs with the sidewalk at junctions, rounds outer
-bends and clips footway polygons against the road instead of discarding complete sections.
-The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.
-Bench and vegetation queries use the same clipped footprints as the rendered meshes.
+Generator 28 carries both endpoint widths through walking strips, joins and access offsets.
+Actual ridden carriageway triangles replace the wider terrain-shaping envelope in sidewalk
+clearance, avoiding false gaps where road width changes. Partial overlaps with drawn building
+outlines are clipped, preserving the clear walking width and closing the new outer edges.
+Submillimetre GPU clipping slivers are discarded before normals are computed. Footprints
+and height queries remain shared with vegetation and furniture; stored format stays 3.
 
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;

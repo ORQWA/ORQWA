@@ -46,6 +46,7 @@ impl Material {
 
 struct Site {
     outline: Vec<Point>,
+    cuts: Vec<[Point; 3]>,
     center: Point,
     area: f64,
     business: bool,
@@ -57,6 +58,7 @@ struct Way {
     a: Point,
     b: Point,
     half: f64,
+    end_half: f64,
     lift: f64,
     elevations: Option<[f64; 2]>,
 }
@@ -69,6 +71,12 @@ struct Profile {
 }
 
 impl Way {
+    fn half_at(self, point: Point) -> f64 {
+        let along =
+            distance(self.a, project(point, self.a, self.b)) / distance(self.a, self.b).max(0.01);
+        self.half + (self.end_half - self.half) * along
+    }
+
     fn profile(self) -> Profile {
         Profile {
             a: self.a,
@@ -100,6 +108,7 @@ struct CurveSection {
 /// Immutable, spatially indexed urban surfaces, shared by all chunk builders.
 #[derive(Default)]
 pub(crate) struct Urban {
+    pavement: crate::pavement::Pavement,
     sites: Vec<Site>,
     site_cells: HashMap<(i64, i64), Vec<usize>>,
     building_cells: HashMap<(i64, i64), Vec<usize>>,
@@ -124,12 +133,24 @@ impl Urban {
         clearance: &Clearance,
         road: &RoadIndex,
         land: &LandIndex,
+        pavement: crate::pavement::Pavement,
     ) -> Self {
         let mut plots: Vec<_> = plots.collect();
         plots.sort_by_key(|plot| plot.building.id);
-        let mut urban = Self::default();
+        let mut urban = Self {
+            pavement,
+            ..Self::default()
+        };
         for plot in plots {
             let outline = buildings::drawn_outline(&plot.footprint);
+            let mut mask = outline.clone();
+            if signed_area(&mask) < 0.0 {
+                mask.reverse();
+            }
+            let cuts = buildings::triangulate(&mask)
+                .into_iter()
+                .map(|tri| tri.map(|i| mask[i as usize]))
+                .collect();
             let center = centroid(&outline);
             let area = polygon_area(&outline);
             let index = urban.sites.len();
@@ -143,6 +164,7 @@ impl Urban {
             }
             urban.sites.push(Site {
                 outline,
+                cuts,
                 center,
                 area,
                 business: plot.shop.is_some()
@@ -184,6 +206,7 @@ impl Urban {
                     a: pair[0],
                     b: pair[1],
                     half: street.half_width(),
+                    end_half: street.half_width(),
                     lift: street.lift(),
                     elevations: None,
                 });
@@ -201,6 +224,7 @@ impl Urban {
                 a: pair[0].position,
                 b: pair[1].position,
                 half: pair[0].appearance.width / 2.0,
+                end_half: pair[1].appearance.width / 2.0,
                 lift: ROAD_SINK,
                 elevations: Some([pair[0].elevation - ROAD_SINK, pair[1].elevation - ROAD_SINK]),
             });
@@ -271,11 +295,12 @@ impl Urban {
                     (p.0 + right.0 * width * sign, p.1 + right.1 * width * sign)
                 };
                 let inner = way.half + GAP;
+                let end_inner = way.end_half + GAP;
                 self.add_patch(Patch {
                     polygon: vec![
                         offset(way.a, start, inner),
-                        offset(way.b, end, inner),
-                        offset(way.b, end, inner + WALK_WIDTH),
+                        offset(way.b, end, end_inner),
+                        offset(way.b, end, end_inner + WALK_WIDTH),
                         offset(way.a, start, inner + WALK_WIDTH),
                     ],
                     material: Material::Concrete,
@@ -362,7 +387,7 @@ impl Urban {
                 }
                 let side = turn.signum();
                 let start = (-before.0 * side).atan2(before.1 * side);
-                let inner = way.half + GAP;
+                let inner = way.half_at(point) + GAP;
                 let radial = |angle: f64, radius: f64| {
                     (
                         point.0 + angle.cos() * radius,
@@ -421,7 +446,19 @@ impl Urban {
                     let way = self.ways[way];
                     // Cut only the part occupying another carriageway, rather than
                     // discarding the whole slab and exposing square, disconnected ends.
-                    shapes = subtract_all(shapes, &ribbon(way.a, way.b, way.half + 0.04));
+                    shapes = subtract_all(shapes, &way_ribbon(way, 0.04));
+                }
+                let mut sites: Vec<_> = cells(&patch.polygon, CELL, 0.0)
+                    .into_iter()
+                    .flat_map(|key| self.building_cells.get(&key).into_iter().flatten().copied())
+                    .collect();
+                sites.sort_unstable();
+                sites.dedup();
+                for site in sites {
+                    for mask in &self.sites[site].cuts {
+                        // Keep the walking width that remains beside a protruding wall.
+                        shapes = subtract_all(shapes, mask);
+                    }
                 }
             }
             shapes.retain(|polygon| self.clear_polygon(polygon, land, clearance, road));
@@ -462,7 +499,7 @@ impl Urban {
             .filter(|&other| {
                 let candidate = self.ways[other];
                 other != index
-                    && (candidate.half - way.half).abs() < 1e-6
+                    && (candidate.half_at(point) - way.half_at(point)).abs() < 1e-6
                     && (candidate.lift - way.lift).abs() < 1e-6
                     && (distance(candidate.a, point) < 1e-6 || distance(candidate.b, point) < 1e-6)
             })
@@ -490,13 +527,14 @@ impl Urban {
                 .expect("a building outline");
             let door = midpoint(edge.0, edge.1);
             let reach = distance(door, street);
-            if reach <= way.half + GAP || reach > ACCESS_REACH {
+            let half = way.half_at(street);
+            if reach <= half + GAP || reach > ACCESS_REACH {
                 continue;
             }
             let to_street = direction(door, street);
             let end = (
-                street.0 - to_street.0 * (way.half + GAP),
-                street.1 - to_street.1 * (way.half + GAP),
+                street.0 - to_street.0 * (half + GAP),
+                street.1 - to_street.1 * (half + GAP),
             );
             let business = site.business;
             let town = site.town;
@@ -535,7 +573,7 @@ impl Urban {
             });
             // Small front-garden walls leave a broad opening for the access, inferred from
             // the house and road rather than pretending cadastral boundaries are mapped.
-            if town && !business && area < 300.0 && reach > way.half + WALK_WIDTH + 4.0 {
+            if town && !business && area < 300.0 && reach > half + WALK_WIDTH + 4.0 {
                 let at = (
                     end.0 - to_street.0 * (WALK_WIDTH + 0.7),
                     end.1 - to_street.1 * (WALK_WIDTH + 0.7),
@@ -694,7 +732,7 @@ impl Urban {
                     road.edge_distance(east, north) >= 0.5 && !self.on_way((east, north), true)
                 })
                 && !self.on_way(point, false)
-                && road.edge_distance(point.0, point.1) >= 0.02
+                && !self.pavement.contains(point.0, point.1)
                 && !self.in_building(point)
         };
         // Furniture and mesh generation must agree about which sidewalk pieces exist.
@@ -719,7 +757,11 @@ impl Urban {
         }
         Self::near(&self.way_cells, point, 4.0).any(|index| {
             let way = self.ways[index];
-            let reach = if center_only { 0.001 } else { way.half + 0.02 };
+            let reach = if center_only {
+                0.001
+            } else {
+                way.half_at(point) + 0.02
+            };
             distance(point, project(point, way.a, way.b)) < reach
         })
     }
@@ -1090,6 +1132,25 @@ fn curb_uv(patch: &Patch, point: Point) -> [f32; 2] {
 }
 
 fn surface_normals(mesh: &mut MeshData, first: usize, first_index: usize) {
+    // Clipping can leave slivers narrower than the GPU positions can represent. Their
+    // quantised heights can reverse a face or its slope; they cannot form a visible tread.
+    let kept: Vec<_> = mesh.indices[first_index..]
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .filter(|face| {
+            let [a, b, c] = face.map(|i| mesh.vertices[i as usize]);
+            let area = (b[0] - a[0]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[0] - a[0]);
+            let longest = [(a, b), (b, c), (c, a)]
+                .into_iter()
+                .map(|(p, q)| (p[0] - q[0]).hypot(p[2] - q[2]))
+                .fold(0.0_f32, f32::max);
+            area > longest * 0.0001
+        })
+        .flat_map(|face| *face)
+        .collect();
+    mesh.indices.truncate(first_index);
+    mesh.indices.extend(kept);
     // Draped normals describe the terrain; entrance ramps and the curb's bevel
     // need the normal of the final raised surface instead.
     mesh.normals[first..].fill([0.0; 3]);
@@ -1241,6 +1302,22 @@ fn overlaps(first: &[Point], second: &[Point]) -> bool {
             })
         })
 }
+fn way_ribbon(way: Way, margin: f64) -> Vec<Point> {
+    let d = direction(way.a, way.b);
+    let edge = |point: Point, half: f64, side: f64| {
+        (
+            point.0 + d.1 * (half + margin) * side,
+            point.1 - d.0 * (half + margin) * side,
+        )
+    };
+    vec![
+        edge(way.a, way.half, 1.0),
+        edge(way.b, way.end_half, 1.0),
+        edge(way.b, way.end_half, -1.0),
+        edge(way.a, way.half, -1.0),
+    ]
+}
+
 fn ribbon(a: Point, b: Point, half: f64) -> Vec<Point> {
     let d = direction(a, b);
     let offset = (d.1 * half, -d.0 * half);
