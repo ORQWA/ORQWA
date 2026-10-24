@@ -597,6 +597,9 @@ physically based materials and light, restyled group by group.
   (a straight line through a tunnel or gallery, across a lake, a fix lost in a tunnel) the
   route follows the map's roads between; the terrain model checked against the file's own
   elevations and spikes cut; the Oberalp route as a fixture with its standard views and checks
+- [x] Roundabouts ridden the way traffic goes round them (R126): counter-clockwise where it
+  keeps right, clockwise where it keeps left, also where a planner's file skips the ring;
+  GPS wander a few metres back is no extra lap, turning loops stay two-way (generator 27)
 - [x] Streets and railways as one line across tile borders, paved streets level across
   (#116, #117); nothing of a railway tunnel or a house in the road ridden (#138)
 - [ ] Realistic look, step by step (ADR 0020, R89):

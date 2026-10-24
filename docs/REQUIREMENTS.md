@@ -51,6 +51,7 @@ on a smart trainer (primary: Wahoo KICKR Core 2) through a generated semi-realis
 |---|---|
 | R11 | Import **GPX** (MVP); importer interface allows TCX/FIT/KML later. Routes are used as-is (no route editor). |
 | R12 | Elevation: when online, correct with a terrain model (Mapterhorn, AWS Terrain Tiles fallback — ADR 0005) and smooth; offline, use cached tiles or GPX elevation with smoothing. |
+| R126 | Extends R11 (2026-10-24): **roundabouts are ridden the way traffic goes round them**: counter-clockwise where traffic keeps right, clockwise where it keeps left, also where a planner's file has no points on the ring and the way round is the long one. A point recorded a few metres back round the ring is GPS wander, never an extra lap; a turning loop at the end of a street is ridden as the file goes. Kept worlds offer regeneration (R101). |
 
 ## Physics
 

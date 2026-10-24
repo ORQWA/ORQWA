@@ -56,6 +56,17 @@ const JOIN_M: f64 = 1.0;
 /// stay as recorded: a turn back on the spot there is the rider's (#101).
 const FOLD_TURN: f64 = 150.0;
 const FOLD_M: f64 = 5.0;
+/// Roundabouts are rings of road this small and large (radius to the road's middle, metres),
+/// every point within this share of the radius from the mean, as the world finds them for
+/// their islands; made of at most this many ways (the map splits some, tiles cut others at
+/// their borders). The map draws them the way traffic goes round, counter-clockwise where it
+/// keeps right and clockwise where it keeps left, but rarely marks them one-way.
+const ROUNDABOUT_RADIUS: (f64, f64) = (6.0, 45.0);
+const ROUNDABOUT_ROUND: f64 = 0.12;
+const ROUNDABOUT_PIECES: usize = 8;
+/// A point matched at most this far back round a roundabout from the last is GPS wander, not
+/// a lap of it.
+const WANDER_M: f64 = 5.0;
 
 /// Points of the finished line are at most this far apart...
 const STEP_M: f64 = 5.0;
@@ -229,6 +240,25 @@ type Way = (Vec<(f64, f64)>, Vec<usize>);
 /// A vertex of a road in the network's graph: the road and the vertex's index on it.
 type Vertex = (usize, usize);
 
+/// A way between two positions on roads (`Network::shortest`): the points between them, the
+/// roads it passes onto, how long it is and how much of that runs the wrong way round
+/// roundabouts.
+struct Passage {
+    through: Vec<(f64, f64)>,
+    onto: Vec<usize>,
+    length: f64,
+    wrong: f64,
+}
+
+/// How the shortest-way search reached a vertex, or `to`: from the vertex before, if any.
+#[derive(Clone, Copy)]
+enum Step {
+    Start,
+    From(Vertex),
+    /// Along `to`'s own road from `from`, on it too.
+    Along,
+}
+
 /// A vertex reached by the shortest-way search, ordered for the heap by the way to it.
 #[derive(PartialEq)]
 struct Reached {
@@ -256,8 +286,12 @@ struct Network<'a> {
     roads: &'a [Road],
     index: HashMap<(i64, i64), Vec<(usize, usize)>>,
     /// The vertices of other roads at each vertex (`shortest`): junctions, and the ends of a
-    /// way's pieces.
+    /// way's pieces; and a roundabout of one closed way's last vertex at its first.
     joins: HashMap<Vertex, Vec<Vertex>>,
+    /// Whether each road goes round a roundabout, one way: as drawn.
+    roundabout: Vec<bool>,
+    /// The longest way once round a roundabout.
+    longest_lap: f64,
 }
 
 impl<'a> Network<'a> {
@@ -302,11 +336,26 @@ impl<'a> Network<'a> {
                 }
             }
         }
+        let mut roundabout = vec![false; lines.len()];
+        let mut longest_lap = 0.0_f64;
+        for ring in roundabouts(&lines, roads, &joins) {
+            longest_lap = longest_lap.max(ring.iter().map(|&r| path_length(&lines[r])).sum());
+            if let &[road] = ring.as_slice() {
+                let last = lines[road].len() - 1;
+                joins.entry((road, last)).or_default().push((road, 0));
+                joins.entry((road, 0)).or_default().push((road, last));
+            }
+            for road in ring {
+                roundabout[road] = true;
+            }
+        }
         Self {
             lines,
             roads,
             index,
             joins,
+            roundabout,
+            longest_lap,
         }
     }
 
@@ -540,81 +589,113 @@ impl<'a> Network<'a> {
     /// The way along roads from `from` to `to`: along their road's bends, or the shortest way
     /// through the network where the track changes road (`shortest`), round junctions and
     /// through tunnels whose points a file left out; straight where the roads do not connect.
-    /// With the roads the way passes onto. `None` where the way would be a detour
-    /// (`MAX_DETOUR`): a loop of the road between the two is not what was ridden.
+    /// Round a roundabout the way traffic goes, even the long way round. With the roads the
+    /// way passes onto. `None` where the way would be a detour (`MAX_DETOUR`): a loop of the
+    /// road between the two is not what was ridden.
     fn way(&self, from: Match, to: Match) -> Option<Way> {
         let chord = distance(from.at, to.at).max(1.0);
-        let mut path = vec![from.at];
-        let mut onto = Vec::new();
-        if from.road == to.road {
-            path.extend(self.bends(from, to));
-        } else if let Some((through, roads)) = self.shortest(from, to, chord * MAX_DETOUR) {
-            path.extend(through);
-            onto = roads;
+        let limit = chord * MAX_DETOUR;
+        let free = if from.road == to.road && !self.roundabout[from.road] {
+            let through = self.bends(from, to);
+            Some(Passage {
+                length: length_via(from.at, &through, to.at),
+                through,
+                onto: Vec::new(),
+                wrong: 0.0,
+            })
+        } else {
+            self.shortest(from, to, limit, false)
+        };
+        let Some(free) = free else {
+            // Straight across from a road the other does not connect to.
+            return (from.road != to.road).then(|| (vec![from.at, to.at], Vec::new()));
+        };
+        // A detour or not as if traffic went either way round: going the long way round a
+        // roundabout is none.
+        if free.length > limit {
+            return None;
         }
+        let passage = if free.wrong > WANDER_M {
+            self.shortest(from, to, free.length + self.longest_lap, true)
+                .unwrap_or(free)
+        } else {
+            free
+        };
+        let mut path = Vec::with_capacity(passage.through.len() + 2);
+        path.push(from.at);
+        path.extend(passage.through);
         path.push(to.at);
-        (path_length(&path) <= chord * MAX_DETOUR).then_some((path, onto))
+        Some((path, passage.onto))
     }
 
-    /// The shortest way through the network from `from` to `to` on other roads, no longer than
-    /// `limit`: the points between the two, and the roads it passes onto (`from`'s and `to`'s
-    /// not among them).
-    fn shortest(&self, from: Match, to: Match, limit: f64) -> Option<Way> {
+    /// The shortest way through the network from `from` to `to`, no longer than `limit`: on
+    /// their road where both lie on it, or on other roads. Only the way traffic goes round
+    /// roundabouts if `keeping_to_them`.
+    fn shortest(
+        &self,
+        from: Match,
+        to: Match,
+        limit: f64,
+        keeping_to_them: bool,
+    ) -> Option<Passage> {
         let line = |road: usize| &self.lines[road];
+        let allowed = |wrong: f64| !keeping_to_them || wrong <= 0.0;
+        let mut heap = BinaryHeap::new();
+        let mut best: HashMap<Vertex, (f64, f64, Step)> = HashMap::new();
+        let mut arrived: Option<(f64, f64, Step)> = None;
+        if from.road == to.road {
+            let length = length_via(from.at, &self.bends(from, to), to.at);
+            let backwards = (to.segment, to.along) < (from.segment, from.along);
+            let wrong = self.against(from.road, if backwards { length } else { 0.0 });
+            if allowed(wrong) {
+                arrived = Some((length, wrong, Step::Along));
+            }
+        }
         // From `from`, the ends of its segment are reached first; `to` is reached from the
         // ends of its own.
-        let mut heap = BinaryHeap::new();
-        let mut best: HashMap<Vertex, (f64, Option<Vertex>)> = HashMap::new();
-        for vertex in [from.segment, from.segment + 1] {
+        for (vertex, back) in [(from.segment, 1.0), (from.segment + 1, 0.0)] {
             let cost = distance(from.at, line(from.road)[vertex]);
-            best.insert((from.road, vertex), (cost, None));
-            heap.push(Reached {
-                cost,
-                vertex: (from.road, vertex),
-            });
+            let wrong = self.against(from.road, cost * back);
+            if allowed(wrong) {
+                best.insert((from.road, vertex), (cost, wrong, Step::Start));
+                heap.push(Reached {
+                    cost,
+                    vertex: (from.road, vertex),
+                });
+            }
         }
         let goal = |(road, vertex): Vertex| {
-            (road == to.road && (vertex == to.segment || vertex == to.segment + 1))
-                .then(|| distance(line(road)[vertex], to.at))
+            let last = distance(line(road)[vertex], to.at);
+            if road != to.road {
+                None
+            } else if vertex == to.segment {
+                Some((last, 0.0))
+            } else if vertex == to.segment + 1 {
+                Some((last, self.against(road, last)))
+            } else {
+                None
+            }
         };
-        let mut arrived: Option<(f64, Vertex)> = None;
         while let Some(Reached { cost, vertex }) = heap.pop() {
-            if cost > limit || arrived.is_some_and(|(total, _)| cost >= total) {
+            if cost > limit || arrived.is_some_and(|(total, ..)| cost >= total) {
                 break;
             }
-            if best.get(&vertex).is_some_and(|&(known, _)| cost > known) {
+            let Some(&(known, wrong_so_far, _)) = best.get(&vertex) else {
+                continue;
+            };
+            if cost > known {
                 continue;
             }
-            if let Some(last) = goal(vertex)
-                && arrived.is_none_or(|(total, _)| cost + last < total)
+            if let Some((last, wrong)) = goal(vertex)
+                && allowed(wrong)
+                && arrived.is_none_or(|(total, ..)| cost + last < total)
             {
-                arrived = Some((cost + last, vertex));
+                arrived = Some((cost + last, wrong_so_far + wrong, Step::From(vertex)));
             }
-            let (road, index) = vertex;
-            let mut next: Vec<(Vertex, f64)> = Vec::new();
-            if index > 0 {
-                next.push((
-                    (road, index - 1),
-                    distance(line(road)[index], line(road)[index - 1]),
-                ));
-            }
-            if index + 1 < line(road).len() {
-                next.push((
-                    (road, index + 1),
-                    distance(line(road)[index], line(road)[index + 1]),
-                ));
-            }
-            next.extend(
-                self.joins
-                    .get(&vertex)
-                    .into_iter()
-                    .flatten()
-                    .map(|&j| (j, 0.0)),
-            );
-            for (other, step) in next {
+            for (other, step, wrong) in self.steps(vertex) {
                 let total = cost + step;
-                if best.get(&other).is_none_or(|&(known, _)| total < known) {
-                    best.insert(other, (total, Some(vertex)));
+                if allowed(wrong) && best.get(&other).is_none_or(|&(known, ..)| total < known) {
+                    best.insert(other, (total, wrong_so_far + wrong, Step::From(vertex)));
                     heap.push(Reached {
                         cost: total,
                         vertex: other,
@@ -622,32 +703,77 @@ impl<'a> Network<'a> {
                 }
             }
         }
-        let (total, mut vertex) = arrived?;
-        if total > limit {
+        let (length, wrong, last) = arrived?;
+        if length > limit {
             return None;
         }
-        let mut through = Vec::new();
-        let mut roads = Vec::new();
-        loop {
+        let (through, onto) = match last {
+            Step::Along => (self.bends(from, to), Vec::new()),
+            step => self.retrace(&best, step, (from.road, to.road)),
+        };
+        Some(Passage {
+            through,
+            onto,
+            length,
+            wrong,
+        })
+    }
+
+    /// How much of going `back` metres along `road`, against the order of its vertices, is
+    /// the wrong way round a roundabout.
+    fn against(&self, road: usize, back: f64) -> f64 {
+        if self.roundabout[road] { back } else { 0.0 }
+    }
+
+    /// The vertices one step on from `vertex`, along its road or onto another there, with how
+    /// far each is and how much of that is the wrong way round a roundabout.
+    fn steps(&self, (road, index): Vertex) -> Vec<(Vertex, f64, f64)> {
+        let line = &self.lines[road];
+        let mut next = Vec::new();
+        if index > 0 {
+            let step = distance(line[index], line[index - 1]);
+            next.push(((road, index - 1), step, self.against(road, step)));
+        }
+        if index + 1 < line.len() {
+            next.push((
+                (road, index + 1),
+                distance(line[index], line[index + 1]),
+                0.0,
+            ));
+        }
+        let joined = self.joins.get(&(road, index)).into_iter().flatten();
+        next.extend(joined.map(|&other| (other, 0.0, 0.0)));
+        next
+    }
+
+    /// The points and the roads (other than the two `ends`) of the way the shortest-way
+    /// search found, from its `last` step back to the start, in order.
+    fn retrace(
+        &self,
+        best: &HashMap<Vertex, (f64, f64, Step)>,
+        last: Step,
+        ends: (usize, usize),
+    ) -> Way {
+        let mut through: Vec<(f64, f64)> = Vec::new();
+        let mut onto = Vec::new();
+        let mut step = last;
+        while let Step::From(vertex) = step {
             let (road, index) = vertex;
-            let point = line(road)[index];
+            let point = self.lines[road][index];
             if through
                 .last()
                 .is_none_or(|&last| distance(last, point) > 0.05)
             {
                 through.push(point);
             }
-            if road != from.road && road != to.road && !roads.contains(&road) {
-                roads.push(road);
+            if road != ends.0 && road != ends.1 && !onto.contains(&road) {
+                onto.push(road);
             }
-            match best.get(&vertex).and_then(|&(_, previous)| previous) {
-                Some(previous) => vertex = previous,
-                None => break,
-            }
+            step = best[&vertex].2;
         }
         through.reverse();
-        roads.reverse();
-        Some((through, roads))
+        onto.reverse();
+        (through, onto)
     }
 
     /// The way from `from` to `to` (the positions on roads of two consecutive points `ends`)
@@ -699,6 +825,119 @@ impl<'a> Network<'a> {
 
 fn path_length(path: &[(f64, f64)]) -> f64 {
     path.windows(2).map(|w| distance(w[0], w[1])).sum()
+}
+
+/// The length of the way from `from` through the points `through` to `to`.
+fn length_via(from: (f64, f64), through: &[(f64, f64)], to: (f64, f64)) -> f64 {
+    match (through.first(), through.last()) {
+        (Some(&first), Some(&last)) => {
+            distance(from, first) + path_length(through) + distance(last, to)
+        }
+        _ => distance(from, to),
+    }
+}
+
+/// The roundabouts among the roads (see `ROUNDABOUT_RADIUS`), each as its roads in the order
+/// traffic takes them: rings of one closed way or of ways each starting where the last ends.
+fn roundabouts(
+    lines: &[Vec<(f64, f64)>],
+    roads: &[Road],
+    joins: &HashMap<Vertex, Vec<Vertex>>,
+) -> Vec<Vec<usize>> {
+    let (smallest, largest) = ROUNDABOUT_RADIUS;
+    let longest_lap = std::f64::consts::TAU * largest * (1.0 + ROUNDABOUT_ROUND);
+    let widest = 2.0 * largest * (1.0 + ROUNDABOUT_ROUND);
+    // Roundabouts are roads; a path round a pond is none.
+    let road_like = |road: usize| {
+        lines[road].len() >= 2 && !matches!(roads[road].class, RoadClass::Path | RoadClass::Track)
+    };
+    let mut rings: Vec<Vec<usize>> = Vec::new();
+    let mut taken = vec![false; lines.len()];
+    for first in 0..lines.len() {
+        if taken[first] || !road_like(first) {
+            continue;
+        }
+        let start = lines[first][0];
+        // Ways on from the end of the last, depth first; each ring is found from its road
+        // listed first.
+        let mut chains = vec![(vec![first], path_length(&lines[first]))];
+        while let Some((chain, length)) = chains.pop() {
+            let last = chain[chain.len() - 1];
+            let end = lines[last][lines[last].len() - 1];
+            if distance(end, start) <= JOIN_M {
+                if round(&chain, lines, (smallest, largest)) && arms(&chain, lines, joins) >= 2 {
+                    for &road in &chain {
+                        taken[road] = true;
+                    }
+                    rings.push(chain);
+                    break;
+                }
+                continue;
+            }
+            if chain.len() == ROUNDABOUT_PIECES {
+                continue;
+            }
+            for &(next, vertex) in joins
+                .get(&(last, lines[last].len() - 1))
+                .into_iter()
+                .flatten()
+            {
+                let length = length + path_length(&lines[next]);
+                if vertex == 0
+                    && next > first
+                    && road_like(next)
+                    && !chain.contains(&next)
+                    && length <= longest_lap
+                    && lines[next].iter().all(|&p| distance(p, start) <= widest)
+                {
+                    chains.push(([chain.as_slice(), &[next]].concat(), length));
+                }
+            }
+        }
+    }
+    rings
+}
+
+/// Whether the ring of roads `chain` is a circle with a radius within `radii`, as a
+/// roundabout is (`ROUNDABOUT_ROUND`).
+fn round(chain: &[usize], lines: &[Vec<(f64, f64)>], (smallest, largest): (f64, f64)) -> bool {
+    let points: Vec<(f64, f64)> = chain
+        .iter()
+        .flat_map(|&r| lines[r].iter().copied())
+        .collect();
+    // The middle by length, not by vertices: the map draws some pieces with more.
+    let (mut weight, mut middle) = (0.0, (0.0, 0.0));
+    for pair in points.windows(2) {
+        let length = distance(pair[0], pair[1]);
+        let centre = lerp(pair[0], pair[1], 0.5);
+        weight += length;
+        middle = (middle.0 + centre.0 * length, middle.1 + centre.1 * length);
+    }
+    if weight <= 0.0 {
+        return false;
+    }
+    let middle = (middle.0 / weight, middle.1 / weight);
+    #[allow(clippy::cast_precision_loss)] // a few dozen points
+    let radius = points.iter().map(|&p| distance(p, middle)).sum::<f64>() / points.len() as f64;
+    (smallest..=largest).contains(&radius)
+        && points
+            .iter()
+            .all(|&p| (distance(p, middle) - radius).abs() <= ROUNDABOUT_ROUND * radius)
+}
+
+/// How many other roads join the ring of roads `chain`. Only one leads to a turning loop,
+/// which traffic goes round either way.
+fn arms(chain: &[usize], lines: &[Vec<(f64, f64)>], joins: &HashMap<Vertex, Vec<Vertex>>) -> usize {
+    let mut others: Vec<usize> = chain
+        .iter()
+        .flat_map(|&road| (0..lines[road].len()).map(move |vertex| (road, vertex)))
+        .flat_map(|vertex| joins.get(&vertex).into_iter().flatten())
+        .map(|&(road, _)| road)
+        .filter(|road| !chain.contains(road))
+        .collect();
+    others.sort_unstable();
+    others.dedup();
+    others.len()
 }
 
 /// Direction of travel at point `i` (unit), from its neighbours; `None` where they coincide.
@@ -1397,6 +1636,137 @@ mod tests {
         for &p in &snapped {
             assert!(off(&zigzag, p) <= MAX_SHIFT_M + 1e-6, "{p:?}");
         }
+    }
+
+    /// The point at `degrees` on a circle of 15 m radius round the origin.
+    fn on_ring(degrees: f64) -> (f64, f64) {
+        let r = degrees.to_radians();
+        (15.0 * r.cos(), 15.0 * r.sin())
+    }
+
+    /// A roundabout of 15 m radius round the origin, drawn from the east counter-clockwise
+    /// (where traffic keeps right) or clockwise in `pieces` ways, and streets 150 m out from
+    /// it at the compass points `arms` (degrees counter-clockwise from east).
+    fn roundabout(clockwise: bool, pieces: usize, arms: &[f64]) -> Vec<Road> {
+        let turn = if clockwise { -10.0 } else { 10.0 };
+        let ring: Vec<(f64, f64)> = (0..=36).map(|i| on_ring(f64::from(i) * turn)).collect();
+        let each = 36 / pieces;
+        let mut roads: Vec<Road> = (0..pieces)
+            .map(|p| road(&ring[p * each..=(p + 1) * each]))
+            .collect();
+        for &degrees in arms {
+            let (x, y) = on_ring(degrees);
+            let r = degrees.to_radians();
+            roads.push(road(&[(x, y), (x + 150.0 * r.cos(), y + 150.0 * r.sin())]));
+        }
+        roads
+    }
+
+    const COMPASS: [f64; 4] = [0.0, 90.0, 180.0, 270.0];
+
+    /// A planner's file turning left at the roundabout: two points on the street from the
+    /// south, two on the street to the west, none round the ring.
+    fn left_at_the_roundabout() -> Vec<RawPoint> {
+        [(0.0, -140.0), (0.0, -60.0), (-60.0, 0.0), (-140.0, 0.0)]
+            .into_iter()
+            .map(point2)
+            .collect()
+    }
+
+    /// How far the line goes round the origin within 20 m of it, in degrees, counter-clockwise
+    /// positive.
+    fn round_the_middle(line: &[(f64, f64)]) -> f64 {
+        line.windows(2)
+            .filter(|w| w.iter().all(|p| p.0.hypot(p.1) < 20.0))
+            .map(|w| {
+                let turn = w[1].1.atan2(w[1].0) - w[0].1.atan2(w[0].0);
+                (turn + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU)
+                    - std::f64::consts::PI
+            })
+            .sum::<f64>()
+            .to_degrees()
+    }
+
+    #[test]
+    fn roundabouts_are_ridden_the_way_traffic_goes_round() {
+        // R126: where traffic keeps right, turning left is three quarters of the way round,
+        // counter-clockwise, never the quarter clockwise, nor across the island.
+        let line = xy(&to_roads(&left_at_the_roundabout(), &roundabout(false, 1, &COMPASS)).track);
+
+        let round = round_the_middle(&line);
+        assert!((250.0..290.0).contains(&round), "{round}° round");
+        for &(x, y) in &line {
+            assert!(
+                x.hypot(y) > 15.0 - MAX_SHIFT_M,
+                "across the island: {x}, {y}"
+            );
+        }
+    }
+
+    #[test]
+    fn where_traffic_keeps_left_roundabouts_are_ridden_clockwise() {
+        // R126: the map draws them clockwise there, and left is the first turn.
+        let line = xy(&to_roads(&left_at_the_roundabout(), &roundabout(true, 1, &COMPASS)).track);
+
+        let round = round_the_middle(&line);
+        assert!((-110.0..-70.0).contains(&round), "{round}° round");
+    }
+
+    #[test]
+    fn roundabouts_of_several_ways_are_ridden_the_way_traffic_goes_round() {
+        // R126: the map splits some rings, tiles cut others at their borders.
+        for pieces in [2, 3, 6] {
+            let roads = roundabout(false, pieces, &COMPASS);
+
+            let line = xy(&to_roads(&left_at_the_roundabout(), &roads).track);
+
+            let round = round_the_middle(&line);
+            assert!(
+                (250.0..290.0).contains(&round),
+                "{pieces} ways: {round}° round"
+            );
+        }
+    }
+
+    #[test]
+    fn wandering_back_a_little_round_a_roundabout_is_no_lap() {
+        // A recorded track round the ring from the south to the west, one point 3 m behind
+        // the one before it.
+        let mut track: Vec<RawPoint> = (2..=10)
+            .rev()
+            .map(|i| point(0.0, -10.0 * f64::from(i)))
+            .collect();
+        for degrees in [285.0, 300.0, 315.0, 303.0, 330.0, 345.0] {
+            track.push(point2(on_ring(degrees)));
+        }
+        track.extend((0..=11).map(|i| point2(on_ring(f64::from(i) * 15.0))));
+        track.extend((2..=10).map(|i| point(-10.0 * f64::from(i), 0.0)));
+
+        let line = xy(&to_roads(&track, &roundabout(false, 1, &COMPASS)).track);
+
+        // 85 m in and out each, three quarters of the way round, a little less round the
+        // corners: no extra lap of 94 m.
+        let expected = 170.0 + 0.75 * std::f64::consts::TAU * 15.0;
+        assert!(
+            (length(&line) - expected).abs() < 10.0,
+            "{} m instead of {expected} m",
+            length(&line)
+        );
+    }
+
+    #[test]
+    fn turning_loops_are_ridden_either_way() {
+        // A loop of road at the end of a street from the south, ridden round clockwise and
+        // back: only one road leads to it, so traffic goes either way round.
+        let roads = roundabout(false, 1, &[270.0]);
+        let mut track = vec![point(0.0, -140.0), point(0.0, -60.0)];
+        track.extend([240.0, 180.0, 120.0, 60.0, 0.0, -60.0].map(|d| point2(on_ring(d))));
+        track.extend([point(0.0, -60.0), point(0.0, -140.0)]);
+
+        let line = xy(&to_roads(&track, &roads).track);
+
+        let round = round_the_middle(&line);
+        assert!(round < -270.0, "{round}° round");
     }
 
     #[test]
