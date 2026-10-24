@@ -93,6 +93,8 @@ pub struct Profile {
     pub map_style: MapStyle,
     /// How the app speaks of the ride's moments.
     pub voice: Voice,
+    /// How many rides a week the rider plans, if they said (R124); nothing plans them.
+    pub rides_per_week: Option<u8>,
     /// What the rider shifts with.
     pub drivetrain: Drivetrain,
     /// Upper bounds of power zones 1–6 as a share of FTP (zone 7 is open), each above the one
@@ -118,6 +120,7 @@ impl Default for Profile {
             avatar: Avatar::Female,
             map_style: MapStyle::Coloured,
             voice: Voice::Casual,
+            rides_per_week: None,
             drivetrain: Drivetrain::default(),
             power_zones: POWER_ZONES,
             heart_rate_zones: HEART_RATE_ZONES,

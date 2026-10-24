@@ -31,6 +31,10 @@ the wording across the ride screen.
 - Power records are found live against the bests of the rider's history, loaded at the
   start, and told once the effort tops out rather than every second it keeps rising. A rider
   without records gets none mid-ride: every effort would be one.
+- The summaries' highlights are worked out from the history when a summary opens, not stored
+  with the ride: they compare against the rides before it, so they need no migration and stay
+  right after rides are deleted. The casual line is picked by the ride's path, so a summary
+  says the same each time.
 
 ## Consequences
 

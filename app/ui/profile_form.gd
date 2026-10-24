@@ -23,6 +23,8 @@ var _bike_mass: SpinBox = _spin(3.0, 40.0, 0.1, " kg")
 var _ftp: SpinBox = _spin(50.0, 600.0, 1.0, " W")
 var _max_heart_rate: SpinBox = _spin(100.0, 230.0, 1.0, " bpm")
 var _difficulty: SpinBox = _spin(0.0, 100.0, 5.0, " %")
+## Rides a week the rider plans (R124), 0 for none.
+var _rides_per_week: SpinBox = _spin(0.0, 14.0, 1.0, "")
 var _units: OptionButton = OptionButton.new()
 var _language: OptionButton = OptionButton.new()
 var _avatar: OptionButton = OptionButton.new()
@@ -55,6 +57,9 @@ func _init() -> void:
 	_voice.tooltip_text = tr(
 		"How ORQWA tells you of climbs topped, milestones and records during the ride"
 	)
+	_rides_per_week.tooltip_text = tr(
+		"The ride's summary counts your rides this week against it; 0 if you plan no number"
+	)
 	# In the order of DRIVETRAINS.
 	_drivetrain.add_item(tr("Cassette: shift on the bike"))
 	_drivetrain.add_item(tr("Single cog: virtual gears"))
@@ -80,6 +85,7 @@ func _init() -> void:
 		["Rider on the bike", _avatar],
 		["Ride map", _map_style],
 		["Voice", _voice],
+		["Rides planned per week", _rides_per_week],
 		["Drivetrain", _drivetrain],
 		["Chainring", _chainring],
 		["Cog", _cog],
@@ -111,6 +117,7 @@ func edit(profile: Dictionary) -> void:
 		[_ftp, "ftp_w", 200.0],
 		[_max_heart_rate, "max_heart_rate_bpm", 185.0],
 		[_difficulty, "default_difficulty_pct", 50.0],
+		[_rides_per_week, "rides_per_week", 0.0],
 		[_chainring, "chainring", 50.0],
 		[_cog, "cog", 14.0],
 	]:
@@ -144,6 +151,7 @@ func profile() -> Dictionary:
 		"avatar": RiderAvatar.RIDERS[_avatar.selected],
 		"map_style": MAP_STYLES[_map_style.selected],
 		"voice": VOICES[_voice.selected],
+		"rides_per_week": roundi(_rides_per_week.value),
 		"drivetrain": DRIVETRAINS[_drivetrain.selected],
 		"chainring": _chainring.value,
 		"cog": _cog.value,

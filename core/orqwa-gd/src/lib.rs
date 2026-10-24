@@ -1048,6 +1048,20 @@ impl OrqwaApp {
         array
     }
 
+    /// The highlights of the ride saved at `path` for its summary (R124), as the `moment`
+    /// signal describes them, local time `utc_offset_minutes` ahead of UTC.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn highlights(&self, path: GString, utc_offset_minutes: i64) -> VarArray {
+        let Some(app) = self.app.as_ref() else {
+            return VarArray::new();
+        };
+        app.highlights(Path::new(&path.to_string()), utc_offset_minutes * 60)
+            .iter()
+            .map(|moment| moment_dict(moment).to_variant())
+            .collect()
+    }
+
     /// The active rider's power curves (R62): `{period, compare}`, each the best efforts per
     /// duration as `[{duration_s, power, watts_per_kg, start_unix_s, path}]`, shortest first.
     /// `period` holds those of the rides of the last `period_days` (all rides for 0), `compare`
@@ -2523,6 +2537,9 @@ impl OrqwaApp {
                 MapStyle::Coloured
             },
             voice: voice_of(&data),
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // clamped
+            rides_per_week: Some(number("rides_per_week", 0.0).round().clamp(0.0, 14.0) as u8)
+                .filter(|n| *n > 0),
             // A rider saved without one, such as a new one, starts on the default (R98).
             drivetrain: match data
                 .get("drivetrain")
@@ -3747,8 +3764,9 @@ fn map_color(feature: MapFeature, style: MapStyle) -> Color {
 
 /// A rider as `profile()` describes them: `{id, name, rider_mass_kg, bike_mass_kg, ftp_w,
 /// max_heart_rate_bpm, units, language, avatar, drivetrain, chainring, cog, power_zones_pct,
-/// heart_rate_zones_pct, default_difficulty_pct, map_style, voice}` with `map_style` either
-/// `"coloured"` or `"dark"` and `voice` (R124) `"casual"`, `"plain"` or `"off"`.
+/// heart_rate_zones_pct, default_difficulty_pct, map_style, voice, rides_per_week}` with `map_style`
+/// either `"coloured"` or `"dark"`, `voice` (R124) `"casual"`, `"plain"` or `"off"` and
+/// `rides_per_week` 0 for none.
 fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
     vdict! {
         "id" => id,
@@ -3785,6 +3803,7 @@ fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
             MapStyle::Coloured => "coloured",
             MapStyle::Dark => "dark",
         },
+        "rides_per_week" => i64::from(p.rides_per_week.unwrap_or(0)),
         "voice" => match p.voice {
             Voice::Casual => "casual",
             Voice::Plain => "plain",
@@ -3807,12 +3826,57 @@ fn voice_of(data: &VarDictionary) -> Voice {
     }
 }
 
-/// A moment of a ride (R124) as `{kind, …}`: `climb_topped {index, elapsed_s, grade_pct}`,
+/// A moment of a ride (R124) as `{kind, …}`: `finished {distance_m, climbing_m, elapsed_s}`,
+/// `route_record {course, elapsed_s, gain_s}`, `climb_topped {index, elapsed_s, grade_pct}`,
 /// `climb_record {index, elapsed_s, gain_s}`, `halfway {distance_m}`, `one_to_go`,
-/// `distance {distance_m}`, `power_peak {duration_s, power_w}` or `first_ride {course}`; `index` counts climbs from 0, as `climbs()` does.
+/// `distance {distance_m}`, `power_peak {duration_s, power_w}`, `step_held {index, power_w}`,
+/// `first_ride {course}`, `ftp_raised {power_w}`, `streak {rides}`, `week_plan {rides,
+/// planned}` or `week_load {stress}`; `index` counts climbs from 0, as `climbs()` does.
 fn moment_dict(moment: &Moment) -> VarDictionary {
     let index = |i: usize| i64::try_from(i).unwrap_or(0);
     match *moment {
+        Moment::Finished {
+            distance,
+            climbing,
+            elapsed,
+        } => vdict! {
+            "kind" => "finished",
+            "distance_m" => distance.0,
+            "climbing_m" => climbing.0,
+            "elapsed_s" => elapsed.as_secs_f64(),
+        },
+        Moment::RouteRecord {
+            ref course,
+            elapsed,
+            gain,
+        } => vdict! {
+            "kind" => "route_record",
+            "course" => course.as_str(),
+            "elapsed_s" => elapsed.as_secs_f64(),
+            "gain_s" => gain.as_secs_f64(),
+        },
+        Moment::StepHeld { index: i, power } => vdict! {
+            "kind" => "step_held",
+            "index" => index(i),
+            "power_w" => power.0,
+        },
+        Moment::FtpRaised(ftp) => vdict! {
+            "kind" => "ftp_raised",
+            "power_w" => ftp.0,
+        },
+        Moment::Streak { rides } => vdict! {
+            "kind" => "streak",
+            "rides" => i64::from(rides),
+        },
+        Moment::WeekPlan { ride, planned } => vdict! {
+            "kind" => "week_plan",
+            "rides" => i64::from(ride),
+            "planned" => i64::from(planned),
+        },
+        Moment::WeekLoad { stress } => vdict! {
+            "kind" => "week_load",
+            "stress" => stress,
+        },
         Moment::ClimbTopped {
             index: i,
             elapsed,

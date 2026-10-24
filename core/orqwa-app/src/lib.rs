@@ -525,6 +525,7 @@ struct ActiveRide {
     next_climb: usize,
     milestones: moments::Milestones,
     peaks: moments::PowerPeaks,
+    steps: moments::StepsHeld,
     /// What to tell of once the ride starts: that it is the first on its course.
     greeting: Option<moments::Moment>,
     /// Summary of the samples so far and how many it covers, refreshed once per new sample
@@ -2892,6 +2893,7 @@ impl App {
             next_climb: 0,
             milestones,
             peaks,
+            steps: moments::StepsHeld::new(self.profile.profile.ftp),
             greeting,
             summary: (0, RideSummary::default()),
             time_to_go: estimate::TimeToGo::default(),
@@ -3112,6 +3114,28 @@ impl App {
                 }
             })
             .collect()
+    }
+
+    /// The highlights of the active rider's ride saved as `fit`, for its summary (R124): its
+    /// finish, the records it set and how it fits their week, local time `utc_offset_s` ahead of
+    /// UTC; empty for a ride not in the history.
+    #[must_use]
+    pub fn highlights(&self, fit: &Path, utc_offset_s: i64) -> Vec<moments::Moment> {
+        let records = self.ride_records();
+        let Some((_, record)) = records.iter().find(|(path, _)| path == fit) else {
+            return Vec::new();
+        };
+        let others: Vec<&RideRecord> = records
+            .iter()
+            .filter(|(path, _)| path != fit)
+            .map(|(_, other)| other)
+            .collect();
+        moments::highlights(
+            record,
+            &others,
+            self.profile.profile.rides_per_week,
+            utc_offset_s,
+        )
     }
 
     /// The active rider's best times on `route`, from earlier rides on the same course.
@@ -3553,6 +3577,13 @@ impl App {
                     active.ride.time_to_finish(power)
                 });
                 active.summary = (samples.len(), summary);
+                let workout = active.ride.state().workout;
+                events.extend(
+                    active
+                        .steps
+                        .follow(samples, workout.as_ref())
+                        .map(AppEvent::Moment),
+                );
                 // A simulated ride's powers are not real either.
                 if !active.simulated {
                     events.extend(
@@ -4051,7 +4082,7 @@ fn thin(points: &[(f64, f64)]) -> Vec<[f32; 2]> {
 }
 
 /// The fastest time on `climb` among `records`.
-fn best_climb_time(records: &[&RideRecord], climb: &ClimbTime) -> Option<Duration> {
+pub(crate) fn best_climb_time(records: &[&RideRecord], climb: &ClimbTime) -> Option<Duration> {
     records
         .iter()
         .flat_map(|r| r.climbs.iter())

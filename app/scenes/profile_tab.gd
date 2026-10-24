@@ -276,6 +276,7 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 	)
 	var custom_hud: bool = hud != OrqwaApp.hud_default_layout()
 	var difficulty: float = rider.get("default_difficulty_pct", 50.0)
+	var rides_per_week: int = rider.get("rides_per_week", 0)
 	# i18n-begin
 	var rows: Array[Array] = [
 		["Weight", mass % (weight * factor)],
@@ -307,6 +308,8 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 	rows.append(["HUD", "Custom" if custom_hud else "Default"])
 	# i18n-end
 	rows.append(["Trainer difficulty", "%d %%" % roundi(difficulty)])
+	if rides_per_week > 0:
+		rows.append(["Rides planned per week", "%d" % rides_per_week])
 	return rows
 
 

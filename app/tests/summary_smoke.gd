@@ -55,6 +55,12 @@ func _run() -> void:
 		"key figures shown: %s" % [captions]
 	)
 	var saved: String = summary.get("_path")
+	var highlights: HighlightsList = summary.get("_highlights")
+	var told: PackedStringArray = highlights.lines()
+	_check(
+		highlights.visible and not told.is_empty() and not told[0].contains("{"),
+		"the finish heads the highlights (R124): %s" % [told]
+	)
 	# A record uses its own duration's watts; other efforts in the curve are not PRs.
 	var record_ride: Dictionary = {}
 	for entry: Dictionary in orqwa.history():

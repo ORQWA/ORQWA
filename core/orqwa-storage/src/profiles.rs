@@ -60,6 +60,8 @@ struct ProfileFile {
     avatar: AvatarFile,
     map_style: MapStyleFile,
     voice: VoiceFile,
+    /// 0 for none.
+    rides_per_week: u8,
     drivetrain: DrivetrainFile,
     chainring: u8,
     cog: u8,
@@ -142,6 +144,7 @@ impl From<&Profile> for ProfileFile {
                 Voice::Plain => VoiceFile::Plain,
                 Voice::Off => VoiceFile::Off,
             },
+            rides_per_week: p.rides_per_week.unwrap_or(0),
             drivetrain: match p.drivetrain {
                 Drivetrain::Cassette => DrivetrainFile::Cassette,
                 Drivetrain::SingleCog { .. } => DrivetrainFile::SingleCog,
@@ -193,6 +196,7 @@ impl From<ProfileFile> for Profile {
                 VoiceFile::Plain => Voice::Plain,
                 VoiceFile::Off => Voice::Off,
             },
+            rides_per_week: Some(f.rides_per_week).filter(|n| *n > 0),
             drivetrain: match f.drivetrain {
                 DrivetrainFile::Cassette => Drivetrain::Cassette,
                 DrivetrainFile::SingleCog => Drivetrain::SingleCog {
@@ -1279,6 +1283,7 @@ mod tests {
             avatar: Avatar::Male,
             map_style: MapStyle::Dark,
             voice: Voice::Plain,
+            rides_per_week: Some(4),
             drivetrain: Drivetrain::SingleCog {
                 chainring: 46,
                 cog: 14,
@@ -1330,6 +1335,7 @@ mod tests {
             Voice::Casual,
             "riders hear the warm voice first (R124)"
         );
+        assert_eq!(profile.rides_per_week, None);
         assert_eq!(
             profile.drivetrain,
             Drivetrain::SingleCog {

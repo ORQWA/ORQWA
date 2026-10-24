@@ -167,6 +167,10 @@ msgstr ""
 msgid "A ghost rider on the road: your best time, a pacer or a recorded activity"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "A new FTP of {power}! You're getting stronger every week."
+msgstr ""
+
 #: app/scenes/devices_tab.gd
 msgid "A phone or tablet on the same Wi-Fi shifts and controls the ride"
 msgstr ""
@@ -277,6 +281,14 @@ msgstr ""
 
 #: app/scenes/analysis_tab.gd
 msgid "All time"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "All {distance} ridden with {climbing} of climbing. Well ridden!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "All {planned} planned rides this week done."
 msgstr ""
 
 #: app/scenes/course_detail.gd
@@ -1011,6 +1023,10 @@ msgstr ""
 msgid "Evening"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "Every ride you planned this week is done, all {planned} of them!"
+msgstr ""
+
 #: app/scenes/history_screen.gd
 msgid "Export FIT file"
 msgstr ""
@@ -1599,8 +1615,20 @@ msgstr ""
 msgid "Neuromuscular"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "New FTP: {power}."
+msgstr ""
+
 #: app/scenes/remote_dialog.gd
 msgid "New address"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "New best on {course}! You beat your old time by {gain}."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "New personal record on {course}, {gain} faster."
 msgstr ""
 
 #: app/scenes/profile_dialog.gd
@@ -2095,6 +2123,14 @@ msgstr ""
 msgid "Ride descents like flat roads"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "Ride finished: {distance} in {time}."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Ride finished: {distance}, {climbing} of climbing."
+msgstr ""
+
 #: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Ride map"
 msgstr ""
@@ -2115,6 +2151,22 @@ msgstr ""
 msgid "Ride this course along a video of it"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "Ride {rides} of {planned} planned this week."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Ride {rides} this week puts you beyond your plan of {planned}. Brilliant!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Ride {rides} this week, {planned} planned."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Ride {rides} this week."
+msgstr ""
+
 #: app/scenes/profile_dialog.gd
 msgid "Rider"
 msgstr ""
@@ -2133,6 +2185,10 @@ msgstr ""
 
 #: app/scenes/analysis_tab.gd
 msgid "Rides"
+msgstr ""
+
+#: app/ui/profile_form.gd
+msgid "Rides planned per week"
 msgstr ""
 
 #: app/scenes/profile_tab.gd
@@ -2359,6 +2415,10 @@ msgstr ""
 msgid "Step %d of %d  ·  %s left"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "Step completed on target."
+msgstr ""
+
 #: core/orqwa-app/src/failure.rs core/orqwa-upload/src/strava.rs
 msgid "Strava has switched off your API application: the account that owns it needs a Strava subscription. Subscribe, reactivate the application in Strava's API settings, then upload again."
 msgstr ""
@@ -2404,11 +2464,43 @@ msgid "Test"
 msgstr ""
 
 #: app/ui/moment_lines.gd
+msgid "That step was spot on the whole way through!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
 msgid "That was your best {duration} ever, at {power}!"
 msgstr ""
 
 #: app/ui/moment_lines.gd
+msgid "That's all {planned} rides you planned this week. Well done!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "That's ride {rides} of the {planned} you planned this week, nice work!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "That's your fastest ride on {course} ever, {gain} quicker than before!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
 msgid "That's {distance} on the clock already, great going!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "That's {rides} rides this week, even more than the {planned} you planned!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "That's {rides} rides this week, keep it up!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "That's {stress} TSS this week so far, a strong week of training!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "That's {time} on the bike and {distance} ridden. Well done!"
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -2445,6 +2537,10 @@ msgstr ""
 
 #: app/scenes/ride_settings_dialog.gd
 msgid "The ride ends and nothing is saved."
+msgstr ""
+
+#: app/ui/profile_form.gd
+msgid "The ride's summary counts your rides this week against it; 0 if you plan no number"
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
@@ -2501,6 +2597,10 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "This video follows its GPS data and does not need manual synchronization."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "This week's load: {stress} TSS."
 msgstr ""
 
 #: app/ui/ui_theme.gd
@@ -2759,6 +2859,14 @@ msgstr ""
 msgid "Weight"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "What a ride! You rode {distance} in {time}."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "What a ride! {distance} and {climbing} of climbing are done."
+msgstr ""
+
 #: app/scenes/devices_tab.gd
 msgid "What the buttons do"
 msgstr ""
@@ -2832,6 +2940,10 @@ msgid "Y (right pod)"
 msgstr ""
 
 #: app/ui/moment_lines.gd
+msgid "You held that step right on target, nicely done!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
 msgid "You're halfway there and going really well!"
 msgstr ""
 
@@ -2849,6 +2961,10 @@ msgstr ""
 
 #: app/scenes/analysis_tab.gd app/scenes/history_screen.gd
 msgid "Your FTP is now %d W: zones and workouts follow it."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Your FTP is up to {power}, all that training is paying off!"
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -2893,6 +3009,10 @@ msgstr ""
 
 #: app/ui/update_dialog.gd
 msgid "Your rides and settings stay as they are."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Your rides this week add up to {stress} TSS. Solid work!"
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -2997,6 +3117,14 @@ msgstr ""
 
 #: app/ui/moment_lines.gd
 msgid "{power} for {duration} is a new best for you!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "{rides} of your {planned} rides this week are done, keep going!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "{rides} rides this week already, you're on a roll!"
 msgstr ""
 
 #: app/ui/moment_lines.gd

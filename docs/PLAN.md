@@ -309,8 +309,10 @@ Built in rideable steps:
     per rider (Casual, Plain, Off) in the profile, the lines in `MomentLines`
   - [x] Power peaks against the rider's best 5 s, 1, 5, 20 and 60 min, from their history at
     the start, each told once the effort tops out
-  - [ ] Highlights on the summaries: finish, route and climb records, first ride, FTP raised,
-    rides this week against the rider's plan, the week's load; a workout step held
+  - [x] Highlights on both summaries, worked out from the history (`App::highlights`): finish,
+    course and climb records, first ride, FTP raised, rides this week against the rider's
+    optional plan (profile: rides planned per week), the week's load; a hard workout step held
+    told live
   - [ ] A chime under a new **Sounds** setting and a burst of particles on the card
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)

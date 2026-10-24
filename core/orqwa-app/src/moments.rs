@@ -1,11 +1,16 @@
 //! The moments of a ride worth telling the rider of (R124): what the ride screen shows on a
 //! card while it happens and the summary lists as the ride's highlights.
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use orqwa_domain::profile::UnitSystem;
 use orqwa_domain::recording::{RECORD_DURATIONS, Sample};
 use orqwa_domain::units::{GradePercent, Meters, Watts};
+use orqwa_session::fitness;
+use orqwa_session::workout::WorkoutState;
+use orqwa_storage::rides::RideRecord;
+
+use crate::analysis;
 
 /// Distance between the "so far" milestones: 25 of the rider's kilometres or miles.
 const MILESTONE_STEPS: f64 = 25.0;
@@ -15,9 +20,36 @@ const MIN_MILESTONE_ROUTE: Meters = Meters(2_000.0);
 /// A "so far" milestone this close to halfway or the last kilometre would only repeat it.
 const MILESTONE_GAP: Meters = Meters(1_000.0);
 
+/// A workout step counts as held from this long…
+const STEP_MIN: Duration = Duration::from_mins(1);
+/// …at this share of FTP or above: recoveries and warm-ups need no praise…
+const STEP_MIN_SHARE: f64 = 0.75;
+/// …with the average power this close to the target's.
+const STEP_TOLERANCE: f64 = 0.05;
+/// A step left with more than this to go was skipped, not held.
+const STEP_SKIPPED: Duration = Duration::from_secs(2);
+
 /// Something that happened on the ride.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Moment {
+    /// The ride is over: how far, how high and how long.
+    Finished {
+        /// Its distance.
+        distance: Meters,
+        /// Its climbing.
+        climbing: Meters,
+        /// Its riding time.
+        elapsed: Duration,
+    },
+    /// The rider's fastest time over the whole course (R27).
+    RouteRecord {
+        /// The course's name.
+        course: String,
+        /// The new best.
+        elapsed: Duration,
+        /// How much faster than the best before.
+        gain: Duration,
+    },
     /// The rider topped a climb, not faster than before.
     ClimbTopped {
         /// Index in [`Route::climbs`](orqwa_routes::Route::climbs).
@@ -53,10 +85,36 @@ pub enum Moment {
         /// The new best.
         power: Watts,
     },
+    /// The rider held a hard step of a structured workout on its target to its end.
+    StepHeld {
+        /// Index of the step in the workout.
+        index: usize,
+        /// The rider's average power over it.
+        power: Watts,
+    },
     /// The rider has never ridden this course before.
     FirstRide {
         /// The course's name.
         course: String,
+    },
+    /// An FTP test found a higher FTP than any before (R22).
+    FtpRaised(Watts),
+    /// The rider's rides this week, Monday to Sunday, up to this one.
+    Streak {
+        /// How many, this one included.
+        rides: u32,
+    },
+    /// Rides this week against the number the rider plans for one.
+    WeekPlan {
+        /// This ride's number in the week.
+        ride: u32,
+        /// How many the rider plans.
+        planned: u32,
+    },
+    /// The training stress (TSS) of this week's rides up to this one (R23).
+    WeekLoad {
+        /// Their TSS added up.
+        stress: f64,
     },
 }
 
@@ -201,6 +259,198 @@ impl PowerPeaks {
         }
         told
     }
+}
+
+/// Finds the hard steps of a structured workout the rider held on their target.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct StepsHeld {
+    ftp: Watts,
+    /// Samples looked at so far.
+    seen: usize,
+    step: Option<StepRun>,
+}
+
+/// A step under way.
+#[derive(Debug, Clone, PartialEq)]
+struct StepRun {
+    index: usize,
+    seconds: u32,
+    /// The rider's power and the target, added up over its seconds.
+    power: f64,
+    target: f64,
+    /// Every second had a power to hold, none of them all out.
+    steady: bool,
+    left: Duration,
+}
+
+impl StepsHeld {
+    pub(crate) fn new(ftp: Watts) -> Self {
+        Self {
+            ftp,
+            seen: 0,
+            step: None,
+        }
+    }
+
+    /// Takes the samples recorded since the last look, with the workout as it stands now; the
+    /// step held, if one just ended.
+    pub(crate) fn follow(
+        &mut self,
+        samples: &[Sample],
+        workout: Option<&WorkoutState>,
+    ) -> Option<Moment> {
+        let new = samples.get(self.seen..).unwrap_or_default();
+        self.seen = samples.len();
+        let progress = workout.and_then(|w| w.progress.as_ref());
+        let told = if self.step.as_ref().map(|s| s.index) == progress.map(|p| p.step) {
+            None
+        } else {
+            let ended = self.step.take().and_then(|run| self.held(&run));
+            self.step = progress.map(|p| StepRun {
+                index: p.step,
+                seconds: 0,
+                power: 0.0,
+                target: 0.0,
+                steady: true,
+                left: p.step_left,
+            });
+            ended
+        };
+        if let (Some(run), Some(progress)) = (&mut self.step, progress) {
+            let target = workout.and_then(|w| w.target_power);
+            for sample in new {
+                run.seconds += 1;
+                run.power += sample.power.map_or(0.0, |p| p.0);
+                run.target += target.map_or(0.0, |t| t.0);
+            }
+            run.steady &= target.is_some() && !progress.all_out;
+            run.left = progress.step_left;
+        }
+        told
+    }
+
+    fn held(&self, run: &StepRun) -> Option<Moment> {
+        let seconds = f64::from(run.seconds);
+        let (power, target) = (run.power / seconds, run.target / seconds);
+        let held = run.steady
+            && run.left <= STEP_SKIPPED
+            && Duration::from_secs(u64::from(run.seconds)) >= STEP_MIN
+            && target >= self.ftp.0 * STEP_MIN_SHARE
+            && (power - target).abs() <= target * STEP_TOLERANCE;
+        held.then_some(Moment::StepHeld {
+            index: run.index,
+            power: Watts(power),
+        })
+    }
+}
+
+/// The highlights of the ride `record` for its summary, in the order they are told: its
+/// finish, the records it set against the rides before it, and how it fits the rider's week
+/// (Monday to Sunday in local time, `utc_offset_s` ahead of UTC), with `planned` rides a week
+/// if the rider set a number. `others` are the rider's other rides; simulated ones count
+/// towards nothing.
+pub(crate) fn highlights(
+    record: &RideRecord,
+    others: &[&RideRecord],
+    planned: Option<u8>,
+    utc_offset_s: i64,
+) -> Vec<Moment> {
+    let mut told = vec![Moment::Finished {
+        distance: record.summary.distance,
+        climbing: record.summary.elevation_gain,
+        elapsed: record.summary.elapsed,
+    }];
+    if record.simulated {
+        return told;
+    }
+    let before: Vec<&RideRecord> = others
+        .iter()
+        .copied()
+        .filter(|other| !other.simulated && other.start < record.start)
+        .collect();
+    if let Some(key) = &record.route_key {
+        let same: Vec<&RideRecord> = before
+            .iter()
+            .copied()
+            .filter(|other| other.route_key.as_ref() == Some(key))
+            .collect();
+        let best = same.iter().filter_map(|r| r.route_time).min();
+        if let (Some(elapsed), Some(best)) = (record.route_time, best)
+            && elapsed < best
+        {
+            told.push(Moment::RouteRecord {
+                course: record.route.clone(),
+                elapsed,
+                gain: best.saturating_sub(elapsed),
+            });
+        }
+        for (index, climb) in record.climbs.iter().enumerate() {
+            if let Some(best) = crate::best_climb_time(&same, climb)
+                && climb.elapsed < best
+            {
+                told.push(Moment::ClimbRecord {
+                    index,
+                    elapsed: climb.elapsed,
+                    gain: best.saturating_sub(climb.elapsed),
+                });
+            }
+        }
+        if same.is_empty() {
+            told.push(Moment::FirstRide {
+                course: record.route.clone(),
+            });
+        }
+    }
+    if let Some(curve) = record.analysis.as_ref().map(|a| &a.power_curve) {
+        let bests = analysis::record_powers(before.iter().copied());
+        for (duration, best) in RECORD_DURATIONS.into_iter().zip(bests) {
+            if let (Some(power), Some(best)) = (curve.at(duration), best)
+                && power.0 > best.0
+            {
+                told.push(Moment::PowerPeak { duration, power });
+            }
+        }
+    }
+    let ftp_before = before
+        .iter()
+        .filter_map(|r| r.ftp_estimate)
+        .map(|w| w.0)
+        .reduce(f64::max);
+    if let (Some(ftp), Some(before)) = (record.ftp_estimate, ftp_before)
+        && ftp.0 > before
+    {
+        told.push(Moment::FtpRaised(ftp));
+    }
+    let week =
+        |r: &RideRecord| fitness::week_start(fitness::day_of(unix_seconds(r.start), utc_offset_s));
+    let this_week: Vec<&RideRecord> = before
+        .iter()
+        .copied()
+        .filter(|other| week(other) == week(record))
+        .chain([record])
+        .collect();
+    let rides = u32::try_from(this_week.len()).unwrap_or(u32::MAX);
+    match planned.filter(|p| *p > 0) {
+        Some(planned) => told.push(Moment::WeekPlan {
+            ride: rides,
+            planned: u32::from(planned),
+        }),
+        None if rides >= 2 => told.push(Moment::Streak { rides }),
+        None => {}
+    }
+    let stress: f64 = this_week
+        .iter()
+        .filter_map(|r| r.summary.training_stress)
+        .sum();
+    if rides >= 2 && stress > 0.0 {
+        told.push(Moment::WeekLoad { stress });
+    }
+    told
+}
+
+fn unix_seconds(time: SystemTime) -> i64 {
+    time.duration_since(UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
 }
 
 /// The moment of topping a climb in `elapsed`, with the best time before this ride; a ride
@@ -437,6 +687,273 @@ mod tests {
             sample.power = None;
         }
         assert_eq!(PowerPeaks::new(bests(Some(100.0))).follow(&quiet), []);
+    }
+
+    /// A structured workout at `step`, `left` to go in it, asking for `target`.
+    fn workout(step: usize, left: u64, target: Option<f64>) -> WorkoutState {
+        WorkoutState {
+            target_power: target.map(Watts),
+            target_heart_rate: None,
+            progress: Some(orqwa_session::workout::Progress {
+                step,
+                steps: 3,
+                elapsed: Duration::ZERO,
+                step_left: Duration::from_secs(left),
+                left: Duration::ZERO,
+                cadence: None,
+                next: None,
+                cue: None,
+                all_out: false,
+            }),
+            intensity: orqwa_domain::units::Percent(100.0),
+        }
+    }
+
+    /// Rides a step of `seconds` at `power` against `target`, then moves to the next step;
+    /// what was told.
+    fn ride_step(
+        held: &mut StepsHeld,
+        ride: &mut Vec<Sample>,
+        (step, seconds): (usize, u64),
+        power: f64,
+        target: Option<f64>,
+        skipped: bool,
+    ) -> Vec<Moment> {
+        let mut told = Vec::new();
+        for s in 0..seconds {
+            ride.extend(samples(&[power]));
+            let left = if skipped { 100 } else { seconds - s - 1 };
+            told.extend(held.follow(ride, Some(&workout(step, left, target))));
+        }
+        told
+    }
+
+    #[test]
+    fn a_hard_step_ridden_on_target_to_its_end_is_held() {
+        let mut held = StepsHeld::new(Watts(250.0));
+        let mut ride = Vec::new();
+        let mut told = Vec::new();
+
+        told.extend(ride_step(
+            &mut held,
+            &mut ride,
+            (0, 300),
+            120.0,
+            Some(125.0),
+            false,
+        ));
+        told.extend(ride_step(
+            &mut held,
+            &mut ride,
+            (1, 240),
+            262.0,
+            Some(260.0),
+            false,
+        ));
+        told.extend(ride_step(
+            &mut held,
+            &mut ride,
+            (2, 30),
+            120.0,
+            Some(125.0),
+            false,
+        ));
+
+        assert_eq!(
+            told,
+            vec![Moment::StepHeld {
+                index: 1,
+                power: Watts(262.0)
+            }],
+            "the warm-up is too easy to praise"
+        );
+    }
+
+    #[test]
+    fn a_step_off_target_short_free_or_skipped_is_not_held() {
+        let cases: [(u64, f64, Option<f64>, bool, &str); 4] = [
+            (240, 230.0, Some(260.0), false, "off target"),
+            (40, 260.0, Some(260.0), false, "too short"),
+            (240, 260.0, None, false, "a free step"),
+            (240, 260.0, Some(260.0), true, "skipped"),
+        ];
+        for (seconds, power, target, skipped, what) in cases {
+            let mut held = StepsHeld::new(Watts(250.0));
+            let mut ride = Vec::new();
+            ride_step(&mut held, &mut ride, (0, seconds), power, target, skipped);
+            let told = ride_step(&mut held, &mut ride, (1, 5), 100.0, Some(100.0), false);
+            assert_eq!(told, [], "{what}");
+        }
+    }
+
+    const DAY: Duration = Duration::from_hours(24);
+    /// A Monday, noon UTC: 2026-10-19.
+    const MONDAY: u64 = 20_745 * 86_400 + 12 * 3_600;
+
+    /// A real ride on "Gurten" `days` after a Monday, timed over the route and one climb.
+    fn gurten(days: u32, route: u64, climb: u64) -> RideRecord {
+        use orqwa_domain::recording::{PowerCurve, RideAnalysis, RideSummary};
+        use orqwa_storage::rides::ClimbTime;
+        RideRecord {
+            route: "Gurten".to_owned(),
+            start: UNIX_EPOCH + Duration::from_secs(MONDAY) + DAY * days,
+            summary: RideSummary {
+                distance: Meters(12_000.0),
+                elevation_gain: Meters(450.0),
+                elapsed: Duration::from_secs(route),
+                training_stress: Some(60.0),
+                ..RideSummary::default()
+            },
+            route_key: Some("gurten".to_owned()),
+            route_time: Some(Duration::from_secs(route)),
+            climbs: vec![ClimbTime {
+                start: Meters(1_000.0),
+                end: Meters(5_000.0),
+                elapsed: Duration::from_secs(climb),
+                avg_power: None,
+            }],
+            name: None,
+            ftp_estimate: None,
+            rider_mass: None,
+            simulated: false,
+            analysis: Some(RideAnalysis {
+                power_curve: PowerCurve(vec![(Duration::from_secs(5), Watts(400.0))]),
+                ..RideAnalysis::default()
+            }),
+            uploads: std::collections::BTreeMap::new(),
+        }
+    }
+
+    fn kinds(told: &[Moment]) -> Vec<&'static str> {
+        told.iter()
+            .map(|m| match m {
+                Moment::Finished { .. } => "finished",
+                Moment::RouteRecord { .. } => "route_record",
+                Moment::ClimbRecord { .. } => "climb_record",
+                Moment::PowerPeak { .. } => "power_peak",
+                Moment::FirstRide { .. } => "first_ride",
+                Moment::FtpRaised(_) => "ftp_raised",
+                Moment::Streak { .. } => "streak",
+                Moment::WeekPlan { .. } => "week_plan",
+                Moment::WeekLoad { .. } => "week_load",
+                _ => "other",
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_first_ride_on_a_course_is_finished_and_first_without_records_to_beat() {
+        let first = gurten(0, 3_000, 900);
+
+        let told = highlights(&first, &[], None, 0);
+
+        assert_eq!(
+            told,
+            vec![
+                Moment::Finished {
+                    distance: Meters(12_000.0),
+                    climbing: Meters(450.0),
+                    elapsed: Duration::from_mins(50)
+                },
+                Moment::FirstRide {
+                    course: "Gurten".to_owned()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn records_are_set_against_the_rides_before_only() {
+        let before = gurten(0, 3_000, 900);
+        let mut faster = gurten(1, 2_900, 880);
+        faster.analysis.as_mut().unwrap().power_curve =
+            orqwa_domain::recording::PowerCurve(vec![(Duration::from_secs(5), Watts(450.0))]);
+        let later = gurten(2, 2_800, 870);
+
+        let told = highlights(&faster, &[&before, &later], None, 0);
+
+        assert!(told.contains(&Moment::RouteRecord {
+            course: "Gurten".to_owned(),
+            elapsed: Duration::from_secs(2_900),
+            gain: Duration::from_secs(100)
+        }));
+        assert!(told.contains(&Moment::ClimbRecord {
+            index: 0,
+            elapsed: Duration::from_secs(880),
+            gain: Duration::from_secs(20)
+        }));
+        assert!(told.contains(&Moment::PowerPeak {
+            duration: Duration::from_secs(5),
+            power: Watts(450.0)
+        }));
+        assert!(!kinds(&told).contains(&"first_ride"));
+
+        let slower = gurten(3, 3_100, 950);
+        let told = highlights(&slower, &[&before, &faster, &later], None, 0);
+        assert_eq!(kinds(&told), ["finished", "streak", "week_load"]);
+    }
+
+    #[test]
+    fn the_week_counts_rides_from_monday_against_the_riders_plan() {
+        let last_sunday = gurten(0, 3_000, 900);
+        let mut sunday_ride = last_sunday.clone();
+        sunday_ride.start -= DAY;
+        let monday = gurten(0, 3_000, 900);
+        let mut simulated = gurten(1, 3_000, 900);
+        simulated.simulated = true;
+        let wednesday = gurten(2, 3_000, 900);
+
+        let others = [&sunday_ride, &monday, &simulated];
+        let told = highlights(&wednesday, &others, None, 0);
+        assert!(told.contains(&Moment::Streak { rides: 2 }), "{told:?}");
+        assert!(told.contains(&Moment::WeekLoad { stress: 120.0 }));
+
+        let told = highlights(&wednesday, &others, Some(4), 0);
+        assert!(told.contains(&Moment::WeekPlan {
+            ride: 2,
+            planned: 4
+        }));
+        assert!(!kinds(&told).contains(&"streak"));
+
+        let told = highlights(&monday, &[&sunday_ride], Some(3), 0);
+        assert!(told.contains(&Moment::WeekPlan {
+            ride: 1,
+            planned: 3
+        }));
+        assert!(
+            !kinds(&told).contains(&"week_load"),
+            "one ride is no week yet"
+        );
+
+        // Local time: thirteen hours ahead, Sunday noon UTC is already Monday.
+        let told = highlights(&monday, &[&sunday_ride], None, 13 * 3_600);
+        assert!(told.contains(&Moment::Streak { rides: 2 }), "{told:?}");
+    }
+
+    #[test]
+    fn a_higher_ftp_than_any_test_before_is_a_highlight() {
+        let mut test = gurten(0, 3_000, 900);
+        test.ftp_estimate = Some(Watts(250.0));
+        let mut better = gurten(10, 3_000, 900);
+        better.ftp_estimate = Some(Watts(262.0));
+        let mut worse = gurten(20, 3_000, 900);
+        worse.ftp_estimate = Some(Watts(255.0));
+
+        assert!(!kinds(&highlights(&test, &[], None, 0)).contains(&"ftp_raised"));
+        assert!(highlights(&better, &[&test], None, 0).contains(&Moment::FtpRaised(Watts(262.0))));
+        assert!(!kinds(&highlights(&worse, &[&test, &better], None, 0)).contains(&"ftp_raised"));
+    }
+
+    #[test]
+    fn a_simulated_ride_is_only_finished() {
+        let before = gurten(0, 3_000, 900);
+        let mut simulated = gurten(1, 1_000, 300);
+        simulated.simulated = true;
+
+        assert_eq!(
+            kinds(&highlights(&simulated, &[&before], Some(3), 0)),
+            ["finished"]
+        );
     }
 
     #[test]
