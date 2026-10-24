@@ -266,8 +266,6 @@ func _about(dialog: SettingsDialog) -> void:
 		_check(notice.text.contains(text), "%s: %s" % [titles[index], text])
 
 
-## Keeping the courses' worlds (R101): off until this computer turns it on, which tells the
-## room they take; off again, they are deleted.
 ## The chime of the ride's moments (R125): on until turned off, kept for the installation.
 func _sound(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var sound: SoundSettings = dialog.get("_sound")
@@ -280,21 +278,57 @@ func _sound(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	_check(orqwa.sounds(), "and on again")
 
 
+## Keeping the courses' worlds (R101): off until this computer turns it on, which tells the
+## room they take and lists them; off again, they are deleted.
 func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var courses: CourseSettings = dialog.get("_courses")
 	var keep: CheckBox = courses.get("_keep")
 	var note: Label = courses.get("_note")
+	var worlds: VBoxContainer = courses.get("_worlds")
 	orqwa.set_keeps_worlds(false)
 	courses.refresh()
 	_check(not keep.button_pressed, "worlds are not kept until asked")
 	_check(keep.text == "Keep courses ready to ride", "the switch: %s" % keep.text)
 	_check(note.text.contains("10 MB per kilometre"), "telling the room they take: %s" % note.text)
+	_check(not worlds.visible, "no kept worlds to list")
 	keep.button_pressed = true
 	_check(orqwa.keeps_worlds(), "kept on this computer")
 	_check(note.text.contains("The kept worlds take"), "and how much they take now: %s" % note.text)
+	_check(worlds.visible, "and each kept world")
+	_kept_worlds(courses, worlds)
 	keep.button_pressed = false
 	_check(not orqwa.keeps_worlds(), "and off again")
 	_check(not note.text.contains("The kept worlds take"), "they are deleted: %s" % note.text)
+	_check(not worlds.visible, "all of them")
+
+
+## Each kept world by the names of its courses, the room it takes and a bin to delete it
+## (R136).
+func _kept_worlds(courses: CourseSettings, worlds: VBoxContainer) -> void:
+	courses.call("_list", [])
+	_check(_shows(worlds, "None yet."), "none kept yet")
+	var shared: PackedStringArray = PackedStringArray(["Lakeside", "Lakeside again"])
+	var listed: Array[Dictionary] = [
+		{"path": "/courses/lakeside.tqc", "names": shared, "size": 1288490189},
+		{"path": "/courses/hills.tqc", "names": PackedStringArray(["Hills"]), "size": 104857600},
+	]
+	courses.call("_list", listed)
+	_check(not _shows(worlds, "None yet."), "two kept")
+	_check(_shows(worlds, "Lakeside, Lakeside again"), "a world two courses share, once")
+	_check(_shows(worlds, "Hills"), "the other")
+	for size: int in [1288490189, 104857600]:
+		var room: String = String.humanize_size(size)
+		_check(_shows(worlds, room), "each with the room it takes: %s" % room)
+	var bins: Array[Node] = worlds.find_children("*", "Button", true, false)
+	_check(bins.size() == 2, "a bin for each: %d" % bins.size())
+	for bin: Node in bins:
+		var button: Button = bin
+		var box: StyleBoxFlat = button.get_theme_stylebox("normal") as StyleBoxFlat
+		_check(
+			button.tooltip_text == "Delete world" and button.icon == UiIcons.texture("bin"),
+			"a bin saying what it deletes: %s" % button.tooltip_text
+		)
+		_check(box != null and Color(box.bg_color, 1.0).is_equal_approx(UiTheme.DANGER), "in red")
 
 
 ## Looking for updates (R99): on at start-up until this computer turns it off; a newer

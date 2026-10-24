@@ -439,6 +439,15 @@ msgstr "Zuletzt genutzte Geräte verbinden sich von selbst. Suche neben einer Ze
 msgid "The kept worlds take %s."
 msgstr "Die behaltenen Welten belegen %s."
 
+msgid "Kept worlds"
+msgstr "Behaltene Welten"
+
+msgid "None yet."
+msgstr "Noch keine."
+
+msgid "Delete world"
+msgstr "Welt löschen"
+
 msgid "Reconnecting…"
 msgstr "Verbinde erneut…"
 
