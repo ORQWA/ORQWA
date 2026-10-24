@@ -315,10 +315,18 @@ func _settings_screens(start: StartPage, out_dir: String) -> void:
 	var settings_button: Button = start.get("_settings_button")
 	settings_button.pressed.emit()
 	var settings_tabs: TabContainer = settings.get("_tabs")
-	for page: Array in [[0, "settings-graphics"], [1, "settings-courses"], [2, "settings-about"]]:
-		var index: int = page[0]
+	# By page, not position: a new tab (Sound) once moved About from where the index pointed.
+	for page: Array in [
+		[&"_graphics", "settings-graphics"],
+		[&"_courses", "settings-courses"],
+		[&"_about", "settings-about"],
+	]:
+		var property: StringName = page[0]
+		var tab: Node = settings.get(property)
+		while tab.get_parent() != settings_tabs:
+			tab = tab.get_parent()
 		var file: String = page[1]
-		settings_tabs.current_tab = index
+		settings_tabs.current_tab = tab.get_index()
 		await create_timer(0.5).timeout
 		root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
 		print("saved ", file)
