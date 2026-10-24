@@ -1558,7 +1558,7 @@ checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
 name = "orqwa-app"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "orqwa-devices",
  "orqwa-domain",
@@ -1582,7 +1582,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-cli"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1603,7 +1603,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-devices"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "btleplug",
  "futures",
@@ -1616,11 +1616,11 @@ dependencies = [
 
 [[package]]
 name = "orqwa-domain"
-version = "0.5.1"
+version = "0.5.2"
 
 [[package]]
 name = "orqwa-gd"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "godot",
  "orqwa-app",
@@ -1637,7 +1637,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-osm"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "futures",
  "geo-types",
@@ -1653,14 +1653,14 @@ dependencies = [
 
 [[package]]
 name = "orqwa-physics"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "orqwa-domain",
 ]
 
 [[package]]
 name = "orqwa-remote"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "fast_qr",
  "orqwa-domain",
@@ -1671,7 +1671,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-routes"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "orqwa-domain",
  "orqwa-osm",
@@ -1684,7 +1684,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-session"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "orqwa-devices",
  "orqwa-domain",
@@ -1695,7 +1695,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-storage"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "embedded-io-adapters",
  "orqwa-domain",
@@ -1711,7 +1711,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-terrain"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "image-webp",
  "orqwa-domain",
@@ -1724,7 +1724,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-update"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "reqwest",
  "serde_json",
@@ -1735,7 +1735,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-upload"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "orqwa-domain",
  "reqwest",
@@ -1746,7 +1746,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-video"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "ffmpeg-next",
  "quick-xml",
@@ -1756,7 +1756,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-workouts"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "embedded-io-adapters",
  "orqwa-domain",
@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "orqwa-world"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "orqwa-domain",
  "orqwa-osm",
