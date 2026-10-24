@@ -12,6 +12,9 @@ const SHOW_SECONDS: float = 4.0
 const SLIDE_SECONDS: float = 0.35
 const TOP: float = 80.0
 const WIDTH: float = 460.0
+## Room kept beside the card in a narrow window.
+const SIDE: float = 24.0
+const PADDING: float = 16.0
 
 ## What is still to show: `[figure, line]` pairs.
 var _queue: Array[PackedStringArray] = []
@@ -24,12 +27,11 @@ var _burst: CPUParticles2D = CPUParticles2D.new()
 func _init() -> void:
 	hide()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size.x = WIDTH
 	var style: StyleBoxFlat = UiTheme.panel(0.88)
 	style.border_color = Color(UiTheme.ACCENT, 0.7)
 	style.set_border_width_all(0)
 	style.border_width_bottom = 3
-	style.set_content_margin_all(16)
+	style.set_content_margin_all(PADDING)
 	add_theme_stylebox_override("panel", style)
 	var box: VBoxContainer = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
@@ -39,6 +41,8 @@ func _init() -> void:
 	box.add_child(_figure)
 	_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# A long line in another language stays a short card.
+	_line.max_lines_visible = 3
 	_line.add_theme_font_size_override("font_size", 16)
 	box.add_child(_line)
 	add_child(box)
@@ -84,6 +88,11 @@ func _next() -> void:
 	_figure.text = card[0]
 	_figure.visible = not card[0].is_empty()
 	_line.text = card[1]
+	# A wrapping label is measured at the width it has: before its first layout that is none,
+	# and a card measured then wraps every word and runs off the screen.
+	var width: float = minf(WIDTH, get_parent_area_size().x - 2.0 * SIDE)
+	custom_minimum_size.x = width
+	_line.custom_minimum_size.x = width - 2.0 * PADDING
 	reset_size()
 	var above: float = -size.y - 8.0
 	position = Vector2((get_parent_area_size().x - size.x) / 2.0, above)

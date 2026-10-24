@@ -29,6 +29,7 @@ func _run() -> void:
 	_lines()
 	_recap()
 	_chime()
+	await _card_size()
 	await _card()
 	if not _failed:
 		print("MOMENT SMOKE TEST PASSED")
@@ -94,6 +95,30 @@ func _chime() -> void:
 	_check(is_equal_approx(wav.get_length(), MomentChime.SECONDS), "the chime's length")
 	_check(loudest > 3000 and loudest < 32767, "a chime heard but not clipped: %d" % loudest)
 	_check(absi(wav.data.decode_s16(0)) < 100, "the chime starts without a click")
+
+
+## The first card of a ride used to measure its line before it had a width and ran off the
+## bottom of the screen; every card fits the window, a narrow one too.
+func _card_size() -> void:
+	var longest: String = ""
+	for kind: String in MomentLines.LINES:
+		var lines: Array = MomentLines.LINES[kind]
+		for line: String in lines[0]:
+			if line.length() > longest.length():
+				longest = line
+	for window: Vector2i in [Vector2i(1600, 900), Vector2i(640, 480)]:
+		root.size = window
+		var holder: Control = Control.new()
+		holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		root.add_child(holder)
+		await process_frame
+		var card: MomentCard = MomentCard.new()
+		holder.add_child(card)
+		card.tell("14:02", longest)
+		_check(card.size.y < 220.0, "a short card in %s: %s" % [window, card.size])
+		_check(card.size.x <= window.x, "as wide as the window at most: %s" % card.size)
+		holder.queue_free()
+		await process_frame
 
 
 func _card() -> void:
