@@ -4,7 +4,8 @@
 use std::time::Duration;
 
 use orqwa_domain::profile::UnitSystem;
-use orqwa_domain::units::{GradePercent, Meters};
+use orqwa_domain::recording::{RECORD_DURATIONS, Sample};
+use orqwa_domain::units::{GradePercent, Meters, Watts};
 
 /// Distance between the "so far" milestones: 25 of the rider's kilometres or miles.
 const MILESTONE_STEPS: f64 = 25.0;
@@ -44,6 +45,14 @@ pub enum Moment {
     OneToGo,
     /// Another 25 km ridden, or 25 miles for a rider in miles: the distance so far.
     Distance(Meters),
+    /// The rider's best average power ever over one of the
+    /// [`RECORD_DURATIONS`](orqwa_domain::recording::RECORD_DURATIONS) (R62).
+    PowerPeak {
+        /// How long.
+        duration: Duration,
+        /// The new best.
+        power: Watts,
+    },
     /// The rider has never ridden this course before.
     FirstRide {
         /// The course's name.
@@ -125,6 +134,72 @@ impl Milestones {
     /// The rider jumped to `distance`: what lies between counts as passed, untold.
     pub(crate) fn skip_to(&mut self, distance: Meters) {
         self.passed = distance;
+    }
+}
+
+/// Finds the rider's power records while they ride them: once an average over one of the
+/// [`RECORD_DURATIONS`] beats the best before, it is told when the effort tops out, so a long
+/// sprint is one moment rather than one a second.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct PowerPeaks {
+    /// Per duration: the best before this ride, raised by each record told; none for a rider
+    /// without records, whose every effort would be one.
+    bests: [Option<Watts>; RECORD_DURATIONS.len()],
+    /// Per duration: the record being ridden, the highest average so far.
+    rising: [Option<Watts>; RECORD_DURATIONS.len()],
+    /// `sums[i]`: the power of the first `i` samples added up.
+    sums: Vec<f64>,
+}
+
+impl PowerPeaks {
+    pub(crate) fn new(bests: [Option<Watts>; RECORD_DURATIONS.len()]) -> Self {
+        Self {
+            bests,
+            rising: [None; RECORD_DURATIONS.len()],
+            sums: vec![0.0],
+        }
+    }
+
+    /// The records topped out with the samples the ride recorded since the last look; `samples`
+    /// are all of them, one a second.
+    pub(crate) fn follow(&mut self, samples: &[Sample]) -> Vec<Moment> {
+        let mut told = Vec::new();
+        for sample in samples.iter().skip(self.sums.len() - 1) {
+            let sum = self.sums.last().copied().unwrap_or_default();
+            // Like the power curve, a second without power counts as none.
+            self.sums.push(sum + sample.power.map_or(0.0, |p| p.0));
+            told.extend(self.look());
+        }
+        told
+    }
+
+    fn look(&mut self) -> Vec<Moment> {
+        let seconds = self.sums.len() - 1;
+        let mut told = Vec::new();
+        for (i, duration) in RECORD_DURATIONS.into_iter().enumerate() {
+            let Some(window) = usize::try_from(duration.as_secs())
+                .ok()
+                .filter(|w| *w <= seconds)
+            else {
+                continue;
+            };
+            #[allow(clippy::cast_precision_loss)] // at most an hour of seconds
+            let average = Watts((self.sums[seconds] - self.sums[seconds - window]) / window as f64);
+            let Some(best) = self.bests[i] else {
+                continue;
+            };
+            let bar = self.rising[i].map_or(best.0, |rising| rising.0);
+            if average.0 > bar {
+                self.rising[i] = Some(average);
+            } else if let Some(peak) = self.rising[i].take() {
+                self.bests[i] = Some(peak);
+                told.push(Moment::PowerPeak {
+                    duration,
+                    power: peak,
+                });
+            }
+        }
+        told
     }
 }
 
@@ -282,6 +357,86 @@ mod tests {
             told.extend(milestones.reach(Meters(at)));
         }
         told
+    }
+
+    /// One sample a second with these powers.
+    fn samples(powers: &[f64]) -> Vec<Sample> {
+        powers
+            .iter()
+            .enumerate()
+            .map(|(i, &p)| Sample {
+                elapsed: Duration::from_secs(i as u64),
+                location: None,
+                distance: Meters(0.0),
+                speed: orqwa_domain::units::MetersPerSecond(0.0),
+                power: Some(Watts(p)),
+                cadence: None,
+                heart_rate: None,
+            })
+            .collect()
+    }
+
+    /// Bests of `five_s` over 5 s and far out of reach over the longer durations.
+    fn bests(five_s: Option<f64>) -> [Option<Watts>; RECORD_DURATIONS.len()] {
+        let mut bests = [Some(Watts(2_000.0)); RECORD_DURATIONS.len()];
+        bests[0] = five_s.map(Watts);
+        bests
+    }
+
+    #[test]
+    fn a_power_record_is_told_once_when_the_effort_tops_out() {
+        let mut peaks = PowerPeaks::new(bests(Some(400.0)));
+        let mut powers = vec![200.0; 30];
+        powers.extend([450.0; 8]);
+        powers.extend([200.0; 30]);
+        let ride = samples(&powers);
+
+        // Fed bit by bit, as the ride records them.
+        let mut told = Vec::new();
+        for end in (1..=ride.len()).step_by(3) {
+            told.extend(peaks.follow(&ride[..end]));
+        }
+        told.extend(peaks.follow(&ride));
+
+        assert_eq!(
+            told,
+            vec![Moment::PowerPeak {
+                duration: Duration::from_secs(5),
+                power: Watts(450.0)
+            }]
+        );
+    }
+
+    #[test]
+    fn only_an_effort_beyond_the_last_record_is_told_again() {
+        let mut peaks = PowerPeaks::new(bests(Some(400.0)));
+        let mut powers = vec![200.0; 10];
+        for sprint in [450.0, 430.0, 500.0] {
+            powers.extend([sprint; 6]);
+            powers.extend([200.0; 20]);
+        }
+
+        let told = peaks.follow(&samples(&powers));
+
+        let five_s = |w: f64| Moment::PowerPeak {
+            duration: Duration::from_secs(5),
+            power: Watts(w),
+        };
+        assert_eq!(told, vec![five_s(450.0), five_s(500.0)]);
+    }
+
+    #[test]
+    fn a_rider_without_records_or_power_is_told_of_none() {
+        let mut powers = vec![200.0; 10];
+        powers.extend([450.0; 8]);
+        powers.extend([200.0; 10]);
+        assert_eq!(PowerPeaks::new(bests(None)).follow(&samples(&powers)), []);
+
+        let mut quiet = samples(&[0.0; 30]);
+        for sample in &mut quiet {
+            sample.power = None;
+        }
+        assert_eq!(PowerPeaks::new(bests(Some(100.0))).follow(&quiet), []);
     }
 
     #[test]

@@ -375,6 +375,10 @@ msgstr ""
 msgid "Below 60 fps: a lower graphics quality (Settings → Graphics) runs smoother."
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "Best {duration} power: {power}."
+msgstr ""
+
 #: app/ui/ride_options.gd
 msgid "Bicycle sound"
 msgstr ""
@@ -2400,6 +2404,10 @@ msgid "Test"
 msgstr ""
 
 #: app/ui/moment_lines.gd
+msgid "That was your best {duration} ever, at {power}!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
 msgid "That's {distance} on the clock already, great going!"
 msgstr ""
 
@@ -2985,6 +2993,10 @@ msgstr ""
 
 #: app/ui/moment_lines.gd
 msgid "{left} to go."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "{power} for {duration} is a new best for you!"
 msgstr ""
 
 #: app/ui/moment_lines.gd

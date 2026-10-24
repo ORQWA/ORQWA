@@ -51,6 +51,14 @@ const LINES: Dictionary[String, Array] = {
 		],
 		"{distance} ridden.",
 	],
+	"power_peak":
+	[
+		[
+			"{power} for {duration} is a new best for you!",
+			"That was your best {duration} ever, at {power}!",
+		],
+		"Best {duration} power: {power}.",
+	],
 	"first_ride":
 	[
 		[
@@ -90,6 +98,9 @@ static func figure(moment: Dictionary, imperial: bool) -> String:
 			return distance(meters, imperial)
 		"one_to_go":
 			return _one(imperial)
+		"power_peak":
+			var power: float = moment["power_w"]
+			return "%d W" % roundi(power)
 	return ""
 
 
@@ -101,6 +112,16 @@ static func distance(meters: float, imperial: bool) -> String:
 	if is_equal_approx(rounded, roundf(rounded)):
 		return "%d %s" % [roundi(rounded), unit]
 	return "%.1f %s" % [rounded, unit]
+
+
+## A power record's duration: "5 s", "20 min", "1 h".
+static func span(seconds: float) -> String:
+	var whole: int = roundi(seconds)
+	if whole < 60:
+		return "%d s" % whole
+	if whole < 3600:
+		return "%d min" % (whole / 60)
+	return "%d h" % (whole / 3600)
 
 
 ## `meters` of climbing in the rider's units.
@@ -131,6 +152,12 @@ static func _values(moment: Dictionary, imperial: bool) -> Dictionary:
 	if moment.has("distance_m"):
 		var meters: float = moment["distance_m"]
 		values["distance"] = distance(meters, imperial)
+	if moment.has("power_w"):
+		var power: float = moment["power_w"]
+		values["power"] = "%d W" % roundi(power)
+	if moment.has("duration_s"):
+		var seconds: float = moment["duration_s"]
+		values["duration"] = span(seconds)
 	if moment.has("course"):
 		values["course"] = moment["course"]
 	return values

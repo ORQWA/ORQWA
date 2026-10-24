@@ -11,6 +11,7 @@ const MOMENTS: Array[Dictionary] = [
 	{"kind": "one_to_go"},
 	{"kind": "distance", "distance_m": 25000.0},
 	{"kind": "first_ride", "course": "Oberalp"},
+	{"kind": "power_peak", "duration_s": 300.0, "power_w": 311.6},
 ]
 
 var _failed: bool = false
@@ -42,6 +43,9 @@ func _lines() -> void:
 	_check(_plain(MOMENTS[4], false) == "25 km ridden.", "whole distances")
 	_check(MomentLines.figure(MOMENTS[2], false) == "16.1 km", "a distance figure")
 	_check(MomentLines.figure(MOMENTS[1], false) == "14:02", "a time figure")
+	_check(_plain(MOMENTS[6], false) == "Best 5 min power: 312 W.", "a power record")
+	_check(MomentLines.figure(MOMENTS[6], false) == "312 W", "a power figure")
+	_check(MomentLines.span(5.0) == "5 s" and MomentLines.span(3600.0) == "1 h", "spans")
 	_check(MomentLines.line({"kind": "unknown"}, "casual", false).is_empty(), "unknown kinds")
 
 

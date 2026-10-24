@@ -524,6 +524,7 @@ struct ActiveRide {
     /// The next climb whose top has not been reached.
     next_climb: usize,
     milestones: moments::Milestones,
+    peaks: moments::PowerPeaks,
     /// What to tell of once the ride starts: that it is the first on its course.
     greeting: Option<moments::Moment>,
     /// Summary of the samples so far and how many it covers, refreshed once per new sample
@@ -2870,6 +2871,9 @@ impl App {
     ) {
         let milestones =
             moments::Milestones::new(ride.route().map(Route::length), self.profile.profile.units);
+        let peaks = moments::PowerPeaks::new(analysis::record_powers(
+            self.ride_records().iter().map(|(_, record)| record),
+        ));
         let greeting = self
             .loaded
             .as_ref()
@@ -2887,6 +2891,7 @@ impl App {
             records,
             next_climb: 0,
             milestones,
+            peaks,
             greeting,
             summary: (0, RideSummary::default()),
             time_to_go: estimate::TimeToGo::default(),
@@ -3548,6 +3553,16 @@ impl App {
                     active.ride.time_to_finish(power)
                 });
                 active.summary = (samples.len(), summary);
+                // A simulated ride's powers are not real either.
+                if !active.simulated {
+                    events.extend(
+                        active
+                            .peaks
+                            .follow(samples)
+                            .into_iter()
+                            .map(AppEvent::Moment),
+                    );
+                }
             }
             events.extend(active.greeting.take().map(AppEvent::Moment));
             // Samples arrive once a second, so a climb is timed once a sample lies past its top.

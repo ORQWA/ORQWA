@@ -307,7 +307,8 @@ Built in rideable steps:
     topped and their records, halfway, 1 km (1 mi) to go, every 25 km (25 mi), the first
     ride on a course; a card at the top centre, the line in the overlay's bar; the **Voice**
     per rider (Casual, Plain, Off) in the profile, the lines in `MomentLines`
-  - [ ] Power peaks against the rider's best 5 s, 1, 5, 20 and 60 min
+  - [x] Power peaks against the rider's best 5 s, 1, 5, 20 and 60 min, from their history at
+    the start, each told once the effort tops out
   - [ ] Highlights on the summaries: finish, route and climb records, first ride, FTP raised,
     rides this week against the rider's plan, the week's load; a workout step held
   - [ ] A chime under a new **Sounds** setting and a burst of particles on the card

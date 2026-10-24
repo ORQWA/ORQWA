@@ -2263,3 +2263,12 @@ msgstr "Tonfall"
 
 msgid "How ORQWA tells you of climbs topped, milestones and records during the ride"
 msgstr "Wie ORQWA dir während der Fahrt von geschafften Anstiegen, Meilensteinen und Rekorden erzählt"
+
+msgid "{power} for {duration} is a new best for you!"
+msgstr "{power} über {duration}, das ist eine neue Bestleistung für dich!"
+
+msgid "That was your best {duration} ever, at {power}!"
+msgstr "Das waren deine besten {duration} überhaupt, mit {power}!"
+
+msgid "Best {duration} power: {power}."
+msgstr "Beste Leistung über {duration}: {power}."

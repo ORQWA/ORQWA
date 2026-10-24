@@ -28,6 +28,9 @@ the wording across the ride screen.
   in its bar. The finish is not a card: the quick summary (R113) opens over the finished ride
   at once and tells it there.
 - Milestones follow the rider's units: 25 km and 1 km to go, or 25 miles and 1 mile.
+- Power records are found live against the bests of the rider's history, loaded at the
+  start, and told once the effort tops out rather than every second it keeps rising. A rider
+  without records gets none mid-ride: every effort would be one.
 
 ## Consequences
 
