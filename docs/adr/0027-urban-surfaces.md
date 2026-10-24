@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Requirements: R105, R106, R112, R126–R129, R89, R101
+- Requirements: R105, R106, R112, R131–R135, R89, R101
 
 ## Context
 

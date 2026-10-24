@@ -221,7 +221,9 @@ Generator 27 matches routes to roundabouts the way traffic goes round them (R126
 planner's file that skips the ring no longer takes the short way against the traffic. The
 ridden road of a kept world follows the old route there; regeneration redraws it. Stored
 format remains 3.
-The sidewalk correction also retains temporary map feature IDs and projected local map positions to give
+
+The sidewalk correction also retains temporary map feature IDs and projected local map
+positions to give
 offset GPX/map copies of a street one sidewalk and pavement owner. Mapped street chains
 retain their constituent IDs. This prevents
 duplicate footways from cutting gaps in the ridden sidewalk or remaining on the bank.

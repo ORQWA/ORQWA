@@ -641,7 +641,7 @@ physically based materials and light, restyled group by group.
   - [ ] Andermatt sidewalk continuity: one sidewalk owner for offset GPX/map lines,
     walking surfaces anchored to their street, and continuous clear widths beside obstacles;
     bounded corner replacement preserves neighbouring walks. Compared the full saved
-    Alpenbrevet route at 209.36 km to go from above and beside the street (R126–R129).
+    Alpenbrevet route at 209.36 km to go from above and beside the street (R131–R135).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs
