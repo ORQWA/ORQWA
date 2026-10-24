@@ -12,6 +12,7 @@ screens remain in the [remote guide](https://github.com/ORQWA/ORQWA/wiki/Devices
 | ![First-person camera](images/app/ride-first-person.jpg) | ![Structured workout](images/workouts/structured-ride.png) |
 | ![Overview camera](images/app/ride-overview.jpg) | ![Planned workouts](images/workouts/planned.png) |
 | ![Video course](images/readme/video-course.jpg) | ![Workout editor](images/workouts/editor.png) |
+| ![A moment of the ride: a climb record on its card](images/app/ride-moment.png) | |
 
 Video footage: “Le petit Menglonnais” by [Fred Van Gestel](https://cycling.vangestel.online/indoor/videos/france/le-petit-menglonnais/),
 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). That screenshot has the

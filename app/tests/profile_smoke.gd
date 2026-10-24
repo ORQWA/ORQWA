@@ -46,6 +46,12 @@ func _rider_drivetrain() -> void:
 	var drivetrain: String = saved["drivetrain"]
 	var chainring: float = saved["chainring"]
 	_check(drivetrain == "single_cog" and chainring == 46.0, "saved: %s" % saved)
+	var voice: String = saved["voice"]
+	_check(voice == "casual", "a rider hears the casual voice first (R124)")
+	dialog.edit({"id": "r", "name": "R", "voice": "off"}, PackedStringArray(["power"]))
+	dialog.confirmed.emit()
+	voice = confirmed[1]["voice"]
+	_check(voice == "off", "the voice is kept: %s" % confirmed[1])
 	dialog.edit({"id": "r", "name": "R", "drivetrain": "cassette"}, PackedStringArray(["power"]))
 	_check(not cog.visible, "a cassette needs no teeth")
 	dialog.edit({}, PackedStringArray(["power"]))

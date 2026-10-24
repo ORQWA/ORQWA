@@ -39,6 +39,7 @@ var _stats: ReflowGrid = ReflowGrid.new()
 var _climbs: VBoxContainer = VBoxContainer.new()
 ## The durations over which the ride holds the rider's best power (R62).
 var _power_records: PowerRecordBadges = PowerRecordBadges.new()
+var _recap: RideRecap = RideRecap.new()
 ## What an FTP test showed (R22), and taking it as the rider's FTP.
 var _ftp_row: HBoxContainer = HBoxContainer.new()
 var _ftp_text: Label = Label.new()
@@ -236,6 +237,7 @@ func _ready() -> void:
 	_stats.max_columns = 6
 	_stats.add_theme_constant_override("h_separation", 28)
 	_stats.add_theme_constant_override("v_separation", 12)
+	_detail.add_child(_recap)
 	_detail.add_child(_stats)
 	_climbs.add_theme_constant_override("separation", 4)
 	_detail.add_child(_climbs)
@@ -364,6 +366,7 @@ func _show_ride(index: int) -> void:
 	_title.text = ride_name
 	_subtitle.text = UiTheme.date(start)
 	_export_status.hide()
+	_recap.show_ride(_orqwa, path)
 	_fill_stats(ride)
 	_fill_climbs(ride)
 	_power_records.show_ride(ride)

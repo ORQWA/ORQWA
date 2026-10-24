@@ -6,7 +6,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use orqwa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
+use orqwa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem, Voice};
 use orqwa_domain::shifting::{ButtonAction, ButtonMap, ControllerModel, Press};
 use orqwa_domain::telemetry::CadenceSource;
 use orqwa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
@@ -59,6 +59,9 @@ struct ProfileFile {
     language: String,
     avatar: AvatarFile,
     map_style: MapStyleFile,
+    voice: VoiceFile,
+    /// 0 for none.
+    rides_per_week: u8,
     drivetrain: DrivetrainFile,
     chainring: u8,
     cog: u8,
@@ -101,6 +104,14 @@ enum MapStyleFile {
     Dark,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum VoiceFile {
+    Casual,
+    Plain,
+    Off,
+}
+
 impl Default for ProfileFile {
     fn default() -> Self {
         Self::from(&Profile::default())
@@ -128,6 +139,12 @@ impl From<&Profile> for ProfileFile {
                 MapStyle::Coloured => MapStyleFile::Coloured,
                 MapStyle::Dark => MapStyleFile::Dark,
             },
+            voice: match p.voice {
+                Voice::Casual => VoiceFile::Casual,
+                Voice::Plain => VoiceFile::Plain,
+                Voice::Off => VoiceFile::Off,
+            },
+            rides_per_week: p.rides_per_week.unwrap_or(0),
             drivetrain: match p.drivetrain {
                 Drivetrain::Cassette => DrivetrainFile::Cassette,
                 Drivetrain::SingleCog { .. } => DrivetrainFile::SingleCog,
@@ -174,6 +191,12 @@ impl From<ProfileFile> for Profile {
                 MapStyleFile::Coloured => MapStyle::Coloured,
                 MapStyleFile::Dark => MapStyle::Dark,
             },
+            voice: match f.voice {
+                VoiceFile::Casual => Voice::Casual,
+                VoiceFile::Plain => Voice::Plain,
+                VoiceFile::Off => Voice::Off,
+            },
+            rides_per_week: Some(f.rides_per_week).filter(|n| *n > 0),
             drivetrain: match f.drivetrain {
                 DrivetrainFile::Cassette => Drivetrain::Cassette,
                 DrivetrainFile::SingleCog => Drivetrain::SingleCog {
@@ -215,6 +238,8 @@ struct Settings {
     overlay: Option<OverlayWindow>,
     /// Whether the ride view's control bar is folded away to its corner (#189).
     ride_bar_folded: Option<bool>,
+    /// Whether the app plays its own sounds, such as the chime of a ride's moments (R125).
+    sounds: Option<bool>,
     /// Whether the app filled the screen, from before R78 made it the computer's; carried over
     /// once by [`carry_over`], then gone.
     fullscreen: Option<bool>,
@@ -847,6 +872,23 @@ pub fn set_ride_bar_folded(data_dir: &Path, folded: bool) -> Result<(), ProfileE
     save_settings(data_dir, &settings)
 }
 
+/// Whether the app plays its own sounds, such as the chime of a ride's moments (R125); on
+/// until turned off.
+#[must_use]
+pub fn sounds(data_dir: &Path) -> bool {
+    settings(data_dir).sounds.unwrap_or(true)
+}
+
+/// Remembers whether the app plays its own sounds.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_sounds(data_dir: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut settings = settings(data_dir);
+    settings.sounds = Some(on);
+    save_settings(data_dir, &settings)
+}
+
 /// How the Courses tab was left (R67); the defaults until it is changed.
 #[must_use]
 pub fn courses_view(data_dir: &Path) -> CoursesView {
@@ -1062,6 +1104,20 @@ mod tests {
     }
 
     #[test]
+    fn sounds_are_on_until_turned_off_and_stay_off() {
+        let dir = temp_dir("sounds");
+        assert!(sounds(&dir), "a new installation chimes (R125)");
+        set_ride_bar_folded(&dir, true).unwrap();
+
+        set_sounds(&dir, false).unwrap();
+
+        assert!(!sounds(&dir));
+        assert!(ride_bar_folded(&dir), "the other settings stay");
+        set_sounds(&dir, true).unwrap();
+        assert!(sounds(&dir));
+    }
+
+    #[test]
     fn the_courses_view_is_remembered_with_the_other_settings() {
         let dir = temp_dir("courses-view");
         assert_eq!(courses_view(&dir), CoursesView::default());
@@ -1259,6 +1315,8 @@ mod tests {
             language: "de".to_owned(),
             avatar: Avatar::Male,
             map_style: MapStyle::Dark,
+            voice: Voice::Plain,
+            rides_per_week: Some(4),
             drivetrain: Drivetrain::SingleCog {
                 chainring: 46,
                 cog: 14,
@@ -1305,6 +1363,12 @@ mod tests {
         assert_eq!(profile.ftp, Watts(180.0));
         assert_eq!(profile.rider_mass, Profile::default().rider_mass);
         assert_eq!(profile.avatar, Profile::default().avatar);
+        assert_eq!(
+            profile.voice,
+            Voice::Casual,
+            "riders hear the warm voice first (R124)"
+        );
+        assert_eq!(profile.rides_per_week, None);
         assert_eq!(
             profile.drivetrain,
             Drivetrain::SingleCog {
