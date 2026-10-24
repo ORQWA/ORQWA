@@ -1676,6 +1676,18 @@ impl OrqwaApp {
         self.command(|app| app.set_ride_bar_folded(folded));
     }
 
+    /// Whether the app plays its own sounds, such as the chime of a ride's moments (R125).
+    #[func]
+    fn sounds(&self) -> bool {
+        self.app.as_ref().is_none_or(App::sounds)
+    }
+
+    /// Turns the app's own sounds on or off.
+    #[func]
+    fn set_sounds(&mut self, on: bool) {
+        self.command(|app| app.set_sounds(on));
+    }
+
     /// Whether the app fills the screen (#218).
     #[func]
     fn fullscreen(&self) -> bool {

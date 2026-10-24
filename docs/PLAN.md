@@ -301,7 +301,7 @@ Built in rideable steps:
 - [x] Logo (orca on a bike, `docs/brand/`), app icon and boot splash
 - [x] Windows `.exe` with the app icon, ORQWA's name and version, as on macOS, rather than the
   Godot template's (taskbar, Explorer, Task Manager); CI fails a build that keeps them
-- [ ] Moments (R124, #185, [ADR 0032](adr/0032-ride-moments.md)): what happened on the ride,
+- [x] Moments (R124, #185, [ADR 0032](adr/0032-ride-moments.md)): what happened on the ride,
   in the rider's voice
   - [x] One channel for everything said mid-ride (`AppEvent::Moment`, `moments.rs`): climbs
     topped and their records, halfway, 1 km (1 mi) to go, every 25 km (25 mi), the first
@@ -313,7 +313,8 @@ Built in rideable steps:
     course and climb records, first ride, FTP raised, rides this week against the rider's
     optional plan (profile: rides planned per week), the week's load; a hard workout step held
     told live
-  - [ ] A chime under a new **Sounds** setting and a burst of particles on the card
+  - [x] A chime under a new **Sound** settings tab (R125, on by default, made at start-up from
+    two bell notes rather than a recording) and a burst of particles on the card
 
 ### Phase 8 — Start page & course gallery (R36–R42, R48–R54)
 - [x] Start page with top tabs (Courses, History, Profile, Devices); ride view separated

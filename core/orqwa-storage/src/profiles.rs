@@ -238,6 +238,8 @@ struct Settings {
     overlay: Option<OverlayWindow>,
     /// Whether the ride view's control bar is folded away to its corner (#189).
     ride_bar_folded: Option<bool>,
+    /// Whether the app plays its own sounds, such as the chime of a ride's moments (R125).
+    sounds: Option<bool>,
     /// Whether the app filled the screen, from before R78 made it the computer's; carried over
     /// once by [`carry_over`], then gone.
     fullscreen: Option<bool>,
@@ -870,6 +872,23 @@ pub fn set_ride_bar_folded(data_dir: &Path, folded: bool) -> Result<(), ProfileE
     save_settings(data_dir, &settings)
 }
 
+/// Whether the app plays its own sounds, such as the chime of a ride's moments (R125); on
+/// until turned off.
+#[must_use]
+pub fn sounds(data_dir: &Path) -> bool {
+    settings(data_dir).sounds.unwrap_or(true)
+}
+
+/// Remembers whether the app plays its own sounds.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_sounds(data_dir: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut settings = settings(data_dir);
+    settings.sounds = Some(on);
+    save_settings(data_dir, &settings)
+}
+
 /// How the Courses tab was left (R67); the defaults until it is changed.
 #[must_use]
 pub fn courses_view(data_dir: &Path) -> CoursesView {
@@ -1082,6 +1101,20 @@ mod tests {
         assert_eq!(active(&dir).as_deref(), Some("anna"));
         set_ride_bar_folded(&dir, false).unwrap();
         assert!(!ride_bar_folded(&dir));
+    }
+
+    #[test]
+    fn sounds_are_on_until_turned_off_and_stay_off() {
+        let dir = temp_dir("sounds");
+        assert!(sounds(&dir), "a new installation chimes (R125)");
+        set_ride_bar_folded(&dir, true).unwrap();
+
+        set_sounds(&dir, false).unwrap();
+
+        assert!(!sounds(&dir));
+        assert!(ride_bar_folded(&dir), "the other settings stay");
+        set_sounds(&dir, true).unwrap();
+        assert!(sounds(&dir));
     }
 
     #[test]

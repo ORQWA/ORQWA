@@ -31,6 +31,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_lines()
 	_highlights()
+	_chime()
 	await _card()
 	if not _failed:
 		print("MOMENT SMOKE TEST PASSED")
@@ -50,6 +51,7 @@ func _lines() -> void:
 	_check(_plain(MOMENTS[3], true) == "1 mi to go.", "in miles")
 	_check(_plain(MOMENTS[4], false) == "25 km ridden.", "whole distances")
 	_check(MomentLines.figure(MOMENTS[2], false) == "16.1 km", "a distance figure")
+	_check(MomentLines.distance(420.0, false) == "420 m", "a short distance")
 	_check(MomentLines.figure(MOMENTS[1], false) == "14:02", "a time figure")
 	_check(_plain(MOMENTS[6], false) == "Best 5 min power: 312 W.", "a power record")
 	_check(MomentLines.figure(MOMENTS[6], false) == "312 W", "a power figure")
@@ -97,6 +99,16 @@ func _highlights() -> void:
 	list.show_highlights([], "casual", false, 0)
 	_check(not list.visible, "no highlights, no list")
 	list.queue_free()
+
+
+func _chime() -> void:
+	var wav: AudioStreamWAV = MomentChime.make()
+	var loudest: int = 0
+	for i: int in range(0, wav.data.size(), 2):
+		loudest = maxi(loudest, absi(wav.data.decode_s16(i)))
+	_check(is_equal_approx(wav.get_length(), MomentChime.SECONDS), "the chime's length")
+	_check(loudest > 3000 and loudest < 32767, "a chime heard but not clipped: %d" % loudest)
+	_check(absi(wav.data.decode_s16(0)) < 100, "the chime starts without a click")
 
 
 func _card() -> void:

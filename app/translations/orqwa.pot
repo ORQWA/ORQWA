@@ -179,6 +179,10 @@ msgstr ""
 msgid "A recorded activity…"
 msgstr ""
 
+#: app/ui/sound_settings.gd
+msgid "A short chime as a card tells of a climb topped, a milestone or a record."
+msgstr ""
+
 #: app/ui/course_settings.gd
 msgid "A world takes about 10 MB per kilometre of route."
 msgstr ""
@@ -1935,6 +1939,14 @@ msgstr ""
 msgid "Planned for today"
 msgstr ""
 
+#: app/ui/sound_settings.gd
+msgid "Play a chime with the ride's moments"
+msgstr ""
+
+#: app/ui/sound_settings.gd
+msgid "Play the chime"
+msgstr ""
+
 #: app/ui/ride_options.gd
 msgid "Play the video's sound"
 msgstr ""
@@ -2371,7 +2383,7 @@ msgstr ""
 msgid "Sort"
 msgstr ""
 
-#: app/ui/ride_options.gd
+#: app/scenes/settings_dialog.gd app/ui/ride_options.gd
 msgid "Sound"
 msgstr ""
 

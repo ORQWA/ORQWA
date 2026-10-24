@@ -2086,6 +2086,21 @@ impl App {
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
+    /// Whether the app plays its own sounds, such as the chime of a ride's moments (R125).
+    #[must_use]
+    pub fn sounds(&self) -> bool {
+        profiles::sounds(&self.data_dir)
+    }
+
+    /// Turns the app's own sounds on or off.
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if it cannot be saved.
+    pub fn set_sounds(&mut self, on: bool) -> Result<(), AppError> {
+        profiles::set_sounds(&self.data_dir, on)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+    }
+
     /// Whether the app fills the screen on this computer (#218, R78).
     #[must_use]
     pub fn fullscreen(&self) -> bool {

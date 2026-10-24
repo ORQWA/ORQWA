@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-24
-- Requirements: R124, R27, R42, R113
+- Requirements: R124, R125, R27, R42, R113
 
 ## Context
 
@@ -35,6 +35,10 @@ the wording across the ride screen.
   with the ride: they compare against the rides before it, so they need no migration and stay
   right after rides are deleted. The casual line is picked by the ride's path, so a summary
   says the same each time.
+
+- The chime is a presentation sound, played by Godot rather than mixed into the core's
+  ambient stream, which only runs on 3D course rides (R114); moments come on every kind of
+  ride. It is synthesised when the app starts, so no recording or licence is added.
 
 ## Consequences
 

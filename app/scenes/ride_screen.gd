@@ -55,6 +55,7 @@ var _saved: bool = false
 var _toast_left: float = 0.0
 ## The moments of the ride (R124).
 var _moment_card: MomentCard = MomentCard.new()
+var _chime: MomentChime = MomentChime.new()
 ## Simulated rides (fake trainer): speed, jumps on map and profile, free camera (#53).
 var _bar: RideBar = RideBar.new()
 var _simulating: bool = false
@@ -198,6 +199,8 @@ func _ready() -> void:
 	_overlay_hud.pause_requested.connect(_toggle_pause)
 	_bar.pause_requested.connect(_toggle_pause)
 	add_child(_moment_card)
+	_moment_card.shown.connect(func(_text: String) -> void: _play_chime())
+	add_child(_chime)
 	add_child(_overlay_hud)
 
 
@@ -598,8 +601,15 @@ func _on_moment(moment: Dictionary) -> void:
 	var line: String = MomentLines.line(moment, voice, _imperial)
 	if is_overlay():
 		_overlay_hud.tell(line)
+		_play_chime()
 	else:
 		_moment_card.tell(MomentLines.figure(moment, _imperial), line)
+
+
+## The chime of a moment, unless the app's sounds are off (R125).
+func _play_chime() -> void:
+	if _orqwa.sounds():
+		_chime.play()
 
 
 ## Suggests a lower graphics preset when the ride stays below 60 fps (R43). Simulated rides

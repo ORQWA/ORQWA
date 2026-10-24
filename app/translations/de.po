@@ -2368,3 +2368,12 @@ msgstr "Geplante Fahrten pro Woche"
 
 msgid "The ride's summary counts your rides this week against it; 0 if you plan no number"
 msgstr "Die Zusammenfassung einer Fahrt zählt deine Fahrten dieser Woche dagegen; 0, wenn du keine Anzahl planst"
+
+msgid "Play a chime with the ride's moments"
+msgstr "Bei den Momenten der Fahrt einen Klang abspielen"
+
+msgid "A short chime as a card tells of a climb topped, a milestone or a record."
+msgstr "Ein kurzer Klang, wenn eine Karte von einem geschafften Anstieg, einem Meilenstein oder einem Rekord erzählt."
+
+msgid "Play the chime"
+msgstr "Klang abspielen"

@@ -133,6 +133,17 @@ func _run() -> void:
 		print("saved ", path)
 		world.cycle_camera()
 
+	# A moment of the ride (R124) on its card, mid-burst.
+	var moment_screen: RideScreen = _main.get_node("RideScreen")
+	moment_screen.call(
+		"_on_moment", {"kind": "climb_record", "index": 1, "elapsed_s": 842.0, "gain_s": 12.0}
+	)
+	await create_timer(0.6).timeout
+	root.get_texture().get_image().save_png(out_dir.path_join("ride-moment.png"))
+	print("saved ride moment")
+	var moment_card: MomentCard = moment_screen.get("_moment_card")
+	moment_card.clear()
+
 	# A close side view of the rider, for checking the avatar.
 	var rider: Node3D = world.get_node("Rider")
 	var side: Camera3D = Camera3D.new()

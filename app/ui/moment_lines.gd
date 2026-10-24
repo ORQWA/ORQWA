@@ -212,8 +212,11 @@ static func figure(moment: Dictionary, imperial: bool) -> String:
 	return ""
 
 
-## `meters` in the rider's units: "32.1 km", whole ones without a decimal ("25 km").
+## `meters` in the rider's units: "32.1 km", whole ones without a decimal ("25 km"), short
+## ones in metres or feet ("400 m").
 static func distance(meters: float, imperial: bool) -> String:
+	if meters < 1000.0:
+		return climbing(meters, imperial)
 	var value: float = meters / 1000.0 / (KM_PER_MILE if imperial else 1.0)
 	var unit: String = "mi" if imperial else "km"
 	var rounded: float = snappedf(value, 0.1)

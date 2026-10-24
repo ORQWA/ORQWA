@@ -27,6 +27,7 @@ func _run() -> void:
 	_tree_quality(world)
 	_tree_density_override(world)
 	_courses(orqwa, dialog)
+	_sound(orqwa, dialog)
 	_about(dialog)
 	_updates(orqwa, dialog, main)
 	await _in_german(dialog)
@@ -69,9 +70,9 @@ func _cog(start: StartPage) -> void:
 		window.encloses(Rect2i(dialog.position, dialog.size)),
 		"within the window: %s in %s" % [Rect2i(dialog.position, dialog.size), window]
 	)
-	_check(tabs.get_tab_count() == 3, "three tabs")
+	_check(tabs.get_tab_count() == 4, "four tabs")
 	var titles: Array = range(tabs.get_tab_count()).map(tabs.get_tab_title)
-	_check(titles == ["Graphics", "Courses", "About"], "titled: %s" % [titles])
+	_check(titles == ["Graphics", "Courses", "Sound", "About"], "titled: %s" % [titles])
 	_check(tabs.current_tab == 0, "opening on Graphics")
 
 
@@ -260,6 +261,18 @@ func _about(dialog: SettingsDialog) -> void:
 
 ## Keeping the courses' worlds (R101): off until this computer turns it on, which tells the
 ## room they take; off again, they are deleted.
+## The chime of the ride's moments (R125): on until turned off, kept for the installation.
+func _sound(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
+	var sound: SoundSettings = dialog.get("_sound")
+	var sounds: CheckBox = sound.get("_sounds")
+	sound.refresh()
+	_check(sound.is_on() == orqwa.sounds(), "the box shows the setting")
+	sounds.button_pressed = false
+	_check(not orqwa.sounds(), "turned off")
+	sounds.button_pressed = true
+	_check(orqwa.sounds(), "and on again")
+
+
 func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var courses: CourseSettings = dialog.get("_courses")
 	var keep: CheckBox = courses.get("_keep")
@@ -315,7 +328,9 @@ func _in_german(dialog: SettingsDialog) -> void:
 	# The tab bar translates its titles as it draws them.
 	var graphics: String = tabs.get_tab_bar().atr(tabs.get_tab_title(0))
 	var courses_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(1))
-	var about_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(2))
+	var sound_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(2))
+	var about_title: String = tabs.get_tab_bar().atr(tabs.get_tab_title(3))
+	_check(sound_title == "Ton", "Sound in German: %s" % sound_title)
 	_check(graphics == "Grafik", "Graphics in German: %s" % graphics)
 	_check(courses_title == "Routen", "Courses in German: %s" % courses_title)
 	_check(about_title == "Über ORQWA", "About in German: %s" % about_title)
