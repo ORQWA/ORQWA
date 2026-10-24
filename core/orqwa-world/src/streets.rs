@@ -47,6 +47,8 @@ fn lift(class: RoadClass, index: usize) -> f64 {
 
 /// A street of the map in metres east/north, with its bounds for quick chunk tests.
 pub(crate) struct Street {
+    /// Original map features making up this chain, for pavement ownership.
+    sources: Vec<usize>,
     pub(crate) appearance: Appearance,
     class: RoadClass,
     points: Vec<(f64, f64)>,
@@ -176,6 +178,7 @@ pub(crate) async fn lines<M: ElevationModel>(
             max = (max.0.max(e), max.1.max(n));
         }
         streets.push(Street {
+            sources: chain.iter().map(|&(source, _)| source).collect(),
             appearance: Appearance::of(road),
             class: road.class,
             points,
@@ -262,7 +265,7 @@ pub(crate) fn meshes(
             let mut previous = None;
             for (i, &(point, distance)) in piece.iter().enumerate() {
                 let direction = local_direction(&points, i);
-                if road.covers_street(point, half, surface, direction) {
+                if road.covers_street(point, half, surface, direction, &street.sources) {
                     if !run.is_empty() {
                         // Keep the transition segment: its visible end must reach a
                         // cross-section inside the ridden road, not stop a sample short.
@@ -306,7 +309,7 @@ pub(crate) fn meshes(
                     || point.0 - half > high.0
                     || point.1 + half < low.1
                     || point.1 - half > high.1;
-                if outside || road.covers_street(point, half, surface, direction) {
+                if outside || road.covers_street(point, half, surface, direction, &street.sources) {
                     continue;
                 }
                 let disc: Vec<(f64, f64)> = (0..CAP_CORNERS)
@@ -383,7 +386,13 @@ pub(crate) fn mouths(streets: &[Street], road: &RoadIndex) -> Vec<Mouth> {
                 continue;
             }
             let direction = local_direction(&street.points, i);
-            if !road.covers_street((east, north), half, Surface::Ground, direction) {
+            if !road.covers_street(
+                (east, north),
+                half,
+                Surface::Ground,
+                direction,
+                &street.sources,
+            ) {
                 mouths.push((along, side, half));
             }
         }

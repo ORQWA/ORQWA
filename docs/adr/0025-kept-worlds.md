@@ -201,3 +201,18 @@ instead of leaving a low concrete ridge or removing the closed side of the slab.
 The mapped deck's narrow kerb is excluded from its own carriageway, and shore gravel is not
 a road. Independent levels retain their protection. No temporary metadata enters kept worlds;
 stored format remains 3.
+
+Generator 25 retains the matched map feature alongside each ridden road segment's appearance
+during generation. A close, aligned copy of that same feature belongs to the ridden pavement
+despite small GPX/map offsets; it no longer adds asphalt and markings to the shaped bank.
+Source identity distinguishes that copy from a shallow joining street or a wider highway
+beside a narrow ridden cycleway. Original map feature IDs survive street-chain assembly,
+and rounded caps and shoulder openings use the same ownership test. These IDs are temporary;
+stored format remains 3.
+
+Generator 26 anchors guardrail span endpoints to their owning carriageway's elevation minus
+the 15 cm shoulder sink. Buried post feet meet the existing road edge/skirt instead of moving
+the blade down to a bank cut by a lower hairpin arm. Lateral clearance, upright posts and
+shared curved endpoints remain; their fitted heights no longer depend on terrain chunks.
+Final-ground corrections still apply to ground-mounted snow poles and delineators.
+Terrain shaping and the lower carriageway are unchanged. Stored format remains 3.

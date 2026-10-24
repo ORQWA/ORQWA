@@ -44,6 +44,8 @@ pub(crate) type Plane = ((f64, f64), (f64, f64));
 #[derive(Debug, Clone, Copy)]
 struct Segment {
     appearance: Option<Appearance>,
+    /// Map feature that supplied the appearance, retained only during generation.
+    source: Option<usize>,
     /// Start and end in metres east/north.
     a: (f64, f64),
     b: (f64, f64),
@@ -112,7 +114,9 @@ impl RoadIndex {
                 f64::midpoint(segment.a.0, segment.b.0),
                 f64::midpoint(segment.a.1, segment.b.1),
             );
-            segment.appearance = Some(index.at(point, direction(segment), segment.surface));
+            let (appearance, source) = index.at(point, direction(segment), segment.surface);
+            segment.appearance = Some(appearance);
+            segment.source = source;
         }
         // Ease width changes over roughly twenty metres; material boundaries stay local.
         for line in &self.lines {
@@ -245,6 +249,7 @@ impl RoadIndex {
             let start = segments.len();
             segments.extend(line.windows(2).map(|w| Segment {
                 appearance: None,
+                source: None,
                 a: w[0].position,
                 b: w[1].position,
                 elevation_a: w[0].elevation,
@@ -314,15 +319,15 @@ impl RoadIndex {
         })
     }
 
-    /// Whether the ridden road already draws this street. Ground junctions require full
-    /// cross-section coverage; a bridge with a matching centre line has one structure even
-    /// when GPX smoothing and map quantisation shift its edges slightly.
+    /// Whether the ridden road already draws this street. Retaining the matched map feature
+    /// distinguishes a shifted copy of the same carriageway from a shallow joining street.
     pub(crate) fn covers_street(
         &self,
         point: (f64, f64),
         half: f64,
         surface: Surface,
         heading: (f64, f64),
+        sources: &[usize],
     ) -> bool {
         self.nearest_segment(point.0, point.1, half + 8.0)
             .is_some_and(|((distance, _, on), index)| {
@@ -338,6 +343,10 @@ impl RoadIndex {
                         distance <= road_half.min(half).min(SAME_ROAD)
                     } else {
                         distance + half <= road_half + 1e-6
+                            || (segment
+                                .source
+                                .is_some_and(|source| sources.contains(&source))
+                                && distance <= road_half.min(half).min(SAME_ROAD))
                     }
             })
     }

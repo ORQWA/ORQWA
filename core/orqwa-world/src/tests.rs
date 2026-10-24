@@ -219,11 +219,12 @@ async fn road_appearance_matching_ignores_crossings_parallel_neighbours_and_othe
         &projection,
     );
     let point = projection.project(at(0.0, 500.0).0, at(0.0, 500.0).1);
-    assert!(index.at(point, (0.0, 1.0), Surface::Ground).width < 3.0);
-    assert!(index.at(point, (0.0, 1.0), Surface::Bridge).width > 9.0);
+    assert!(index.at(point, (0.0, 1.0), Surface::Ground).0.width < 3.0);
+    assert!(index.at(point, (0.0, 1.0), Surface::Bridge).0.width > 9.0);
     assert!(
         (index
             .at((1000.0, 1000.0), (0.0, 1.0), Surface::Ground)
+            .0
             .width
             - 6.0)
             .abs()
@@ -2002,6 +2003,70 @@ async fn shallow_intersections_reach_the_road_in_both_directions_and_across_chun
                 (bevel[1] - (join + side * 8.0)).abs() < 1.0 && (0.0..=1.0).contains(&bevel[0])
             }),
             "the gravel shoulder must open at a shallow junction"
+        );
+    }
+}
+
+#[tokio::test]
+async fn an_offset_map_centre_line_does_not_paint_a_second_road_down_the_bank() {
+    struct Cliff;
+    impl ElevationModel for Cliff {
+        fn elevation(
+            &mut self,
+            _lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46_f64.to_radians().cos();
+            std::future::ready(Ok(500.0 - 3.0 * east))
+        }
+    }
+    let route = route_north(&[]).await;
+    for (offset, split) in [(0.4, false), (2.0, true)] {
+        let mut mapped = road_north();
+        mapped.class = RoadClass::Major;
+        mapped.line = vec![at(offset, 100.0), at(offset, 900.0)];
+        let mut roads = vec![mapped.clone()];
+        if split {
+            // Tile pieces become one street chain, but retain both original feature IDs.
+            roads[0].line[1] = at(offset, 480.0);
+            mapped.line[0] = at(offset, 480.0);
+            roads.push(mapped);
+        }
+        let world = generate(
+            &route,
+            &mut Cliff,
+            &MapData {
+                roads,
+                ..MapData::default()
+            },
+            &mut |_, _| {},
+        )
+        .await;
+        assert!(
+            world.chunks.iter().all(|c| c.streets.indices.is_empty()),
+            "the same marked carriageway must not also drape down its bank at offset {offset}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_narrow_ridden_cycleway_does_not_claim_a_wider_neighbouring_highway() {
+    let mut cycleway = road_north();
+    cycleway.class = RoadClass::Path;
+    cycleway.details.kind = orqwa_osm::RoadKind::Cycleway;
+    cycleway.details.surface = orqwa_osm::RoadSurface::Paved;
+    let mut highway = road_north();
+    highway.class = RoadClass::Major;
+    highway.line = vec![at(2.0, 100.0), at(2.0, 900.0)];
+    let world = world(&MapData {
+        roads: vec![cycleway, highway],
+        ..MapData::default()
+    })
+    .await;
+    for north in [200.0, 479.75, 480.25, 700.0] {
+        assert!(
+            street_at(&world, 4.5, -north).is_some(),
+            "the wider highway remains beside a narrow ridden cycleway"
         );
     }
 }
@@ -5174,6 +5239,62 @@ async fn a_lower_parallel_railway_does_not_pull_the_road_verge_and_protection_do
         rail_bed(&world).iter().all(|v| v[1] < 470.0),
         "the separate lower railway keeps its elevation"
     );
+}
+
+#[tokio::test]
+async fn guardrails_stay_at_the_upper_carriageway_beside_a_lower_hairpin_arm() {
+    let mut points = Vec::new();
+    for i in 0..=100 {
+        points.push((0.0, f64::from(i) * 10.0));
+    }
+    for k in 1..12 {
+        let angle = std::f64::consts::PI * f64::from(k) / 12.0;
+        points.push((8.0 - 8.0 * angle.cos(), 1000.0 + 8.0 * angle.sin()));
+    }
+    for i in (0..=100).rev() {
+        points.push((16.0, f64::from(i) * 10.0));
+    }
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for (east, north) in points {
+        let (lat, lon) = at(east, north);
+        let elevation = 500.0 - east * 1.7;
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let route = Route::from_gpx_with::<Level>(&xml, None, &MapData::default())
+        .await
+        .unwrap();
+    let world = generate(
+        &route,
+        &mut Level(440.0),
+        &MapData::default(),
+        &mut |_, _| {},
+    )
+    .await;
+    let upper: Vec<_> = along_middle(&props_of(&world, "guard_rail"))
+        .into_iter()
+        .filter(|p| p[0].abs() < 5.0)
+        .collect();
+    assert!(upper.len() > 100, "the upper arm still needs protection");
+    for p in upper {
+        assert!(
+            p[1] > 499.5,
+            "rail follows the cut bank below its road: {p:?}"
+        );
+        assert!(
+            (3.45..3.75).contains(&p[0].abs()),
+            "post stays beside the road edge: {p:?}"
+        );
+    }
+    for section in world.road.vertices.as_chunks::<6>().0 {
+        for p in [section[2], section[3]] {
+            let ground = ground_at(&world, p[0], p[2]).expect("terrain under each carriageway");
+            assert!(ground <= p[1] + 0.01, "the lower arm remains clear");
+        }
+    }
 }
 
 #[tokio::test]
