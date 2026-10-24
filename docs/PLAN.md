@@ -66,7 +66,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - **Tacx FE-C over BLE**: the NEO 2 Smart's UART service `6e40fec1…`, notifications
   `…fec2…`, controls `…fec3…`; ANT-framed FE-C pages over Bluetooth. Simulation alternates
   wind and track pages at four writes per second; ERG and resistance repeat the latest target.
-  No ANT+ transport. FTMS is preferred when both services exist. Hardware check pending (R110).
+  No ANT+ transport. FTMS is preferred when both services exist. Confirmed on a NEO 2 Smart (R110).
 - **Physics**: `P·η = v·(m·g·(Crr·cosθ + sinθ) + ½·ρ·CdA·v_rel²) + m·v·dv/dt`, integrated per
   tick. The trainer receives `grade × difficulty` (descents per R15).
 - **Elevation**: Mapterhorn terrain tiles with AWS fallback, cached on disk
@@ -131,7 +131,7 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] FTMS driver (SIM / ERG / resistance), heart-rate sensor
 - [x] Tacx FE-C over Bluetooth driver (R110, ADR 0028): NEO 2 Smart discovery, power/cadence/
   speed, SIM / ERG / resistance, latest control restored after reconnection; protocol tests
-- [ ] Confirm NEO 2 Smart discovery, readings, control modes and reconnection on hardware
+- [x] NEO 2 Smart discovery, readings, control modes and reconnection confirmed on hardware
 - [x] Fake trainer
 - [x] `orqwa-cli scan` / `orqwa-cli ride`
 - [x] macOS CLI artifact from CI

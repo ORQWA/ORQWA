@@ -219,13 +219,13 @@ FE-C over Bluetooth (R110, [ADR 0028](adr/0028-tacx-bluetooth.md)). Bluetooth di
 subscriptions, device handles and reconnection stay shared in `ble.rs`. Tacx packet and
 command-queue tests run with `cargo test -p orqwa-devices`; they do not require a radio.
 
-The NEO 2 Smart still needs a hardware check. Use a native CI-built app/CLI (Docker on
-macOS has no Bluetooth): close other trainer apps, run `orqwa-cli scan`, then connect in
-the app's Trainer row. With `RUST_LOG=orqwa_devices=debug`, record firmware, advertised
-services, power/cadence/speed, SIM on flat/climbs/descents, ERG targets, fixed resistance,
-release on pause, virtual gears and reconnection. Keep the hardware-verification item in
-`PLAN.md` open until those results are recorded. Existing device screenshots still apply;
-the adapter adds no controls or layout changes.
+The NEO 2 Smart has been checked on hardware. Check another Tacx model the same way, with a
+native CI-built app/CLI (Docker on macOS has no Bluetooth): close other trainer apps, run
+`orqwa-cli scan`, then connect in the app's Trainer row. With `RUST_LOG=orqwa_devices=debug`,
+record firmware, advertised services, power/cadence/speed, SIM on flat/climbs/descents, ERG
+targets, fixed resistance, release on pause, virtual gears and reconnection. A model that
+passes joins the wiki's tested devices. Existing device screenshots still apply; the
+adapter adds no controls or layout changes.
 
 ## Refreshing screenshots
 

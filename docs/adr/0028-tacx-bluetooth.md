@@ -1,6 +1,6 @@
 # ADR 0028 — Tacx FE-C over Bluetooth
 
-- Status: accepted; NEO 2 Smart hardware verification pending
+- Status: accepted; confirmed on a NEO 2 Smart (2026-10-24)
 - Date: 2026-10-21
 
 ## Context
@@ -31,13 +31,13 @@ ANT+ support, which was dropped; it uses the existing Bluetooth adapter and no d
   replace queued old targets on a mode change. On reconnect restore the desired control,
   otherwise start at zero resistance. No FTMS request/start handshake on Tacx.
 - Reuse the existing pairing screen and saved device identifiers. No screen layout or
-  screenshot changes are needed. The NEO 2 Smart remains explicitly unverified on hardware.
+  screenshot changes are needed.
 
 ## Consequences
 
-Other Tacx units advertising the same service can use this adapter, but their model and
-firmware are not certified. Native ANT+, Tacx road feel and calibration are outside this
-change. FE-C simulation uses the trainer's configured/default rider mass, as ORQWA's
-current simulation parameters do not carry mass. Hardware validation must check uphill,
-flat and downhill feel, wind/rolling resistance with virtual gears, ERG, release on pause,
-and restoration after a dropped connection.
+Other Tacx units advertising the same service can use this adapter, but only the NEO 2
+Smart has been tried. Native ANT+, Tacx road feel and calibration are outside this change.
+FE-C simulation uses the trainer's configured/default rider mass, as ORQWA's current
+simulation parameters do not carry mass. Each further model needs its own hardware check:
+uphill, flat and downhill feel, wind/rolling resistance with virtual gears, ERG, release on
+pause, and restoration after a dropped connection.
