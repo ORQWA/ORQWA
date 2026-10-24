@@ -1,6 +1,6 @@
 [package]
 name = "orqwa-devices"
-description = "Trainer and sensor drivers for ORQWA (Bluetooth FTMS, heart rate, Shimano Di2, Zwift Click, fake trainer)"
+description = "Trainer and sensor drivers for ORQWA (Bluetooth FTMS, Tacx FE-C over BLE, heart rate, Shimano Di2, Zwift Click, fake trainer)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
