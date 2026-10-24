@@ -146,6 +146,46 @@ Furniture queries use the same field. Profiles and references are temporary; sto
 remains 3. Review from street height as well as above: an intact footprint alone cannot
 validate a walking join.
 
+### Continuous islands and connected corners amendment (2026-10-24)
+
+Generator 31 removes overlap between inferred walking footprints before meshing. Offsets
+that fold across themselves in a tight inner bend are resolved to their bounded
+convex footprint before carriageway clipping, rather than passing a self-crossing polygon
+to convex subtraction and triangulation. This also fills the intended walking remainder
+where the available island is narrower than a walking strip.
+
+Connected overlap regions use one fitted grade from their adjoining walking profiles over
+the complete participating pieces, easing back to neighbouring profiles over one sidewalk
+width. Restricting that grade to the intersection leaves a step at the surviving rim.
+Every top inside the shared region lies in the same plane;
+blending separate tessellated tops left cracks and stacked slabs. Deterministic ownership
+keeps a single surface, and exposed edges remain closed. Grades and shared cross-section
+lifts are cached during generation, and furniture height queries use the same grade.
+Connectivity is established from the original footprints before ownership subtraction;
+touching overlap groups share one component. Trimming first can hide connections and give
+different planes to adjoining pieces of the same island.
+Profiles used by overlaps or crossing chunk boundaries pin their missing endpoint heights
+once against the global drawn-ground sampler, before chunks are built. Their straight and
+curved pieces therefore retain the same datum even when an anchor falls outside one chunk's
+refined height grid. Explicit ridden-road heights remain authoritative.
+
+A curved corner requires walking strips at both tangent approaches. A paved junction alone
+cannot create detached sidewalk tiles beside narrow service roads or beyond an urban walk.
+Junction arcs join the existing walking footprint; their broad construction wedges do not
+delete it. Only outer-bend rounding replaces the old miter, following the owning strips
+through shared cross-sections and trimming their connected straight pieces. Neither can
+erase a separate curved band or the opposite side of a turning loop. Actual curve overlaps
+are clipped to a single graded surface instead.
+Every sidewalk is clipped against the carriageway's actual junction fans, including
+fans belonging to another nearby corner. Straight arm ribbons alone omit that rounded
+asphalt and can leave an obsolete sidewalk rim across it inside a small turning loop.
+Two arms of the same continuous mapped street do not get a junction fan: that street
+already draws its own bends. Treating the inside of a loop as a separate intersection
+adds a second corner through its existing sidewalk. Independent joining streets retain
+their fillets.
+Regressions include different road widths, reversed loop geometry, a terrain-chunk boundary
+and a narrow joining arm. Stored format stays 3.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,

@@ -104,6 +104,12 @@ neighbour's sidewalk, including when the two streets have different heights.
 Inspect the full width of tangent joins at street height on sloping ground. Straight and
 curved strips must share a grade, including lowered access; intact footprints from above
 do not prove that the walking surface is continuous.
+Include a small turning island on sloping ground and an urban junction with a narrow
+service arm. Walking surfaces must not stack inside the island, and corners must not
+leave isolated tiles where no eligible sidewalk approaches exist.
+Check the entire island perimeter at close range: a surviving raised rim with a channel
+inside it is still incorrect. Junction construction wedges must not excavate an existing
+walking run; rounded carriageway fans must remain clear of paving.
 Include widening and narrowing streets and a wall touching only the outer part of a walk.
 The usable strip must remain continuous and keep clear of the actual asphalt, while clipped
 outer faces reach terrain. Inspect the same sloping, partially clipped corner for reversed

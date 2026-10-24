@@ -476,6 +476,214 @@ async fn acute_forks_have_a_rounded_sidewalk_nose_instead_of_cut_off_slabs() {
 }
 
 #[tokio::test]
+async fn narrow_side_roads_do_not_get_isolated_sidewalk_corner_tiles() {
+    let mut map = city();
+    let mut side = road_north();
+    side.class = RoadClass::Service;
+    side.details.kind = orqwa_osm::RoadKind::Service;
+    side.line = vec![at(0.0, 500.0), at(80.0, 500.0)];
+    map.roads = vec![road_north(), side];
+    let world = world(&map).await;
+    for e in 0..=30 {
+        for n in 0..=30 {
+            let (east, north) = (5.0 + e as f32 * 0.1, 502.0 + n as f32 * 0.1);
+            assert!(
+                height_on(&world, |c| &c.urban, east, -north).is_none(),
+                "detached corner tile at {east}, {north}"
+            );
+        }
+    }
+    for n in [490.0, 510.0] {
+        assert!(
+            height_on(&world, |c| &c.urban, 4.0, -n).is_some(),
+            "the main street retains its sidewalk"
+        );
+    }
+}
+
+#[tokio::test]
+async fn rounded_junction_asphalt_trims_other_sidewalk_pieces() {
+    let mut map = city();
+    let street = |line: &[(f64, f64)]| orqwa_osm::Road {
+        class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
+        line: line.iter().map(|&(e, n)| at(e, n)).collect(),
+        structure: None,
+    };
+    map.roads = vec![
+        street(&[
+            (56.0, 200.0),
+            (55.0, 204.0),
+            (51.0, 206.0),
+            (47.0, 204.0),
+            (45.0, 200.0),
+            (47.0, 196.0),
+            (51.0, 194.0),
+            (55.0, 196.0),
+            (56.0, 200.0),
+            (80.0, 200.0),
+        ]),
+        street(&[(51.0, 206.0), (51.0, 230.0)]),
+    ];
+    let world = world(&map).await;
+    let mut paved = 0;
+    for x in 0..51 {
+        for n in 0..61 {
+            let (east, north) = (45.0 + x as f32 * 0.2, 194.0 + n as f32 * 0.2);
+            // Stay inside the asphalt rather than testing numerical shared curb edges.
+            if [(0.0, 0.0), (0.1, 0.0), (-0.1, 0.0), (0.0, 0.1), (0.0, -0.1)]
+                .into_iter()
+                .all(|(e, n)| street_at(&world, east + e, -north + n).is_some())
+            {
+                paved += 1;
+                assert!(
+                    height_on(&world, |c| &c.urban, east, -north).is_none(),
+                    "sidewalk rim across rounded asphalt at {east}, {north}"
+                );
+            }
+        }
+    }
+    assert!(paved > 100, "the fixture must exercise the carriageway");
+}
+
+fn assert_continuous_walking_tread(world: &World, shift: f32) {
+    // Disjoint tops can still have a step at their shared edge. Sample both sides
+    // of every internal mesh edge rather than relying only on projected overlaps.
+    let walking_height = |east, z| {
+        let mut top: Option<f32> = None;
+        for chunk in &world.chunks {
+            let mesh = &chunk.urban;
+            for face in mesh.indices.as_chunks::<3>().0 {
+                // The narrow curb border has a deliberate bevel; test the tread.
+                if face
+                    .iter()
+                    .any(|&i| mesh.colors[i as usize][0] > 0.5 || mesh.normals[i as usize][1] < 0.2)
+                {
+                    continue;
+                }
+                let triangle = face.map(|i| {
+                    let p = mesh.vertices[i as usize];
+                    [p[0] + chunk.center[0], p[1], p[2] + chunk.center[2]]
+                });
+                if let Some(y) = triangle_height(triangle, east, z) {
+                    top = Some(top.map_or(y, |old| old.max(y)));
+                }
+            }
+        }
+        top
+    };
+    for chunk in &world.chunks {
+        let mesh = &chunk.urban;
+        for face in mesh.indices.as_chunks::<3>().0 {
+            if face.iter().any(|&i| mesh.normals[i as usize][1] < 0.2) {
+                continue;
+            }
+            for edge in 0..3 {
+                let [a, b] = [face[edge], face[(edge + 1) % 3]].map(|i| {
+                    let p = mesh.vertices[i as usize];
+                    (p[0] + chunk.center[0], p[2] + chunk.center[2])
+                });
+                let p = (a.0.midpoint(b.0), a.1.midpoint(b.1));
+                if !(48.0..52.0).contains(&p.0) || !(198.0 + shift..202.0 + shift).contains(&-p.1) {
+                    continue;
+                }
+                let length = (b.0 - a.0).hypot(b.1 - a.1).max(0.001);
+                let offset = ((b.1 - a.1) * 0.005 / length, (a.0 - b.0) * 0.005 / length);
+                if let (Some(a), Some(b)) = (
+                    walking_height(p.0 + offset.0, p.1 + offset.1),
+                    walking_height(p.0 - offset.0, p.1 - offset.1),
+                ) {
+                    assert!((a - b).abs() < 0.02, "walking step at {p:?}: {a}, {b}");
+                }
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_small_turning_island_has_one_walking_surface_without_stacked_pieces() {
+    for (class, reverse, shift, radius) in [
+        (RoadClass::Street, false, 0.0, 1.5_f32),
+        (RoadClass::Major, false, 0.0, 0.6),
+        (RoadClass::Major, true, 0.0, 0.6),
+        (RoadClass::Major, false, 280.0, 0.6),
+    ] {
+        let mut map = city();
+        map.roads.push(orqwa_osm::Road {
+            class,
+            details: orqwa_osm::RoadDetails::default(),
+            line: [
+                (56.0, 200.0),
+                (55.0, 204.0),
+                (51.0, 206.0),
+                (47.0, 204.0),
+                (45.0, 200.0),
+                (47.0, 196.0),
+                (51.0, 194.0),
+                (55.0, 196.0),
+                (56.0, 200.0),
+                (80.0, 200.0),
+            ]
+            .into_iter()
+            .map(|(e, n)| at(e, n + shift))
+            .collect(),
+            structure: None,
+        });
+        if reverse {
+            map.roads[0].line.reverse();
+        }
+        let world = world(&map).await;
+        let mut sampled = 0;
+        for x in 0..21 {
+            for n in 0..21 {
+                let (east, north) = (48.0 + x as f32 * 0.2, 198.0 + shift as f32 + n as f32 * 0.2);
+                let mut heights = Vec::new();
+                for chunk in &world.chunks {
+                    let mesh = &chunk.urban;
+                    for face in mesh.indices.as_chunks::<3>().0 {
+                        if face.iter().any(|&i| mesh.normals[i as usize][1] < 0.2) {
+                            continue;
+                        }
+                        let tri = face.map(|i| {
+                            let v = mesh.vertices[i as usize];
+                            [v[0] + chunk.center[0], v[1], v[2] + chunk.center[2]]
+                        });
+                        if let Some(y) = triangle_height(tri, east, -north) {
+                            heights.push(y);
+                        }
+                    }
+                }
+                if !heights.is_empty() {
+                    sampled += 1;
+                    let low = heights.iter().copied().fold(f32::INFINITY, f32::min);
+                    let high = heights.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+                    assert!(
+                        high - low < 0.02,
+                        "stacked paving at {east}, {north}: {heights:?}"
+                    );
+                }
+            }
+        }
+        assert!(
+            sampled > 20,
+            "the fixture must include walking surfaces inside the loop"
+        );
+        assert_continuous_walking_tread(&world, shift as f32);
+        for i in 0..72 {
+            let angle = i as f32 * std::f32::consts::TAU / 72.0;
+            let (east, north) = (
+                50.5 + radius * angle.cos(),
+                200.0 + shift as f32 + radius * angle.sin(),
+            );
+            assert!(
+                height_on(&world, |c| &c.urban, east, -north).is_some(),
+                "one rounded corner cut another at {east}, {north}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn curved_sidewalks_meet_straight_walks_without_height_steps() {
     let mut map = city();
     map.roads.push(orqwa_osm::Road {

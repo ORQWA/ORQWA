@@ -245,3 +245,10 @@ Generator 30 shares the straight walking strips' grade fields with their curved 
 Every arc section blends the same two parent profiles across its full width, eliminating
 height steps between footprints that already touch. Street-centre anchors supply fallback
 profiles; mapped short sections interpolate their endpoint samples. Stored format remains 3.
+
+Generator 31 clips overlapping walking footprints into one surface. Connected overlap regions
+share a fitted planar grade with smooth approaches, avoiding stacked island paving and
+cracks between different triangulations. Corner pieces require both walking approaches.
+Folded inner offsets are resolved before clipping, and shared profile endpoint heights
+are sampled globally at overlaps and chunk boundaries.
+Temporary grading metadata adds no stored fields; stored format remains 3.

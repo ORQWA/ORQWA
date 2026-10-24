@@ -291,6 +291,11 @@ fn fillets(arms: &[Arm], off: &Off) -> Vec<Corner> {
     let mut corners = Vec::new();
     for (k, a) in sorted.iter().enumerate() {
         let b = sorted[(k + 1) % sorted.len()];
+        // A continuous mapped street already draws its bends. Treating its two arms
+        // as a new junction cuts a second corner through the island inside a loop.
+        if a.street.is_some() && a.street == b.street {
+            continue;
+        }
         let angle = (heading(b.direction) - heading(a.direction)).rem_euclid(std::f64::consts::TAU);
         if !(CORNER.0..=CORNER.1).contains(&angle) {
             continue;
@@ -570,4 +575,39 @@ fn distance(a: (f64, f64), b: (f64, f64)) -> f64 {
 #[allow(clippy::cast_possible_truncation)] // local metres stay far below 2^63 cells
 fn cell(p: (f64, f64), size: f64) -> (i64, i64) {
     ((p.0 / size).floor() as i64, (p.1 / size).floor() as i64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn continuous_street_arms_do_not_add_a_second_corner_through_their_bend() {
+        let a = Arm {
+            from: (0.0, 0.0),
+            direction: (1.0, 0.0),
+            half: 3.0,
+            reach: 100.0,
+            lift: 0.07,
+            paved: true,
+            street: Some(0),
+        };
+        let mut b = Arm {
+            direction: (0.0, 1.0),
+            ..a
+        };
+        let off = |arm: &Arm, p: (f64, f64)| {
+            ((p.0 - arm.from.0) * arm.direction.1 - (p.1 - arm.from.1) * arm.direction.0).abs()
+        };
+        assert!(
+            fillets(&[a, b], &off).is_empty(),
+            "a continuous street already has its bend geometry"
+        );
+        b.street = Some(1);
+        assert_eq!(
+            fillets(&[a, b], &off).len(),
+            1,
+            "independent joining streets retain their rounded corner"
+        );
+    }
 }
