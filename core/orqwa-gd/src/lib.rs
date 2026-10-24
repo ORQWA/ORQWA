@@ -61,6 +61,19 @@ impl OrqwaCore {
         GString::from(COMMIT)
     }
 
+    /// The branch the core is built from; empty when the build could not tell, as for a
+    /// release built from its tag (R130).
+    #[func]
+    fn branch() -> GString {
+        GString::from(BRANCH)
+    }
+
+    /// The branch and commit together, as the log and bug reports name the build (R130).
+    #[func]
+    fn build() -> GString {
+        GString::from(&build_name(BRANCH, COMMIT))
+    }
+
     /// Where ORQWA's source code is.
     #[func]
     fn source_url() -> GString {
@@ -85,6 +98,19 @@ impl OrqwaCore {
 
 /// The commit the build script found (see `build.rs`).
 const COMMIT: &str = env!("ORQWA_COMMIT");
+
+/// The branch the build script found (see `build.rs`).
+const BRANCH: &str = env!("ORQWA_BRANCH");
+
+/// `main@90b74ef`; the commit alone without a branch, and nothing without a commit, as a
+/// branch alone does not tell which build it is.
+fn build_name(branch: &str, commit: &str) -> String {
+    match (branch, commit) {
+        (_, "") => String::new(),
+        ("", commit) => commit.to_owned(),
+        (branch, commit) => format!("{branch}@{commit}"),
+    }
+}
 
 /// The course a new library starts with (R95), with its terrain and map so that it rides
 /// offline. Here rather than in the core, which the command-line tool shares: only the app
@@ -3912,15 +3938,39 @@ fn format_failure(template: &str, args: &[String]) -> String {
 
 #[cfg(test)]
 mod build_tests {
-    use super::COMMIT;
+    use super::{BRANCH, COMMIT, build_name};
 
     #[test]
     fn the_commit_is_abbreviated_or_unknown() {
         assert!(
             COMMIT.is_empty()
-                || (COMMIT.len() >= 7 && COMMIT.chars().all(|c| c.is_ascii_hexdigit())),
+                || (COMMIT.len() == 7 && COMMIT.chars().all(|c| c.is_ascii_hexdigit())),
             "{COMMIT}"
         );
+    }
+
+    #[test]
+    fn the_branch_is_named_or_unknown() {
+        assert!(
+            BRANCH != "HEAD" && !BRANCH.chars().any(char::is_whitespace),
+            "{BRANCH}"
+        );
+    }
+
+    #[test]
+    fn the_build_is_named_by_branch_and_commit() {
+        assert_eq!(build_name("main", "90b74ef"), "main@90b74ef");
+        assert_eq!(
+            build_name("fix/sidewalk-continuity", "ff2ee14"),
+            "fix/sidewalk-continuity@ff2ee14"
+        );
+        assert_eq!(
+            build_name("", "90b74ef"),
+            "90b74ef",
+            "a release from its tag"
+        );
+        assert_eq!(build_name("main", ""), "", "a source archive");
+        assert_eq!(build_name("", ""), "");
     }
 }
 

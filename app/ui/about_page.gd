@@ -1,8 +1,8 @@
 class_name AboutPage
 extends VBoxContainer
-## What ORQWA is, on the settings' About tab (R83): its version and the commit it is built
-## from, whether a newer one is out (R99), its licence and where its source code is, and the
-## licence notices of everything built into the app, each with its full text.
+## What ORQWA is, on the settings' About tab (R83): its version and the branch and commit it
+## is built from (R130), whether a newer one is out (R99), its licence and where its source
+## code is, and the licence notices of everything built into the app, each with its full text.
 
 const LOGO: Texture2D = preload("res://assets/brand/orqwa-logo-dark.svg")
 const WORDMARK: Texture2D = preload("res://assets/brand/orqwa-wordmark-dark.svg")
@@ -115,11 +115,15 @@ func _notification(what: int) -> void:
 
 
 func _translate() -> void:
+	var version: String = OrqwaCore.version()
 	var commit: String = OrqwaCore.commit()
+	var branch: String = OrqwaCore.branch()
 	if commit.is_empty():
-		_version.text = tr("Version %s") % OrqwaCore.version()
+		_version.text = tr("Version %s") % version
+	elif branch.is_empty():
+		_version.text = tr("Version %s, commit %s") % [version, commit]
 	else:
-		_version.text = tr("Version %s, commit %s") % [OrqwaCore.version(), commit]
+		_version.text = tr("Version %s, branch %s, commit %s") % [version, branch, commit]
 	_copy.text = tr("Copy")
 	_copy.tooltip_text = tr("Copy the version, e.g. for a bug report")
 	_check_at_start.text = tr("Look for updates when ORQWA starts")
@@ -156,11 +160,11 @@ func _show_notice(index: int) -> void:
 	_notice.scroll_vertical = 0
 
 
-## What the Copy button puts on the clipboard: ORQWA's version and commit, Godot's and the
-## system's, as a bug report asks for them.
+## What the Copy button puts on the clipboard: ORQWA's version, branch and commit, Godot's and
+## the system's, as a bug report asks for them.
 func _version_report() -> String:
-	var commit: String = OrqwaCore.commit()
-	var orqwa: String = OrqwaCore.version() + ("" if commit.is_empty() else " (%s)" % commit)
+	var build: String = OrqwaCore.build()
+	var orqwa: String = OrqwaCore.version() + ("" if build.is_empty() else " (%s)" % build)
 	return (
 		"ORQWA %s, Godot %s, %s %s"
 		% [orqwa, Engine.get_version_info()["string"], OS.get_name(), OS.get_version()]

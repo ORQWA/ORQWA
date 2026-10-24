@@ -253,6 +253,9 @@ msgstr "ORQWA ist freie Software unter der GNU General Public License, Version 3
 msgid "Version %s"
 msgstr "Version %s"
 
+msgid "Version %s, branch %s, commit %s"
+msgstr "Version %s, Branch %s, Commit %s"
+
 msgid "Version %s, commit %s"
 msgstr "Version %s, Commit %s"
 

@@ -2732,6 +2732,10 @@ msgid "Version %s"
 msgstr ""
 
 #: app/ui/about_page.gd
+msgid "Version %s, branch %s, commit %s"
+msgstr ""
+
+#: app/ui/about_page.gd
 msgid "Version %s, commit %s"
 msgstr ""
 

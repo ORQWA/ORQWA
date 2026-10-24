@@ -379,6 +379,8 @@ Built in rideable steps:
   screen) moved from the devices tab, now Devices; About with the version, the commit
   (`build.rs`) and the licence notices of ORQWA, Godot, FFmpeg, every Rust crate (cargo-about,
   checked to be current) and others' models and data (ADR 0018)
+- [x] About names the branch with the commit (R130): a pull request's own branch and last
+  commit, not the merge CI builds
 - [x] Each shifter model has its own button assignments (R84): a Di2's channels no longer
   change a Click's + and −; the assignments kept for every shifter before stay each model's
 - [x] UI design system (sleek minimal) applied to all screens and dialogs, polished course

@@ -56,3 +56,16 @@ tagging it (docs/development.md).
 The Windows `.exe` now carries ORQWA's icon, name and version instead of the Godot template's.
 Its file and product versions take four numbers, so the preset holds the version with a fourth
 0 (`0.3.0.0`); `scripts/release/version.py` checks and sets them with the macOS bundle's.
+
+## Amendment 2026-10-24: the branch (R130)
+
+- **What.** About names the branch with the commit; the copied version and the first log line
+  name both as `main@90b74ef`. `build.rs` sets `ORQWA_BRANCH` like `ORQWA_COMMIT`: the
+  variable when set, else `git rev-parse --abbrev-ref HEAD`, empty on a detached checkout.
+  `ORQWA_COMMIT` is cut to seven characters, so it can be a full hash.
+- **Pull requests.** Checkout builds a pull request merged with main, a commit no branch has,
+  so a test build looked like no commit the rider knew. CI sets both variables for every job:
+  for a pull request to its branch and last commit (`github.head_ref`,
+  `github.event.pull_request.head.sha`), for a push to the branch and the commit pushed, and
+  for a tag to the commit alone. A pull request's build therefore names its last commit
+  although main's latest changes are in it too.

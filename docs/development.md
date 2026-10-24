@@ -338,10 +338,12 @@ headless to check that it loads.
 Docker on macOS cannot access Bluetooth or the GPU, so macOS builds are produced by GitHub Actions.
 To test 3D rendering or a real trainer, run the built app (or the portable Godot editor) natively.
 
-Every build names the commit it comes from on the settings' About tab and in its first log
-line (`ORQWA 0.2.1 (0ad9af1)`), as Git reports it while building, or the `ORQWA_COMMIT`
-variable when set ([ADR 0018](adr/0018-about-and-notices.md)). `scripts/dev.sh` sets it from
-the host: a worktree's Git directory lies outside the checkout the container sees.
+Every build names the branch and commit it comes from on the settings' About tab and in its
+first log line (`ORQWA 0.2.1 (main@0ad9af1)`), as Git reports them while building, or the
+`ORQWA_BRANCH` and `ORQWA_COMMIT` variables when set ([ADR 0018](adr/0018-about-and-notices.md)).
+`scripts/dev.sh` sets them from the host: a worktree's Git directory lies outside the checkout
+the container sees. CI sets them to a pull request's own branch and last commit, as it builds
+the merge with main; a release, built from its tag, names its commit alone.
 
 ### Riding audio
 

@@ -222,15 +222,22 @@ func _shadows(orqwa: OrqwaApp) -> String:
 	return options["shadows"]
 
 
-## About: the version and the commit, then each part's licence notice with its full text.
+## About: the version, the branch and the commit, then each part's licence notice with its full
+## text.
 func _about(dialog: SettingsDialog) -> void:
 	var about: AboutPage = dialog.get("_about")
 	var version: Label = about.get("_version")
 	var commit: String = OrqwaCore.commit()
+	var branch: String = OrqwaCore.branch()
 	_check(version.text.contains(OrqwaCore.version()), "the version: %s" % version.text)
 	_check(commit.is_empty() or version.text.contains(commit), "and the commit: %s" % commit)
+	_check(
+		commit.is_empty() or branch.is_empty() or version.text.contains(branch),
+		"and the branch: %s" % branch
+	)
 	var report: String = about.call("_version_report")
 	_check(report.begins_with("ORQWA " + OrqwaCore.version()), "copied for a bug report")
+	_check(report.contains(OrqwaCore.build()), "with the branch and commit")
 	var godot: String = Engine.get_version_info()["string"]
 	_check(report.contains(godot), "with Godot's version")
 	var parts: ItemList = about.get("_parts")

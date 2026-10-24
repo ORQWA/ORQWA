@@ -29,8 +29,8 @@ var _clear_color: Color = Color()
 
 
 func _ready() -> void:
-	var commit: String = OrqwaCore.commit()
-	print("ORQWA %s" % OrqwaCore.version() + ("" if commit.is_empty() else " (%s)" % commit))
+	var build: String = OrqwaCore.build()
+	print("ORQWA %s" % OrqwaCore.version() + ("" if build.is_empty() else " (%s)" % build))
 	UiScale.apply(get_window())
 	UiScale.size_new(get_window())
 	theme = UiTheme.build()
