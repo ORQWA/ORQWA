@@ -216,3 +216,8 @@ the blade down to a bank cut by a lower hairpin arm. Lateral clearance, upright 
 shared curved endpoints remain; their fitted heights no longer depend on terrain chunks.
 Final-ground corrections still apply to ground-mounted snow poles and delineators.
 Terrain shaping and the lower carriageway are unchanged. Stored format remains 3.
+
+Generator 27 matches routes to roundabouts the way traffic goes round them (R126), so a
+planner's file that skips the ring no longer takes the short way against the traffic. The
+ridden road of a kept world follows the old route there; regeneration redraws it. Stored
+format remains 3.

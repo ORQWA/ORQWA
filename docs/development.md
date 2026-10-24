@@ -181,6 +181,19 @@ the asphalt. Shared curved endpoints agree independently of terrain chunk owners
 ground-mounted snow poles and delineators use the final-ground correction. The terrain and
 lower road remain clear. Stored format remains 3.
 
+Generator 27 rides roundabouts the way traffic goes round them. OpenStreetMap draws a
+roundabout in the direction of traffic, counter-clockwise where it keeps right and clockwise
+where it keeps left; the tiles keep that order but rarely mark the ring one-way. Route matching
+(`orqwa-routes/src/snap.rs`) finds rings of road 6–45 m in radius and round within 12 %, made
+of one closed way or of up to eight ways each starting where the last ends (the map splits
+some, tiles cut others at their borders), which at least two other roads join. Between two
+matched points it goes round them only in drawing order, the long way round if need be, and
+judges detours as if either way round were allowed. A point matched at most 5 m back round
+the ring is GPS wander, not a lap; a loop only one street leads to stays two-way. Dense
+recorded tracks come out as before; files whose points skip the ring no longer take the short
+way against the traffic. Kept worlds built with the old route offer regeneration because their
+ridden road follows it. Stored format remains 3.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks
