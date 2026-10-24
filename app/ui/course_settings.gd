@@ -1,13 +1,13 @@
 class_name CourseSettings
 extends VBoxContainer
 ## How this computer keeps its courses (R78), on the settings' Courses tab: their 3D worlds
-## kept once built, so that riding a course again starts at once (R101), the room they take,
-## and each kept world with its own, to delete (R136).
+## kept once built, so that riding a course again starts at once (R101), each with the room it
+## takes, to delete (R136), and the room they take together.
 
 ## Keeping the courses' worlds, on this computer.
 var _keep: CheckBox = CheckBox.new()
 var _note: Label = Label.new()
-## The kept worlds by course name: the room each takes and a bin to delete it.
+## The kept worlds by course name: the room each takes and a bin to delete it, and the total.
 var _worlds: VBoxContainer = VBoxContainer.new()
 var _orqwa: OrqwaApp
 
@@ -31,7 +31,7 @@ func bind(orqwa: OrqwaApp) -> void:
 	refresh()
 
 
-## Shows the setting, the room the kept worlds take now and each of them: they grow with every
+## Shows the setting and each kept world with the room it takes now: they grow with every
 ## course ridden.
 func refresh() -> void:
 	if _orqwa != null:
@@ -49,7 +49,6 @@ func _notification(what: int) -> void:
 func _on_keep_toggled(on: bool) -> void:
 	if _orqwa != null:
 		_orqwa.set_keeps_worlds(on)
-	_translate()
 	_show_worlds()
 
 
@@ -66,22 +65,20 @@ func _translate() -> void:
 			"After an update that changes how worlds look, a course's page offers to regenerate it."
 		)
 	)
-	# Turned off, they are being deleted.
-	if _orqwa != null and _keep.button_pressed:
-		var size: String = String.humanize_size(_orqwa.kept_worlds_size())
-		note += " " + tr("The kept worlds take %s.") % size
 	_note.text = note
 
 
 func _show_worlds() -> void:
 	# Turned off, they are being deleted.
 	var shown: bool = _orqwa != null and _keep.button_pressed
-	_list(_orqwa.kept_worlds() if shown else [])
+	if shown:
+		_list(_orqwa.kept_worlds(), _orqwa.kept_worlds_size())
 	_worlds.visible = shown
 
 
-## Lists `worlds` as `OrqwaApp.kept_worlds()` gives them.
-func _list(worlds: Array) -> void:
+## Lists `worlds` as `OrqwaApp.kept_worlds()` gives them, under them the `total` bytes the kept
+## worlds take.
+func _list(worlds: Array, total: int) -> void:
 	for child: Node in _worlds.get_children():
 		_worlds.remove_child(child)
 		child.queue_free()
@@ -109,7 +106,7 @@ func _list(worlds: Array) -> void:
 		var size: Label = Label.new()
 		size.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		var bytes: int = world.get("size", 0)
-		size.text = String.humanize_size(bytes)
+		size.text = UiTheme.bytes(bytes)
 		size.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		size.add_theme_color_override("font_color", UiTheme.MUTED)
 		grid.add_child(size)
@@ -122,6 +119,16 @@ func _list(worlds: Array) -> void:
 		delete.pressed.connect(_delete.bind(path), CONNECT_DEFERRED)
 		UiTheme.danger_button(delete)
 		grid.add_child(delete)
+	# All of it, also a world still being written.
+	var caption: Label = UiTheme.caption(tr("Total"))
+	grid.add_child(caption)
+	var sum: Label = Label.new()
+	sum.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	sum.text = UiTheme.bytes(total)
+	sum.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	grid.add_child(sum)
+	# No bin: turning the setting off deletes them all.
+	grid.add_child(Control.new())
 	_worlds.add_child(grid)
 
 
@@ -129,5 +136,4 @@ func _list(worlds: Array) -> void:
 func _delete(path: String) -> void:
 	if _orqwa != null:
 		_orqwa.delete_kept_world(path)
-	_translate()
 	_show_worlds()

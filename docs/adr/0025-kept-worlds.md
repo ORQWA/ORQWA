@@ -224,10 +224,10 @@ format remains 3.
 
 ## Amendment — 2026-10-24: one world at a time
 
-The settings' Courses tab lists each kept world by its course's name with its size, and a bin
-deletes that world alone (R136, #355); before, a rider could free room only by deleting a
-course or every kept world at once. It still sets no cap. A world is found by its course's
-fingerprint, so a course in the library twice shows its one world once, under both names, and
-deleting it deletes it for both. The course stays; its next ride builds and keeps the world
-again, so deleting one asks nothing. A world deleted while it is still being written is kept
-all the same once written.
+The settings' Courses tab lists each kept world by its course's name with its size in MB or
+GB (powers of 1000), their total in a last row, and a bin that deletes that world alone (R136,
+#355); before, a rider could free room only by deleting a course or every kept world at once.
+It still sets no cap. A world is found by its course's fingerprint, so a course in the library
+twice shows its one world once, under both names, and deleting it deletes it for both. The
+course stays; its next ride builds and keeps the world again, so deleting one asks nothing. A
+world deleted while it is still being written is kept all the same once written.

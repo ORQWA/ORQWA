@@ -278,8 +278,8 @@ func _sound(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	_check(orqwa.sounds(), "and on again")
 
 
-## Keeping the courses' worlds (R101): off until this computer turns it on, which tells the
-## room they take and lists them; off again, they are deleted.
+## Keeping the courses' worlds (R101): off until this computer turns it on, which lists them;
+## off again, they are deleted.
 func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var courses: CourseSettings = dialog.get("_courses")
 	var keep: CheckBox = courses.get("_keep")
@@ -293,32 +293,34 @@ func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	_check(not worlds.visible, "no kept worlds to list")
 	keep.button_pressed = true
 	_check(orqwa.keeps_worlds(), "kept on this computer")
-	_check(note.text.contains("The kept worlds take"), "and how much they take now: %s" % note.text)
-	_check(worlds.visible, "and each kept world")
+	_check(worlds.visible, "listing the kept worlds")
 	_kept_worlds(courses, worlds)
 	keep.button_pressed = false
 	_check(not orqwa.keeps_worlds(), "and off again")
-	_check(not note.text.contains("The kept worlds take"), "they are deleted: %s" % note.text)
-	_check(not worlds.visible, "all of them")
+	_check(not worlds.visible, "they are deleted")
 
 
 ## Each kept world by the names of its courses, the room it takes and a bin to delete it
-## (R136).
+## (R136), and the room they take together in a row of its own, not the note.
 func _kept_worlds(courses: CourseSettings, worlds: VBoxContainer) -> void:
-	courses.call("_list", [])
+	var note: Label = courses.get("_note")
+	_check(not note.text.contains("kept worlds take"), "no room told in the note: %s" % note.text)
+	courses.call("_list", [], 0)
 	_check(_shows(worlds, "None yet."), "none kept yet")
+	_check(not _shows(worlds, "Total"), "no total of nothing")
 	var shared: PackedStringArray = PackedStringArray(["Lakeside", "Lakeside again"])
 	var listed: Array[Dictionary] = [
 		{"path": "/courses/lakeside.tqc", "names": shared, "size": 1288490189},
 		{"path": "/courses/hills.tqc", "names": PackedStringArray(["Hills"]), "size": 104857600},
 	]
-	courses.call("_list", listed)
+	courses.call("_list", listed, 1288490189 + 104857600)
 	_check(not _shows(worlds, "None yet."), "two kept")
 	_check(_shows(worlds, "Lakeside, Lakeside again"), "a world two courses share, once")
 	_check(_shows(worlds, "Hills"), "the other")
-	for size: int in [1288490189, 104857600]:
-		var room: String = String.humanize_size(size)
+	for room: String in ["1.3 GB", "105 MB"]:
 		_check(_shows(worlds, room), "each with the room it takes: %s" % room)
+	_check(_shows(worlds, "Total") and _shows(worlds, "1.4 GB"), "and their total")
+	_sizes()
 	var bins: Array[Node] = worlds.find_children("*", "Button", true, false)
 	_check(bins.size() == 2, "a bin for each: %d" % bins.size())
 	for bin: Node in bins:
@@ -329,6 +331,24 @@ func _kept_worlds(courses: CourseSettings, worlds: VBoxContainer) -> void:
 			"a bin saying what it deletes: %s" % button.tooltip_text
 		)
 		_check(box != null and Color(box.bg_color, 1.0).is_equal_approx(UiTheme.DANGER), "in red")
+
+
+## Sizes in the units riders know from their drives: powers of 1000, MB and GB, not MiB and
+## GiB; one decimal below 10, as in "1.3 GB".
+func _sizes() -> void:
+	var expected: Dictionary[int, String] = {
+		0: "0 B",
+		999: "999 B",
+		1500: "1.5 kB",
+		104857600: "105 MB",
+		238000000: "238 MB",
+		999600000: "1.0 GB",
+		1288490189: "1.3 GB",
+		12400000000: "12 GB",
+	}
+	for size: int in expected:
+		var shown: String = UiTheme.bytes(size)
+		_check(shown == expected[size], "%d bytes: %s" % [size, shown])
 
 
 ## Looking for updates (R99): on at start-up until this computer turns it off; a newer
