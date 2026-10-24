@@ -47,10 +47,13 @@ pub(crate) struct Corner {
     centre: (f64, f64),
     radius: f64,
     end_lifts: [f64; 2],
+    footway_bases: [((f64, f64), bool); 2],
 }
 
 /// A sidewalk following the same curved edge as its junction's carriageway.
 pub(crate) struct FootwayCorner {
+    /// Street-centre anchors at the tangent cross-sections; true for the ridden road.
+    pub bases: [((f64, f64), bool); 2],
     /// Region replaced by the curved sidewalk, between its tangent cross-sections.
     pub zone: Vec<(f64, f64)>,
     /// Convex pieces, with street heights at their two cross-sections.
@@ -63,6 +66,8 @@ pub(crate) struct FootwaySection {
     pub polygon: Vec<(f64, f64)>,
     /// Street heights at the first and second cross-sections.
     pub lifts: [f64; 2],
+    /// Fractions along the complete corner's shared height profile.
+    pub span: [f64; 2],
 }
 
 impl Corner {
@@ -84,11 +89,11 @@ impl Corner {
             )
         };
         #[allow(clippy::cast_precision_loss)] // a few arc sections
-        let lift = |i: usize| {
-            self.end_lifts[0]
-                + (self.end_lifts[1] - self.end_lifts[0]) * i as f64 / (self.arc.len() - 1) as f64
-        };
+        let fraction = |i: usize| i as f64 / (self.arc.len() - 1) as f64;
+        let lift =
+            |i: usize| self.end_lifts[0] + (self.end_lifts[1] - self.end_lifts[0]) * fraction(i);
         Some(FootwayCorner {
+            bases: self.footway_bases,
             zone: vec![
                 self.apex,
                 self.arc[0],
@@ -107,6 +112,7 @@ impl Corner {
                         offset(pair[0], inset + width),
                     ],
                     lifts: [lift(i), lift(i + 1)],
+                    span: [fraction(i), fraction(i + 1)],
                 })
                 .collect(),
         })
@@ -374,6 +380,16 @@ fn fillet(a: &Arm, b: &Arm, angle: f64) -> Option<Corner> {
         centre,
         radius,
         end_lifts: [a.lift, b.lift],
+        footway_bases: [
+            (
+                (start.0 - left.0 * a.half, start.1 - left.1 * a.half),
+                a.street.is_none(),
+            ),
+            (
+                (end.0 - right.0 * b.half, end.1 - right.1 * b.half),
+                b.street.is_none(),
+            ),
+        ],
     })
 }
 

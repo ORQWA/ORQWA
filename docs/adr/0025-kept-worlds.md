@@ -240,3 +240,8 @@ GPU clipping slivers are discarded before normal generation. Stored format remai
 Generator 29 bounds a rounded sidewalk bend's replacement triangle by the original outer
 miter. Its former three-width reach could cut a separate nearby street's sidewalk even
 though the replacement arc remained beside its own street. Stored format remains 3.
+
+Generator 30 shares the straight walking strips' grade fields with their curved joins.
+Every arc section blends the same two parent profiles across its full width, eliminating
+height steps between footprints that already touch. Street-centre anchors supply fallback
+profiles; mapped short sections interpolate their endpoint samples. Stored format remains 3.

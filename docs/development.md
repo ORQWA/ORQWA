@@ -87,6 +87,10 @@ Generator 29 limits a rounded bend's replacement triangle to the original outer 
 miter, plus a 2 cm allowance. Its previous three-radius reach could cut a nearby parallel
 street's walk while the curved replacement stayed beside its own road. The full saved
 Andermatt comparison includes both streets; stored format remains 3.
+Generator 30 shares the straight walking surfaces' grade fields with curved joins, across
+the full tangent cross-section. Each arc section blends the same two parents using its
+fraction along the whole corner; street-centre anchors supply fallback profiles. Review
+the joints from road height too: matching footprints can still conceal a vertical step.
 
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;

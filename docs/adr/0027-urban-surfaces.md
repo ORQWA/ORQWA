@@ -133,6 +133,19 @@ and leave the replacement arc beside the lower street. The smaller geometric bou
 that unrelated walking surface continuous without changing the rounded corner itself.
 A regression reproduces the gap with two streets 16 m apart. Stored format remains 3.
 
+### Shared corner grades amendment (2026-10-24)
+
+Generator 30 evaluates a curved sidewalk against the height fields of the straight walking
+strips at its tangent cross-sections. Every arc section uses the same two parents and its
+fraction along the whole corner. The blend matches the complete walking width at either
+end, including a sloping miter; sampling the inner edge's ground or just one centre height
+can leave a step even when the footprints touch. Ridden and mapped profile endpoints share
+their original grade, with mapped endpoint samples interpolated along each short section.
+Junction geometry retains street-centre anchors for corners without a surviving parent strip.
+Furniture queries use the same field. Profiles and references are temporary; stored format
+remains 3. Review from street height as well as above: an intact footprint alone cannot
+validate a walking join.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,

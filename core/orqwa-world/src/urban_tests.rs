@@ -476,6 +476,29 @@ async fn acute_forks_have_a_rounded_sidewalk_nose_instead_of_cut_off_slabs() {
 }
 
 #[tokio::test]
+async fn curved_sidewalks_meet_straight_walks_without_height_steps() {
+    let mut map = city();
+    map.roads.push(orqwa_osm::Road {
+        class: RoadClass::Street,
+        details: orqwa_osm::RoadDetails::default(),
+        line: vec![at(50.0, 150.0), at(50.0, 200.0), at(100.0, 200.0)],
+        structure: None,
+    });
+    let world = world(&map).await;
+    let radius = 2.75_f32 + 0.12 + 0.9;
+    for ((a, b), description) in [
+        (((50.0 - radius, 199.99), (50.0 - radius, 200.01)), "entry"),
+        (((49.99, 200.0 + radius), (50.01, 200.0 + radius)), "exit"),
+    ] {
+        let height = |(east, north): (f32, f32)| {
+            height_on(&world, |c| &c.urban, east, -north).expect("joined walking surface")
+        };
+        let step = (height(a) - height(b)).abs();
+        assert!(step < 0.02, "{description} has a {step} m step");
+    }
+}
+
+#[tokio::test]
 async fn outer_sidewalk_bends_are_round_and_curbstones_have_their_own_beveled_border() {
     let mut map = city();
     map.roads.push(orqwa_osm::Road {

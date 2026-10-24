@@ -101,6 +101,9 @@ duplicate strips or trim each other into pieces. Retain independent streets' wal
 tile-piece and terrain-chunk joins, and check curbs and lowered access from road height.
 Include a rounded bend beside a separate street: its corner replacement must not cut the
 neighbour's sidewalk, including when the two streets have different heights.
+Inspect the full width of tangent joins at street height on sloping ground. Straight and
+curved strips must share a grade, including lowered access; intact footprints from above
+do not prove that the walking surface is continuous.
 Include widening and narrowing streets and a wall touching only the outer part of a walk.
 The usable strip must remain continuous and keep clear of the actual asphalt, while clipped
 outer faces reach terrain. Inspect the same sloping, partially clipped corner for reversed

@@ -64,21 +64,28 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ### Andermatt sidewalks
 
-Generator 27 gives sidewalk copies one owner using the local mapped section matched to
+Generators 27–30 give sidewalk copies one owner using the local mapped section matched to
 the ride. Coarse GPX bends no longer leave duplicate footways or phantom clearance cuts;
 independent nearby streets and unridden parallel arms of the same map feature remain.
 Walking tops follow their owning street's height and grade instead of draping down a bank
 cut by another road. Closed sides reach terrain, and entrances and furniture share the
 walking profile.
+Road-width changes taper continuously. Partial building overlaps remove only the occupied
+area, and rounding a bend no longer uses a replacement area large enough to cut the
+sidewalk of the neighbouring street.
+Curved joins share the adjoining straight walking surfaces' grades across the whole width;
+matching footprints no longer conceal a height step at the tangent cross-section.
 
 These matching overview cameras use the full saved Alpenbrevet Gold inputs at
 209.36 km to go (about 1.38 km from the start), near Andermatt. Nearby geometry alone is
 sent to the renderer; the complete route determines terrain shaping and projection.
 Buildings use their generated shells for context; vegetation is omitted.
 
-| Before | Street-profile correction |
+| Before | Continuous sidewalk at street height |
 |---|---|
-| ![Sidewalk strips draped down the Andermatt road bank](images/issues/andermatt-sidewalk-before.jpg) | ![Walking surface follows the elevated street](images/issues/andermatt-sidewalk-profile.jpg) |
+| ![Sidewalk strips draped down the Andermatt road bank](images/issues/andermatt-sidewalk-before.jpg) | ![Continuous walking surface follows the elevated street](images/issues/andermatt-sidewalk-after.jpg) |
+| ![Fragmented walking edge down the bank](images/issues/andermatt-sidewalk-edge-before.jpg) | ![Level walking edge with its closed side reaching terrain](images/issues/andermatt-sidewalk-edge-after.jpg) |
+| ![Step where the straight walking strip meets its curve](images/issues/andermatt-sidewalk-step-before.jpg) | ![Continuous grade across the straight and curved walking surfaces](images/issues/andermatt-sidewalk-step-after.jpg) |
 
 ### Bridge ownership
 

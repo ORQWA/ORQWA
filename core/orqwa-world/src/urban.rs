@@ -67,7 +67,8 @@ struct Way {
 struct Profile {
     a: Point,
     b: Point,
-    elevations: Option<[f64; 2]>,
+    elevations: [Option<f64>; 2],
+    span: [f64; 2],
 }
 
 impl Way {
@@ -81,7 +82,8 @@ impl Way {
         Profile {
             a: self.a,
             b: self.b,
-            elevations: self.elevations,
+            elevations: self.elevations.map_or([None; 2], |ends| ends.map(Some)),
+            span: [0.0, 1.0],
         }
     }
 }
@@ -103,6 +105,8 @@ struct Patch {
 struct CurveSection {
     zone: usize,
     lifts: [f64; 2],
+    parents: [Option<usize>; 2],
+    span: [f64; 2],
 }
 
 /// Immutable, spatially indexed urban surfaces, shared by all chunk builders.
@@ -178,7 +182,7 @@ impl Urban {
         }
         urban.collect_ways(streets, road);
         urban.walks(land);
-        urban.corner_walks(corners, land);
+        urban.corner_walks(corners, land, road);
         urban.bend_walks(land);
         urban.accesses(land);
         urban.finish(land, clearance, road);
@@ -314,17 +318,49 @@ impl Urban {
         }
     }
 
-    fn corner_walks(&mut self, corners: &[Corner], land: &LandIndex) {
+    fn corner_walks(&mut self, corners: &[Corner], land: &LandIndex, road: &RoadIndex) {
         for corner in corners {
             if let Some(footway) = corner.footway(GAP, WALK_WIDTH)
                 && self.urban_at(centroid(&footway.zone), land)
             {
-                self.add_curve(footway);
+                let elevations = footway.bases.map(|(p, ridden)| {
+                    ridden
+                        .then(|| {
+                            road.nearest(p.0, p.1, 12.0)
+                                .map(|(_, height, _)| height - ROAD_SINK)
+                        })
+                        .flatten()
+                });
+                let profile = Profile {
+                    a: footway.bases[0].0,
+                    b: footway.bases[1].0,
+                    elevations,
+                    span: [0.0, 1.0],
+                };
+                self.add_curve(footway, profile);
             }
         }
     }
 
-    fn add_curve(&mut self, mut footway: FootwayCorner) {
+    fn add_curve(&mut self, mut footway: FootwayCorner, profile: Profile) {
+        let parent = |point: Point| {
+            Self::near(&self.patch_cells, point, 0.1)
+                .filter(|&index| self.patches[index].curb && !self.curves.contains_key(&index))
+                .map(|index| (polygon_distance(&self.patches[index].polygon, point), index))
+                .filter(|&(distance, _)| distance < 0.1)
+                .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.cmp(&b.1)))
+                .map(|(_, index)| index)
+        };
+        let parents = [
+            footway
+                .sections
+                .first()
+                .and_then(|s| parent(midpoint(s.polygon[0], s.polygon[3]))),
+            footway
+                .sections
+                .last()
+                .and_then(|s| parent(midpoint(s.polygon[1], s.polygon[2]))),
+        ];
         if signed_area(&footway.zone) > 0.0 {
             footway.zone.reverse();
         }
@@ -333,15 +369,32 @@ impl Urban {
             self.zone_cells.entry(key).or_default().push(zone);
         }
         self.zones.push(footway.zone);
-        for FootwaySection { polygon, mut lifts } in footway.sections {
+        for FootwaySection {
+            polygon,
+            mut lifts,
+            span,
+        } in footway.sections
+        {
             for lift in &mut lifts {
                 *lift += CURB_HEIGHT;
             }
             if signed_area(&polygon) > 0.0 {
                 lifts.reverse();
             }
-            self.curves
-                .insert(self.patches.len(), CurveSection { zone, lifts });
+            let curve_span = if signed_area(&polygon) > 0.0 {
+                [span[1], span[0]]
+            } else {
+                span
+            };
+            self.curves.insert(
+                self.patches.len(),
+                CurveSection {
+                    zone,
+                    lifts,
+                    parents,
+                    span: curve_span,
+                },
+            );
             self.add_patch(Patch {
                 polygon,
                 material: Material::Concrete,
@@ -349,7 +402,7 @@ impl Urban {
                 curb: true,
                 wall: false,
                 ramp: None,
-                profile: None,
+                profile: Some(Profile { span, ..profile }),
             });
         }
     }
@@ -369,6 +422,16 @@ impl Urban {
                     continue;
                 }
                 let other = self.ways[*other];
+                let at_end = |way: Way| {
+                    way.elevations
+                        .map(|ends| ends[usize::from(distance(way.b, point) < 1e-6)])
+                };
+                let profile = Profile {
+                    a: point,
+                    b: point,
+                    elevations: [at_end(way), at_end(other)],
+                    span: [0.0, 1.0],
+                };
                 let from = if distance(other.a, point) < 1e-6 {
                     other.b
                 } else {
@@ -397,7 +460,8 @@ impl Urban {
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // a short arc
                 let count = (turn.abs() / 0.12).ceil() as usize;
                 #[allow(clippy::cast_precision_loss)] // a short arc
-                let angle = |i: usize| start + turn * i as f64 / count as f64;
+                let fraction = |i: usize| i as f64 / count as f64;
+                let angle = |i: usize| start + turn * fraction(i);
                 // Enclose the original outer miter, not the neighbouring street. At the
                 // bisector the miter reaches R/cos(half_turn), while this triangle's far
                 // edge reaches reach*cos(half_turn).
@@ -412,9 +476,17 @@ impl Urban {
                             radial(angle(i), inner + WALK_WIDTH),
                         ],
                         lifts: [way.lift; 2],
+                        span: [fraction(i), fraction(i + 1)],
                     })
                     .collect();
-                self.add_curve(FootwayCorner { zone, sections });
+                self.add_curve(
+                    FootwayCorner {
+                        bases: [(point, false); 2],
+                        zone,
+                        sections,
+                    },
+                    profile,
+                );
             }
         }
     }
@@ -606,9 +678,8 @@ impl Urban {
                 patch.polygon.rotate_left(2);
                 if let Some(profile) = &mut patch.profile {
                     std::mem::swap(&mut profile.a, &mut profile.b);
-                    if let Some(ends) = &mut profile.elevations {
-                        ends.swap(0, 1);
-                    }
+                    profile.elevations.swap(0, 1);
+                    profile.span = [1.0 - profile.span[1], 1.0 - profile.span[0]];
                 }
             }
         }
@@ -684,7 +755,8 @@ impl Urban {
             })
             .map(|index| {
                 let patch = &self.patches[index];
-                walk_base(patch, point, heights) + walk_lift(patch, self.walk_ends(index), point)
+                self.walk_base(index, point, heights)
+                    + walk_lift(patch, self.walk_ends(index), point)
                     - heights.at(point.0, point.1)
             })
             .max_by(f64::total_cmp)
@@ -694,6 +766,19 @@ impl Urban {
         self.curves
             .get(&index)
             .map_or([self.patches[index].lift; 2], |curve| curve.lifts)
+    }
+
+    fn walk_base(&self, index: usize, point: Point, heights: &HeightGrid) -> f64 {
+        let patch = &self.patches[index];
+        let fallback = || walk_base(patch, point, heights);
+        let Some(curve) = self.curves.get(&index) else {
+            return fallback();
+        };
+        let [start, end] = curve.parents.map(|parent| {
+            parent.map_or_else(fallback, |i| walk_base(&self.patches[i], point, heights))
+        });
+        let along = curve.span[0] + (curve.span[1] - curve.span[0]) * walk_fraction(patch, point);
+        start + (end - start) * along
     }
 
     fn walk_ends(&self, index: usize) -> [f64; 2] {
@@ -808,6 +893,7 @@ impl Urban {
                         ends,
                         material,
                         (heights, origin),
+                        &|point| self.walk_base(index, point, heights),
                     );
                     if patch.curb {
                         walk_sides(&mut mesh, first_index, shape, patch, heights, origin);
@@ -867,6 +953,7 @@ fn patch_top(
     ends: [f64; 2],
     material: Material,
     (heights, origin): (&HeightGrid, [f64; 3]),
+    base_height: &impl Fn(Point) -> f64,
 ) -> usize {
     let lift = patch.lift;
     let first = mesh.vertices.len();
@@ -889,9 +976,8 @@ fn patch_top(
                 } else {
                     0.0
                 };
-                vertex[1] = (walk_base(patch, point, heights) + walk_lift(patch, ends, point)
-                    - bevel
-                    - origin[1]) as f32;
+                vertex[1] =
+                    (base_height(point) + walk_lift(patch, ends, point) - bevel - origin[1]) as f32;
             }
         }
     }
@@ -1211,21 +1297,20 @@ fn walk_base(patch: &Patch, point: Point, heights: &HeightGrid) -> f64 {
     let profile = patch.profile.unwrap_or(Profile {
         a: patch.polygon[0],
         b: patch.polygon[1],
-        elevations: None,
+        elevations: [None; 2],
+        span: [0.0, 1.0],
     });
     profile_height(profile, walk_fraction(patch, point), heights)
 }
 
 fn profile_height(profile: Profile, along: f64, heights: &HeightGrid) -> f64 {
-    profile.elevations.map_or_else(
-        || {
-            heights.at(
-                profile.a.0 + (profile.b.0 - profile.a.0) * along,
-                profile.a.1 + (profile.b.1 - profile.a.1) * along,
-            )
-        },
-        |ends| ends[0] + (ends[1] - ends[0]) * along,
-    )
+    let [a, b] = [profile.a, profile.b].map(|p| heights.at(p.0, p.1));
+    let [a, b] = [
+        profile.elevations[0].unwrap_or(a),
+        profile.elevations[1].unwrap_or(b),
+    ];
+    let along = profile.span[0] + (profile.span[1] - profile.span[0]) * along;
+    a + (b - a) * along
 }
 
 fn walk_sides(
