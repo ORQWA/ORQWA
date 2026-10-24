@@ -92,8 +92,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
 follows your speed, pedaling and coasting in 3D, with independent volume controls.
 
 [Moments](https://github.com/ORQWA/ORQWA/wiki/Devices-and-riding#moments) such as a climb topped,
-a new record or halfway pop up on a card while you ride, in a cheering or plain voice, and every
-summary opens with the ride's highlights.
+a new record or halfway pop up on a card while you ride, in a cheering or plain voice.
 
 Error explanations follow your rider's language; [technical details](https://github.com/ORQWA/ORQWA/wiki/Riders#language-and-error-details)
 remain available separately after notifications disappear.

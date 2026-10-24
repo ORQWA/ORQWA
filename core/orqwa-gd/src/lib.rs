@@ -1048,18 +1048,17 @@ impl OrqwaApp {
         array
     }
 
-    /// The highlights of the ride saved at `path` for its summary (R124), as the `moment`
-    /// signal describes them, local time `utc_offset_minutes` ahead of UTC.
+    /// What the summary of the ride saved at `path` says of it beyond its figures and records
+    /// (R124): its first ride on the course, or how far into the rider's week it is, as the
+    /// `moment` signal describes it; empty for neither. Local time is `utc_offset_minutes`
+    /// ahead of UTC.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
-    fn highlights(&self, path: GString, utc_offset_minutes: i64) -> VarArray {
-        let Some(app) = self.app.as_ref() else {
-            return VarArray::new();
-        };
-        app.highlights(Path::new(&path.to_string()), utc_offset_minutes * 60)
-            .iter()
-            .map(|moment| moment_dict(moment).to_variant())
-            .collect()
+    fn ride_recap(&self, path: GString, utc_offset_minutes: i64) -> VarDictionary {
+        self.app
+            .as_ref()
+            .and_then(|app| app.recap(Path::new(&path.to_string()), utc_offset_minutes * 60))
+            .map_or_else(VarDictionary::new, |moment| moment_dict(&moment))
     }
 
     /// The active rider's power curves (R62): `{period, compare}`, each the best efforts per
@@ -3838,43 +3837,17 @@ fn voice_of(data: &VarDictionary) -> Voice {
     }
 }
 
-/// A moment of a ride (R124) as `{kind, …}`: `finished {distance_m, climbing_m, elapsed_s}`,
-/// `route_record {course, elapsed_s, gain_s}`, `climb_topped {index, elapsed_s, grade_pct}`,
+/// A moment of a ride (R124) as `{kind, …}`: `climb_topped {index, elapsed_s, grade_pct}`,
 /// `climb_record {index, elapsed_s, gain_s}`, `halfway {distance_m}`, `one_to_go`,
 /// `distance {distance_m}`, `power_peak {duration_s, power_w}`, `step_held {index, power_w}`,
-/// `first_ride {course}`, `ftp_raised {power_w}`, `streak {rides}`, `week_plan {rides,
-/// planned}` or `week_load {stress}`; `index` counts climbs from 0, as `climbs()` does.
+/// `first_ride {course}`, `streak {rides}` or `week_plan {rides, planned}`; `index` counts climbs from 0, as `climbs()` does.
 fn moment_dict(moment: &Moment) -> VarDictionary {
     let index = |i: usize| i64::try_from(i).unwrap_or(0);
     match *moment {
-        Moment::Finished {
-            distance,
-            climbing,
-            elapsed,
-        } => vdict! {
-            "kind" => "finished",
-            "distance_m" => distance.0,
-            "climbing_m" => climbing.0,
-            "elapsed_s" => elapsed.as_secs_f64(),
-        },
-        Moment::RouteRecord {
-            ref course,
-            elapsed,
-            gain,
-        } => vdict! {
-            "kind" => "route_record",
-            "course" => course.as_str(),
-            "elapsed_s" => elapsed.as_secs_f64(),
-            "gain_s" => gain.as_secs_f64(),
-        },
         Moment::StepHeld { index: i, power } => vdict! {
             "kind" => "step_held",
             "index" => index(i),
             "power_w" => power.0,
-        },
-        Moment::FtpRaised(ftp) => vdict! {
-            "kind" => "ftp_raised",
-            "power_w" => ftp.0,
         },
         Moment::Streak { rides } => vdict! {
             "kind" => "streak",
@@ -3884,10 +3857,6 @@ fn moment_dict(moment: &Moment) -> VarDictionary {
             "kind" => "week_plan",
             "rides" => i64::from(ride),
             "planned" => i64::from(planned),
-        },
-        Moment::WeekLoad { stress } => vdict! {
-            "kind" => "week_load",
-            "stress" => stress,
         },
         Moment::ClimbTopped {
             index: i,

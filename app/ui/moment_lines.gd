@@ -7,39 +7,10 @@ extends RefCounted
 const KM_PER_MILE: float = 1.609344
 const METERS_PER_FOOT: float = 0.3048
 
-## Records among the moments: the summaries mark them with a star, like the history (R27).
-const RECORDS: Array[String] = ["route_record", "climb_record", "power_peak", "ftp_raised"]
-## A ride with less climbing than this is told as a flat one.
-const FLAT_M: float = 10.0
-
 ## Per moment kind (as the core's `moment` signal names it, or a variant `_kind()` picks): the
 ## casual lines, then the plain one. `{…}` are filled in by `line()`.
 # i18n-begin
 const LINES: Dictionary[String, Array] = {
-	"finished":
-	[
-		[
-			"What a ride! {distance} and {climbing} of climbing are done.",
-			"All {distance} ridden with {climbing} of climbing. Well ridden!",
-		],
-		"Ride finished: {distance}, {climbing} of climbing.",
-	],
-	"finished_flat":
-	[
-		[
-			"What a ride! You rode {distance} in {time}.",
-			"That's {time} on the bike and {distance} ridden. Well done!",
-		],
-		"Ride finished: {distance} in {time}.",
-	],
-	"route_record":
-	[
-		[
-			"That's your fastest ride on {course} ever, {gain} quicker than before!",
-			"New best on {course}! You beat your old time by {gain}.",
-		],
-		"New personal record on {course}, {gain} faster.",
-	],
 	"climb_topped":
 	[
 		[
@@ -96,14 +67,6 @@ const LINES: Dictionary[String, Array] = {
 		],
 		"Step completed on target.",
 	],
-	"ftp_raised":
-	[
-		[
-			"Your FTP is up to {power}, all that training is paying off!",
-			"A new FTP of {power}! You're getting stronger every week.",
-		],
-		"New FTP: {power}.",
-	],
 	"streak":
 	[
 		[
@@ -136,14 +99,6 @@ const LINES: Dictionary[String, Array] = {
 		],
 		"Ride {rides} this week, {planned} planned.",
 	],
-	"week_load":
-	[
-		[
-			"Your rides this week add up to {stress} TSS. Solid work!",
-			"That's {stress} TSS this week so far, a strong week of training!",
-		],
-		"This week's load: {stress} TSS.",
-	],
 	"first_ride":
 	[
 		[
@@ -152,12 +107,20 @@ const LINES: Dictionary[String, Array] = {
 		],
 		"Your first ride on {course}.",
 	],
+	"first_ride_done":
+	[
+		[
+			"Your first ride on {course} is done, and now you know the way!",
+			"That was your first time on {course}. Next time you'll know what's coming!",
+		],
+		"First ride on {course}.",
+	],
 }
 # i18n-end
 
 
 ## The line for `moment` (`{kind, …}` as the core sends it) in `voice` ("casual", "plain";
-## "off" speaks plainly too, for the summary's highlights); empty for an unknown kind. The
+## "off" speaks plainly too, for the summaries' line); empty for an unknown kind. The
 ## casual voice picks one of its lines at random, or by `seed` when one is given, so a ride's
 ## summary says the same each time it opens.
 static func line(moment: Dictionary, voice: String, imperial: bool, seed: int = -1) -> String:
@@ -174,18 +137,10 @@ static func line(moment: Dictionary, voice: String, imperial: bool, seed: int = 
 	return TranslationServer.translate(text).format(_values(moment, imperial))
 
 
-## Whether `moment` is a record, starred in the summaries.
-static func is_record(moment: Dictionary) -> bool:
-	return moment.get("kind", "") in RECORDS
-
-
 ## The lines for `moment`: some kinds are told differently by their figures.
 static func _kind(moment: Dictionary) -> String:
 	var kind: String = moment.get("kind", "")
 	match kind:
-		"finished":
-			var climbing: float = moment.get("climbing_m", 0.0)
-			return "finished_flat" if climbing < FLAT_M else kind
 		"week_plan":
 			var rides: int = moment.get("rides", 0)
 			var planned: int = moment.get("planned", 0)
@@ -198,15 +153,15 @@ static func _kind(moment: Dictionary) -> String:
 ## The figure a card shows large for `moment`, e.g. "14:02" or "25 km"; empty for none.
 static func figure(moment: Dictionary, imperial: bool) -> String:
 	match moment.get("kind", ""):
-		"climb_topped", "climb_record", "route_record":
+		"climb_topped", "climb_record":
 			var elapsed: float = moment["elapsed_s"]
 			return UiTheme.duration(elapsed)
-		"halfway", "distance", "finished":
+		"halfway", "distance":
 			var meters: float = moment["distance_m"]
 			return distance(meters, imperial)
 		"one_to_go":
 			return _one(imperial)
-		"power_peak", "step_held", "ftp_raised":
+		"power_peak", "step_held":
 			var power: float = moment["power_w"]
 			return "%d W" % roundi(power)
 	return ""
@@ -269,16 +224,10 @@ static func _values(moment: Dictionary, imperial: bool) -> Dictionary:
 	if moment.has("duration_s"):
 		var seconds: float = moment["duration_s"]
 		values["duration"] = span(seconds)
-	if moment.has("climbing_m"):
-		var climbed: float = moment["climbing_m"]
-		values["climbing"] = climbing(climbed, imperial)
 	if moment.has("rides"):
 		values["rides"] = moment["rides"]
 	if moment.has("planned"):
 		values["planned"] = moment["planned"]
-	if moment.has("stress"):
-		var stress: float = moment["stress"]
-		values["stress"] = roundi(stress)
 	if moment.has("course"):
 		values["course"] = moment["course"]
 	return values

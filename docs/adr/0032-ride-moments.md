@@ -31,10 +31,14 @@ the wording across the ride screen.
 - Power records are found live against the bests of the rider's history, loaded at the
   start, and told once the effort tops out rather than every second it keeps rising. A rider
   without records gets none mid-ride: every effort would be one.
-- The summaries' highlights are worked out from the history when a summary opens, not stored
-  with the ride: they compare against the rides before it, so they need no migration and stay
-  right after rides are deleted. The casual line is picked by the ride's path, so a summary
-  says the same each time.
+- The summaries say at most one line, and only what their figures and record badges do not:
+  the first ride on the course, or the rider's week. Repeating the distance or a record in a
+  sentence above the same figure made the summary busy. The line looks back on the ride: the
+  first ride's "enjoy the new roads" belongs to its start, not its end.
+- That line is worked out from the history when a summary opens, not stored with the ride: it
+  compares against the rides before it, so it needs no migration and stays right after rides
+  are deleted. The casual line is picked by the ride's path, so a summary says the same each
+  time.
 
 - The chime is a presentation sound, played by Godot rather than mixed into the core's
   ambient stream, which only runs on 3D course rides (R114); moments come on every kind of

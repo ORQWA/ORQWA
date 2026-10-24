@@ -2273,33 +2273,6 @@ msgstr "Das waren deine besten {duration} überhaupt, mit {power}!"
 msgid "Best {duration} power: {power}."
 msgstr "Beste Leistung über {duration}: {power}."
 
-msgid "What a ride! {distance} and {climbing} of climbing are done."
-msgstr "Was für eine Fahrt! {distance} und {climbing} Höhenmeter sind geschafft."
-
-msgid "All {distance} ridden with {climbing} of climbing. Well ridden!"
-msgstr "Alle {distance} mit {climbing} Höhenmetern gefahren. Gut gefahren!"
-
-msgid "Ride finished: {distance}, {climbing} of climbing."
-msgstr "Fahrt beendet: {distance}, {climbing} Höhenmeter."
-
-msgid "What a ride! You rode {distance} in {time}."
-msgstr "Was für eine Fahrt! Du bist {distance} in {time} gefahren."
-
-msgid "That's {time} on the bike and {distance} ridden. Well done!"
-msgstr "{time} auf dem Rad und {distance} gefahren. Gut gemacht!"
-
-msgid "Ride finished: {distance} in {time}."
-msgstr "Fahrt beendet: {distance} in {time}."
-
-msgid "That's your fastest ride on {course} ever, {gain} quicker than before!"
-msgstr "So schnell bist du {course} noch nie gefahren, {gain} schneller als bisher!"
-
-msgid "New best on {course}! You beat your old time by {gain}."
-msgstr "Neue Bestzeit auf {course}! Du warst {gain} schneller als bisher."
-
-msgid "New personal record on {course}, {gain} faster."
-msgstr "Neue persönliche Bestzeit auf {course}, {gain} schneller."
-
 msgid "You held that step right on target, nicely done!"
 msgstr "Diesen Schritt hast du genau im Ziel gehalten, schön gemacht!"
 
@@ -2308,15 +2281,6 @@ msgstr "Dieser Schritt war von Anfang bis Ende genau richtig!"
 
 msgid "Step completed on target."
 msgstr "Schritt im Zielbereich abgeschlossen."
-
-msgid "Your FTP is up to {power}, all that training is paying off!"
-msgstr "Deine FTP liegt jetzt bei {power}, das ganze Training zahlt sich aus!"
-
-msgid "A new FTP of {power}! You're getting stronger every week."
-msgstr "Eine neue FTP von {power}! Du wirst jede Woche stärker."
-
-msgid "New FTP: {power}."
-msgstr "Neue FTP: {power}."
 
 msgid "That's {rides} rides this week, keep it up!"
 msgstr "Das sind {rides} Fahrten diese Woche, weiter so!"
@@ -2354,15 +2318,6 @@ msgstr "Mit Fahrt {rides} diese Woche bist du über deinem Plan von {planned}. G
 msgid "Ride {rides} this week, {planned} planned."
 msgstr "Fahrt {rides} diese Woche, {planned} geplant."
 
-msgid "Your rides this week add up to {stress} TSS. Solid work!"
-msgstr "Deine Fahrten diese Woche ergeben zusammen {stress} TSS. Starke Arbeit!"
-
-msgid "That's {stress} TSS this week so far, a strong week of training!"
-msgstr "Bisher {stress} TSS diese Woche, eine starke Trainingswoche!"
-
-msgid "This week's load: {stress} TSS."
-msgstr "Belastung dieser Woche: {stress} TSS."
-
 msgid "Rides planned per week"
 msgstr "Geplante Fahrten pro Woche"
 
@@ -2377,3 +2332,12 @@ msgstr "Ein kurzer Klang, wenn eine Karte von einem geschafften Anstieg, einem M
 
 msgid "Play the chime"
 msgstr "Klang abspielen"
+
+msgid "Your first ride on {course} is done, and now you know the way!"
+msgstr "Deine erste Fahrt auf {course} ist geschafft, jetzt kennst du den Weg!"
+
+msgid "That was your first time on {course}. Next time you'll know what's coming!"
+msgstr "Das war dein erstes Mal auf {course}. Nächstes Mal weisst du, was kommt!"
+
+msgid "First ride on {course}."
+msgstr "Erste Fahrt auf {course}."

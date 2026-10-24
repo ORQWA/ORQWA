@@ -55,11 +55,11 @@ func _run() -> void:
 		"key figures shown: %s" % [captions]
 	)
 	var saved: String = summary.get("_path")
-	var highlights: HighlightsList = summary.get("_highlights")
-	var told: PackedStringArray = highlights.lines()
+	var recap: RideRecap = summary.get("_recap")
+	# Earlier runs may have ridden the course already: then it tells of the week, if anything.
 	_check(
-		highlights.visible and not told.is_empty() and not told[0].contains("{"),
-		"the finish heads the highlights (R124): %s" % [told]
+		not recap.text.contains("{") and not recap.text.contains("enjoy"),
+		"at most one line, looking back on the ride (R124): %s" % recap.text
 	)
 	# A record uses its own duration's watts; other efforts in the curve are not PRs.
 	var record_ride: Dictionary = {}

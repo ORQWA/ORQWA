@@ -3131,21 +3131,19 @@ impl App {
             .collect()
     }
 
-    /// The highlights of the active rider's ride saved as `fit`, for its summary (R124): its
-    /// finish, the records it set and how it fits their week, local time `utc_offset_s` ahead of
-    /// UTC; empty for a ride not in the history.
+    /// What the summary of the active rider's ride saved as `fit` says of it beyond its
+    /// figures and records (R124): its first ride on the course, or how far into their week it
+    /// is, local time `utc_offset_s` ahead of UTC.
     #[must_use]
-    pub fn highlights(&self, fit: &Path, utc_offset_s: i64) -> Vec<moments::Moment> {
+    pub fn recap(&self, fit: &Path, utc_offset_s: i64) -> Option<moments::Moment> {
         let records = self.ride_records();
-        let Some((_, record)) = records.iter().find(|(path, _)| path == fit) else {
-            return Vec::new();
-        };
+        let (_, record) = records.iter().find(|(path, _)| path == fit)?;
         let others: Vec<&RideRecord> = records
             .iter()
             .filter(|(path, _)| path != fit)
             .map(|(_, other)| other)
             .collect();
-        moments::highlights(
+        moments::recap(
             record,
             &others,
             self.profile.profile.rides_per_week,
@@ -4097,7 +4095,7 @@ fn thin(points: &[(f64, f64)]) -> Vec<[f32; 2]> {
 }
 
 /// The fastest time on `climb` among `records`.
-pub(crate) fn best_climb_time(records: &[&RideRecord], climb: &ClimbTime) -> Option<Duration> {
+fn best_climb_time(records: &[&RideRecord], climb: &ClimbTime) -> Option<Duration> {
     records
         .iter()
         .flat_map(|r| r.climbs.iter())

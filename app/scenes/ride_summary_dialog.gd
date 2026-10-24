@@ -1,7 +1,7 @@
 class_name RideSummaryDialog
 extends AcceptDialog
-## A quick summary over the finished ride (R113), with its highlights (R124); charts and uploads
-## stay in its details.
+## A quick summary over the finished ride (R113), with a line on its place in the rider's week
+## (R124); charts and uploads stay in its details.
 
 signal closed
 signal details_requested(path: String)
@@ -15,7 +15,7 @@ var _name: String = ""
 var _title: EditableTitle = EditableTitle.new(tr("Rename the ride"))
 var _stats: ReflowGrid = ReflowGrid.new()
 var _power_records: PowerRecordBadges = PowerRecordBadges.new()
-var _highlights: HighlightsList = HighlightsList.new()
+var _recap: RideRecap = RideRecap.new()
 var _confirm_discard: ConfirmationDialog = ConfirmationDialog.new()
 
 
@@ -32,7 +32,7 @@ func _ready() -> void:
 	rows.add_theme_constant_override("separation", 24)
 	rows.add_child(_title)
 	_title.edit_finished.connect(_rename)
-	rows.add_child(_highlights)
+	rows.add_child(_recap)
 	_stats.max_columns = 3
 	_stats.add_theme_constant_override("h_separation", 32)
 	_stats.add_theme_constant_override("v_separation", 20)
@@ -72,11 +72,11 @@ func _show_ride(ride: Dictionary) -> void:
 	_title.placeholder_text = (
 		"%s · %s" % [ride["route"], UiTheme.date(start).get_slice(",", 0).rsplit(" ", true, 1)[0]]
 	)
-	_highlights.show_ride(_orqwa, _path)
+	_recap.show_ride(_orqwa, _path)
 	_fill_stats(ride)
 	_power_records.show_ride(ride)
 	var height: int = 420 if _power_records.visible else 340
-	UiScale.popup(self, Vector2i(640, height + _highlights.get_child_count() * 30))
+	UiScale.popup(self, Vector2i(640, height + (40 if _recap.visible else 0)))
 	get_ok_button().grab_focus()
 
 
