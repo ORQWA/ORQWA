@@ -16,11 +16,12 @@ use orqwa_app::analysis::{BestEffort, Comparison};
 use orqwa_app::failure::{Failure, Kind};
 use orqwa_app::hud::MetricKind;
 use orqwa_app::media::MediaCommand;
+use orqwa_app::moments::Moment;
 use orqwa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
 use orqwa_app::{library, view};
 use orqwa_devices::ble::{ControllerModel, DeviceKind};
 use orqwa_devices::fake::{FakeHeart, FakeRider};
-use orqwa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
+use orqwa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem, Voice};
 use orqwa_domain::shifting::{BUTTONS, ButtonAction, Control, Press, Shift};
 use orqwa_domain::telemetry::CadenceSource;
 use orqwa_domain::units::{
@@ -241,14 +242,10 @@ impl OrqwaApp {
     #[signal]
     fn ride_finished();
 
-    /// The rider reached the top of climb `index` (as in `climbs()`); `previous_best_s` is
-    /// −1 without an earlier time.
+    /// Something worth telling the rider of happened on the ride (R124), as `moment_dict`
+    /// describes it.
     #[signal]
-    fn climb_completed(index: i64, elapsed_s: f64, previous_best_s: f64);
-
-    /// The rider finished the route; `previous_best_s` is −1 without an earlier time.
-    #[signal]
-    fn route_completed(elapsed_s: f64, previous_best_s: f64);
+    fn moment(info: VarDictionary);
 
     /// The ride was saved as a FIT file.
     #[signal]
@@ -2525,6 +2522,7 @@ impl OrqwaApp {
             } else {
                 MapStyle::Coloured
             },
+            voice: voice_of(&data),
             // A rider saved without one, such as a new one, starts on the default (R98).
             drivetrain: match data
                 .get("drivetrain")
@@ -3217,26 +3215,7 @@ impl OrqwaApp {
                     .emit(&GString::from(path.as_str()));
             }
             AppEvent::CoursesChanged => self.signals().courses_changed().emit(),
-            AppEvent::ClimbCompleted {
-                index,
-                elapsed,
-                previous_best,
-            } => {
-                self.signals().climb_completed().emit(
-                    i64::try_from(index).unwrap_or(0),
-                    elapsed.as_secs_f64(),
-                    previous_best.map_or(-1.0, |b| b.as_secs_f64()),
-                );
-            }
-            AppEvent::RouteCompleted {
-                elapsed,
-                previous_best,
-            } => {
-                self.signals().route_completed().emit(
-                    elapsed.as_secs_f64(),
-                    previous_best.map_or(-1.0, |b| b.as_secs_f64()),
-                );
-            }
+            AppEvent::Moment(moment) => self.signals().moment().emit(&moment_dict(&moment)),
             AppEvent::RememberedMissing(names) => {
                 let names: PackedStringArray =
                     names.iter().map(|n| GString::from(n.as_str())).collect();
@@ -3768,8 +3747,8 @@ fn map_color(feature: MapFeature, style: MapStyle) -> Color {
 
 /// A rider as `profile()` describes them: `{id, name, rider_mass_kg, bike_mass_kg, ftp_w,
 /// max_heart_rate_bpm, units, language, avatar, drivetrain, chainring, cog, power_zones_pct,
-/// heart_rate_zones_pct, default_difficulty_pct, map_style}` with `map_style` either
-/// `"coloured"` or `"dark"`.
+/// heart_rate_zones_pct, default_difficulty_pct, map_style, voice}` with `map_style` either
+/// `"coloured"` or `"dark"` and `voice` (R124) `"casual"`, `"plain"` or `"off"`.
 fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
     vdict! {
         "id" => id,
@@ -3805,6 +3784,67 @@ fn profile_dict(id: &str, p: &Profile) -> VarDictionary {
         "map_style" => match p.map_style {
             MapStyle::Coloured => "coloured",
             MapStyle::Dark => "dark",
+        },
+        "voice" => match p.voice {
+            Voice::Casual => "casual",
+            Voice::Plain => "plain",
+            Voice::Off => "off",
+        },
+    }
+}
+
+/// The voice a dictionary shaped like `profile()` names (R124), the casual one by default.
+fn voice_of(data: &VarDictionary) -> Voice {
+    match data
+        .get("voice")
+        .and_then(|v| v.try_to::<GString>().ok())
+        .map(|v| v.to_string())
+        .as_deref()
+    {
+        Some("plain") => Voice::Plain,
+        Some("off") => Voice::Off,
+        _ => Voice::Casual,
+    }
+}
+
+/// A moment of a ride (R124) as `{kind, …}`: `climb_topped {index, elapsed_s, grade_pct}`,
+/// `climb_record {index, elapsed_s, gain_s}`, `halfway {distance_m}`, `one_to_go`,
+/// `distance {distance_m}` or `first_ride {course}`; `index` counts climbs from 0, as `climbs()` does.
+fn moment_dict(moment: &Moment) -> VarDictionary {
+    let index = |i: usize| i64::try_from(i).unwrap_or(0);
+    match *moment {
+        Moment::ClimbTopped {
+            index: i,
+            elapsed,
+            grade,
+        } => vdict! {
+            "kind" => "climb_topped",
+            "index" => index(i),
+            "elapsed_s" => elapsed.as_secs_f64(),
+            "grade_pct" => grade.0,
+        },
+        Moment::ClimbRecord {
+            index: i,
+            elapsed,
+            gain,
+        } => vdict! {
+            "kind" => "climb_record",
+            "index" => index(i),
+            "elapsed_s" => elapsed.as_secs_f64(),
+            "gain_s" => gain.as_secs_f64(),
+        },
+        Moment::Halfway { distance } => vdict! {
+            "kind" => "halfway",
+            "distance_m" => distance.0,
+        },
+        Moment::OneToGo => vdict! { "kind" => "one_to_go" },
+        Moment::Distance(distance) => vdict! {
+            "kind" => "distance",
+            "distance_m" => distance.0,
+        },
+        Moment::FirstRide { ref course } => vdict! {
+            "kind" => "first_ride",
+            "course" => course.as_str(),
         },
     }
 }

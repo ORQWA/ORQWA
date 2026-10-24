@@ -474,7 +474,7 @@ func _translations() -> void:
 	TranslationServer.set_locale("de")
 	_check(TranslationServer.translate("Power") == "Leistung", "German texts load")
 	_check(
-		TranslationServer.translate("Climb done in %s") % "4:12" == "Anstieg geschafft in 4:12",
+		TranslationServer.translate("%s connected") % "Polar H9" == "Polar H9 verbunden",
 		"formatted texts translate"
 	)
 	TranslationServer.set_locale("en")

@@ -115,7 +115,7 @@ msgstr ""
 msgid "%s was not found. It holds the course's slopes: put it next to the RLV file."
 msgstr ""
 
-#: app/scenes/course_detail.gd app/scenes/ride_screen.gd
+#: app/scenes/course_detail.gd
 msgid "(best %s)"
 msgstr ""
 
@@ -427,6 +427,10 @@ msgstr ""
 msgid "Cassette: shift on the bike"
 msgstr ""
 
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
+msgid "Casual and cheering"
+msgstr ""
+
 #: app/ui/ui_theme.gd core/orqwa-routes/src/climbs.rs
 msgid "Cat 1"
 msgstr ""
@@ -519,8 +523,16 @@ msgstr ""
 msgid "Climb %d  ·  %.1f km from km %.1f"
 msgstr ""
 
-#: app/scenes/ride_screen.gd
-msgid "Climb done in %s"
+#: app/ui/moment_lines.gd
+msgid "Climb {n} in {time}, a personal record by {gain}."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Climb {n} is done and it averaged {grade}. Well climbed!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Climb {n} topped, {grade} average."
 msgstr ""
 
 #: core/orqwa-app/src/hud.rs
@@ -1091,10 +1103,6 @@ msgstr ""
 msgid "Finished"
 msgstr ""
 
-#: app/scenes/ride_screen.gd
-msgid "Finished in %s"
-msgstr ""
-
 #: app/translations/extra-msgids.txt
 msgid "First Person"
 msgstr ""
@@ -1223,6 +1231,14 @@ msgstr ""
 msgid "HUD — drop figures where you want them"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "Half the ride is done already, keep it rolling!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Halfway."
+msgstr ""
+
 #: app/ui/ui_theme.gd
 msgid "Hard"
 msgstr ""
@@ -1291,6 +1307,10 @@ msgstr ""
 msgid "Hold to finish"
 msgstr ""
 
+#: app/ui/profile_form.gd
+msgid "How ORQWA tells you of climbs topped, milestones and records during the ride"
+msgstr ""
+
 #: app/scenes/course_detail.gd
 msgid "How do you want to ride?"
 msgstr ""
@@ -1357,6 +1377,10 @@ msgstr ""
 
 #: app/ui/ui_theme.gd
 msgid "Jun"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Just {left} to go, give it everything you have left!"
 msgstr ""
 
 #: app/scenes/courses_tab.gd
@@ -1763,7 +1787,7 @@ msgstr ""
 msgid "Oct"
 msgstr ""
 
-#: app/ui/graphics_settings.gd
+#: app/scenes/profile_tab.gd app/ui/graphics_settings.gd app/ui/profile_form.gd
 msgid "Off"
 msgstr ""
 
@@ -1793,6 +1817,10 @@ msgstr ""
 
 #: app/ui/ride_bar.gd
 msgid "Only the HUD, on top of other windows, e.g. over a video (O)"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Only {left} left, so bring it home strong!"
 msgstr ""
 
 #: app/scenes/courses_tab.gd
@@ -1861,6 +1889,10 @@ msgstr ""
 
 #: app/scenes/remote_dialog.gd
 msgid "Phones and tablets with the old address can no longer control the ride"
+msgstr ""
+
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
+msgid "Plain facts"
 msgstr ""
 
 #: app/ui/workout_options.gd
@@ -2367,6 +2399,10 @@ msgstr ""
 msgid "Test"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "That's {distance} on the clock already, great going!"
+msgstr ""
+
 #: app/scenes/analysis_tab.gd
 msgid "The best power you held for each length of effort, from a sprint to hours."
 msgstr ""
@@ -2663,6 +2699,10 @@ msgstr ""
 msgid "View on %s"
 msgstr ""
 
+#: app/scenes/profile_tab.gd app/ui/profile_form.gd
+msgid "Voice"
+msgstr ""
+
 #: core/orqwa-app/src/hud.rs
 msgid "W/kg"
 msgstr ""
@@ -2783,6 +2823,22 @@ msgstr ""
 msgid "Y (right pod)"
 msgstr ""
 
+#: app/ui/moment_lines.gd
+msgid "You're halfway there and going really well!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "You're over the top of climb {n}, which averaged {grade}. Get your breath back!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "You've never been up climb {n} faster than that, {gain} quicker than before!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "You've never ridden {course} before. Have fun exploring it!"
+msgstr ""
+
 #: app/scenes/analysis_tab.gd app/scenes/history_screen.gd
 msgid "Your FTP is now %d W: zones and workouts follow it."
 msgstr ""
@@ -2809,6 +2865,14 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "Your courses"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Your first ride on {course}, so enjoy the new roads!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "Your first ride on {course}."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -2895,10 +2959,6 @@ msgstr ""
 msgid "left %d %%"
 msgstr ""
 
-#: app/scenes/ride_screen.gd
-msgid "new record, %s faster!"
-msgstr ""
-
 #: app/translations/extra-msgids.txt
 msgid "no Bluetooth adapter found"
 msgstr ""
@@ -2913,6 +2973,22 @@ msgstr ""
 
 #: app/translations/extra-msgids.txt
 msgid "tiles"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "{distance} done and you're still going strong!"
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "{distance} ridden."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "{left} to go."
+msgstr ""
+
+#: app/ui/moment_lines.gd
+msgid "{time} on climb {n} is your best time up there yet!"
 msgstr ""
 
 #: app/scenes/ride_screen.tscn

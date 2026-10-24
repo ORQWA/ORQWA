@@ -12,6 +12,7 @@ mod import;
 mod kept;
 pub mod library;
 pub mod media;
+pub mod moments;
 pub mod paths;
 pub mod remote;
 mod traffic;
@@ -268,6 +269,8 @@ pub struct RouteRecords {
     pub route: Option<Duration>,
     /// Fastest time per climb, in the order of [`Route::climbs`].
     pub climbs: Vec<Option<Duration>>,
+    /// Whether the rider has ridden the route before, finished or not.
+    pub ridden: bool,
 }
 
 /// The climb the rider is on.
@@ -345,22 +348,8 @@ pub enum AppEvent {
     CourseAdded(PathBuf),
     /// Courses in the library learned their countries (#230).
     CoursesChanged,
-    /// The rider reached the top of a climb.
-    ClimbCompleted {
-        /// Index in [`Route::climbs`].
-        index: usize,
-        /// Time from foot to top.
-        elapsed: Duration,
-        /// The best time before this ride, if any.
-        previous_best: Option<Duration>,
-    },
-    /// The rider reached the finish.
-    RouteCompleted {
-        /// Time for the whole route.
-        elapsed: Duration,
-        /// The best time before this ride, if any.
-        previous_best: Option<Duration>,
-    },
+    /// Something worth telling the rider of happened on the ride (R124).
+    Moment(moments::Moment),
     /// A shifter's button asked for a ride control (#139), during a ride.
     Control(Control),
     /// The remote asked for a step through the screens (#228), with or without a ride.
@@ -534,6 +523,9 @@ struct ActiveRide {
     records: RouteRecords,
     /// The next climb whose top has not been reached.
     next_climb: usize,
+    milestones: moments::Milestones,
+    /// What to tell of once the ride starts: that it is the first on its course.
+    greeting: Option<moments::Moment>,
     /// Summary of the samples so far and how many it covers, refreshed once per new sample
     /// rather than every frame.
     summary: (usize, RideSummary),
@@ -2142,6 +2134,7 @@ impl App {
         active.simulated = true;
         // Climbs passed by jumping are not timed; the next one counts from where it starts.
         let distance = active.ride.state().distance;
+        active.milestones.skip_to(distance);
         let climbs = active.ride.route().map_or(&[][..], Route::climbs);
         active.next_climb = climbs
             .iter()
@@ -2875,6 +2868,15 @@ impl App {
         ghost: Option<Ghost>,
         (player, sound): (Option<video::VideoPlayer>, Option<video::SoundPlayer>),
     ) {
+        let milestones =
+            moments::Milestones::new(ride.route().map(Route::length), self.profile.profile.units);
+        let greeting = self
+            .loaded
+            .as_ref()
+            .filter(|_| ride.route().is_some() && !records.ridden)
+            .map(|(course, _)| moments::Moment::FirstRide {
+                course: course.clone(),
+            });
         self.ride = Some(ActiveRide {
             ride,
             name,
@@ -2884,6 +2886,8 @@ impl App {
             finished: false,
             records,
             next_climb: 0,
+            milestones,
+            greeting,
             summary: (0, RideSummary::default()),
             time_to_go: estimate::TimeToGo::default(),
             ghost,
@@ -3116,6 +3120,7 @@ impl App {
             .filter(|record| record.route_key.as_deref() == Some(key.as_str()))
             .collect();
         RouteRecords {
+            ridden: !same_route.is_empty(),
             route: same_route.iter().filter_map(|r| r.route_time).min(),
             climbs: route
                 .climbs()
@@ -3544,30 +3549,39 @@ impl App {
                 });
                 active.summary = (samples.len(), summary);
             }
+            events.extend(active.greeting.take().map(AppEvent::Moment));
             // Samples arrive once a second, so a climb is timed once a sample lies past its top.
             let climbs = active.ride.route().map_or(&[][..], Route::climbs);
             while let Some(climb) = climbs.get(active.next_climb)
                 && let Some(done) = effort(active.ride.samples(), climb.start, climb.end)
             {
-                events.push(AppEvent::ClimbCompleted {
-                    index: active.next_climb,
-                    elapsed: done.elapsed,
-                    previous_best: active
+                events.push(AppEvent::Moment(moments::climb_topped(
+                    active.next_climb,
+                    done.elapsed,
+                    climb.average_grade,
+                    active
                         .records
                         .climbs
                         .get(active.next_climb)
                         .copied()
                         .flatten(),
-                });
+                    !active.simulated,
+                )));
                 active.next_climb += 1;
             }
+            // The finish is the summary's to tell (R113).
             if active.ride.is_finished() {
                 active.finished = true;
-                events.push(AppEvent::RouteCompleted {
-                    elapsed: active.ride.state().elapsed,
-                    previous_best: active.records.route,
-                });
                 events.push(AppEvent::RideFinished);
+            } else {
+                let distance = active.ride.state().distance;
+                events.extend(
+                    active
+                        .milestones
+                        .reach(distance)
+                        .into_iter()
+                        .map(AppEvent::Moment),
+                );
             }
         }
         if let (Some(active), Some(video)) = (&self.ride, &self.video) {
@@ -4215,6 +4229,8 @@ mod tests {
 
     use orqwa_domain::units::{Kilograms, MetersPerSecond, Rpm, Watts};
     use orqwa_session::workout::RampTest;
+
+    use crate::moments::Moment;
 
     use super::*;
 
@@ -6366,8 +6382,12 @@ mod tests {
         .unwrap();
         app.start_ride(Percent(50.0), DescentMode::Coast, ghost)
             .unwrap();
-        run_until(app, |e| matches!(e, AppEvent::Connected(_)));
+        // Whole updates: the ride starts in the one the trainer connects in.
         let mut events = Vec::new();
+        while !events.iter().any(|e| matches!(e, AppEvent::Connected(_))) {
+            std::thread::sleep(Duration::from_millis(16));
+            events.extend(app.update(Duration::from_millis(16)));
+        }
         for _ in 0..2000 {
             std::thread::sleep(Duration::from_millis(2));
             events.extend(app.update(Duration::from_millis(500)));
@@ -6398,21 +6418,18 @@ mod tests {
         ));
         let first = ride_to_the_finish(&mut app, &GhostChoice::None);
         let climb = first.iter().find_map(|e| match e {
-            AppEvent::ClimbCompleted {
-                index: 0,
-                elapsed,
-                previous_best: None,
-            } => Some(*elapsed),
+            AppEvent::Moment(Moment::ClimbTopped {
+                index: 0, elapsed, ..
+            }) => Some(*elapsed),
             _ => None,
         });
         assert!(climb.is_some_and(|t| t > Duration::ZERO), "{first:?}");
-        assert!(first.iter().any(|e| matches!(
-            e,
-            AppEvent::RouteCompleted {
-                previous_best: None,
-                ..
-            }
-        )));
+        assert!(
+            first
+                .iter()
+                .any(|e| matches!(e, AppEvent::Moment(Moment::FirstRide { .. }))),
+            "the first ride on the course is told (R124): {first:?}"
+        );
 
         let records = app.records_for(app.route().unwrap());
         assert_eq!(records.climbs, [climb]);
@@ -6421,13 +6438,20 @@ mod tests {
         // Riding it again compares with the first ride.
         std::thread::sleep(Duration::from_millis(1100)); // a new FIT file name
         let second = ride_to_the_finish(&mut app, &GhostChoice::PersonalBest);
-        assert!(second.iter().any(|e| matches!(
-            e,
-            AppEvent::ClimbCompleted {
-                previous_best: Some(best),
-                ..
-            } if Some(*best) == climb
-        )));
+        assert!(app.records_for(app.route().unwrap()).ridden);
+        assert!(
+            !second
+                .iter()
+                .any(|e| matches!(e, AppEvent::Moment(Moment::FirstRide { .. }))),
+            "{second:?}"
+        );
+        // At the same power, the climb takes about as long; a record only if it is faster.
+        assert!(second.iter().any(|e| match e {
+            AppEvent::Moment(Moment::ClimbTopped { elapsed, .. }) => Some(*elapsed) >= climb,
+            AppEvent::Moment(Moment::ClimbRecord { elapsed, gain, .. }) =>
+                climb == Some(*elapsed + *gain),
+            _ => false,
+        }));
         let history = app.history();
         assert_eq!(history.len(), 2);
         // Racing the first ride at the same power: the gap stays about zero.

@@ -20,6 +20,9 @@ var _bar: PanelContainer = PanelContainer.new()
 var _hud: HudPanel = HudPanel.new()
 var _workout: WorkoutPanel = WorkoutPanel.new()
 var _grip: Control = Control.new()
+## The bar's caption: "ORQWA", or for a while a moment of the ride (R124).
+var _title: Label = UiTheme.caption("ORQWA")
+var _told_left: float = 0.0
 
 var _pause: Button
 
@@ -38,10 +41,13 @@ func _init() -> void:
 	add_child(_box)
 
 	var bar: HBoxContainer = HBoxContainer.new()
-	var title: Label = UiTheme.caption("ORQWA")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(title)
+	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A moment's line must not widen the overlay.
+	_title.clip_text = true
+	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_title.custom_minimum_size.x = 0.0
+	bar.add_child(_title)
 	var smaller: Button = _bar_button("A−", tr("Smaller (−)"))
 	smaller.pressed.connect(func() -> void: zoom_requested.emit(-1))
 	bar.add_child(smaller)
@@ -78,6 +84,30 @@ func _init() -> void:
 	if OS.has_feature("android"):
 		_bar.hide()
 		_grip.hide()
+
+
+## Shows `line` in the bar for as long as a card would show it, then "ORQWA" again.
+func tell(line: String) -> void:
+	if line.is_empty():
+		return
+	_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_title.uppercase = false
+	_title.add_theme_color_override("font_color", UiTheme.TEXT)
+	_title.text = line
+	_title.tooltip_text = line
+	_told_left = MomentCard.SHOW_SECONDS
+
+
+func _process(delta: float) -> void:
+	if _told_left <= 0.0:
+		return
+	_told_left -= delta
+	if _told_left <= 0.0:
+		_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_ALWAYS
+		_title.uppercase = true
+		_title.add_theme_color_override("font_color", UiTheme.MUTED)
+		_title.text = "ORQWA"
+		_title.tooltip_text = ""
 
 
 ## Shows whether the ride is paused on the pause button.

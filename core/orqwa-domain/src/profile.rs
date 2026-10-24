@@ -32,6 +32,19 @@ pub enum MapStyle {
     Dark,
 }
 
+/// How the app speaks to the rider about the moments of a ride (R124): the cards during it and
+/// the highlights of its summary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Voice {
+    /// Warm and cheering.
+    #[default]
+    Casual,
+    /// Plain facts.
+    Plain,
+    /// No cards during the ride; the summary's highlights speak plainly.
+    Off,
+}
+
 /// What the rider shifts with on the trainer (R9, ADR 0003).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Drivetrain {
@@ -78,6 +91,8 @@ pub struct Profile {
     pub avatar: Avatar,
     /// How the ride's minimap is drawn.
     pub map_style: MapStyle,
+    /// How the app speaks of the ride's moments.
+    pub voice: Voice,
     /// What the rider shifts with.
     pub drivetrain: Drivetrain,
     /// Upper bounds of power zones 1–6 as a share of FTP (zone 7 is open), each above the one
@@ -102,6 +117,7 @@ impl Default for Profile {
             language: String::new(),
             avatar: Avatar::Female,
             map_style: MapStyle::Coloured,
+            voice: Voice::Casual,
             drivetrain: Drivetrain::default(),
             power_zones: POWER_ZONES,
             heart_rate_zones: HEART_RATE_ZONES,

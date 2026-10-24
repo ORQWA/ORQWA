@@ -1,9 +1,10 @@
 class_name ProfileForm
 extends GridContainer
 ## A rider's figures and choices, the fields as `OrqwaApp.profile()` has them: weights, FTP,
-## maximum heart rate, trainer difficulty, units, language, the rider on the bike, the ride map
-## and the drivetrain (R9). The rider settings and the ride settings' Profile tab (R98) both
-## show it, so a rider is set up the same way before and during a ride.
+## maximum heart rate, trainer difficulty, units, language, the rider on the bike, the ride map,
+## the voice the ride's moments are told in (R124) and the drivetrain (R9). The rider settings
+## and the ride settings' Profile tab (R98) both show it, so a rider is set up the same way
+## before and during a ride.
 
 ## The rider changed a field; read them with `profile()`.
 signal changed
@@ -12,6 +13,8 @@ const UNITS: Array[String] = ["metric", "imperial"]
 const DRIVETRAINS: Array[String] = ["cassette", "single_cog"]
 ## How the ride's minimap is drawn (R70).
 const MAP_STYLES: Array[String] = ["coloured", "dark"]
+## How the ride's moments are told (R124).
+const VOICES: Array[String] = ["casual", "plain", "off"]
 ## Interface languages: locale code and name in that language; "" follows the system.
 const LANGUAGES: Array[Array] = [["", "System language"], ["en", "English"], ["de", "Deutsch"]]
 
@@ -24,6 +27,7 @@ var _units: OptionButton = OptionButton.new()
 var _language: OptionButton = OptionButton.new()
 var _avatar: OptionButton = OptionButton.new()
 var _map_style: OptionButton = OptionButton.new()
+var _voice: OptionButton = OptionButton.new()
 ## A cassette, or a single cog with virtual gears (R9): its chainring and cog then.
 var _drivetrain: OptionButton = OptionButton.new()
 var _chainring: SpinBox = _spin(20.0, 60.0, 1.0, " T")
@@ -44,6 +48,13 @@ func _init() -> void:
 	# In the order of MAP_STYLES.
 	_map_style.add_item(tr("Colored"))
 	_map_style.add_item(tr("Dark, like the course cards"))
+	# In the order of VOICES.
+	_voice.add_item(tr("Casual and cheering"))
+	_voice.add_item(tr("Plain facts"))
+	_voice.add_item(tr("Off"))
+	_voice.tooltip_text = tr(
+		"How ORQWA tells you of climbs topped, milestones and records during the ride"
+	)
 	# In the order of DRIVETRAINS.
 	_drivetrain.add_item(tr("Cassette: shift on the bike"))
 	_drivetrain.add_item(tr("Single cog: virtual gears"))
@@ -68,6 +79,7 @@ func _init() -> void:
 		["Language", _language],
 		["Rider on the bike", _avatar],
 		["Ride map", _map_style],
+		["Voice", _voice],
 		["Drivetrain", _drivetrain],
 		["Chainring", _chainring],
 		["Cog", _cog],
@@ -113,6 +125,7 @@ func edit(profile: Dictionary) -> void:
 	var avatar: String = profile.get("avatar", RiderAvatar.RIDERS[0])
 	_avatar.select(maxi(RiderAvatar.RIDERS.find(avatar), 0))
 	_map_style.select(maxi(MAP_STYLES.find(profile.get("map_style", "coloured")), 0))
+	_voice.select(maxi(VOICES.find(profile.get("voice", "casual")), 0))
 	var drivetrain: String = profile.get("drivetrain", "single_cog")
 	_drivetrain.select(maxi(DRIVETRAINS.find(drivetrain), 0))
 	_show_teeth()
@@ -130,6 +143,7 @@ func profile() -> Dictionary:
 		"language": LANGUAGES[_language.selected][0],
 		"avatar": RiderAvatar.RIDERS[_avatar.selected],
 		"map_style": MAP_STYLES[_map_style.selected],
+		"voice": VOICES[_voice.selected],
 		"drivetrain": DRIVETRAINS[_drivetrain.selected],
 		"chainring": _chainring.value,
 		"cog": _cog.value,

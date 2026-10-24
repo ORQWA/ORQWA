@@ -53,6 +53,8 @@ var _ghost_gap: Label = UiTheme.value(20)
 var _finished: bool = false
 var _saved: bool = false
 var _toast_left: float = 0.0
+## The moments of the ride (R124).
+var _moment_card: MomentCard = MomentCard.new()
 ## Simulated rides (fake trainer): speed, jumps on map and profile, free camera (#53).
 var _bar: RideBar = RideBar.new()
 var _simulating: bool = false
@@ -94,8 +96,7 @@ func bind(orqwa: OrqwaApp, world: RideWorld) -> void:
 	# Deferred: the handler calls back into ORQWA, which is still busy emitting the signal.
 	_orqwa.ride_finished.connect(_on_ride_finished, CONNECT_DEFERRED)
 	_orqwa.ride_saved.connect(_on_ride_saved)
-	_orqwa.climb_completed.connect(_on_climb_completed)
-	_orqwa.route_completed.connect(_on_route_completed)
+	_orqwa.moment.connect(_on_moment)
 	_orqwa.failed.connect(_on_failed)
 	_orqwa.control_requested.connect(_on_control_requested)
 
@@ -107,6 +108,7 @@ func begin(options: Dictionary) -> void:
 	_finished = false
 	_saved = false
 	_gear = 0
+	_moment_card.clear()
 	_bar.show_settings(true)
 	_bar.show_back(false)
 	_bar.show_pause(true)
@@ -195,6 +197,7 @@ func _ready() -> void:
 	_overlay_hud.zoom_requested.connect(overlay_zoom_requested.emit)
 	_overlay_hud.pause_requested.connect(_toggle_pause)
 	_bar.pause_requested.connect(_toggle_pause)
+	add_child(_moment_card)
 	add_child(_overlay_hud)
 
 
@@ -300,6 +303,7 @@ func set_overlay(on: bool) -> void:
 	if on == is_overlay():
 		return
 	if on:
+		_moment_card.clear()
 		_overlay_hud.begin(_orqwa.hud_layout(), _imperial, _workout)
 		_hidden_by_overlay.clear()
 		for child: Node in get_children():
@@ -583,38 +587,19 @@ func _show_climb(climb: Variant) -> void:
 	_climb_panel.show()
 
 
-func _on_climb_completed(_index: int, elapsed_s: float, previous_best_s: float) -> void:
-	_show_toast(
-		(
-			tr("Climb done in %s") % UiTheme.duration(elapsed_s)
-			+ _record_text(elapsed_s, previous_best_s)
-		)
-	)
-
-
-func _on_route_completed(elapsed_s: float, previous_best_s: float) -> void:
-	_show_toast(
-		(
-			tr("Finished in %s") % UiTheme.duration(elapsed_s)
-			+ _record_text(elapsed_s, previous_best_s)
-		)
-	)
-	_toast_left = TOAST_SECONDS * 2.0
-
-
-## " — new record, 0:12 faster!", " (best 11:58)" or "" for a first time.
-static func _record_text(elapsed_s: float, previous_best_s: float) -> String:
-	if previous_best_s < 0.0:
-		return ""
-	if elapsed_s < previous_best_s:
-		return (
-			" — "
-			+ (
-				TranslationServer.translate("new record, %s faster!")
-				% UiTheme.duration(previous_best_s - elapsed_s)
-			)
-		)
-	return " " + TranslationServer.translate("(best %s)") % UiTheme.duration(previous_best_s)
+## Tells of a moment of the ride (R124) in the rider's voice: on a card, or in the overlay's
+## bar; not at all with the voice off.
+func _on_moment(moment: Dictionary) -> void:
+	if not visible or _finished:
+		return
+	var voice: String = _orqwa.profile().get("voice", "casual")
+	if voice == "off":
+		return
+	var line: String = MomentLines.line(moment, voice, _imperial)
+	if is_overlay():
+		_overlay_hud.tell(line)
+	else:
+		_moment_card.tell(MomentLines.figure(moment, _imperial), line)
 
 
 ## Suggests a lower graphics preset when the ride stays below 60 fps (R43). Simulated rides
@@ -769,6 +754,7 @@ func _on_ride_finished() -> void:
 
 func _finish_ride() -> void:
 	_finished = true
+	_moment_card.clear()
 	_settings_dialog.hide()
 	_bar.show_pause(false)
 	_bar.show_settings(false)

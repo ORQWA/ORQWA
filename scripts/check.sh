@@ -177,6 +177,8 @@ upload_output="$(run_godot -s res://tests/upload_smoke.gd)"
 echo "$upload_output" | grep "UPLOAD SMOKE TEST PASSED"
 error_output="$(run_godot -s res://tests/error_smoke.gd)"
 echo "$error_output" | grep "ERROR SMOKE TEST PASSED"
+moment_output="$(run_godot -s res://tests/moment_smoke.gd)"
+echo "$moment_output" | grep "MOMENT SMOKE TEST PASSED"
 
 # Headless smoke tests use Godot's dummy renderer and cannot catch back-face culling.
 surface_output="$(timeout 120 xvfb-run -a godot --path "$root/app" --rendering-driver vulkan \

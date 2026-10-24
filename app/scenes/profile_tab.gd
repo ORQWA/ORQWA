@@ -285,6 +285,12 @@ func _setting_rows(rider: Dictionary) -> Array[Array]:
 		["Units", "Imperial (mi, lb)" if imperial else "Metric (km, kg)"],
 		["Rider on the bike", "Male rider" if rider.get("avatar") == "male" else "Female rider"],
 		["Ride map", "Dark" if rider.get("map_style") == "dark" else "Colored"],
+		[
+			"Voice",
+			{"plain": "Plain facts", "off": "Off"}.get(
+				rider.get("voice", "casual"), "Casual and cheering"
+			),
+		],
 		["Language", language],
 		[
 			"Drivetrain",

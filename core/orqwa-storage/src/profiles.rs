@@ -6,7 +6,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use orqwa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem};
+use orqwa_domain::profile::{Avatar, Drivetrain, MapStyle, Profile, UnitSystem, Voice};
 use orqwa_domain::shifting::{ButtonAction, ButtonMap, ControllerModel, Press};
 use orqwa_domain::telemetry::CadenceSource;
 use orqwa_domain::units::{BeatsPerMinute, Kilograms, Percent, Watts};
@@ -59,6 +59,7 @@ struct ProfileFile {
     language: String,
     avatar: AvatarFile,
     map_style: MapStyleFile,
+    voice: VoiceFile,
     drivetrain: DrivetrainFile,
     chainring: u8,
     cog: u8,
@@ -101,6 +102,14 @@ enum MapStyleFile {
     Dark,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum VoiceFile {
+    Casual,
+    Plain,
+    Off,
+}
+
 impl Default for ProfileFile {
     fn default() -> Self {
         Self::from(&Profile::default())
@@ -127,6 +136,11 @@ impl From<&Profile> for ProfileFile {
             map_style: match p.map_style {
                 MapStyle::Coloured => MapStyleFile::Coloured,
                 MapStyle::Dark => MapStyleFile::Dark,
+            },
+            voice: match p.voice {
+                Voice::Casual => VoiceFile::Casual,
+                Voice::Plain => VoiceFile::Plain,
+                Voice::Off => VoiceFile::Off,
             },
             drivetrain: match p.drivetrain {
                 Drivetrain::Cassette => DrivetrainFile::Cassette,
@@ -173,6 +187,11 @@ impl From<ProfileFile> for Profile {
             map_style: match f.map_style {
                 MapStyleFile::Coloured => MapStyle::Coloured,
                 MapStyleFile::Dark => MapStyle::Dark,
+            },
+            voice: match f.voice {
+                VoiceFile::Casual => Voice::Casual,
+                VoiceFile::Plain => Voice::Plain,
+                VoiceFile::Off => Voice::Off,
             },
             drivetrain: match f.drivetrain {
                 DrivetrainFile::Cassette => Drivetrain::Cassette,
@@ -1259,6 +1278,7 @@ mod tests {
             language: "de".to_owned(),
             avatar: Avatar::Male,
             map_style: MapStyle::Dark,
+            voice: Voice::Plain,
             drivetrain: Drivetrain::SingleCog {
                 chainring: 46,
                 cog: 14,
@@ -1305,6 +1325,11 @@ mod tests {
         assert_eq!(profile.ftp, Watts(180.0));
         assert_eq!(profile.rider_mass, Profile::default().rider_mass);
         assert_eq!(profile.avatar, Profile::default().avatar);
+        assert_eq!(
+            profile.voice,
+            Voice::Casual,
+            "riders hear the warm voice first (R124)"
+        );
         assert_eq!(
             profile.drivetrain,
             Drivetrain::SingleCog {

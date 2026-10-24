@@ -373,9 +373,6 @@ msgstr "Anstieg"
 msgid "Climb %d  ·  %.1f km from km %.1f"
 msgstr "Anstieg %d  ·  %.1f km ab km %.1f"
 
-msgid "Climb done in %s"
-msgstr "Anstieg geschafft in %s"
-
 msgid "Climbed"
 msgstr "Höhenmeter"
 
@@ -771,9 +768,6 @@ msgstr "Beenden und speichern"
 
 msgid "Finished"
 msgstr "Im Ziel"
-
-msgid "Finished in %s"
-msgstr "Im Ziel nach %s"
 
 msgid "First Person"
 msgstr "Egoperspektive"
@@ -1882,9 +1876,6 @@ msgstr "kJ"
 msgid "left %d %%"
 msgstr "links %d %%"
 
-msgid "new record, %s faster!"
-msgstr "neue Bestzeit, %s schneller!"
-
 msgid "points"
 msgstr "Punkte"
 
@@ -2206,3 +2197,69 @@ msgstr "Lautstärke des Windes; 0 schaltet ihn stumm"
 
 msgid "Chain, freewheel and gear shift volume; 0 mutes them"
 msgstr "Lautstärke von Kette, Freilauf und Gangwechseln; 0 schaltet sie stumm"
+
+msgid "Climb {n} is done and it averaged {grade}. Well climbed!"
+msgstr "Anstieg {n} ist geschafft, im Schnitt {grade}. Stark geklettert!"
+
+msgid "You're over the top of climb {n}, which averaged {grade}. Get your breath back!"
+msgstr "Du bist oben auf Anstieg {n}, im Schnitt {grade}. Jetzt erst mal durchatmen!"
+
+msgid "Climb {n} topped, {grade} average."
+msgstr "Anstieg {n} geschafft, im Schnitt {grade}."
+
+msgid "{time} on climb {n} is your best time up there yet!"
+msgstr "{time} an Anstieg {n}, so schnell warst du da oben noch nie!"
+
+msgid "You've never been up climb {n} faster than that, {gain} quicker than before!"
+msgstr "So schnell bist du Anstieg {n} noch nie hochgefahren, {gain} schneller als bisher!"
+
+msgid "Climb {n} in {time}, a personal record by {gain}."
+msgstr "Anstieg {n} in {time}, persönliche Bestzeit um {gain}."
+
+msgid "You're halfway there and going really well!"
+msgstr "Die Hälfte hast du geschafft und du fährst richtig gut!"
+
+msgid "Half the ride is done already, keep it rolling!"
+msgstr "Die halbe Strecke liegt schon hinter dir, lass es weiter rollen!"
+
+msgid "Halfway."
+msgstr "Halbzeit."
+
+msgid "Just {left} to go, give it everything you have left!"
+msgstr "Nur noch {left}, gib alles, was du noch hast!"
+
+msgid "Only {left} left, so bring it home strong!"
+msgstr "Nur noch {left} bis ins Ziel, jetzt zieh noch einmal richtig durch!"
+
+msgid "{left} to go."
+msgstr "Noch {left}."
+
+msgid "{distance} done and you're still going strong!"
+msgstr "{distance} geschafft und du fährst immer noch stark!"
+
+msgid "That's {distance} on the clock already, great going!"
+msgstr "Schon {distance} auf dem Tacho, super gefahren!"
+
+msgid "{distance} ridden."
+msgstr "{distance} gefahren."
+
+msgid "Your first ride on {course}, so enjoy the new roads!"
+msgstr "Deine erste Fahrt auf {course}, geniess die neuen Strassen!"
+
+msgid "You've never ridden {course} before. Have fun exploring it!"
+msgstr "{course} bist du noch nie gefahren. Viel Spass beim Entdecken!"
+
+msgid "Your first ride on {course}."
+msgstr "Deine erste Fahrt auf {course}."
+
+msgid "Casual and cheering"
+msgstr "Locker und anfeuernd"
+
+msgid "Plain facts"
+msgstr "Sachlich"
+
+msgid "Voice"
+msgstr "Tonfall"
+
+msgid "How ORQWA tells you of climbs topped, milestones and records during the ride"
+msgstr "Wie ORQWA dir während der Fahrt von geschafften Anstiegen, Meilensteinen und Rekorden erzählt"
