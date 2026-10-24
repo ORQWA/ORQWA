@@ -92,6 +92,8 @@ Generic regression fixtures vary road width, loop direction and terrain-chunk pl
 they check coverage, walking height on both sides of internal joins and exposed side walls.
 The fixed village, lakeside junction, city-bench and Oberalp hairpin/tunnel views below were
 also regenerated and reviewed with the correction.
+The village, junction, city-bench and Oberalp hairpin views were refreshed again for the
+minimum-length rule; the long city walk and its bench/bin placement remain intact.
 
 | Before | Continuous sidewalk at street height |
 |---|---|
