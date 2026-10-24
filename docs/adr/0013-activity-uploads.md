@@ -92,9 +92,9 @@ Decision:
 - `ActivityUploader::connect` gets the rider's **browser** (a way to open the login and the
   pages to come back to, in the rider's language), and `disconnect` withdraws a platform's
   grant (RFC 7009) as the rider disconnects or is deleted; best effort.
-- Rides go up as FIT files marked as on a trainer, named after the ride; Strava processes them
-  for a few seconds, and ORQWA waits for the activity. One Strava already has counts as
-  uploaded.
+- Rides go up as FIT files marked as on a trainer (amended below: only those without a
+  route), named after the ride; Strava processes them for a few seconds, and ORQWA waits for
+  the activity. One Strava already has counts as uploaded.
 - The API stays at `www.strava.com/api/v3`; Strava's new host (`api-v3.strava.com`) only
   opens in 2027. Tokens already go in the `Authorization` header, and access is revoked with
   `/oauth/revoke`, as Strava requires from June 2027.
@@ -119,3 +119,13 @@ computer's local date, and lists what came under ids `planned:<platform>:<entry>
 library; the list lives in memory only, so ORQWA stores nothing of the plan and plans nothing
 itself (R21). The credentials go the same way as for uploads, renewed if the platform renews
 them. A planned ride without steps cannot be ridden as a workout and is left out.
+
+## Amendment — 2026-10-24: rides along a route keep their map on Strava (#354)
+
+Strava hides the map of every activity marked as on a trainer. A ride along a route, a
+workout on a course included (R58), goes up without the mark: its FIT file carries the
+positions and the virtual-activity sub sport, so Strava files it as a virtual ride with its
+map. Only a ride without positions, a workout on its own (R56), is still marked as on a
+trainer, which Strava would conclude by itself from the missing positions. `Activity` says
+which with `along_route`, taken from the FIT file's positions as the app reads it for upload.
+Rides Strava took before keep their mark; the rider can remove the Indoor tag on Strava.

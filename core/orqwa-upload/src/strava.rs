@@ -1,8 +1,9 @@
 //! Strava (R29). Strava lets an app in only with OAuth, and every token request needs the
 //! app's client secret, which open-source ORQWA cannot keep. So each rider connects through a
 //! Strava API application of their own: its Client ID and Client Secret, then a login in the
-//! browser (ADR 0013). Rides go up as FIT files on a trainer; Strava processes them and then
-//! names the activity.
+//! browser (ADR 0013). Rides go up as FIT files, along a route as virtual rides with their
+//! map, workouts without one as rides on a trainer; Strava processes them and then names the
+//! activity.
 
 use std::time::Duration;
 
@@ -181,14 +182,18 @@ impl Strava {
     }
 
     async fn send(&self, token: &str, activity: &Activity) -> Result<Uploaded, UploadError> {
+        let mut fields = vec![
+            ("data_type", "fit"),
+            ("name", activity.name.as_str()),
+            ("external_id", activity.external_id.as_str()),
+        ];
+        // Strava hides the map of a trainer ride: one along a route goes up as the virtual
+        // ride its file says it is.
+        if !activity.along_route {
+            fields.push(("trainer", "1"));
+        }
         let (content_type, body) = multipart(
-            &[
-                ("data_type", "fit"),
-                ("name", &activity.name),
-                ("external_id", &activity.external_id),
-                // Every ORQWA ride is on a trainer.
-                ("trainer", "1"),
-            ],
+            &fields,
             (
                 "file",
                 &format!("{}.fit", activity.external_id),
@@ -590,11 +595,19 @@ mod tests {
             fit: b"FIT activity".to_vec(),
             name: "Gurten & back".to_owned(),
             external_id: "orqwa-20261012-071500".to_owned(),
+            along_route: true,
         }
     }
 
+    /// The form field `field` of the multipart request `upload`, if it has one.
+    fn form_field<'a>(upload: &'a str, field: &str) -> Option<&'a str> {
+        let head = format!("name=\"{field}\"\r\n\r\n");
+        let start = upload.find(&head)? + head.len();
+        upload[start..].split("\r\n").next()
+    }
+
     #[tokio::test]
-    async fn uploads_the_fit_file_as_a_trainer_ride_and_links_the_activity() {
+    async fn uploads_a_ride_along_a_route_as_a_virtual_ride_and_links_the_activity() {
         let (site, served) = serve(vec![
             (
                 "201 Created",
@@ -628,15 +641,41 @@ mod tests {
             ("data_type", "fit"),
             ("name", "Gurten & back"),
             ("external_id", "orqwa-20261012-071500"),
-            ("trainer", "1"),
         ] {
-            assert!(
-                upload.contains(&format!("name=\"{field}\"\r\n\r\n{value}\r\n")),
+            assert_eq!(
+                form_field(&upload, field),
+                Some(value),
                 "{field} in {upload}"
             );
         }
+        assert_eq!(
+            form_field(&upload, "trainer"),
+            None,
+            "Strava would hide the route's map: {upload}"
+        );
         assert!(upload.contains("FIT activity"));
         assert!(text(&requests[1]).starts_with("GET /api/v3/uploads/5 "));
+    }
+
+    #[tokio::test]
+    async fn uploads_a_workout_without_a_route_as_a_trainer_ride() {
+        let (site, served) = serve(vec![(
+            "201 Created",
+            r#"{"id":5,"id_str":"5","error":null,"activity_id":777}"#.to_owned(),
+        )])
+        .await;
+        let workout = Activity {
+            along_route: false,
+            ..activity()
+        };
+
+        strava(&site)
+            .upload(&mut connected(3600), &workout)
+            .await
+            .unwrap();
+
+        let upload = text(&served.await.unwrap()[0]);
+        assert_eq!(form_field(&upload, "trainer"), Some("1"), "{upload}");
     }
 
     #[tokio::test]

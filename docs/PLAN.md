@@ -301,7 +301,8 @@ Built in rideable steps:
     turns, each with the account's newest credentials, and a ride goes to a platform once
   - [x] Strava, through each rider's own Strava API application: its Client ID and Secret,
     then the login in the browser back to a loopback address; tokens renewed in the upload's
-    turn, access revoked on disconnecting or deleting the rider
+    turn, access revoked on disconnecting or deleting the rider; rides along a route go up as
+    virtual rides with their map, workouts without one as trainer rides (#354)
   - [x] Today's planned workouts from intervals.icu on the Workouts tab (R81, #187): read
     through the same account when the tab opens, chosen with a click, nothing stored
   - [ ] ~~ANT+ FE-C~~ — dropped 2026-10-15: Bluetooth only; Tacx FE-C over BLE added by R110
