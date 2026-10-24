@@ -42,6 +42,107 @@ fn urban_vertices(world: &World) -> impl Iterator<Item = ([f32; 3], [f32; 3], f3
 }
 
 #[tokio::test]
+async fn offset_map_copies_do_not_fragment_or_duplicate_the_ridden_sidewalks() {
+    for offset in [1.5, 2.5, 8.5] {
+        let mut map = city();
+        let mut street = road_north();
+        street.line = vec![at(offset, -20.0), at(offset, 480.0)];
+        let mut continuation = street.clone();
+        continuation.line = vec![at(offset, 480.0), at(offset, 1020.0)];
+        map.roads = vec![street, continuation];
+        let world = world(&map).await;
+        for north in [200.0, 479.75, 480.25, 700.0] {
+            for side in [-1.0, 1.0] {
+                for across in [3.3, 4.0, 4.8] {
+                    assert!(
+                        height_on(&world, |c| &c.urban, across * side, -north).is_some(),
+                        "walk cut by its mapped copy at offset {offset}, {across}, {north}"
+                    );
+                }
+            }
+            assert!(
+                height_on(&world, |c| &c.urban, offset as f32 + 4.5, -north).is_none(),
+                "second sidewalk on the bank at offset {offset}, {north}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn an_independent_nearby_street_retains_its_sidewalks() {
+    let mut map = city();
+    let mut other = road_north();
+    other.line = vec![at(16.0, 0.0), at(16.0, 1000.0)];
+    map.roads = vec![road_north(), other];
+    let world = world(&map).await;
+    for east in [12.0, 20.0] {
+        for north in [200.0, 479.75, 480.25, 700.0] {
+            assert!(
+                height_on(&world, |c| &c.urban, east, -north).is_some(),
+                "independent street lost its sidewalk at {east}, {north}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn an_unridden_parallel_arm_of_the_same_map_feature_keeps_its_sidewalk() {
+    let mut map = city();
+    let mut loop_road = road_north();
+    loop_road.line = vec![at(0.0, 0.0), at(0.0, 1000.0), at(8.0, 1020.0), at(8.0, 0.0)];
+    map.roads.push(loop_road);
+    let world = world(&map).await;
+    for north in [200.0, 479.75, 480.25, 700.0] {
+        assert!(
+            height_on(&world, |c| &c.urban, 12.0, -north).is_some(),
+            "a shared map ID must not erase an unridden parallel arm"
+        );
+    }
+}
+
+#[tokio::test]
+async fn sidewalks_stay_level_with_their_road_above_a_lower_hairpin_cutting() {
+    let mut points = Vec::new();
+    for i in 0..=100 {
+        points.push((0.0, f64::from(i) * 10.0));
+    }
+    for k in 1..12 {
+        let a = std::f64::consts::PI * f64::from(k) / 12.0;
+        points.push((8.0 - 8.0 * a.cos(), 1000.0 + 8.0 * a.sin()));
+    }
+    for i in (0..=100).rev() {
+        points.push((16.0, f64::from(i) * 10.0));
+    }
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for (east, north) in points {
+        let (lat, lon) = at(east, north);
+        let elevation = 500.0 - east * 1.7 + north * 0.06;
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{elevation}</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let map = city();
+    let route = Route::from_gpx_with::<Level>(&xml, None, &map)
+        .await
+        .unwrap();
+    let world = generate(&route, &mut Level(440.0), &map, &mut |_, _| {}).await;
+    for north in [200.0, 479.75, 480.25, 700.0] {
+        for east in [-4.6, -3.5, 3.5, 4.6] {
+            let top = height_on(&world, |c| &c.urban, east, -north).expect("continuous upper walk");
+            assert!(
+                (top - (500.14 + north * 0.06)).abs() < 0.03,
+                "walk draped down the bank at {east}, {north}: {top}"
+            );
+        }
+    }
+    for c in &world.chunks {
+        assert_faces_follow_normals(&c.urban);
+    }
+}
+
+#[tokio::test]
 async fn sidewalks_have_raised_curbs_and_leave_roads_junctions_and_green_spaces_open() {
     let mut map = city();
     map.roads.push(road_north());

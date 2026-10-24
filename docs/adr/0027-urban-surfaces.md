@@ -82,6 +82,34 @@ surfaces keep their existing material and scale. Normals follow the final bevele
 surfaces. Corner heights interpolate between their streets, including the ridden road's
 height, and solid sides still follow the terrain's cuts. Stored format 2 is unchanged.
 
+### Shared sidewalk owner amendment (2026-10-24)
+
+Generator 27 keeps the original mapped feature selected for each ridden road segment's
+appearance and its projected position on the matched local map section. A mapped copy of
+that section shares the ridden sidewalk and pavement owner, including when several tile
+features form one street chain. Ownership is indexed at the projected map position, so a
+coarse GPX bend can differ by more than the carriageway width without leaving raw map strips.
+The previous one-metre distance
+test could alternate between mapped and ridden strips, letting them cut each other into
+pieces and leaving duplicate paving on the bank. Identity distinguishes these copies from
+independent streets, shallow joining arms and unridden parallel arms of the same map feature.
+Superseded map centre lines no longer supply phantom clearance cuts through the new walk.
+Temporary source IDs and projected positions are discarded before
+storage; stored format remains 3.
+
+### Street-profile footways amendment (2026-10-24)
+
+Generator 27 gives sidewalk patches their owning street's longitudinal profile. Ridden
+street endpoints use the drawn road's elevations; mapped streets sample their centre line,
+and junction curves sample their road-facing edge. Walking cross-sections stay level rather
+than following a bank cut by another nearby road. Reversing a left-side patch reverses its
+height profile too, so both sides agree on grades and shared cross-sections.
+
+Solid sides still extend into the terrain, including where part of a corner is buried;
+their bottoms stay below their tops rather than creating inverted faces. Lowered access
+and entrance ramps share the street datum. Bench and bin queries return the same drawn
+walking height. No stored fields change; stored format remains 3.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,

@@ -94,6 +94,12 @@ gallery. Grain alone is insufficient at distance. Refresh the linked wiki images
 
 ## Pitfalls
 
+For sidewalks, use the full saved Alpenbrevet Gold inputs at 209.36 km to go (about 1.38 km
+from the start) in Andermatt. Inspect the elevated bend and the nearby village junction in
+one overview, then move closer to the walking edge. Offset GPX/map copies must not make
+duplicate strips or trim each other into pieces. Retain independent streets' walks, include
+tile-piece and terrain-chunk joins, and check curbs and lowered access from road height.
+
 For roadside guardrail placement, include a tight hairpin from above with both edges visible.
 Four-metre models placed on centre-line tangents can overlap inside a curve and leave gaps
 outside it. Check shared blade endpoints, vertical alignment across terrain chunk boundaries,

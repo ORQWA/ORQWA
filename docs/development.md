@@ -60,6 +60,18 @@ files keep their existing format. Format-2 worlds from generator 4 offer regener
 add the more regular city benches. Generator 6 joins sidewalk edges around bends, closes
 their sides down to the drawn terrain and slopes neighbouring pieces into lowered entrances.
 Existing format-2 worlds offer regeneration for the corrected sidewalks; the layout is unchanged.
+Generator 27 keeps the matched original map feature alongside each ridden road segment's
+appearance, plus its projected position on the matched local map section. Copies of that
+section share one sidewalk and pavement owner, so coarse GPX bends and chained tile pieces
+cannot create a second footway that cuts gaps in the ridden strip. Superseded map clearance
+does not cut the new walk. Independent streets, joining arms and unridden parallel arms of
+the same map feature keep their walks. This matching data is temporary; stored format 3
+is unchanged.
+Its walking tops follow the owning street profile, rather than a nearby lower road's bank.
+Ridden endpoints use road elevations, mapped walks use centre-line terrain samples, and
+junction curves use their inner edge. Both sides share the same grade and cross-section
+datum; access ramps and bench/bin height queries agree with that surface. Solid sides
+extend down to terrain, with buried edges kept correctly wound. Stored format remains 3.
 Generator 7 shares the carriageway's tangent arcs with the sidewalk at junctions, rounds outer
 bends and clips footway polygons against the road instead of discarding complete sections.
 The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.

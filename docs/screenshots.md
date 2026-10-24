@@ -62,6 +62,24 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+### Andermatt sidewalks
+
+Generator 27 gives sidewalk copies one owner using the local mapped section matched to
+the ride. Coarse GPX bends no longer leave duplicate footways or phantom clearance cuts;
+independent nearby streets and unridden parallel arms of the same map feature remain.
+Walking tops follow their owning street's height and grade instead of draping down a bank
+cut by another road. Closed sides reach terrain, and entrances and furniture share the
+walking profile.
+
+These matching overview cameras use the full saved Alpenbrevet Gold inputs at
+209.36 km to go (about 1.38 km from the start), near Andermatt. Nearby geometry alone is
+sent to the renderer; the complete route determines terrain shaping and projection.
+Buildings use their generated shells for context; vegetation is omitted.
+
+| Before | Street-profile correction |
+|---|---|
+| ![Sidewalk strips draped down the Andermatt road bank](images/issues/andermatt-sidewalk-before.jpg) | ![Walking surface follows the elevated street](images/issues/andermatt-sidewalk-profile.jpg) |
+
 ### Bridge ownership
 
 The Alpenbrevet Lukmanier approach (approximately 34.8 km into the saved course) exposed a

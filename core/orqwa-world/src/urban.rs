@@ -58,6 +58,24 @@ struct Way {
     b: Point,
     half: f64,
     lift: f64,
+    elevations: Option<[f64; 2]>,
+}
+
+#[derive(Clone, Copy)]
+struct Profile {
+    a: Point,
+    b: Point,
+    elevations: Option<[f64; 2]>,
+}
+
+impl Way {
+    fn profile(self) -> Profile {
+        Profile {
+            a: self.a,
+            b: self.b,
+            elevations: self.elevations,
+        }
+    }
 }
 
 struct Patch {
@@ -69,6 +87,8 @@ struct Patch {
     wall: bool,
     /// Access paths rise gently to meet their street and the lowered sidewalk opening.
     ramp: Option<(Point, Point, f64)>,
+    /// Walking surfaces follow their street, not a bank cut by another nearby road.
+    profile: Option<Profile>,
 }
 
 #[derive(Clone, Copy)]
@@ -85,6 +105,7 @@ pub(crate) struct Urban {
     building_cells: HashMap<(i64, i64), Vec<usize>>,
     ways: Vec<Way>,
     way_cells: HashMap<(i64, i64), Vec<usize>>,
+    covered: HashMap<(i64, i64), Vec<(Point, Point)>>,
     patches: Vec<Patch>,
     patch_cells: HashMap<(i64, i64), Vec<usize>>,
     chunk_cells: HashMap<(i64, i64), Vec<usize>>,
@@ -150,7 +171,13 @@ impl Urban {
             for pair in street.points().windows(2) {
                 let direction = direction(pair[0], pair[1]);
                 let middle = midpoint(pair[0], pair[1]);
-                if road.runs_along(middle.0, middle.1, 1.0, direction) {
+                if road.owns_mapped(middle, direction, street.sources()) {
+                    for key in cells(pair, CELL, 0.0) {
+                        self.covered
+                            .entry(key)
+                            .or_default()
+                            .push((pair[0], pair[1]));
+                    }
                     continue;
                 }
                 self.add_way(Way {
@@ -158,6 +185,7 @@ impl Urban {
                     b: pair[1],
                     half: street.half_width(),
                     lift: street.lift(),
+                    elevations: None,
                 });
             }
         }
@@ -174,6 +202,7 @@ impl Urban {
                 b: pair[1].position,
                 half: pair[0].appearance.width / 2.0,
                 lift: ROAD_SINK,
+                elevations: Some([pair[0].elevation - ROAD_SINK, pair[1].elevation - ROAD_SINK]),
             });
         }
     }
@@ -254,6 +283,7 @@ impl Urban {
                     curb: true,
                     wall: false,
                     ramp: None,
+                    profile: Some(way.profile()),
                 });
             }
         }
@@ -294,6 +324,7 @@ impl Urban {
                 curb: true,
                 wall: false,
                 ramp: None,
+                profile: None,
             });
         }
     }
@@ -486,6 +517,7 @@ impl Urban {
                 curb: false,
                 wall: false,
                 ramp: None,
+                profile: None,
             });
             let half = if business { 1.7 } else { 0.75 };
             self.add_patch(Patch {
@@ -499,6 +531,7 @@ impl Urban {
                 curb: false,
                 wall: false,
                 ramp: Some((door, end, way.lift + 0.005)),
+                profile: Some(way.profile()),
             });
             // Small front-garden walls leave a broad opening for the access, inferred from
             // the house and road rather than pretending cadastral boundaries are mapped.
@@ -517,6 +550,7 @@ impl Urban {
                         curb: false,
                         wall: true,
                         ramp: None,
+                        profile: None,
                     });
                 }
             }
@@ -529,6 +563,12 @@ impl Urban {
             patch.polygon.reverse();
             if patch.curb {
                 patch.polygon.rotate_left(2);
+                if let Some(profile) = &mut patch.profile {
+                    std::mem::swap(&mut profile.a, &mut profile.b);
+                    if let Some(ends) = &mut profile.elevations {
+                        ends.swap(0, 1);
+                    }
+                }
             }
         }
         let index = self.patches.len();
@@ -588,7 +628,7 @@ impl Urban {
     }
 
     /// Height above terrain of a clear sidewalk, excluding entrance paths through it.
-    pub(crate) fn sidewalk_lift(&self, point: Point) -> Option<f64> {
+    pub(crate) fn sidewalk_lift(&self, point: Point, heights: &HeightGrid) -> Option<f64> {
         self.patch_cells
             .get(&cell(point, CELL))?
             .iter()
@@ -601,7 +641,11 @@ impl Urban {
                         .any(|shape| contains(shape, point))
                     && !self.access_crosses(&patch.polygon, true)
             })
-            .map(|index| walk_lift(&self.patches[index], self.walk_ends(index), point))
+            .map(|index| {
+                let patch = &self.patches[index];
+                walk_base(patch, point, heights) + walk_lift(patch, self.walk_ends(index), point)
+                    - heights.at(point.0, point.1)
+            })
             .max_by(f64::total_cmp)
     }
 
@@ -664,6 +708,15 @@ impl Urban {
     }
 
     fn on_way(&self, point: Point, center_only: bool) -> bool {
+        if center_only
+            && self.covered.get(&cell(point, CELL)).is_some_and(|lines| {
+                lines
+                    .iter()
+                    .any(|&(a, b)| distance(point, project(point, a, b)) < 0.001)
+            })
+        {
+            return true;
+        }
         Self::near(&self.way_cells, point, 4.0).any(|index| {
             let way = self.ways[index];
             let reach = if center_only { 0.001 } else { way.half + 0.02 };
@@ -791,11 +844,22 @@ fn patch_top(
                 } else {
                     0.0
                 };
-                vertex[1] += (walk_lift(patch, ends, point) - lift - bevel) as f32;
+                vertex[1] = (walk_base(patch, point, heights) + walk_lift(patch, ends, point)
+                    - bevel
+                    - origin[1]) as f32;
             }
         }
     }
     if let Some((start, end, end_lift)) = patch.ramp {
+        let end_base = patch.profile.map_or_else(
+            || heights.at(end.0, end.1),
+            |profile| {
+                let along = distance(profile.a, project(end, profile.a, profile.b))
+                    / distance(profile.a, profile.b).max(0.01);
+                profile_height(profile, along, heights)
+            },
+        );
+        let end_change = end_base + end_lift - heights.at(end.0, end.1) - lift;
         for vertex in &mut mesh.vertices[first..] {
             let point = (
                 f64::from(vertex[0]) + origin[0],
@@ -806,7 +870,7 @@ fn patch_top(
             #[allow(clippy::cast_possible_truncation)]
             // a small offset in GPU geometry
             {
-                vertex[1] += ((end_lift - lift) * along.powi(4)) as f32;
+                vertex[1] += (end_change * along.powi(4)) as f32;
             }
         }
     }
@@ -1065,15 +1129,39 @@ fn surface_normals(mesh: &mut MeshData, first: usize, first_index: usize) {
     }
 }
 
-fn walk_lift(patch: &Patch, ends: [f64; 2], point: Point) -> f64 {
+fn walk_fraction(patch: &Patch, point: Point) -> f64 {
     let from_edge = |a: Point, b: Point| {
         ((b.0 - a.0) * (point.1 - a.1) - (b.1 - a.1) * (point.0 - a.0)).abs()
             / distance(a, b).max(1e-9)
     };
     let start = from_edge(patch.polygon[0], patch.polygon[3]);
     let end = from_edge(patch.polygon[1], patch.polygon[2]);
-    let along = start / (start + end).max(1e-9);
-    ends[0] + (ends[1] - ends[0]) * along
+    start / (start + end).max(1e-9)
+}
+
+fn walk_lift(patch: &Patch, ends: [f64; 2], point: Point) -> f64 {
+    ends[0] + (ends[1] - ends[0]) * walk_fraction(patch, point)
+}
+
+fn walk_base(patch: &Patch, point: Point, heights: &HeightGrid) -> f64 {
+    let profile = patch.profile.unwrap_or(Profile {
+        a: patch.polygon[0],
+        b: patch.polygon[1],
+        elevations: None,
+    });
+    profile_height(profile, walk_fraction(patch, point), heights)
+}
+
+fn profile_height(profile: Profile, along: f64, heights: &HeightGrid) -> f64 {
+    profile.elevations.map_or_else(
+        || {
+            heights.at(
+                profile.a.0 + (profile.b.0 - profile.a.0) * along,
+                profile.a.1 + (profile.b.1 - profile.a.1) * along,
+            )
+        },
+        |ends| ends[0] + (ends[1] - ends[0]) * along,
+    )
 }
 
 fn walk_sides(
@@ -1205,11 +1293,13 @@ fn vertical_piece(
     let d = direction(a, b);
     let n = [-d.1 as f32, 0.0, -d.0 as f32];
     let base = u32::try_from(mesh.vertices.len()).expect("urban mesh fits u32");
+    // A street profile can meet the bank partway through an edge. Keep the buried bottom
+    // below that profile too, rather than turning the side inside out under the ground.
     for (point, lift, u) in [
-        (a, low, 0.0),
+        (a, low.min(high[0] - 0.02), 0.0),
         (a, high[0], 0.0),
         (b, high[1], distance(a, b)),
-        (b, low, distance(a, b)),
+        (b, low.min(high[1] - 0.02), distance(a, b)),
     ] {
         mesh.vertices.push([
             (point.0 - origin[0]) as f32,
