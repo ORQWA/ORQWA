@@ -42,6 +42,35 @@ fn urban_vertices(world: &World) -> impl Iterator<Item = ([f32; 3], [f32; 3], f3
 }
 
 #[tokio::test]
+async fn urban_eligibility_gaps_leave_no_short_sidewalks_but_keep_long_runs_across_chunks() {
+    let mut map = MapData::default();
+    map.areas = [
+        rectangle(0.0, 200.0, 20.0, 4.0),
+        rectangle(0.0, 480.0, 20.0, 30.0),
+    ]
+    .into_iter()
+    .map(|outer| Area {
+        cover: LandCover::Residential,
+        outer: vec![outer],
+        inner: vec![],
+    })
+    .collect();
+    let world = world(&map).await;
+    for side in [-1.0, 1.0] {
+        assert!(
+            height_on(&world, |c| &c.urban, side * 4.0, -200.0).is_none(),
+            "isolated short sidewalk survived"
+        );
+        for north in [465.0, 479.9, 480.1, 495.0] {
+            assert!(
+                height_on(&world, |c| &c.urban, side * 4.0, -north).is_some(),
+                "long sidewalk lost at chunk join"
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn offset_map_copies_do_not_fragment_or_duplicate_the_ridden_sidewalks() {
     for offset in [1.5, 2.5, 8.5] {
         let mut map = city();
@@ -627,16 +656,16 @@ fn assert_continuous_walking_tread(world: &World, shift: f32) {
 }
 
 #[tokio::test]
-async fn a_small_turning_island_has_one_walking_surface_without_stacked_pieces() {
-    for (class, reverse, shift, radius) in [
-        (RoadClass::Street, false, 0.0, 1.5_f32),
-        (RoadClass::Major, false, 0.0, 0.6),
-        (RoadClass::Major, true, 0.0, 0.6),
-        (RoadClass::Major, false, 280.0, 0.6),
+async fn turning_islands_require_walking_length_and_retained_surfaces_do_not_stack() {
+    for (reverse, shift, stretch) in [
+        (false, 0.0, 1.0),
+        (false, 0.0, 3.0),
+        (true, 0.0, 3.0),
+        (false, 280.0, 3.0),
     ] {
         let mut map = city();
         map.roads.push(orqwa_osm::Road {
-            class,
+            class: RoadClass::Major,
             details: orqwa_osm::RoadDetails::default(),
             line: [
                 (56.0, 200.0),
@@ -651,7 +680,9 @@ async fn a_small_turning_island_has_one_walking_surface_without_stacked_pieces()
                 (80.0, 200.0),
             ]
             .into_iter()
-            .map(|(e, n)| at(e, n + shift))
+            // Stretch the island to retain overlapping footways in the long cases;
+            // its original compact form must lose the short isolated paving.
+            .map(|(e, n)| at(e, 200.0 + (n - 200.0) * stretch + shift))
             .collect(),
             structure: None,
         });
@@ -690,6 +721,10 @@ async fn a_small_turning_island_has_one_walking_surface_without_stacked_pieces()
                 }
             }
         }
+        if stretch < 2.0 {
+            assert_eq!(sampled, 0, "short isolated island paving must be omitted");
+            continue;
+        }
         assert!(
             sampled > 20,
             "the fixture must include walking surfaces inside the loop"
@@ -698,8 +733,8 @@ async fn a_small_turning_island_has_one_walking_surface_without_stacked_pieces()
         for i in 0..72 {
             let angle = i as f32 * std::f32::consts::TAU / 72.0;
             let (east, north) = (
-                50.5 + radius * angle.cos(),
-                200.0 + shift as f32 + radius * angle.sin(),
+                50.5 + 0.6 * angle.cos(),
+                200.0 + shift as f32 + 0.6 * angle.sin(),
             );
             assert!(
                 height_on(&world, |c| &c.urban, east, -north).is_some(),

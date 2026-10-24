@@ -107,6 +107,11 @@ do not prove that the walking surface is continuous.
 Include a small turning island on sloping ground and an urban junction with a narrow
 service arm. Walking surfaces must not stack inside the island, and corners must not
 leave isolated tiles where no eligible sidewalk approaches exist.
+Inferred raised sidewalk runs need 12 m of surviving connected length. Check small corner
+remnants and the Alpenbrevet village at 116.93 km to go alongside long village strips.
+Short construction sections and curves must qualify together across chunk boundaries;
+clipped-away street length, width partitions and point contacts cannot qualify a fragment.
+Use an elongated island for overlap/grade checks; a short isolated island is omitted.
 Check the entire island perimeter at close range: a surviving raised rim with a channel
 inside it is still incorrect. Junction construction wedges must not excavate an existing
 walking run; rounded carriageway fans must remain clear of paving.

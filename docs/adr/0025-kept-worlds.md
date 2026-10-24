@@ -258,3 +258,7 @@ Temporary grading metadata adds no stored fields; stored format remains 3.
 Generator 32 extrudes only exposed sidewalk boundaries, removing internal side walls
 between joined walking pieces. Degenerate clipping edges cannot duplicate paving or invent
 a mask plane. The metadata is temporary; stored format remains 3.
+
+Generator 33 omits inferred raised sidewalk components shorter than 12 m after clipping.
+Connected straight and curved pieces qualify together before chunking, while detached
+remnants qualify separately. Component metadata is temporary; stored format remains 3.

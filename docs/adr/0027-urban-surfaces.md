@@ -196,6 +196,22 @@ Repeated mask vertices and submicrometre edges do not define clipping half-plane
 could duplicate an outside polygon or leave an internal wall. Position comparisons allow
 0.1 mm for the already quantised GPU top edges. Stored format remains 3.
 
+### Minimum connected walking length amendment (2026-10-24)
+
+Generator 33 requires 12 m of connected inferred sidewalk after road, junction and building
+clipping and overlap ownership. This removes short isolated remnants without rejecting the
+small sections used to construct a long walk. Connectivity uses the surviving convex pieces
+and shared walking edges, not the original unclipped road, a shared vertex or proximity.
+It is resolved for the whole world before terrain chunking, including curved approaches.
+
+Length follows each strip's longitudinal direction between its walking cross-sections.
+Surviving intervals are combined per source strip and component, so partitions across the
+width do not multiply the length. Arc sections accumulate along the bend. Each disconnected
+remnant qualifies independently; missing parts of its source street add no length.
+Building paths, forecourts and garden walls retain their own rules. No course names or
+coordinates enter the decision. The temporary component index adds no stored fields;
+stored format remains 3.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,

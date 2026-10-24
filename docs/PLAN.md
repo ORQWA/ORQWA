@@ -644,6 +644,9 @@ physically based materials and light, restyled group by group.
     Alpenbrevet route at 209.36 km to go from above and beside the street; connected islands
     share a grade and only exposed sides close to terrain. Generic width, direction and
     chunk-boundary regressions plus village, city and Oberalp renders pass (R131–R135).
+  - [x] Minimum inferred sidewalk length: require 12 m of connected walking surface
+    after clipping, across straight/curved sections and chunk boundaries. Omit detached
+    corner and island remnants; preserve long runs and separate building access (R136).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs

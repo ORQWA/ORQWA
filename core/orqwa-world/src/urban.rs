@@ -16,6 +16,7 @@ use crate::{CHUNK_SIZE, HeightGrid, MeshData, On, ROAD_SINK, drape, palette};
 
 const CELL: f64 = 50.0;
 const WALK_WIDTH: f64 = 1.8;
+const MIN_WALK_LENGTH: f64 = 12.0;
 const CURB_HEIGHT: f64 = 0.14;
 const CURB_WIDTH: f64 = 0.18;
 const CURB_BEVEL: f64 = 0.025;
@@ -744,6 +745,7 @@ impl Urban {
             }
             self.shapes[index] = shapes;
         }
+        self.retain_walk_runs();
         let mut groups = HashMap::new();
         for (a, b) in overlaps {
             let group = *groups.entry(root(&links, a)).or_insert_with(|| {
@@ -774,6 +776,79 @@ impl Urban {
         for groups in self.merge_cells.values_mut() {
             groups.sort_unstable();
             groups.dedup();
+        }
+    }
+
+    fn retain_walk_runs(&mut self) {
+        // Work on the surviving footprint, before chunking. A single source strip can
+        // leave several disconnected remnants; many short strips can form one long walk.
+        let pieces: Vec<_> = self
+            .shapes
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| self.patches[i].curb)
+            .flat_map(|(i, shapes)| (0..shapes.len()).map(move |j| (i, j)))
+            .collect();
+        let mut links: Vec<_> = (0..pieces.len()).collect();
+        let mut index: HashMap<_, Vec<usize>> = HashMap::new();
+        for (i, &(patch, shape)) in pieces.iter().enumerate() {
+            let polygon = &self.shapes[patch][shape];
+            let keys = cells(polygon, CELL, 0.0001);
+            let mut neighbours: Vec<_> = keys
+                .iter()
+                .flat_map(|key| index.get(key).into_iter().flatten().copied())
+                .collect();
+            neighbours.sort_unstable();
+            neighbours.dedup();
+            for other in neighbours {
+                let (p, s) = pieces[other];
+                // A shared corner alone is not a usable walking connection.
+                if walking_connection(polygon, &self.shapes[p][s]) {
+                    let (a, b) = (root(&links, i), root(&links, other));
+                    links[a.max(b)] = a.min(b);
+                }
+            }
+            for key in keys {
+                index.entry(key).or_default().push(i);
+            }
+        }
+        let mut spans: HashMap<_, Vec<(f64, f64)>> = HashMap::new();
+        for (i, &(patch, shape)) in pieces.iter().enumerate() {
+            let p = &self.patches[patch].polygon;
+            let (a, b) = (midpoint(p[0], p[3]), midpoint(p[1], p[2]));
+            let d = direction(a, b);
+            let along =
+                |p: Point| ((p.0 - a.0) * d.0 + (p.1 - a.1) * d.1).clamp(0.0, distance(a, b));
+            let (mut low, mut high) = (f64::INFINITY, f64::NEG_INFINITY);
+            for &p in &self.shapes[patch][shape] {
+                low = low.min(along(p));
+                high = high.max(along(p));
+            }
+            spans
+                .entry((root(&links, i), patch))
+                .or_default()
+                .push((low, high));
+        }
+        let mut lengths = vec![0.0; pieces.len()];
+        // Boolean clipping can partition a strip across its width. Count each surviving
+        // longitudinal interval once, rather than counting its tessellation or perimeter.
+        let mut spans: Vec<_> = spans.into_iter().collect();
+        spans.sort_by_key(|(key, _)| *key);
+        for ((group, _), mut intervals) in spans {
+            intervals.sort_by(|a, b| a.0.total_cmp(&b.0));
+            let mut end = 0.0_f64;
+            for (low, high) in intervals {
+                lengths[group] += (high - low.max(end)).max(0.0);
+                end = end.max(high);
+            }
+        }
+        let mut keep: Vec<_> = self.shapes.iter().map(|s| vec![true; s.len()]).collect();
+        for (i, &(patch, shape)) in pieces.iter().enumerate() {
+            keep[patch][shape] = lengths[root(&links, i)] + 1e-6 >= MIN_WALK_LENGTH;
+        }
+        for (shapes, keep) in self.shapes.iter_mut().zip(keep) {
+            let mut flags = keep.into_iter();
+            shapes.retain(|_| flags.next().unwrap_or(false));
         }
     }
 
@@ -1777,6 +1852,22 @@ fn walk_sides(
     }
 }
 
+fn walking_connection(first: &[Point], second: &[Point]) -> bool {
+    [first, second]
+        .into_iter()
+        .zip([second, first])
+        .any(|(a, b)| {
+            a.iter()
+                .copied()
+                .zip(a.iter().copied().cycle().skip(1))
+                .take(a.len())
+                .any(|(start, end)| {
+                    segment_inside(start, end, b)
+                        .is_some_and(|(low, high)| (high - low) * distance(start, end) > 0.02)
+                })
+        })
+}
+
 fn segment_inside(a: Point, b: Point, polygon: &[Point]) -> Option<(f64, f64)> {
     let sign = signed_area(polygon).signum();
     let (mut low, mut high) = (0.0_f64, 1.0_f64);
@@ -1922,6 +2013,126 @@ fn vertical_piece(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn walk(urban: &mut Urban, polygon: Vec<Point>, curb: bool) {
+        urban.add_patch(Patch {
+            polygon,
+            material: Material::Concrete,
+            lift: CURB_HEIGHT,
+            curb,
+            wall: false,
+            ramp: None,
+            profile: None,
+        });
+        urban
+            .shapes
+            .push(vec![urban.patches.last().unwrap().polygon.clone()]);
+    }
+
+    #[test]
+    fn minimum_length_applies_to_connected_runs_not_individual_slabs_or_chunks() {
+        for shift in [0.0, CHUNK_SIZE - 6.0] {
+            let mut urban = Urban::default();
+            for i in 0..4 {
+                let start = shift + f64::from(i) * 3.0;
+                walk(
+                    &mut urban,
+                    ribbon((0.0, start), (0.0, start + 3.0), WALK_WIDTH / 2.0),
+                    true,
+                );
+            }
+            // A nearly twelve metre run, a corner-touching pair and a nearby separate run
+            // must not borrow length from the valid sidewalk.
+            walk(
+                &mut urban,
+                ribbon((10.0, shift), (10.0, shift + 11.99), WALK_WIDTH / 2.0),
+                true,
+            );
+            walk(
+                &mut urban,
+                ribbon((20.0, shift), (20.0, shift + 7.0), WALK_WIDTH / 2.0),
+                true,
+            );
+            walk(
+                &mut urban,
+                ribbon(
+                    (20.0 + WALK_WIDTH, shift + 7.0),
+                    (20.0 + WALK_WIDTH, shift + 14.0),
+                    WALK_WIDTH / 2.0,
+                ),
+                true,
+            );
+            // Building accesses and forecourts have their own eligibility rules.
+            walk(
+                &mut urban,
+                ribbon((30.0, shift), (30.0, shift + 2.0), 0.6),
+                false,
+            );
+            urban.retain_walk_runs();
+            assert!(urban.shapes[..4].iter().all(|s| !s.is_empty()));
+            assert!(urban.shapes[4..7].iter().all(Vec::is_empty));
+            assert_eq!(urban.shapes[7].len(), 1, "building access must remain");
+        }
+    }
+
+    #[test]
+    fn clipping_cannot_qualify_a_short_remnant_with_its_missing_source_length() {
+        let mut urban = Urban::default();
+        walk(
+            &mut urban,
+            ribbon((0.0, 0.0), (0.0, 100.0), WALK_WIDTH / 2.0),
+            true,
+        );
+        urban.shapes[0] = vec![
+            ribbon((0.0, 0.0), (0.0, 4.0), WALK_WIDTH / 2.0),
+            ribbon((0.0, 20.0), (0.0, 40.0), WALK_WIDTH / 2.0),
+        ];
+        urban.retain_walk_runs();
+        assert_eq!(urban.shapes[0].len(), 1);
+        assert!(urban.shapes[0][0].iter().all(|p| p.1 >= 20.0));
+    }
+
+    #[test]
+    fn transverse_clipping_partitions_do_not_multiply_walking_length() {
+        let mut urban = Urban::default();
+        walk(
+            &mut urban,
+            ribbon((0.0, 0.0), (0.0, 8.0), WALK_WIDTH / 2.0),
+            true,
+        );
+        urban.shapes[0] = vec![
+            ribbon(
+                (-WALK_WIDTH / 4.0, 0.0),
+                (-WALK_WIDTH / 4.0, 8.0),
+                WALK_WIDTH / 4.0,
+            ),
+            ribbon(
+                (WALK_WIDTH / 4.0, 0.0),
+                (WALK_WIDTH / 4.0, 8.0),
+                WALK_WIDTH / 4.0,
+            ),
+        ];
+        urban.retain_walk_runs();
+        assert_eq!(urban.shapes[0].len(), 0, "short partitioned run survived");
+    }
+
+    #[test]
+    fn curved_runs_are_measured_along_the_walk_not_across_the_bend() {
+        for (angle, keep) in [(1.1, false), (1.3, true)] {
+            let mut urban = Urban::default();
+            for i in 0..20 {
+                let (a, b) = (f64::from(i) * angle / 20.0, f64::from(i + 1) * angle / 20.0);
+                let p = |a: f64, r: f64| (r * a.cos(), r * a.sin());
+                walk(
+                    &mut urban,
+                    vec![p(a, 9.1), p(b, 9.1), p(b, 10.9), p(a, 10.9)],
+                    true,
+                );
+            }
+            urban.retain_walk_runs();
+            assert!(urban.shapes.iter().all(|s| s.is_empty() != keep));
+        }
+    }
 
     #[test]
     fn repeated_cut_vertices_do_not_duplicate_or_hide_paving() {

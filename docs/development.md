@@ -104,6 +104,11 @@ overlap groups, so clipping cannot split their grade. Stored format remains 3.
 Generator 32 clips side extrusions to the exposed walking perimeter and ignores repeated
 mask vertices, preventing internal side walls and duplicate boolean pieces. Stored format
 remains 3.
+Generator 33 requires at least 12 m of connected inferred raised sidewalk after clipping
+and overlap ownership, before chunking. Surviving longitudinal intervals accumulate across
+straight and curved pieces, with clipping partitions counted once. Isolated remnants do
+not inherit missing source length. Access paths and forecourts retain their own rules;
+stored format remains 3.
 
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;

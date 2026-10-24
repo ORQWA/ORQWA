@@ -64,7 +64,7 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ### Andermatt sidewalks
 
-Generators 27–32 give sidewalk copies one owner using the local mapped section matched to
+Generators 27–33 give sidewalk copies one owner using the local mapped section matched to
 the ride. Coarse GPX bends no longer leave duplicate footways or phantom clearance cuts;
 independent nearby streets and unridden parallel arms of the same map feature remain.
 Walking tops follow their owning street's height and grade instead of draping down a bank
@@ -80,6 +80,9 @@ their own bend geometry rather than receiving another junction fan inside their 
 narrow service arms cannot create isolated corner tiles without walking approaches.
 Side walls close only the exposed walking perimeter; internal clipping seams no longer
 extrude through the tread. Repeated boolean-cut vertices cannot duplicate paving.
+Inferred raised sidewalks now require at least 12 m of connected walking length after
+clipping. Short corner remnants disappear; small construction sections that join into a
+long walk qualify together, including around bends and across terrain chunks.
 
 These matching overview cameras use the full saved Alpenbrevet Gold inputs at
 209.36 km to go (about 1.38 km from the start), near Andermatt. Nearby geometry alone is
@@ -98,6 +101,15 @@ also regenerated and reviewed with the correction.
 | ![Stacked paving and internal channels in a turning island](images/issues/andermatt-sidewalk-island-before.jpg) | ![Joined turning-island paving without internal channels](images/issues/andermatt-sidewalk-island-after.jpg) |
 
 ![Junction and adjoining sidewalks after the continuity corrections](images/issues/andermatt-sidewalk-junction-after.jpg)
+
+The following matching cameras use the same complete saved course at **116.93 km to go**
+(93.81 km from the start). The short raised stubs beside the street are removed, while the
+long sidewalk and separate building-front paving remain. Buildings use generated shells;
+vegetation is omitted as in the Andermatt views above.
+
+| Short sidewalk fragments | Minimum connected walking length |
+|---|---|
+| ![Short raised sidewalk stubs along a village street](images/issues/sidewalk-minimum-before.jpg) | ![Short stubs omitted and the continuous village sidewalk retained](images/issues/sidewalk-minimum-after.jpg) |
 
 ### Bridge ownership
 
