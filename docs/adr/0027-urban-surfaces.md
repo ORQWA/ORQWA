@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-21
-- Requirements: R105, R106, R112, R89, R101
+- Requirements: R105, R106, R112, R126–R129, R89, R101
 
 ## Context
 
@@ -122,6 +122,16 @@ used by building models and shells are triangulated once, retaining the remainin
 walking strip and closing its exposed edges. Submillimetre clipping slivers that cannot
 retain reliable GPU winding or slope are discarded before computing surface normals.
 This adds no stored fields; stored format remains 3.
+
+### Neighbouring bend clearance amendment (2026-10-24)
+
+Generator 29 bounds each bend's replacement triangle by the original outer miter. For
+outer walking radius R and half-turn h, the miter reaches R/cos(h), while the triangle's
+far edge reaches reach*cos(h). Use reach = R/cos²(h), with a 2 cm clipping allowance.
+The former three-radius triangle could reach a separate hairpin arm, remove its sidewalk
+and leave the replacement arc beside the lower street. The smaller geometric bound keeps
+that unrelated walking surface continuous without changing the rounded corner itself.
+A regression reproduces the gap with two streets 16 m apart. Stored format remains 3.
 
 ## Validation and limits
 

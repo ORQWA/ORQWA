@@ -236,3 +236,7 @@ Generator 28 tapers sidewalk endpoint widths with the street and uses actual roa
 for carriageway clearance. Partial building overlaps trim their occupied area, preserving
 the clear walking width; drawn building outlines use precomputed triangle masks. Submillimetre
 GPU clipping slivers are discarded before normal generation. Stored format remains 3.
+
+Generator 29 bounds a rounded sidewalk bend's replacement triangle by the original outer
+miter. Its former three-width reach could cut a separate nearby street's sidewalk even
+though the replacement arc remained beside its own street. Stored format remains 3.

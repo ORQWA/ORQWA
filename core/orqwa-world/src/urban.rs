@@ -398,7 +398,10 @@ impl Urban {
                 let count = (turn.abs() / 0.12).ceil() as usize;
                 #[allow(clippy::cast_precision_loss)] // a short arc
                 let angle = |i: usize| start + turn * i as f64 / count as f64;
-                let reach = (inner + WALK_WIDTH) * 3.0;
+                // Enclose the original outer miter, not the neighbouring street. At the
+                // bisector the miter reaches R/cos(half_turn), while this triangle's far
+                // edge reaches reach*cos(half_turn).
+                let reach = (inner + WALK_WIDTH) / (turn / 2.0).cos().powi(2) + 0.02;
                 let zone = vec![point, radial(start, reach), radial(start + turn, reach)];
                 let sections = (0..count)
                     .map(|i| FootwaySection {

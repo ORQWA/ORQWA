@@ -143,6 +143,39 @@ async fn sidewalks_stay_level_with_their_road_above_a_lower_hairpin_cutting() {
 }
 
 #[tokio::test]
+async fn rounding_one_streets_bend_does_not_cut_a_nearby_streets_sidewalk() {
+    let mut map = city();
+    let mut upper = road_north();
+    upper.line = vec![at(16.0, 0.0), at(16.0, 1000.0)];
+    let mut lower = road_north();
+    lower.line = vec![at(0.0, 0.0), at(0.0, 500.0), at(-150.0, 1000.0)];
+    map.roads = vec![upper, lower];
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for i in 0..=100 {
+        let (lat, lon) = at(16.0, f64::from(i) * 10.0);
+        let _ = write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>500</ele></trkpt>"#
+        );
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let route = Route::from_gpx_with::<Level>(&xml, None, &map)
+        .await
+        .unwrap();
+    let projection = orqwa_routes::LocalProjection::for_route(&route);
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    for i in 0..=60 {
+        let north = 498.0 + i as f32 * 0.1;
+        let (lat, lon) = at(12.0, f64::from(north));
+        let (east, local_north) = projection.project(lat, lon);
+        assert!(
+            height_on(&world, |c| &c.urban, east as f32, -local_north as f32).is_some(),
+            "another street's rounded corner cut this sidewalk at {north}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn sidewalks_keep_their_full_length_through_ridden_width_changes() {
     use orqwa_osm::RoadKind::{Local, Primary, Tertiary};
     for (from, to) in [(Tertiary, Primary), (Primary, Local), (Local, Primary)] {
