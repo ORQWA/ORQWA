@@ -137,6 +137,8 @@ pub struct RoadDetails {
     pub oneway: bool,
     /// A connecting ramp rather than the through carriageway.
     pub ramp: bool,
+    /// Goes round a roundabout, drawn the way traffic goes; known only from map detail.
+    pub roundabout: bool,
 }
 
 /// Road hierarchy retained for widths and markings, without changing routing priorities.
@@ -313,6 +315,13 @@ pub struct MapData {
 }
 
 impl MapData {
+    /// Marks the roads going round the roundabouts their [`detail`] knows (ADR 0033), drawn
+    /// the way traffic goes, for matching a route to them; a road is split where a ring begins
+    /// or ends.
+    pub fn apply_roundabouts(&mut self) {
+        detail::apply::roundabouts(&mut self.roads, self.detail.roundabouts());
+    }
+
     /// Gives the roads the surfaces their [`detail`] knows (ADR 0033), splitting a road where
     /// its surface changes. Matching a route reads the roads as the tiles have them, so this
     /// comes after it.

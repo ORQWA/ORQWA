@@ -4,15 +4,15 @@
 
 use std::collections::HashMap;
 
-use super::extract::SurfaceWay;
-use crate::{LatLon, Road, RoadSurface};
+use super::extract::{Roundabout, SurfaceWay};
+use crate::{LatLon, Road, RoadKind, RoadSurface};
 
 /// Farthest a mapped way may lie from a road to be that road (metres): the tiles keep
 /// positions to about half a metre and a parallel sidewalk or lane lies further off.
 const NEAR: f64 = 4.0;
 /// Least alignment (cosine of the angle) between a road and a mapped way along it.
 const ALIGNED: f64 = 0.9;
-/// Pieces of road shorter than this (metres) take the surface of the road before them, so a
+/// Pieces of road shorter than this (metres) take what the road before them has, so a
 /// junction leaves no sliver of another surface.
 const SHORTEST: f64 = 5.0;
 /// Cells of the index of mapped ways (metres).
@@ -22,6 +22,62 @@ const CELL: f64 = 25.0;
 /// that changes. Only a surface the tile's own tells no different of is taken: setts for a
 /// paved road, dirt for an unpaved one, either for one the tiles tell nothing of.
 pub(crate) fn surfaces(roads: &mut Vec<Road>, ways: &[SurfaceWay]) {
+    let mapped: Vec<Mapped> = ways
+        .iter()
+        .map(|way| Mapped {
+            kind: way.kind,
+            line: &way.line,
+        })
+        .collect();
+    apply(
+        roads,
+        &mapped,
+        |road, way, _| {
+            let surface = ways[way].surface;
+            fits(road.details.surface, surface).then_some(surface)
+        },
+        |piece, surface| piece.details.surface = surface,
+    );
+}
+
+/// Marks each piece of road along a mapped roundabout as going round it, drawn the way traffic
+/// goes: turned where the tiles draw it the other way, as when they join a ring to a road
+/// leading off it. A road is split at its points where a ring begins or ends.
+pub(crate) fn roundabouts(roads: &mut Vec<Road>, rings: &[Roundabout]) {
+    let mapped: Vec<Mapped> = rings
+        .iter()
+        .map(|ring| Mapped {
+            kind: ring.kind,
+            line: &ring.line,
+        })
+        .collect();
+    apply(
+        roads,
+        &mapped,
+        |_, _, forward| Some(forward),
+        |piece, forward| {
+            piece.details.roundabout = true;
+            if !forward {
+                piece.line.reverse();
+            }
+        },
+    );
+}
+
+/// A mapped way: its kind and line (1e-7 degrees).
+struct Mapped<'a> {
+    kind: RoadKind,
+    line: &'a [[i32; 2]],
+}
+
+/// Gives each road what `value` makes of the mapped way along it (by its index, and whether it
+/// runs the road's way), with `give`, splitting the road at its points where that changes.
+fn apply<K: Copy + PartialEq>(
+    roads: &mut Vec<Road>,
+    ways: &[Mapped],
+    value: impl Fn(&Road, usize, bool) -> Option<K>,
+    give: impl Fn(&mut Road, K),
+) {
     let Some(origin) = roads.iter().find_map(|road| road.line.first().copied()) else {
         return;
     };
@@ -32,67 +88,62 @@ pub(crate) fn surfaces(roads: &mut Vec<Road>, ways: &[SurfaceWay]) {
     let index = Index::new(ways, &flat);
     let mut out = Vec::with_capacity(roads.len());
     for road in roads.drain(..) {
-        split(road, &index, &flat, &mut out);
+        let points: Vec<(f64, f64)> = road.line.iter().map(|&p| flat.xy(p)).collect();
+        let mut runs: Vec<Run<K>> = Vec::new();
+        for (segment, pair) in points.windows(2).enumerate() {
+            let found = index.along(pair[0], pair[1], &road, &value);
+            let length = distance(pair[0], pair[1]);
+            match runs.last_mut() {
+                Some(run) if run.value == found => {
+                    run.end = segment + 1;
+                    run.length += length;
+                }
+                _ => runs.push(Run {
+                    value: found,
+                    start: segment,
+                    end: segment + 1,
+                    length,
+                }),
+            }
+        }
+        let runs = without_slivers(runs);
+        if let [run] = runs.as_slice() {
+            let mut road = road;
+            if let Some(found) = run.value {
+                give(&mut road, found);
+            }
+            out.push(road);
+            continue;
+        }
+        for run in runs {
+            let mut piece = road.clone();
+            piece.line = road.line[run.start..=run.end].to_vec();
+            if let Some(found) = run.value {
+                give(&mut piece, found);
+            }
+            out.push(piece);
+        }
     }
     *roads = out;
 }
 
-/// `road` as one road or several, each of one surface, into `out`.
-fn split(road: Road, index: &Index, flat: &Flat, out: &mut Vec<Road>) {
-    let points: Vec<(f64, f64)> = road.line.iter().map(|&p| flat.xy(p)).collect();
-    let mut runs: Vec<Run> = Vec::new();
-    for (segment, pair) in points.windows(2).enumerate() {
-        let surface = index.surface_along(pair[0], pair[1], &road);
-        let length = distance(pair[0], pair[1]);
-        match runs.last_mut() {
-            Some(run) if run.surface == surface => {
-                run.end = segment + 1;
-                run.length += length;
-            }
-            _ => runs.push(Run {
-                surface,
-                start: segment,
-                end: segment + 1,
-                length,
-            }),
-        }
-    }
-    let runs = without_slivers(runs);
-    if let [run] = runs.as_slice() {
-        let mut road = road;
-        if let Some(surface) = run.surface {
-            road.details.surface = surface;
-        }
-        out.push(road);
-        return;
-    }
-    for run in runs {
-        let mut piece = road.clone();
-        piece.line = road.line[run.start..=run.end].to_vec();
-        if let Some(surface) = run.surface {
-            piece.details.surface = surface;
-        }
-        out.push(piece);
-    }
-}
-
-/// Consecutive segments (points `start` to `end`) of one surface; `None` where no mapped way
+/// Consecutive segments (points `start` to `end`) of one value; `None` where no mapped way
 /// tells one.
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Run {
-    surface: Option<RoadSurface>,
+struct Run<K> {
+    value: Option<K>,
     start: usize,
     end: usize,
     length: f64,
 }
 
 /// The runs with each shorter than [`SHORTEST`] joined to the one before it (the first to the
-/// one after), and runs of one surface then joined.
-fn without_slivers(runs: Vec<Run>) -> Vec<Run> {
-    let mut kept: Vec<Run> = Vec::with_capacity(runs.len());
+/// one after), and runs of one value then joined.
+fn without_slivers<K: Copy + PartialEq>(runs: Vec<Run<K>>) -> Vec<Run<K>> {
+    let mut kept: Vec<Run<K>> = Vec::with_capacity(runs.len());
     for run in runs {
         match kept.last_mut() {
-            Some(last) if run.length < SHORTEST || last.surface == run.surface => {
+            Some(last) if run.length < SHORTEST || last.value == run.value => {
                 last.end = run.end;
                 last.length += run.length;
             }
@@ -110,16 +161,16 @@ fn without_slivers(runs: Vec<Run>) -> Vec<Run> {
 }
 
 /// The mapped ways' segments in cells, projected.
-struct Index<'a> {
-    ways: &'a [SurfaceWay],
+struct Index {
+    kinds: Vec<RoadKind>,
     /// Each way's points, projected.
     lines: Vec<Vec<(f64, f64)>>,
     /// (way, segment) by cell.
     cells: HashMap<(i64, i64), Vec<(usize, usize)>>,
 }
 
-impl<'a> Index<'a> {
-    fn new(ways: &'a [SurfaceWay], flat: &Flat) -> Self {
+impl Index {
+    fn new(ways: &[Mapped], flat: &Flat) -> Self {
         let lines: Vec<Vec<(f64, f64)>> = ways
             .iter()
             .map(|way| {
@@ -147,44 +198,61 @@ impl<'a> Index<'a> {
                 }
             }
         }
-        Self { ways, lines, cells }
+        Self {
+            kinds: ways.iter().map(|way| way.kind).collect(),
+            lines,
+            cells,
+        }
     }
 
-    /// The surface of the road's segment from `a` to `b`: that of the mapped way along most
-    /// of it, taken at a quarter, the half and three quarters of its length.
-    fn surface_along(&self, a: (f64, f64), b: (f64, f64), road: &Road) -> Option<RoadSurface> {
+    /// What `value` makes of the mapped way along the road's segment from `a` to `b`: of that
+    /// along most of it, taken at a quarter, the half and three quarters of its length.
+    fn along<K: Copy + PartialEq>(
+        &self,
+        a: (f64, f64),
+        b: (f64, f64),
+        road: &Road,
+        value: &impl Fn(&Road, usize, bool) -> Option<K>,
+    ) -> Option<K> {
         let direction = unit(a, b)?;
-        let found: Vec<RoadSurface> = [0.25, 0.5, 0.75]
+        let found: Vec<K> = [0.25, 0.5, 0.75]
             .iter()
             .filter_map(|&t| {
                 let at = (a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t);
-                self.nearest(at, direction, road)
+                self.nearest(at, direction, road, value)
             })
             .collect();
         found
             .iter()
             .copied()
-            .find(|&surface| found.iter().filter(|&&s| s == surface).count() >= 2)
+            .find(|&one| found.iter().filter(|&&other| other == one).count() >= 2)
     }
 
-    /// The surface of the nearest mapped way of the road's kind along `direction` at `at`.
-    fn nearest(&self, at: (f64, f64), direction: (f64, f64), road: &Road) -> Option<RoadSurface> {
+    /// What `value` makes of the nearest mapped way of the road's kind along `direction` at
+    /// `at`, of those it makes something of.
+    fn nearest<K>(
+        &self,
+        at: (f64, f64),
+        direction: (f64, f64),
+        road: &Road,
+        value: &impl Fn(&Road, usize, bool) -> Option<K>,
+    ) -> Option<K> {
         let candidates = self.cells.get(&(cell(at.0), cell(at.1)))?;
         candidates
             .iter()
-            .filter(|&&(way, _)| {
-                let way = &self.ways[way];
-                way.kind == road.details.kind && fits(road.details.surface, way.surface)
-            })
+            .filter(|&&(way, _)| self.kinds[way] == road.details.kind)
             .filter_map(|&(way, segment)| {
                 let (p, q) = (self.lines[way][segment], self.lines[way][segment + 1]);
                 let along = unit(p, q)?;
-                let aligned = (along.0 * direction.0 + along.1 * direction.1).abs();
+                let cosine = along.0 * direction.0 + along.1 * direction.1;
                 let off = distance_to_segment(at, p, q);
-                (aligned >= ALIGNED && off <= NEAR).then_some((off, self.ways[way].surface))
+                if cosine.abs() < ALIGNED || off > NEAR {
+                    return None;
+                }
+                Some((off, value(road, way, cosine > 0.0)?))
             })
             .min_by(|a, b| a.0.total_cmp(&b.0))
-            .map(|(_, surface)| surface)
+            .map(|(_, found)| found)
     }
 }
 
@@ -256,7 +324,7 @@ fn distance_to_segment(at: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{RoadClass, RoadDetails, RoadKind};
+    use crate::{RoadClass, RoadDetails};
 
     /// A point `east` and `north` metres from Bern's Zytglogge, as (lat, lon).
     fn at(east: f64, north: f64) -> LatLon {
@@ -379,18 +447,18 @@ mod tests {
 
     #[test]
     fn a_few_metres_of_another_surface_leave_no_sliver() {
-        let run = |surface, start, length| Run {
-            surface,
+        let run = |value, start, length| Run {
+            value,
             start,
             end: start + 1,
             length,
         };
         let sett = Some(RoadSurface::Cobbles);
         let dirt = Some(RoadSurface::Dirt);
-        let joined = |runs: Vec<Run>| -> Vec<_> {
+        let joined = |runs: Vec<Run<RoadSurface>>| -> Vec<_> {
             without_slivers(runs)
                 .iter()
-                .map(|r| (r.surface, r.start, r.end))
+                .map(|r| (r.value, r.start, r.end))
                 .collect()
         };
         // Within a run, at its start and at its end.
@@ -419,6 +487,78 @@ mod tests {
             ]),
             [(sett, 0, 1), (None, 1, 2), (dirt, 2, 3)]
         );
+    }
+
+    /// The points of a ring of 15 m round (0, 0), every 45° from the south, counter-clockwise
+    /// (as traffic goes where it keeps right) or not.
+    fn ring(counter_clockwise: bool) -> Vec<(f64, f64)> {
+        (0..=8)
+            .map(|step| {
+                let turn = f64::from(step) * 45.0 * if counter_clockwise { 1.0 } else { -1.0 };
+                let angle = (turn - 90.0).to_radians();
+                (15.0 * angle.cos(), 15.0 * angle.sin())
+            })
+            .collect()
+    }
+
+    fn roundabout(points: &[(f64, f64)]) -> Roundabout {
+        Roundabout {
+            id: 7,
+            kind: RoadKind::Local,
+            line: points.iter().map(|&(e, n)| e7(at(e, n))).collect(),
+        }
+    }
+
+    fn rounded(roads: Vec<Road>, rings: &[Roundabout]) -> Vec<Road> {
+        let mut roads = roads;
+        roundabouts(&mut roads, rings);
+        roads
+    }
+
+    #[test]
+    fn a_ring_the_tiles_draw_against_the_traffic_is_turned_and_marked() {
+        let tiles = street(&ring(false));
+
+        let roads = rounded(vec![tiles], &[roundabout(&ring(true))]);
+
+        assert_eq!(roads.len(), 1);
+        assert!(roads[0].details.roundabout);
+        let expected = street(&ring(true)).line;
+        for (got, want) in roads[0].line.iter().zip(&expected) {
+            assert!((got.0 - want.0).abs() < 1e-9 && (got.1 - want.1).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn a_ring_the_tiles_join_to_a_road_leading_off_it_is_split_off_and_turned() {
+        // The road from the south, then round the ring the wrong way, as one line.
+        let mut points = vec![(0.0, -60.0)];
+        points.extend(ring(false));
+        let tiles = street(&points);
+
+        let roads = rounded(vec![tiles], &[roundabout(&ring(true))]);
+
+        let shape: Vec<(bool, usize)> = roads
+            .iter()
+            .map(|r| (r.details.roundabout, r.line.len()))
+            .collect();
+        assert_eq!(shape, [(false, 2), (true, 9)]);
+        let first = roads[1].line[1];
+        let want = at(
+            15.0 * (-45.0_f64).to_radians().cos(),
+            15.0 * (-45.0_f64).to_radians().sin(),
+        );
+        assert!(
+            (first.0 - want.0).abs() < 1e-9 && (first.1 - want.1).abs() < 1e-9,
+            "on round counter-clockwise: {first:?}"
+        );
+    }
+
+    #[test]
+    fn a_street_passing_a_roundabout_is_none() {
+        let passing = street(&[(-100.0, 25.0), (100.0, 25.0)]);
+        let roads = rounded(vec![passing.clone()], &[roundabout(&ring(true))]);
+        assert_eq!(roads, [passing]);
     }
 
     #[test]

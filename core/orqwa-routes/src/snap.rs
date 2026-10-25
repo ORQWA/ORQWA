@@ -336,8 +336,10 @@ impl<'a> Network<'a> {
                 }
             }
         }
-        let mut roundabout = vec![false; lines.len()];
-        let mut longest_lap = 0.0_f64;
+        // Rings the map detail tells, drawn the way traffic goes (ADR 0033); elsewhere those
+        // their shape tells.
+        let mut roundabout: Vec<bool> = roads.iter().map(|road| road.details.roundabout).collect();
+        let mut longest_lap = mapped_laps(&lines, &roundabout, &mut joins);
         for ring in roundabouts(&lines, roads, &joins) {
             longest_lap = longest_lap.max(ring.iter().map(|&r| path_length(&lines[r])).sum());
             if let &[road] = ring.as_slice() {
@@ -835,6 +837,50 @@ fn length_via(from: (f64, f64), through: &[(f64, f64)], to: (f64, f64)) -> f64 {
         }
         _ => distance(from, to),
     }
+}
+
+/// The longest way once round a ring of the `mapped` roads (those the map detail tells go round
+/// a roundabout), its pieces joined end to start; a ring of one closed way gets the join of
+/// its last vertex to its first.
+fn mapped_laps(
+    lines: &[Vec<(f64, f64)>],
+    mapped: &[bool],
+    joins: &mut HashMap<Vertex, Vec<Vertex>>,
+) -> f64 {
+    let ends = |road: usize| (0, lines[road].len() - 1);
+    let mut longest = 0.0_f64;
+    let mut seen = vec![false; lines.len()];
+    for first in (0..lines.len()).filter(|&road| mapped[road] && lines[road].len() >= 2) {
+        if seen[first] {
+            continue;
+        }
+        let (start, end) = ends(first);
+        if distance(lines[first][start], lines[first][end]) <= JOIN_M {
+            joins.entry((first, end)).or_default().push((first, start));
+            joins.entry((first, start)).or_default().push((first, end));
+        }
+        // The ring's pieces: those joined to it at their ends, as far as they go.
+        let mut ring = vec![first];
+        seen[first] = true;
+        let mut at = 0;
+        while at < ring.len() {
+            let road = ring[at];
+            let (start, end) = ends(road);
+            for vertex in [start, end] {
+                for &(other, other_vertex) in joins.get(&(road, vertex)).into_iter().flatten() {
+                    let (other_start, other_end) = ends(other);
+                    let at_end = other_vertex == other_start || other_vertex == other_end;
+                    if mapped[other] && !seen[other] && at_end {
+                        seen[other] = true;
+                        ring.push(other);
+                    }
+                }
+            }
+            at += 1;
+        }
+        longest = longest.max(ring.iter().map(|&road| path_length(&lines[road])).sum());
+    }
+    longest
 }
 
 /// The roundabouts among the roads (see `ROUNDABOUT_RADIUS`), each as its roads in the order
@@ -1676,8 +1722,14 @@ mod tests {
     /// How far the line goes round the origin within 20 m of it, in degrees, counter-clockwise
     /// positive.
     fn round_the_middle(line: &[(f64, f64)]) -> f64 {
+        round_within(line, 20.0)
+    }
+
+    /// How far the line goes round the origin within `within` metres of it, in degrees,
+    /// counter-clockwise positive.
+    fn round_within(line: &[(f64, f64)], within: f64) -> f64 {
         line.windows(2)
-            .filter(|w| w.iter().all(|p| p.0.hypot(p.1) < 20.0))
+            .filter(|w| w.iter().all(|p| p.0.hypot(p.1) < within))
             .map(|w| {
                 let turn = w[1].1.atan2(w[1].0) - w[0].1.atan2(w[0].0);
                 (turn + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU)
@@ -1701,6 +1753,38 @@ mod tests {
                 "across the island: {x}, {y}"
             );
         }
+    }
+
+    /// A ring too long to be round, 60 m by 24 m as squashed and turbo roundabouts are, drawn
+    /// counter-clockwise from the east as one closed way, with streets to the south and the
+    /// west; marked as a roundabout if `mapped` by the map detail.
+    fn oval(mapped: bool) -> Vec<Road> {
+        let ring: Vec<(f64, f64)> = (0..=36)
+            .map(|i| {
+                let angle = (f64::from(i) * 10.0).to_radians();
+                (30.0 * angle.cos(), 12.0 * angle.sin())
+            })
+            .collect();
+        let mut ring = road(&ring);
+        ring.details.roundabout = mapped;
+        vec![
+            ring,
+            road(&[(0.0, -12.0), (0.0, -150.0)]),
+            road(&[(-30.0, 0.0), (-150.0, 0.0)]),
+        ]
+    }
+
+    #[test]
+    fn a_ring_the_map_detail_marks_is_ridden_the_way_traffic_goes_whatever_its_shape() {
+        // R143: its shape tells nothing of a ring this long; the map detail does. Turning left
+        // is three quarters of the way round, counter-clockwise.
+        let marked = xy(&to_roads(&left_at_the_roundabout(), &oval(true)).track);
+        let round = round_within(&marked, 32.0);
+        assert!((250.0..290.0).contains(&round), "{round}° round");
+        // Without the detail, as before: the quarter the file suggests.
+        let unmarked = xy(&to_roads(&left_at_the_roundabout(), &oval(false)).track);
+        let round = round_within(&unmarked, 32.0);
+        assert!((-110.0..-70.0).contains(&round), "{round}° round");
     }
 
     #[test]

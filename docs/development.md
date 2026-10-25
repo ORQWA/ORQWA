@@ -61,7 +61,9 @@ comes out as before. To try it in the container, put a region's download at
 `orqwa-cli detail ~/.cache/orqwa/osm/geofabrik/<id>.osm.pbf ~/.cache/orqwa/osm/detail-v1 --region <id>`
 and write its record `~/.cache/orqwa/osm/geofabrik/<id>.json`
 (`{"id": "<id>", "name": "…", "extract": "<id>-<date the command printed>"}`); GPX routes
-prepared afterwards use it.
+prepared afterwards use it. With a region ready, `ORQWA_COURSE=<course.tqc> cargo test -p
+orqwa-app -- --ignored --nocapture roundabouts_of_a_course` tells how far a course is ridden
+against the traffic round each ring the detail maps (R143).
 
 Urban surfaces and benches (R105–R106, [ADR 0027](adr/0027-urban-surfaces.md)) use generator 7
 and stored world format 2: chunks include an `urban` mesh and its material codes. The format-2

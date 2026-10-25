@@ -1,9 +1,9 @@
 # ADR 0033 — Map detail from Geofabrik region downloads
 
-- Status: accepted (steps 1–3 of 4: the reader and the extractor; surfaces in prepared courses;
-  the setting and the downloads)
+- Status: accepted (all four steps: the reader and the extractor; surfaces in prepared
+  courses; the setting and the downloads; roundabouts)
 - Date: 2026-10-25
-- Requirements: R142, R119, R126, R3, R32, R101
+- Requirements: R142, R143, R119, R126, R3, R32, R101
 
 ## Context
 
@@ -61,6 +61,12 @@ The data is in OpenStreetMap. Getting it per course was weighed against each ser
   One region at a time. Downloads in the cache without a ready record — put there by hand, or
   stopped while being read — are prepared when the setting is turned on and at start-up.
   Turning the setting off asks first, then deletes every region.
+- **Roundabouts** (R143): before the route is matched, each piece of road along a mapped ring
+  (same kind, within 4 m, aligned) is marked as going round it and turned where the tiles draw
+  it against the traffic; a road the tiles join to a ring is split where the ring begins or
+  ends. Route matching takes marked pieces as rings, one way as drawn, with the closing join
+  of a ring drawn as one closed way and its length counted as a lap; R126's shape test still
+  finds the rings the detail does not mark.
 - Four steps, each a PR: the reader and extractor; surfaces in prepared courses; the setting,
   downloads and their list; roundabouts.
 
@@ -78,6 +84,20 @@ Of Switzerland's surfaces, 41,503 are dirt, 15,215 grass, 11,944 concrete, 9,252
 37–52 KB on average, so a 100 km course carries a few MB of it before its file is packed.
 Memory grows with the region's matching ways; Germany, among the largest downloads, stays
 under 1 GB. Coordinates stored as differences would make extracts smaller if that matters.
+
+Roundabouts on three prepared courses, checked with
+`ORQWA_COURSE=<course> cargo test -p orqwa-app -- --ignored roundabouts_of_a_course`
+(metres ridden against the traffic round a mapped ring, without the detail → with it):
+
+| Course | Mapped ring pieces | Without | With |
+|---|---|---|---|
+| Bielersee | 29 | 9.3 m at Erlach | none |
+| Bielersee–Obedüre | 44 | 9.7 m at Erlach | none |
+| Alpenbrevet Gold | 19 | 30.1 m and 4.0 m near Biasca | none |
+
+The check counts a step of the route only if its middle lies on the ring too: a route that
+cuts straight across a small ring, as at a mini-roundabout in Biel whose exit the tiles leave
+1.4 m from the ring's nearest point, goes round none of it.
 
 ## Consequences
 

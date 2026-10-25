@@ -509,6 +509,7 @@ fn road_details(tags: &Tags) -> RoadDetails {
         oneway: matches!(tags.text("oneway"), "1" | "-1" | "yes")
             || tags.number("oneway").is_some_and(|n| n.abs() == 1.0),
         ramp: tags.text("ramp") == "1" || tags.number("ramp") == Some(1.0),
+        roundabout: false,
     }
 }
 

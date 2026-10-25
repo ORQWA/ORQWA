@@ -122,8 +122,8 @@ pub async fn import_route(
 /// `cache_dir` and every cached file used is recorded in `used`; `offline` uses the caches
 /// only. Without a `video`, the route is ridden in 3D and loses its turns in place
 /// ([`Route::without_turns_in_place`]); a video keeps the track it was recorded along. The
-/// roads take the surfaces of the `map_detail` extracts (ADR 0033) once the route is matched
-/// to them; the cells read are recorded too.
+/// roads take the roundabouts of the `map_detail` extracts (ADR 0033) before the route is
+/// matched to them, and their surfaces after; the cells read are recorded too.
 ///
 /// # Errors
 /// A readable message if the track cannot be imported.
@@ -160,6 +160,8 @@ pub async fn import_gpx(
     if offline {
         terrain = terrain.offline();
     }
+    // Round a roundabout the detail maps the way traffic goes, wherever the tiles draw it.
+    map.apply_roundabouts();
     let mut counting = Counting {
         inner: &mut terrain,
         done: 0,

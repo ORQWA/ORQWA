@@ -20,7 +20,7 @@ use std::path::Path;
 use orqwa_domain::files::UsedFiles;
 use tracing::warn;
 
-use extract::{CELL_ZOOM, Cell, SurfaceWay, cell_path};
+use extract::{CELL_ZOOM, Cell, Roundabout, SurfaceWay, cell_path};
 
 /// The map detail around a route, from the extracts it was asked of (see
 /// [`crate::Osm::with_detail`]).
@@ -30,6 +30,8 @@ pub struct Detail {
     extracts: Vec<String>,
     /// Roads with a surface the tiles cannot tell, each once.
     surfaces: Vec<SurfaceWay>,
+    /// Roads going round a roundabout, each once.
+    roundabouts: Vec<Roundabout>,
 }
 
 impl Detail {
@@ -41,6 +43,10 @@ impl Detail {
 
     pub(crate) fn surfaces(&self) -> &[SurfaceWay] {
         &self.surfaces
+    }
+
+    pub(crate) fn roundabouts(&self) -> &[Roundabout] {
+        &self.roundabouts
     }
 }
 
@@ -71,6 +77,7 @@ pub(crate) async fn load(
                 Ok(content) => {
                     used.record(&path);
                     detail.surfaces.extend(content.surfaces);
+                    detail.roundabouts.extend(content.roundabouts);
                     found = true;
                 }
                 Err(error) => warn!(path = %path.display(), %error, "map detail unreadable"),
@@ -83,6 +90,8 @@ pub(crate) async fn load(
     // Stable: of the same way in several extracts, the first given stays.
     detail.surfaces.sort_by_key(|way| way.id);
     detail.surfaces.dedup_by_key(|way| way.id);
+    detail.roundabouts.sort_by_key(|way| way.id);
+    detail.roundabouts.dedup_by_key(|way| way.id);
     detail
 }
 

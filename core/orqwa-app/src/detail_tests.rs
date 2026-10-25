@@ -167,3 +167,121 @@ fn a_course_prepared_with_a_regions_detail_carries_its_surfaces() {
     assert!(!surfaces.is_empty() && !surfaces.contains(&RoadSurface::Cobbles));
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// How far the route runs against the traffic round each mapped roundabout it passes (R126,
+/// ADR 0033): metres of it along a road marked as going round one, against its drawing.
+fn wrong_way_round(route: &[LatLon], roads: &[Road]) -> Vec<(LatLon, f64)> {
+    let metres = |a: LatLon, b: LatLon| {
+        let east = (b.1 - a.1) * 111_195.0 * a.0.to_radians().cos();
+        (b.0 - a.0).mul_add(111_195.0, 0.0).hypot(east)
+    };
+    // Where along `line` (metres from its start) a point lies, if within 3 m of it.
+    let along = |line: &[LatLon], at: LatLon| -> Option<f64> {
+        let mut best: Option<(f64, f64)> = None;
+        let mut start = 0.0;
+        for pair in line.windows(2) {
+            let length = metres(pair[0], pair[1]);
+            for step in 0..=20 {
+                let t = f64::from(step) / 20.0;
+                let p = (
+                    pair[0].0 + (pair[1].0 - pair[0].0) * t,
+                    pair[0].1 + (pair[1].1 - pair[0].1) * t,
+                );
+                let off = metres(p, at);
+                if off <= 3.0 && best.is_none_or(|(o, _)| off < o) {
+                    best = Some((off, start + length * t));
+                }
+            }
+            start += length;
+        }
+        best.map(|(_, s)| s)
+    };
+    let mut found = Vec::new();
+    for road in roads.iter().filter(|r| r.details.roundabout) {
+        let length: f64 = road.line.windows(2).map(|p| metres(p[0], p[1])).sum();
+        let mut wrong = 0.0;
+        for pair in route.windows(2) {
+            // Along the ring, not across it: a step cutting across a small ring has its middle
+            // near the ring's, far off its road.
+            let middle = (
+                f64::midpoint(pair[0].0, pair[1].0),
+                f64::midpoint(pair[0].1, pair[1].1),
+            );
+            if along(&road.line, middle).is_none() {
+                continue;
+            }
+            if let (Some(a), Some(b)) = (along(&road.line, pair[0]), along(&road.line, pair[1])) {
+                let back = a - b;
+                // Round past the start of a ring drawn as one closed way is on round.
+                if back > 0.5 && back < length / 2.0 {
+                    wrong += back;
+                }
+            }
+        }
+        if wrong > 0.0 {
+            found.push((road.line[0], wrong));
+        }
+    }
+    found
+}
+
+/// Each mapped roundabout the course at `ORQWA_COURSE` goes round is ridden the way traffic
+/// goes (R126, ADR 0033), with the regions downloaded into this computer's cache:
+/// `ORQWA_COURSE=… cargo test -p orqwa-app -- --ignored --nocapture roundabouts_of_a_course`.
+#[test]
+#[ignore = "needs a course and a region's download in the cache"]
+fn roundabouts_of_a_course_are_ridden_the_way_traffic_goes() {
+    let Some(course) = std::env::var_os("ORQWA_COURSE") else {
+        return;
+    };
+    let cache = crate::paths::cache_dir();
+    let osm = cache.join("osm");
+    if orqwa_osm::detail::installed(&osm).is_empty() {
+        let never = std::sync::atomic::AtomicBool::new(false);
+        for kept in orqwa_osm::detail::kept(&osm)
+            .into_iter()
+            .filter(|k| k.downloaded)
+        {
+            let id = kept.id.clone();
+            orqwa_osm::detail::install(&osm, (&id, &id, None), &mut |_, _, _| {}, &never).unwrap();
+        }
+    }
+    let extracts: Vec<String> = orqwa_osm::detail::installed(&osm)
+        .into_iter()
+        .map(|region| region.extract)
+        .collect();
+    assert!(
+        !extracts.is_empty(),
+        "no region's detail in {}",
+        osm.display()
+    );
+    let unpacked = course::unpack(Path::new(&course), &cache).unwrap();
+    let used = orqwa_domain::files::UsedFiles::default();
+    let mut imported = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(crate::import_gpx(
+            unpacked.gpx,
+            "course",
+            (&cache, true),
+            (false, &extracts),
+            &used,
+            &mut |_, _, _| {},
+        ))
+        .unwrap();
+    imported.map.apply_roundabouts();
+    let route: Vec<LatLon> = imported
+        .route
+        .points()
+        .iter()
+        .map(|p| (p.lat, p.lon))
+        .collect();
+    let rings = imported
+        .map
+        .roads
+        .iter()
+        .filter(|r| r.details.roundabout)
+        .count();
+    let wrong = wrong_way_round(&route, &imported.map.roads);
+    println!("{rings} pieces of roundabouts mapped; the wrong way round: {wrong:?}");
+    assert_eq!(wrong, Vec::new());
+}
