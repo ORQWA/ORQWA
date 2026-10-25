@@ -53,7 +53,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 28;
+pub const GENERATOR: u32 = 35;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -66,6 +66,10 @@ const ROAD_HALF_WIDTH: f64 = 3.0;
 /// Terrain cells near the road are split into this many pieces a side, so the ground can follow
 /// the road's verge, cuttings and embankments closely.
 const SUB: usize = 6;
+/// Close, independently graded roads need room for a bank between their carriageways.
+const CLOSE_SUB: usize = 24;
+/// Sub-metre gaps at joining streets need another step of local refinement.
+const TIGHT_SUB: usize = 48;
 /// The size of those pieces.
 #[allow(clippy::cast_precision_loss)] // a small constant
 const FINE: f64 = GRID / SUB as f64;
@@ -176,7 +180,7 @@ impl Ways {
             islands: roundabouts::islands(map, projection),
             channels: channels::Channels::new(&streams, &pools, &streets),
             water_levels,
-            levels: streets::Levels::new(&streets, &appearance::Index::new(map, projection)),
+            levels: streets::Levels::new(&streets, &appearance::Index::new(map, projection), road),
             streets,
             network,
             streams,
@@ -676,8 +680,8 @@ pub(crate) struct HeightGrid {
     heights: Vec<f64>,
     /// Natural heights of the grid's vertices, border included.
     natural: Vec<f64>,
-    /// Cells split into `SUB` × `SUB` pieces: the shaped heights of their vertices, row by row
-    /// from the south-west.
+    /// Fine cells, normally `SUB` pieces a side and more finely split between close roads.
+    /// Their square lattice's heights run row by row from the south-west.
     fine: HashMap<(usize, usize), Vec<f64>>,
     /// Local downward correction beneath ground crossings (culverts), coarse and fine.
     water_drop: Vec<f64>,
@@ -825,30 +829,43 @@ impl HeightGrid {
                 }
             }
         }
-        grid.close_edges();
+        grid.close_edges(shapers);
         (grid, fallbacks)
     }
 
     /// Where a split cell meets a plain one in the chunk, its edge takes the plain cell's
     /// straight edge, so no gap opens between them: a plain cell beside a street departs a
     /// little from the levelled ground (`PLAIN_TOLERANCE`).
-    fn close_edges(&mut self) {
+    fn close_edges(&mut self, shapers: &Shapers<'_>) {
         #[allow(clippy::cast_possible_wrap)] // small grid
         let cells = (self.side - 1) as isize;
         let split: Vec<(usize, usize)> = self.fine.keys().copied().collect();
         for (i, j) in split {
             #[allow(clippy::cast_possible_wrap)] // small grid indices
             let (ci, cj) = (i as isize, j as isize);
-            let plain = |di: isize, dj: isize| {
+            let count = self.fine[&(i, j)].len().isqrt() - 1;
+            let neighbour = |di: isize, dj: isize| {
                 let (ni, nj) = (ci + di, cj + dj);
-                (0..cells).contains(&ni)
-                    && (0..cells).contains(&nj)
-                    && usize::try_from(ni)
-                        .ok()
-                        .zip(usize::try_from(nj).ok())
-                        .is_some_and(|cell| !self.fine.contains_key(&cell))
+                if (0..cells).contains(&ni) && (0..cells).contains(&nj) {
+                    #[allow(clippy::cast_sign_loss)]
+                    return self
+                        .fine
+                        .get(&(ni as usize, nj as usize))
+                        .map_or(1, |f| f.len().isqrt() - 1);
+                }
+                #[allow(clippy::cast_precision_loss)]
+                let (east, north) = (
+                    self.origin.0 + (ni as f64 + 0.5) * GRID,
+                    self.origin.1 + (nj as f64 + 0.5) * GRID,
+                );
+                shapers.detail_count(east, north)
             };
-            let (west, east, south, north) = (plain(-1, 0), plain(1, 0), plain(0, -1), plain(0, 1));
+            let neighbours = [
+                neighbour(-1, 0),
+                neighbour(1, 0),
+                neighbour(0, -1),
+                neighbour(0, 1),
+            ];
             let (sw, se, nw, ne) = (
                 self.vertex(ci, cj),
                 self.vertex(ci + 1, cj),
@@ -858,46 +875,52 @@ impl HeightGrid {
             let Some(fine) = self.fine.get_mut(&(i, j)) else {
                 continue;
             };
-            for k in 0..=SUB {
-                #[allow(clippy::cast_precision_loss)] // a few pieces
-                let share = k as f64 / SUB as f64;
-                if south {
-                    fine[k] = sw + (se - sw) * share;
+            for (edge, neighbour) in neighbours.into_iter().enumerate() {
+                if neighbour >= count {
+                    continue;
                 }
-                if north {
-                    fine[SUB * (SUB + 1) + k] = nw + (ne - nw) * share;
+                let slot = |k| match edge {
+                    0 => k * (count + 1),
+                    1 => k * (count + 1) + count,
+                    2 => k,
+                    _ => count * (count + 1) + k,
+                };
+                let stride = count / neighbour;
+                if neighbour == 1 {
+                    let (a, b) = match edge {
+                        0 => (sw, nw),
+                        1 => (se, ne),
+                        2 => (sw, se),
+                        _ => (nw, ne),
+                    };
+                    fine[slot(0)] = a;
+                    fine[slot(count)] = b;
                 }
-                if west {
-                    fine[k * (SUB + 1)] = sw + (nw - sw) * share;
-                }
-                if east {
-                    fine[k * (SUB + 1) + SUB] = se + (ne - se) * share;
+                for start in (0..count).step_by(stride) {
+                    let (a, b) = (fine[slot(start)], fine[slot(start + stride)]);
+                    for k in 1..stride {
+                        #[allow(clippy::cast_precision_loss)]
+                        let t = k as f64 / stride as f64;
+                        fine[slot(start + k)] = a + (b - a) * t;
+                    }
                 }
             }
         }
     }
 
-    /// The ground at a point before channels cut it: natural, shaped around the formed
-    /// way nearest to it, then around the road ridden and the railways, which
-    /// come first.
+    /// Shared road beds meet through a bank; a nearby road's cutting must not overwrite
+    /// the nearest formed way's carriageway. Channel carving happens afterwards.
     fn shaped_at(&self, east: f64, north: f64, shapers: &Shapers<'_>) -> f64 {
         let natural = self.natural_at(east, north);
         if shapers.streets.is_empty() {
             return shape(natural, &shapers.near(east, north, LEVEL_REACH));
         }
-        let levelled = shapers
-            .streets
-            .nearest(east, north, 0.0)
-            .map_or(natural, |level| {
-                level_across(
-                    natural,
-                    level
-                        .height
-                        .unwrap_or_else(|| self.natural_at(level.foot.0, level.foot.1)),
-                    level.distance - level.half,
-                )
-            });
-        shape(levelled, &shapers.near(east, north, LEVEL_REACH))
+        let level = shapers.streets.nearest(east, north, 0.0);
+        let datum = level.as_ref().map(|l| {
+            l.height
+                .unwrap_or_else(|| self.natural_at(l.foot.0, l.foot.1))
+        });
+        shapers.shape_at(natural, east, north, level.as_ref().zip(datum))
     }
 
     /// Whether the fine heights of cell (`i`, `j`) depart from its plain triangles by more than
@@ -911,12 +934,13 @@ impl HeightGrid {
             self.vertex(i, j + 1),
             self.vertex(i + 1, j + 1),
         );
-        (0..=SUB).any(|b| {
-            (0..=SUB).any(|a| {
+        let count = fine.len().isqrt() - 1;
+        (0..=count).any(|b| {
+            (0..=count).any(|a| {
                 #[allow(clippy::cast_precision_loss)] // small counts
-                let (u, v) = (a as f64 / SUB as f64, b as f64 / SUB as f64);
+                let (u, v) = (a as f64 / count as f64, b as f64 / count as f64);
                 let plain = on_triangles(sw, se, nw, ne, u, v);
-                (fine[b * (SUB + 1) + a] - plain).abs() > PLAIN_TOLERANCE
+                (fine[b * (count + 1) + a] - plain).abs() > PLAIN_TOLERANCE
             })
         })
     }
@@ -975,12 +999,14 @@ impl HeightGrid {
             &std::sync::Arc<water_levels::Levels>,
         ),
     ) -> (Vec<f64>, Vec<f64>) {
-        let mut fine = Vec::with_capacity((SUB + 1) * (SUB + 1));
-        let mut drops = Vec::with_capacity((SUB + 1) * (SUB + 1));
-        for b in 0..=SUB {
-            for a in 0..=SUB {
+        let (east, north) = self.position(i, j, 0.5, 0.5);
+        let count = shapers.detail_count(east, north);
+        let mut fine = Vec::with_capacity((count + 1) * (count + 1));
+        let mut drops = Vec::with_capacity((count + 1) * (count + 1));
+        for b in 0..=count {
+            for a in 0..=count {
                 #[allow(clippy::cast_precision_loss)] // small counts
-                let (u, v) = (a as f64 / SUB as f64, b as f64 / SUB as f64);
+                let (u, v) = (a as f64 / count as f64, b as f64 / count as f64);
                 let (east, north) = self.position(i, j, u, v);
                 let shaped = self.shaped_at(east, north, shapers);
                 let cut = carve_at(water, east, north, shaped, shapers);
@@ -1021,8 +1047,11 @@ impl HeightGrid {
                     self.origin.0 + i as f64 * GRID,
                     self.origin.1 + j as f64 * GRID,
                 );
-                let (size, count) = if self.fine.contains_key(&(i, j)) {
-                    (FINE, SUB)
+                let (size, count) = if let Some(fine) = self.fine.get(&(i, j)) {
+                    let count = fine.len().isqrt() - 1;
+                    #[allow(clippy::cast_precision_loss)]
+                    let size = GRID / count as f64;
+                    (size, count)
                 } else {
                     (GRID, 1)
                 };
@@ -1156,16 +1185,17 @@ impl HeightGrid {
         if let (Ok(ci), Ok(cj)) = (usize::try_from(i), usize::try_from(j))
             && let Some(fine) = fine.get(&(ci, cj))
         {
-            #[allow(clippy::cast_precision_loss)]
-            let (su, sv) = (fu * SUB as f64, fv * SUB as f64);
+            let count = fine.len().isqrt() - 1;
+            #[allow(clippy::cast_precision_loss)] // fixed small subdivision counts
+            let (su, sv) = (fu * count as f64, fv * count as f64);
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let (column, row) = (
-                (su.floor() as usize).min(SUB - 1),
-                (sv.floor() as usize).min(SUB - 1),
+                (su.floor() as usize).min(count - 1),
+                (sv.floor() as usize).min(count - 1),
             );
             #[allow(clippy::cast_precision_loss)]
             let (pu, pv) = (su - column as f64, sv - row as f64);
-            let piece = |column: usize, row: usize| fine[row * (SUB + 1) + column];
+            let piece = |column: usize, row: usize| fine[row * (count + 1) + column];
             return on_triangles(
                 piece(column, row),
                 piece(column + 1, row),
@@ -1289,22 +1319,27 @@ impl HeightGrid {
                     }
                 };
                 if let Some(fine) = self.fine.get(&(i, j)) {
-                    let mut corners = Vec::with_capacity((SUB + 1) * (SUB + 1));
-                    for b in 0..=SUB {
-                        for a in 0..=SUB {
+                    let count = fine.len().isqrt() - 1;
+                    let mut corners = Vec::with_capacity((count + 1) * (count + 1));
+                    for b in 0..=count {
+                        for a in 0..=count {
                             #[allow(clippy::cast_precision_loss)]
-                            let (east, north) =
-                                self.position(i, j, a as f64 / SUB as f64, b as f64 / SUB as f64);
-                            let height = fine[b * (SUB + 1) + a];
+                            let (east, north) = self.position(
+                                i,
+                                j,
+                                a as f64 / count as f64,
+                                b as f64 / count as f64,
+                            );
+                            let height = fine[b * (count + 1) + a];
                             corners.push((
                                 push(&mut mesh, east, north, height),
                                 [east, north, height],
                             ));
                         }
                     }
-                    for b in 0..SUB {
-                        for a in 0..SUB {
-                            let at = |a: usize, b: usize| corners[b * (SUB + 1) + a];
+                    for b in 0..count {
+                        for a in 0..count {
+                            let at = |a: usize, b: usize| corners[b * (count + 1) + a];
                             add(
                                 &mut mesh,
                                 [at(a, b), at(a + 1, b), at(a, b + 1), at(a + 1, b + 1)],
@@ -1420,6 +1455,67 @@ pub(crate) struct Shapers<'a> {
 }
 
 impl Shapers<'_> {
+    /// Extra detail is local to independently graded ways beside an existing road or railway.
+    fn detail_count(&self, east: f64, north: f64) -> usize {
+        let count = self
+            .streets
+            .detail_near(east, north, GRID * std::f64::consts::FRAC_1_SQRT_2);
+        if count > SUB
+            && self
+                .near(east, north, 25.0)
+                .iter()
+                .any(|r| r.2 == Surface::Ground)
+        {
+            count
+        } else {
+            SUB
+        }
+    }
+
+    /// Keep each carriageway's bed; a neighbouring road may shape the intervening bank,
+    /// rather than dragging the whole side road down onto its cutting's maximum slope.
+    fn shape_at(
+        &self,
+        natural: f64,
+        east: f64,
+        north: f64,
+        bed: Option<(&streets::Level, f64)>,
+    ) -> f64 {
+        let levelled = bed.map_or(natural, |(level, height)| {
+            level_across(natural, height, level.distance - level.half)
+        });
+        let roads = self.near(east, north, LEVEL_REACH);
+        let shaped = shape(levelled, &roads);
+        let Some((level, _)) = bed else {
+            return shaped;
+        };
+        let Some(road) = roads
+            .iter()
+            .filter(|r| r.2 == Surface::Ground)
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+        else {
+            return shaped;
+        };
+        let padding = level.padding;
+        let road_room = (road.0 - ROAD_HALF_WIDTH - padding).max(0.0);
+        let street_room = (level.distance - level.half - padding).max(0.0);
+        let t = if road_room + street_room > 1e-9 {
+            road_room / (road_room + street_room)
+        } else {
+            0.0
+        };
+        let blend = t * t * (3.0 - 2.0 * t);
+        // A sloping road's downstream segment ends also lie within its terrain reach.
+        // Their lower heights must not become steps across a same-level joining street.
+        let road_ground = shape(natural, &[*road]);
+        let supported = road_ground + (levelled - road_ground) * blend;
+        let structures: Vec<_> = roads
+            .into_iter()
+            .filter(|r| r.2 != Surface::Ground)
+            .collect();
+        shape(supported, &structures)
+    }
+
     /// Every piece of road or railway within `reach` that shapes the ground, as
     /// [`RoadIndex::near`] gives them: the road's tunnels only with `hills`, a railway's never.
     pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> Vec<(f64, f64, Surface)> {
@@ -1558,18 +1654,15 @@ pub(crate) async fn drawn_ground<M: ElevationModel>(
     (east, north): (f64, f64),
 ) -> Option<f64> {
     let natural = drawn_natural(model, projection, (east, north)).await?;
-    let levelled = match shapers.streets.nearest(east, north, 0.0) {
-        Some(level) => level_across(
-            natural,
-            match level.height {
-                Some(height) => height,
-                None => drawn_natural(model, projection, level.foot).await?,
-            },
-            level.distance - level.half,
-        ),
-        None => natural,
+    let level = shapers.streets.nearest(east, north, 0.0);
+    let datum = match &level {
+        Some(level) => Some(match level.height {
+            Some(height) => height,
+            None => drawn_natural(model, projection, level.foot).await?,
+        }),
+        None => None,
     };
-    Some(shape(levelled, &shapers.near(east, north, LEVEL_REACH)))
+    Some(shapers.shape_at(natural, east, north, level.as_ref().zip(datum)))
 }
 
 /// The ground at a point with natural height `natural`, `beyond` metres outside the edge of a

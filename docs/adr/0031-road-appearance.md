@@ -70,7 +70,7 @@ rules, surveyed lane layouts, exact surface materials, medians and motorway barr
 reconstructed from tags that the provider omits. Some mapped data is missing or inaccurate;
 the renderer makes a plausible world without claiming a surveyed road model.
 
-## Amendment — surrounding road earthworks (2026-10-25, R137)
+## Amendment — surrounding road earthworks (2026-10-25, R141)
 
 All ground vehicle ways and cycleways receive a shared elevation profile and a level road
 bed, including unpaved service roads and tracks. Generic paths and footways remain draped;
@@ -91,11 +91,24 @@ material, using its completed triangles. This shares terrain openings and chunk 
 instead of introducing a wall sampled independently of the visible ground. Use the existing
 zero-alpha structure tint in street buffers, so no shader or storage contract changes.
 
-Generator **28** offers regeneration; stored format **3** and course inputs are unchanged.
+Generator **35** offers regeneration; stored format **3** and course inputs are unchanged.
 Validation covers cross-sections for all included road types, excluded paved footpaths,
 modest versus steep earthworks, local profile grades, shared junction elevations, roundabouts,
 chunk boundaries and existing bridge/tunnel behavior. Offline comparison fixtures use the
 real generator and app materials; real-route views cover Oberalp structures and hairpins.
+
+Close service roads need their own bed even inside the ridden road's terrain-shaping reach.
+Suppressed copies of the ridden pavement therefore leave the terrain index too. Each bed
+keeps its local datum while the intervening bank blends between them; downhill segment
+endpoints must not introduce steps into a sloping junction. Ground contacts include the
+joining carriageway's width, while existing branch anchors remain pinned.
+
+Refine only cells touching these close carriageways to 24 or 48 subdivisions, retaining
+six elsewhere. The 48-way split serves gaps below 2 m. Height queries, draping, foundations
+and edge conformity share each cell's actual resolution. Inferred dense-city paving stops
+at unwalkable banks, rather than covering the cutting with pavers. The saved full Alpenbrevet
+Gold route at 32.40 km reproduces and verifies this case; projection and grid alignment are
+preserved while exporting nearby geometry for fixed-camera review.
 
 ## Amendment — local traffic lanes (2026-10-23, R120)
 

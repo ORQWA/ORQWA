@@ -5467,6 +5467,7 @@ async fn curved_bridge_protection_leaves_the_wearing_surface_open() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // compare the ground junction and elevated crossing together
 async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
     let ring = (0..=48)
         .map(|i| {
@@ -5490,7 +5491,12 @@ async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
     assert_eq!(islands.len(), 1);
     let rails = road::RoadIndex::from_lines(&[]);
     let streets = streets::lines(&map, &projection, &mut Level(500.0)).await;
-    let levels = streets::Levels::new(&streets, &appearance::Index::new(&map, &projection));
+    let ridden = RoadIndex::new(&route, &projection);
+    let levels = streets::Levels::new(
+        &streets,
+        &appearance::Index::new(&map, &projection),
+        &ridden,
+    );
     let ground = foundations::Ground(&world.chunks);
     let mut line: Vec<_> = (0..=40)
         .map(|i| (0.0, 400.0 + f64::from(i) * 2.0))

@@ -65,7 +65,7 @@ See the [boulder gallery](../art/README.md#vegetation).
 ### Surrounding road beds
 
 Surrounding vehicle roads, unpaved service roads, tracks and cycleways have level road beds
-and continuous terrain-derived profiles (R137, generator 28). Modest slopes use earth
+and continuous terrain-derived profiles (R141, generator 35). Modest slopes use earth
 cuttings and fills; steep banks combine earth cuttings with concrete retaining faces.
 Hiking trails and generic footpaths retain their terrain-following treatment, even if paved.
 
@@ -85,6 +85,17 @@ inferred scenery, not surveyed construction. Export with the ignored `earthworks
 test and render `app/tools/render_earthworks.gd`; see [Development](development.md).
 The standard Oberalp tunnel, bridge-side and hairpin views below are refreshed with these
 earthworks; separate structures and the ridden road retain their own levels.
+
+The saved full Alpenbrevet Gold course at **32.40 km**, about **178.34 km to go**, exposed
+a service road being pulled back onto the ridden road's cutting and dense-city paving
+covering that bank. Generator 35 keeps the nearby carriageways at their own profiles,
+joins their datums where they meet and refines only the narrow intervening terrain. The
+cut bank keeps natural ground rather than inferred paving. These matching geometry views
+retain the full course's projection and grid, with vegetation, props and rider omitted:
+
+| Reported folded service road and bank paving | Separate formed road beds |
+|---|---|
+| ![Alpenbrevet at 32.40 km before](images/road-earthworks/alpenbrevet-32400-before.jpg) | ![Alpenbrevet at 32.40 km after](images/road-earthworks/alpenbrevet-32400-after.jpg) |
 
 ### Bridge ownership
 

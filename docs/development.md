@@ -194,14 +194,27 @@ recorded tracks come out as before; files whose points skip the ring no longer t
 way against the traffic. Kept worlds built with the old route offer regeneration because their
 ridden road follows it. Stored format remains 3.
 
-Generator 28 gives surrounding vehicle roads, unpaved service roads, tracks and cycleways
+Generator 35 gives surrounding vehicle roads, unpaved service roads, tracks and cycleways
 shared road-bed profiles before terrain chunks are built. Heights use a cached global 16 m
 terrain lattice, with 24 m local smoothing and a 20 % intermediate-grade envelope. Chain ends
 and mapped branch/tag-change endpoints retain their common terrain datum; if endpoint heights
 require a steeper overall grade, that connection takes precedence. Closed loops retain their
 terrain datum so roundabout islands remain grounded. Small paths, including paved footpaths,
 retain their terrain-following treatment. Bridges and tunnels keep the existing structure
-rules, and ridden roads and railways retain their terrain priority.
+rules. Ground road and railway beds retain their respective elevations.
+
+Close side roads keep their bed instead of being draped back onto the ridden road's cutting.
+Each carriageway's own datum wins within its footprint; their banks blend in the gap between
+them. A joining road contacts the ridden road by its edges, and shared profile anchors are
+preserved. Suppressed mapped copies of the ridden pavement do not shape terrain a second
+time. On sloping approaches, the nearest road profile supplies the datum, rather than lower
+downstream segment endpoints within the shaping radius.
+
+Only cells touching close independent carriageways receive 24 subdivisions per side
+(0.67 m), or 48 (0.33 m) for gaps below 2 m. Ordinary detailed cells retain six (2.67 m).
+Fine edges conform to the neighbouring cell's resolution, including across chunk boundaries;
+draping and foundation queries use these same triangles. Dense urban cover only infers paving
+where the ground's upward normal is at least 0.98, so cut banks retain natural ground.
 
 Modest slopes use earth cuttings and embankments. Steep cross-slopes blend into a short earth
 bank and a battered retaining face before returning to the natural hill. Concrete facing

@@ -61,6 +61,151 @@ fn roads() -> MapData {
 }
 
 #[tokio::test]
+async fn a_close_parallel_service_road_keeps_its_bed_beside_the_ridden_cutting() {
+    let map = MapData {
+        roads: vec![Road {
+            class: RoadClass::Service,
+            details: RoadDetails {
+                kind: RoadKind::Service,
+                ..RoadDetails::default()
+            },
+            line: vec![at(9.0, 100.0), at(9.0, 900.0)],
+            structure: None,
+        }],
+        ..MapData::default()
+    };
+    let world = generate(
+        &route_north(&[]).await,
+        &mut Hillside(0.6),
+        &map,
+        &mut |_, _| {},
+    )
+    .await;
+    for north in [300.0, 479.9, 480.1, 700.0] {
+        let left = street_at(&world, 7.4, -north).unwrap();
+        let right = street_at(&world, 10.6, -north).unwrap();
+        assert!(
+            (left - right).abs() < 0.04,
+            "folded service road at {north}: {left}, {right}"
+        );
+        assert!((left - 505.4).abs() < 0.15);
+        for east in [-2.9, 0.0, 2.9] {
+            assert!(
+                ground_at(&world, east, -north).unwrap() < 500.01,
+                "raised ground through the ridden pavement"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_suppressed_ridden_copy_cannot_own_a_nearby_service_roads_terrain() {
+    let mut ridden = road_north();
+    ridden.class = RoadClass::Major;
+    ridden.details.kind = RoadKind::Primary;
+    ridden.line = vec![at(2.5, -20.0), at(2.5, 1020.0)];
+    let service = Road {
+        class: RoadClass::Service,
+        details: RoadDetails {
+            kind: RoadKind::Service,
+            ..RoadDetails::default()
+        },
+        line: vec![at(7.0, 100.0), at(7.0, 900.0)],
+        structure: None,
+    };
+    let map = MapData {
+        roads: vec![ridden, service],
+        ..MapData::default()
+    };
+    let world = generate(
+        &route_north(&[]).await,
+        &mut Hillside(0.6),
+        &map,
+        &mut |_, _| {},
+    )
+    .await;
+    for north in [300.0, 479.9, 480.1, 700.0] {
+        let left = street_at(&world, 5.4, -north).unwrap();
+        let right = street_at(&world, 8.6, -north).unwrap();
+        assert!(
+            (left - right).abs() < 0.04,
+            "side road folded over a suppressed copy at {north}: {left}, {right}"
+        );
+        assert!((left - 504.2).abs() < 0.15);
+        for east in [-3.4, 0.0, 3.4] {
+            assert!(
+                ground_at(&world, east, -north).unwrap() < 500.01,
+                "side road terrain covers the ridden carriageway"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+async fn joining_a_sloping_road_does_not_drape_over_its_downhill_segment_ends() {
+    struct Slope;
+    impl ElevationModel for Slope {
+        fn elevation(
+            &mut self,
+            lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46_f64.to_radians().cos();
+            let north = (lat - 46.0) * METERS_PER_DEGREE;
+            std::future::ready(Ok(500.0 + 0.6 * east - 0.053 * north))
+        }
+    }
+    let mut main = road_north();
+    main.class = RoadClass::Major;
+    main.details.kind = RoadKind::Secondary;
+    let side = Road {
+        class: RoadClass::Service,
+        details: RoadDetails {
+            kind: RoadKind::Service,
+            ..RoadDetails::default()
+        },
+        line: vec![at(4.5, 100.0), at(4.5, 900.0)],
+        structure: None,
+    };
+    let map = MapData {
+        roads: vec![main, side],
+        ..MapData::default()
+    };
+    let mut xml = String::from("<gpx><trk><trkseg>");
+    for i in 0..=100 {
+        let north = f64::from(i) * 10.0;
+        let (lat, lon) = at(0.0, north);
+        write!(
+            xml,
+            r#"<trkpt lat="{lat}" lon="{lon}"><ele>{}</ele></trkpt>"#,
+            500.0 - 0.053 * north
+        )
+        .unwrap();
+    }
+    xml.push_str("</trkseg></trk></gpx>");
+    let route = Route::from_gpx_with::<Slope>(&xml, None, &map)
+        .await
+        .unwrap();
+    let world = generate(&route, &mut Slope, &map, &mut |_, _| {}).await;
+    for north in [300.0, 479.9, 480.1, 700.0] {
+        let left = street_at(&world, 3.4, -north).unwrap();
+        let right = street_at(&world, 6.1, -north).unwrap();
+        assert!(
+            (left - right).abs() < 0.04,
+            "folded joining road at {north}: {left}, {right}"
+        );
+        let road = triangles(&world.road)
+            .find_map(|t| triangle_height(t, 0.0, -north))
+            .unwrap();
+        let ground = ground_at(&world, 0.0, -north).unwrap();
+        assert!(
+            (road - ground - ROAD_SINK as f32).abs() < 0.04,
+            "downhill endpoints pulled the bed below its road: {road}, {ground}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn all_formed_ways_have_level_beds_across_slopes_and_chunk_edges() {
     for slope in [0.25, 1.1] {
         let map = roads();
@@ -148,7 +293,8 @@ async fn ground_profiles_are_shared_at_tag_changes_and_branch_endpoints() {
     let route = route_north(&[]).await;
     let projection = LocalProjection::for_route(&route);
     let streets = streets::lines(&map, &projection, &mut Bump).await;
-    let levels = streets::Levels::new(&streets, &appearance::Index::new(&map, &projection));
+    let road = RoadIndex::new(&route, &projection);
+    let levels = streets::Levels::new(&streets, &appearance::Index::new(&map, &projection), &road);
     for (east, north) in [
         (200.0, 480.0),
         (200.0, 479.99),

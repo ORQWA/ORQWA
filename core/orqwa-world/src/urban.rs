@@ -571,9 +571,14 @@ impl Urban {
             })
     }
 
-    /// Terrain between dense blocks is paved, while suburban gardens retain their lawns.
+    /// Walkable terrain between dense blocks is paved; cut banks and gardens retain ground.
     pub(crate) fn paint(&self, mesh: &mut MeshData, origin: [f64; 3], land: &LandIndex) {
-        for (v, color) in mesh.vertices.iter().zip(&mut mesh.colors) {
+        for ((v, normal), color) in mesh
+            .vertices
+            .iter()
+            .zip(&mesh.normals)
+            .zip(&mut mesh.colors)
+        {
             let point = (f64::from(v[0]) + origin[0], -f64::from(v[2]) - origin[2]);
             if !protected(point, land)
                 && matches!(
@@ -581,6 +586,8 @@ impl Urban {
                     Some(LandCover::Residential) | None
                 )
                 && self.dense(point)
+                // Density does not turn a cut bank into a walkable paved square.
+                && normal[1] >= 0.98
             {
                 *color = palette::srgb("ground.urban", 0.0);
             }

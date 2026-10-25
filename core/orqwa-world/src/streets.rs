@@ -54,6 +54,7 @@ pub(crate) struct Street {
     points: Vec<(f64, f64)>,
     /// Engineered ground ways share one profile before chunks sample their terrain.
     bed: Option<Vec<f64>>,
+    bed_anchors: Vec<usize>,
     formed: bool,
     min: (f64, f64),
     max: (f64, f64),
@@ -177,11 +178,14 @@ pub(crate) async fn lines<M: ElevationModel>(
             None
         };
         let formed = road.class != RoadClass::Path || road.details.kind == RoadKind::Cycleway;
-        let bed = if formed && deck.is_none() {
+        let profile = if formed && deck.is_none() {
             terrain.profile(&points, projection, model).await
         } else {
             None
         };
+        let (bed, bed_anchors) = profile.map_or((None, Vec::new()), |(heights, anchors)| {
+            (Some(heights), anchors)
+        });
         let (mut min, mut max) = (first, first);
         for &(e, n) in &points {
             min = (min.0.min(e), min.1.min(n));
@@ -193,6 +197,7 @@ pub(crate) async fn lines<M: ElevationModel>(
             class: road.class,
             points,
             bed,
+            bed_anchors,
             formed,
             min,
             max,
@@ -204,9 +209,47 @@ pub(crate) async fn lines<M: ElevationModel>(
     streets
 }
 
-/// Resolve complete bridge profiles before either terrain or wearing surfaces use them.
+/// Resolve ground junctions and bridge profiles before terrain and wearing surfaces use them.
 pub(crate) fn connect(streets: &mut [Street], road: &RoadIndex) {
     for street in streets {
+        // The route already owns the approach, including its hill above the tunnel.
+        if street.owned_approach(road) {
+            continue;
+        }
+        if let Some(bed) = &mut street.bed {
+            let mut anchors = street.bed_anchors.clone();
+            let mut connected = false;
+            let mut distances = vec![0.0];
+            for (i, &point) in street.points.iter().enumerate() {
+                if i > 0 {
+                    let previous = street.points[i - 1];
+                    distances.push(
+                        distances[i - 1] + (point.0 - previous.0).hypot(point.1 - previous.1),
+                    );
+                }
+                if let Some(height) =
+                    road.ground_contact(point, street.appearance.width / 2.0 + 0.6)
+                {
+                    connected = true;
+                    bed[i] = height - crate::ROAD_SINK;
+                    if i > 0 {
+                        anchors.push(i);
+                    }
+                }
+            }
+            if connected {
+                anchors.sort_unstable();
+                anchors.dedup();
+                let heights = bed.clone();
+                for pair in anchors.windows(2) {
+                    let (start, end) = (pair[0], pair[1]);
+                    bed[start..=end].copy_from_slice(&crate::earthworks::smooth(
+                        &heights[start..=end],
+                        &distances[start..=end],
+                    ));
+                }
+            }
+        }
         let Some(ends) = street.deck else {
             continue;
         };
@@ -590,7 +633,14 @@ const LEVEL_CELL_M: f64 = 20.0;
 
 /// A piece of a street's centre line, metres east/north: its two ends and the street's half
 /// width.
-type Piece = ((f64, f64), (f64, f64), f64);
+struct BedPiece {
+    from: (f64, f64),
+    to: (f64, f64),
+    half: f64,
+    heights: Option<[f64; 2]>,
+    subdivisions: usize,
+    padding: f64,
+}
 
 /// Formed ground roads, vehicle tracks and cycleways. Small paths follow the land;
 /// bridges retain their separate structure profiles.
@@ -598,12 +648,16 @@ pub(crate) struct Levels {
     /// Connected bridge profiles lower their approach banks without filling their valleys.
     pub(crate) bridges: RoadIndex,
     /// Pieces of their centre lines, with their half widths.
-    segments: Vec<(Piece, Option<[f64; 2]>)>,
+    segments: Vec<BedPiece>,
     cells: HashMap<(i64, i64), Vec<usize>>,
 }
 
 impl Levels {
-    pub(crate) fn new(streets: &[Street], appearance: &crate::appearance::Index) -> Self {
+    pub(crate) fn new(
+        streets: &[Street],
+        appearance: &crate::appearance::Index,
+        road: &RoadIndex,
+    ) -> Self {
         let lines: Vec<_> = streets
             .iter()
             .filter(|s| s.joined)
@@ -642,7 +696,40 @@ impl Levels {
             for (i, pair) in street.points.windows(2).enumerate() {
                 let index = segments.len();
                 let bed = street.bed.as_ref().map(|bed| [bed[i], bed[i + 1]]);
-                segments.push(((pair[0], pair[1], half), bed));
+                let middle = (
+                    f64::midpoint(pair[0].0, pair[1].0),
+                    f64::midpoint(pair[0].1, pair[1].1),
+                );
+                if road.covers_street(
+                    middle,
+                    half,
+                    Surface::Ground,
+                    local_direction(&street.points, i),
+                    &street.sources,
+                ) {
+                    continue;
+                }
+                let gap = road
+                    .nearest_profile(middle.0, middle.1, 25.0)
+                    .map_or(f64::INFINITY, |(distance, appearance)| {
+                        distance - appearance.width / 2.0 - half
+                    });
+                let subdivisions = if gap < 2.0 {
+                    crate::TIGHT_SUB
+                } else {
+                    crate::CLOSE_SUB
+                };
+                #[allow(clippy::cast_precision_loss)] // one of two fixed subdivision counts
+                let padding = (crate::GRID / subdivisions as f64 * std::f64::consts::SQRT_2 + 0.2)
+                    .min((gap / 3.0).max(0.1));
+                segments.push(BedPiece {
+                    from: pair[0],
+                    to: pair[1],
+                    half,
+                    heights: bed,
+                    subdivisions,
+                    padding,
+                });
                 // Pieces are at most a step long: both ends' cells cover them.
                 let (first, second) = (level_cell(pair[0]), level_cell(pair[1]));
                 cells.entry(first).or_default().push(index);
@@ -663,6 +750,29 @@ impl Levels {
         self.segments.is_empty()
     }
 
+    /// Check every carriageway touching a cell, including ones hidden by a nearer ridden
+    /// copy at its centre. Missing one leaves a coarse/fine seam through that side road.
+    pub(crate) fn detail_near(&self, east: f64, north: f64, reach: f64) -> usize {
+        let scan = reach + 5.25 + STEP_M;
+        let (low, high) = (
+            level_cell((east - scan, north - scan)),
+            level_cell((east + scan, north + scan)),
+        );
+        let mut count = crate::SUB;
+        for x in low.0..=high.0 {
+            for y in low.1..=high.1 {
+                for &i in self.cells.get(&(x, y)).into_iter().flatten() {
+                    let p = &self.segments[i];
+                    let foot = nearest_on(p.from, p.to, (east, north));
+                    if (east - foot.0).hypot(north - foot.1) <= p.half + reach {
+                        count = count.max(p.subdivisions);
+                    }
+                }
+            }
+        }
+        count
+    }
+
     /// The formed way whose edge lies nearest to (`east`, `north`), if that is within its
     /// levelled ground (`LEVEL_VERGE_M` and `LEVEL_REACH_M` beyond its edge) and `extra`
     /// metres more, including its shared profile height when terrain data is available.
@@ -678,7 +788,8 @@ impl Levels {
         for x in low.0..=high.0 {
             for y in low.1..=high.1 {
                 for &index in self.cells.get(&(x, y)).into_iter().flatten() {
-                    let ((from, to, half), bed) = self.segments[index];
+                    let piece = &self.segments[index];
+                    let (from, to, half, bed) = (piece.from, piece.to, piece.half, piece.heights);
                     let foot = nearest_on(from, to, (east, north));
                     let distance = (east - foot.0).hypot(north - foot.1);
                     let beyond = distance - half;
@@ -691,6 +802,7 @@ impl Levels {
                             half,
                             foot,
                             height: bed.map(|[a, b]| a + (b - a) * t),
+                            padding: piece.padding,
                         });
                     }
                 }
@@ -706,6 +818,7 @@ pub(crate) struct Level {
     pub(crate) half: f64,
     pub(crate) foot: (f64, f64),
     pub(crate) height: Option<f64>,
+    pub(crate) padding: f64,
 }
 
 /// The point of segment `from`–`to` nearest to `point`.

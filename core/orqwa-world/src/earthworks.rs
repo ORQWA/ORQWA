@@ -40,7 +40,7 @@ impl Samples {
         points: &[(f64, f64)],
         projection: &LocalProjection,
         model: &mut M,
-    ) -> Option<Vec<f64>> {
+    ) -> Option<(Vec<f64>, Vec<usize>)> {
         let mut heights = Vec::with_capacity(points.len());
         let mut distances = vec![0.0];
         for (i, &(east, north)) in points.iter().enumerate() {
@@ -66,12 +66,6 @@ impl Samples {
                 distances.push(distances[i - 1] + (east - previous.0).hypot(north - previous.1));
             }
         }
-        if let (Some(first), Some(last)) = (points.first(), points.last())
-            && (last.0 - first.0).hypot(last.1 - first.1) < 0.5
-        {
-            // Roundabouts already have a shared circular datum and raised island.
-            return Some(heights);
-        }
         let mut anchors = vec![0];
         for (i, &point) in points.iter().enumerate().skip(1) {
             let (x, y) = junction_cell(point);
@@ -88,20 +82,26 @@ impl Samples {
                 anchors.push(i);
             }
         }
+        if let (Some(first), Some(last)) = (points.first(), points.last())
+            && (last.0 - first.0).hypot(last.1 - first.1) < 0.5
+        {
+            // Roundabouts already have a shared circular datum and raised island.
+            return Some((heights, anchors));
+        }
         let mut profile = heights.clone();
         for pair in anchors.windows(2) {
             let (start, end) = (pair[0], pair[1]);
             profile[start..=end]
                 .copy_from_slice(&smooth(&heights[start..=end], &distances[start..=end]));
         }
-        Some(profile)
+        Some((profile, anchors))
     }
 }
 
 /// Preserve connected chain ends, remove local DEM humps and constrain intermediate grades.
 /// Where the endpoints themselves require a steeper grade, preserve that connection rather
 /// than inventing a disconnected road or changing the mapped alignment.
-fn smooth(raw: &[f64], distances: &[f64]) -> Vec<f64> {
+pub(crate) fn smooth(raw: &[f64], distances: &[f64]) -> Vec<f64> {
     if raw.len() < 2 {
         return raw.to_vec();
     }
