@@ -194,6 +194,30 @@ recorded tracks come out as before; files whose points skip the ring no longer t
 way against the traffic. Kept worlds built with the old route offer regeneration because their
 ridden road follows it. Stored format remains 3.
 
+Generator 28 gives surrounding vehicle roads, unpaved service roads, tracks and cycleways
+shared road-bed profiles before terrain chunks are built. Heights use a cached global 16 m
+terrain lattice, with 24 m local smoothing and a 20 % intermediate-grade envelope. Chain ends
+and mapped branch/tag-change endpoints retain their common terrain datum; if endpoint heights
+require a steeper overall grade, that connection takes precedence. Closed loops retain their
+terrain datum so roundabout islands remain grounded. Small paths, including paved footpaths,
+retain their terrain-following treatment. Bridges and tunnels keep the existing structure
+rules, and ridden roads and railways retain their terrain priority.
+
+Modest slopes use earth cuttings and embankments. Steep cross-slopes blend into a short earth
+bank and a battered retaining face before returning to the natural hill. Concrete facing
+uses the final terrain triangles and the existing cast-concrete material, so it shares cutouts,
+water carving and chunk edges rather than floating against an independently sampled DEM.
+Facing carries the existing zero-alpha structure tint, outside road-profile metadata; stored
+format 3 is unchanged. Widths, profiles and retaining treatments are inferred scenery, not
+surveyed construction. No provider, dependency or new course request is introduced.
+
+For controlled visual review, run `cargo test --manifest-path core/Cargo.toml -p orqwa-world
+earthworks_render_fixture -- --ignored`, then render `app/tools/render_earthworks.gd` with
+`OUT_DIR` set to an existing absolute directory. `FIXTURE` selects an alternate exported JSON
+for an identical-camera baseline. The scene covers modest and steep slopes, vehicle roads,
+unpaved service roads, tracks, cycleways and an excluded paved footpath across the 480 m chunk
+boundary. Pair it with real-route Oberalp hairpin, bridge and tunnel views.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

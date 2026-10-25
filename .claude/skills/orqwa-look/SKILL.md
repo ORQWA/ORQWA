@@ -100,6 +100,11 @@ bridges, rain and vegetation/prop clearance. Use only saved course inputs at gen
 At shallow junctions, side roads must extend under the ridden road without grass gaps or a
 gravel shoulder across the opening. Suppress only fully covered cross-sections and retain the
 joining segment. Nearby parallel paths must remain visible; include chunk boundaries in review.
+Surrounding vehicle roads, unpaved service ways, tracks and cycleways need formed beds (R137),
+with level cross-sections and shared profiles. Modest slopes use earth cuttings and fills;
+steep banks combine a cutting with battered concrete retaining faces. Hiking trails and
+generic footpaths retain the hillside, even if paved. Review both bank sides and chunk seams,
+plus connected junctions and separate bridge/tunnel levels. Heights and walls are inferred.
 
 Urban surfaces (R105, ADR 0027) distinguish dense-city paving, commercial/industrial asphalt
 and suburban lawns. Mapped parks and other natural land take precedence. Review sidewalk

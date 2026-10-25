@@ -19,6 +19,9 @@ mod urban;
 #[path = "water_tests.rs"]
 mod water;
 
+#[path = "earthworks_tests.rs"]
+mod earthworks;
+
 const METERS_PER_DEGREE: f64 = 111_195.0;
 
 /// Terrain rising 10 % towards the east, 500 m at the route start.

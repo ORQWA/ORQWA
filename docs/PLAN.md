@@ -629,6 +629,11 @@ physically based materials and light, restyled group by group.
     geometry and roadside placement follow widths. Shallow branches retain their joining
     segments and nearby parallel paths keep their visible surface. Existing course tiles only,
     no added downloads or ride-start requests. Generator 10 / stored format 3.
+  - [x] Surrounding road earthworks (R137, ADR 0031): shared elevation profiles and level
+    road beds for all vehicle roads, unpaved tracks and cycleways. Earth cuttings and fills
+    meet the hillside on modest slopes; steep banks combine cuttings with concrete retaining
+    faces. Small paths retain the terrain. Junctions, roundabouts and separate structures
+    keep their ownership. Generator 28 / stored format 3.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)

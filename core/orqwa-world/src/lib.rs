@@ -12,6 +12,7 @@ mod channels;
 mod climate;
 pub mod course_map;
 mod drape;
+mod earthworks;
 mod foundations;
 mod horizon;
 mod junctions;
@@ -52,7 +53,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 27;
+pub const GENERATOR: u32 = 28;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -150,7 +151,7 @@ struct Ways {
     /// Where water cuts the ground.
     channels: channels::Channels,
     water_levels: std::sync::Arc<water_levels::Levels>,
-    /// Where paved streets level the ground across them.
+    /// Shared road beds for surrounding roads, vehicle tracks and cycleways.
     levels: streets::Levels,
 }
 
@@ -555,7 +556,7 @@ impl Corridor<'_> {
         };
         let props = props::place(heights.origin, CHUNK_SIZE, &roadside, origin);
         vegetation::place_grass(&mut trees, heights.origin, CHUNK_SIZE, &ground, origin);
-        let (paved, mut unpaved, barriers) = streets::meshes(
+        let (mut paved, mut unpaved, barriers) = streets::meshes(
             (streets, &self.ways.corners),
             heights.origin,
             CHUNK_SIZE,
@@ -572,6 +573,12 @@ impl Corridor<'_> {
             origin,
         ));
         let mut mesh = heights.mesh(self.land, origin, self.shapers, &self.ways.islands);
+        paved.append(earthworks::retaining_faces(
+            &mesh,
+            center,
+            &self.ways.levels,
+            &heights,
+        ));
         self.urban.paint(&mut mesh, origin, self.land);
         let chunk = TerrainChunk {
             center,
@@ -870,24 +877,26 @@ impl HeightGrid {
         }
     }
 
-    /// The ground at a point before channels cut it: natural, levelled across the paved
-    /// street nearest to it (#116), then shaped around the road ridden and the railways, which
+    /// The ground at a point before channels cut it: natural, shaped around the formed
+    /// way nearest to it, then around the road ridden and the railways, which
     /// come first.
     fn shaped_at(&self, east: f64, north: f64, shapers: &Shapers<'_>) -> f64 {
         let natural = self.natural_at(east, north);
         if shapers.streets.is_empty() {
             return shape(natural, &shapers.near(east, north, LEVEL_REACH));
         }
-        let levelled = shapers.streets.nearest(east, north, 0.0).map_or(
-            natural,
-            |(distance, half, (foot_east, foot_north))| {
+        let levelled = shapers
+            .streets
+            .nearest(east, north, 0.0)
+            .map_or(natural, |level| {
                 level_across(
                     natural,
-                    self.natural_at(foot_east, foot_north),
-                    distance - half,
+                    level
+                        .height
+                        .unwrap_or_else(|| self.natural_at(level.foot.0, level.foot.1)),
+                    level.distance - level.half,
                 )
-            },
-        );
+            });
         shape(levelled, &shapers.near(east, north, LEVEL_REACH))
     }
 
@@ -1395,8 +1404,8 @@ fn on_triangles(sw: f64, se: f64, nw: f64, ne: f64, u: f64, v: f64) -> f64 {
 }
 
 /// What shapes the ground: the road ridden and the railways (`railways`), each level across just
-/// below it, with cuttings and embankments; and, giving way to them, the paved streets, level
-/// across (#116); and the portals of their tunnels, where those cuttings end and the ground
+/// below it, with cuttings and embankments; and, giving way to them, surrounding formed ways;
+/// and the portals of their tunnels, where those cuttings end and the ground
 /// keeps out of the openings (#135).
 pub(crate) struct Shapers<'a> {
     pub(crate) road: &'a RoadIndex,
@@ -1539,7 +1548,7 @@ pub(crate) async fn drawn_natural<M: ElevationModel>(
 }
 
 /// The ground at a point as the chunks draw it, before channels cut it: the drawn natural
-/// ground levelled across the paved street nearest to it (#116) and shaped around the road
+/// ground shaped around the formed way nearest to it and around the road
 /// ridden and the railways, as [`HeightGrid::shaped_at`] does. `None` where the model has no
 /// data.
 pub(crate) async fn drawn_ground<M: ElevationModel>(
@@ -1550,10 +1559,13 @@ pub(crate) async fn drawn_ground<M: ElevationModel>(
 ) -> Option<f64> {
     let natural = drawn_natural(model, projection, (east, north)).await?;
     let levelled = match shapers.streets.nearest(east, north, 0.0) {
-        Some((distance, half, foot)) => level_across(
+        Some(level) => level_across(
             natural,
-            drawn_natural(model, projection, foot).await?,
-            distance - half,
+            match level.height {
+                Some(height) => height,
+                None => drawn_natural(model, projection, level.foot).await?,
+            },
+            level.distance - level.half,
         ),
         None => natural,
     };
@@ -1561,16 +1573,12 @@ pub(crate) async fn drawn_ground<M: ElevationModel>(
 }
 
 /// The ground at a point with natural height `natural`, `beyond` metres outside the edge of a
-/// paved street whose centre line's nearest point lies on natural ground at `level` (#116):
+/// formed way whose shared profile lies at `level`:
 /// level with it out to `LEVEL_VERGE_M`, so the street is level across rather than tilted with
-/// the hillside, then cut into the hillside or banked down to the natural ground at most as
-/// steeply as the road's cuttings and embankments, natural again at `LEVEL_REACH_M`.
+/// the hillside, then earth cuttings and fills on modest slopes or battered retaining banks
+/// on steep hillsides.
 fn level_across(natural: f64, level: f64, beyond: f64) -> f64 {
-    let room = (beyond - streets::LEVEL_VERGE_M).max(0.0);
-    let shaped = natural.clamp(level - room * FILL_SLOPE, level + room * CUT_SLOPE);
-    let t = ((room - (streets::LEVEL_REACH_M - streets::LEVEL_FADE_M)) / streets::LEVEL_FADE_M)
-        .clamp(0.0, 1.0);
-    shaped + (natural - shaped) * t * t * (3.0 - 2.0 * t)
+    earthworks::shape(natural, level, beyond)
 }
 
 /// 0 where the ground is fully shaped around the road, rising to 1 at `LEVEL_REACH`.

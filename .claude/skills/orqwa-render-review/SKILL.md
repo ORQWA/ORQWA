@@ -26,6 +26,13 @@ Review motorway/ramp shoulders and dashes, unmarked local ways, narrow ridden cy
 grass only in unpaved tracks. Pair the controlled scene with fixed real-route views, including
 Oberalp and rain; compare against current main using the same cameras and software settings.
 
+For surrounding road earthworks (R137), export `earthworks_render_fixture` with the same
+`cargo test` command pattern and render `app/tools/render_earthworks.gd`, setting `OUT_DIR`
+to an existing absolute directory. `FIXTURE` accepts a baseline JSON export. Inspect modest
+and steep slopes, cut and fill sides, unpaved service roads and tracks, cycleways and the
+excluded paved footpath. Check the 480 m chunk seam, junction heights and Oberalp's hairpin,
+tunnel and bridge views. Concrete facing must meet the actual cut terrain without gaps.
+
 - `scripts/dev.sh scripts/render-views.sh` — the **standard views** (`app/tools/render_views.gd`):
   fixed shots on the fixture routes (village, climb, hairpin, lake, rain, morning, evening,
   shops, junctions, river, old town, roundabout, bridges and the Oberalp reference route) into

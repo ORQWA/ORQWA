@@ -70,6 +70,33 @@ rules, surveyed lane layouts, exact surface materials, medians and motorway barr
 reconstructed from tags that the provider omits. Some mapped data is missing or inaccurate;
 the renderer makes a plausible world without claiming a surveyed road model.
 
+## Amendment — surrounding road earthworks (2026-10-25, R137)
+
+All ground vehicle ways and cycleways receive a shared elevation profile and a level road
+bed, including unpaved service roads and tracks. Generic paths and footways remain draped;
+surface paving alone does not turn a hiking path into an engineered road. Existing bridges,
+tunnels, ridden pavement ownership and railway priority remain in force.
+
+Sample one cached global terrain lattice before building chunks. Smooth local terrain humps
+over 24 m and constrain intermediate profile grades to 20 %, preserving the terrain height
+at shared chain, tag-change and branch endpoints. If those endpoints themselves require a
+steeper grade, preserve their connection. This cannot recover missing surveyed heights or
+invent switchbacks absent from the map. Closed road loops retain their terrain datum for
+roundabout/island continuity; missing terrain retains the existing chunk fallback.
+
+The ground forms a flat bed and verge, then earth cuttings and fills on modest slopes.
+Steep hillsides blend into a short earth bank and a battered retaining face, returning to
+natural ground beyond it. Face the steep engineered terrain with the existing cast-concrete
+material, using its completed triangles. This shares terrain openings and chunk boundaries
+instead of introducing a wall sampled independently of the visible ground. Use the existing
+zero-alpha structure tint in street buffers, so no shader or storage contract changes.
+
+Generator **28** offers regeneration; stored format **3** and course inputs are unchanged.
+Validation covers cross-sections for all included road types, excluded paved footpaths,
+modest versus steep earthworks, local profile grades, shared junction elevations, roundabouts,
+chunk boundaries and existing bridge/tunnel behavior. Offline comparison fixtures use the
+real generator and app materials; real-route views cover Oberalp structures and hairpins.
+
 ## Amendment — local traffic lanes (2026-10-23, R120)
 
 The avatar rides halfway into the local half of the carriageway. A spatial width index reads

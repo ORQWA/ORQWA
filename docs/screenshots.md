@@ -62,6 +62,30 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+### Surrounding road beds
+
+Surrounding vehicle roads, unpaved service roads, tracks and cycleways have level road beds
+and continuous terrain-derived profiles (R137, generator 28). Modest slopes use earth
+cuttings and fills; steep banks combine earth cuttings with concrete retaining faces.
+Hiking trails and generic footpaths retain their terrain-following treatment, even if paved.
+
+These controlled meshes come from the Rust generator with the application's materials and
+identical before/after cameras. The unpaved track used to follow the hillside's cross-slope.
+
+| Terrain-following track | Formed road bed |
+|---|---|
+| ![Track tilted with a modest hillside](images/road-earthworks/modest-before.jpg) | ![Level track with earth banks](images/road-earthworks/modest-after.jpg) |
+| ![Track tilted with a steep hillside](images/road-earthworks/steep-before.jpg) | ![Level track between retaining banks](images/road-earthworks/steep-after.jpg) |
+
+![Paved road cutting and retaining faces on a steep hillside](images/road-earthworks/road-cutting.jpg)
+
+The wider test scene also includes a primary road, unpaved service road, cycleway and excluded
+paved footpath, with terrain joining at the 480 m chunk boundary. Widths and earthworks are
+inferred scenery, not surveyed construction. Export with the ignored `earthworks_render_fixture`
+test and render `app/tools/render_earthworks.gd`; see [Development](development.md).
+The standard Oberalp tunnel, bridge-side and hairpin views below are refreshed with these
+earthworks; separate structures and the ridden road retain their own levels.
+
 ### Bridge ownership
 
 The Alpenbrevet Lukmanier approach (approximately 34.8 km into the saved course) exposed a

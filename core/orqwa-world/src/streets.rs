@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use orqwa_osm::{MapData, RoadClass, StructureKind};
+use orqwa_osm::{MapData, RoadClass, RoadKind, StructureKind};
 use orqwa_routes::{ElevationModel, LocalProjection, Surface};
 
 use crate::appearance::Appearance;
@@ -52,6 +52,9 @@ pub(crate) struct Street {
     pub(crate) appearance: Appearance,
     class: RoadClass,
     points: Vec<(f64, f64)>,
+    /// Engineered ground ways share one profile before chunks sample their terrain.
+    bed: Option<Vec<f64>>,
+    formed: bool,
     min: (f64, f64),
     max: (f64, f64),
     /// For bridges: the deck's height at both ends (the ground's there).
@@ -140,6 +143,7 @@ pub(crate) async fn lines<M: ElevationModel>(
     };
     let joined = chains::chains(&pieces, &alike);
     let mut streets = Vec::new();
+    let mut terrain = crate::earthworks::Samples::new(&projected);
     for (index, chain) in joined.into_iter().enumerate() {
         let road = &map.roads[chain[0].0];
         if road.structure == Some(StructureKind::Tunnel) {
@@ -172,6 +176,12 @@ pub(crate) async fn lines<M: ElevationModel>(
         } else {
             None
         };
+        let formed = road.class != RoadClass::Path || road.details.kind == RoadKind::Cycleway;
+        let bed = if formed && deck.is_none() {
+            terrain.profile(&points, projection, model).await
+        } else {
+            None
+        };
         let (mut min, mut max) = (first, first);
         for &(e, n) in &points {
             min = (min.0.min(e), min.1.min(n));
@@ -182,6 +192,8 @@ pub(crate) async fn lines<M: ElevationModel>(
             appearance: Appearance::of(road),
             class: road.class,
             points,
+            bed,
+            formed,
             min,
             max,
             deck,
@@ -565,8 +577,8 @@ fn clearance_cell(east: f64, north: f64) -> (i64, i64) {
     )
 }
 
-/// Paved streets are level across, as built (#116): the ground under them and this far beyond
-/// their edges lies at the natural ground's height at their centre line, so every triangle of
+/// Formed ways are level across: the ground under them and this far beyond
+/// their edges lies at their shared profile's height, so every triangle of
 /// the fine ground they lie on is level across (the diagonal of a fine piece, and a little)...
 pub(crate) const LEVEL_VERGE_M: f64 = crate::FINE * std::f64::consts::SQRT_2 + 0.2;
 /// ...beyond, it is cut into the hillside or banked down to the natural ground, natural again
@@ -580,13 +592,13 @@ const LEVEL_CELL_M: f64 = 20.0;
 /// width.
 type Piece = ((f64, f64), (f64, f64), f64);
 
-/// The paved streets on the ground, which level the ground across them (#116). Tracks and
-/// paths follow the land as it is; bridges stand above it.
+/// Formed ground roads, vehicle tracks and cycleways. Small paths follow the land;
+/// bridges retain their separate structure profiles.
 pub(crate) struct Levels {
     /// Connected bridge profiles lower their approach banks without filling their valleys.
     pub(crate) bridges: RoadIndex,
     /// Pieces of their centre lines, with their half widths.
-    segments: Vec<Piece>,
+    segments: Vec<(Piece, Option<[f64; 2]>)>,
     cells: HashMap<(i64, i64), Vec<usize>>,
 }
 
@@ -625,11 +637,12 @@ impl Levels {
         bridges.set_appearances(appearance);
         let mut segments = Vec::new();
         let mut cells: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
-        for street in streets.iter().filter(|s| s.paved() && !s.on_bridge()) {
+        for street in streets.iter().filter(|s| s.formed && !s.on_bridge()) {
             let half = street.half_width();
-            for pair in street.points.windows(2) {
+            for (i, pair) in street.points.windows(2).enumerate() {
                 let index = segments.len();
-                segments.push((pair[0], pair[1], half));
+                let bed = street.bed.as_ref().map(|bed| [bed[i], bed[i + 1]]);
+                segments.push(((pair[0], pair[1], half), bed));
                 // Pieces are at most a step long: both ends' cells cover them.
                 let (first, second) = (level_cell(pair[0]), level_cell(pair[1]));
                 cells.entry(first).or_default().push(index);
@@ -645,21 +658,15 @@ impl Levels {
         }
     }
 
-    /// Whether there are no paved streets at all, so the ground is nowhere levelled for one.
+    /// Whether there are no formed ground ways.
     pub(crate) fn is_empty(&self) -> bool {
         self.segments.is_empty()
     }
 
-    /// The paved street whose edge lies nearest to (`east`, `north`), if that is within its
+    /// The formed way whose edge lies nearest to (`east`, `north`), if that is within its
     /// levelled ground (`LEVEL_VERGE_M` and `LEVEL_REACH_M` beyond its edge) and `extra`
-    /// metres more: the distance from its centre line, its half width and the nearest point of
-    /// its centre line.
-    pub(crate) fn nearest(
-        &self,
-        east: f64,
-        north: f64,
-        extra: f64,
-    ) -> Option<(f64, f64, (f64, f64))> {
+    /// metres more, including its shared profile height when terrain data is available.
+    pub(crate) fn nearest(&self, east: f64, north: f64, extra: f64) -> Option<Level> {
         let reach = LEVEL_VERGE_M + LEVEL_REACH_M + extra;
         // The widest street's centre, and a piece's far end a step beyond its nearest point.
         let scan = reach + 5.25 + STEP_M;
@@ -667,24 +674,38 @@ impl Levels {
             level_cell((east - scan, north - scan)),
             level_cell((east + scan, north + scan)),
         );
-        // How far beyond its edge, how far from its centre line, its half width, the nearest
-        // point of its centre line.
-        let mut best: Option<(f64, f64, f64, (f64, f64))> = None;
+        let mut best: Option<Level> = None;
         for x in low.0..=high.0 {
             for y in low.1..=high.1 {
                 for &index in self.cells.get(&(x, y)).into_iter().flatten() {
-                    let (from, to, half) = self.segments[index];
+                    let ((from, to, half), bed) = self.segments[index];
                     let foot = nearest_on(from, to, (east, north));
                     let distance = (east - foot.0).hypot(north - foot.1);
                     let beyond = distance - half;
-                    if beyond <= reach && best.is_none_or(|b| beyond < b.0) {
-                        best = Some((beyond, distance, half, foot));
+                    if beyond <= reach && best.as_ref().is_none_or(|b| beyond < b.distance - b.half)
+                    {
+                        let length = (to.0 - from.0).hypot(to.1 - from.1);
+                        let t = (foot.0 - from.0).hypot(foot.1 - from.1) / length.max(1e-9);
+                        best = Some(Level {
+                            distance,
+                            half,
+                            foot,
+                            height: bed.map(|[a, b]| a + (b - a) * t),
+                        });
                     }
                 }
             }
         }
-        best.map(|(_, distance, half, foot)| (distance, half, foot))
+        best
     }
+}
+
+/// Nearest road bed, with a centre-line fallback when saved terrain has missing samples.
+pub(crate) struct Level {
+    pub(crate) distance: f64,
+    pub(crate) half: f64,
+    pub(crate) foot: (f64, f64),
+    pub(crate) height: Option<f64>,
 }
 
 /// The point of segment `from`–`to` nearest to `point`.
