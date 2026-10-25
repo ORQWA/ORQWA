@@ -99,6 +99,10 @@ pub struct Manifest {
     /// the map data leaves out).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub countries: Option<Vec<CourseCountry>>,
+    /// The map detail extracts it was prepared with (ADR 0033), whose cells it carries among
+    /// its data; opening it reads those again, and none for a course prepared without.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub map_detail: Vec<String>,
 }
 
 /// A country a course passes (#230).
@@ -490,6 +494,7 @@ mod tests {
             profile: vec![[0.0, 500.0], [12_345.0, 620.0]],
             video: None,
             countries: None,
+            map_detail: Vec::new(),
         }
     }
 

@@ -1,7 +1,8 @@
 # ADR 0007 — Course files (`.tqc`)
 
 - Status: accepted; amended 2026-10-03 (format 1 bundles inputs only, see below), 2026-10-15,
-  2026-10-19 (a sample course), 2026-10-20 (worlds kept beside, ADR 0025)
+  2026-10-19 (a sample course), 2026-10-20 (worlds kept beside, ADR 0025), 2026-10-25 (map
+  detail, ADR 0033)
 - Date: 2026-10-02
 
 ## Context
@@ -127,3 +128,12 @@ computer may keep a course's built world in its cache (R101, [ADR 0025](0025-kep
 opt-in, as a world is 10–40 times its course file. Format 1 stays final and the course file
 unchanged. R35's promise to rebuild from the stored inputs holds: a kept world from an older
 generator is ridden until the rider has it built again.
+
+## Amendment 2026-10-25 — map detail in `data/` (ADR 0033)
+
+A course prepared while the rider has a region's map detail carries the cells it read, as it
+carries its tiles: `data/osm/detail-v1/<region>-<date of the data>/12/<x>/<y>.json`. The
+manifest's optional `map_detail` names their extracts, and opening the course reads exactly
+those, so it comes out the same on any computer, with the region downloaded or not. A course
+prepared without names none and reads none, even where a region is downloaded later. Format 1
+stays: older ORQWA versions leave both unread.

@@ -355,7 +355,7 @@ fn unpack(packed: i64) -> Option<[i32; 2]> {
 }
 
 /// A region's name as part of a directory's: letters, digits, `-` and `_`.
-fn file_name(region: &str) -> String {
+pub(crate) fn file_name(region: &str) -> String {
     region
         .chars()
         .map(|c| {
@@ -396,17 +396,17 @@ fn date(time: i64) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::super::pbf::{
         DenseNodes, HeaderBlock, NodeBlock, NodeGroup, StringTable, Way, WayBlock, WayGroup, write,
     };
     use super::*;
 
     /// A way of the test file: its tags and its nodes (see `NODES`).
-    struct TestWay {
-        id: i64,
-        tags: &'static [(&'static str, &'static str)],
-        nodes: &'static [i64],
+    pub(crate) struct TestWay {
+        pub id: i64,
+        pub tags: &'static [(&'static str, &'static str)],
+        pub nodes: &'static [i64],
     }
 
     /// Nodes 1–6 along Bern's Kramgasse, eastwards; 7 and 8 far to the east and the west of
@@ -422,7 +422,8 @@ mod tests {
         (8, (469_480_000, 73_800_000)),
     ];
 
-    fn test_file(ways: &[TestWay]) -> Vec<u8> {
+    /// A download of `NODES` and `ways`, with data current at `data_time` (Unix seconds).
+    pub(crate) fn test_file(ways: &[TestWay], data_time: i64) -> Vec<u8> {
         let mut previous = (0, 0, 0);
         let mut dense = DenseNodes {
             id: Vec::new(),
@@ -480,8 +481,7 @@ mod tests {
         };
         let header = HeaderBlock {
             required_features: vec!["OsmSchema-V0.6".to_owned(), "DenseNodes".to_owned()],
-            // 2026-10-24 21:00 UTC, a Geofabrik update.
-            osmosis_replication_timestamp: Some(1_792_875_600),
+            osmosis_replication_timestamp: Some(data_time),
         };
         write::file(&header, &[nodes.encode_to_vec(), ways.encode_to_vec()])
     }
@@ -491,7 +491,8 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let pbf = dir.join("bern-latest.osm.pbf");
-        fs::write(&pbf, test_file(ways)).unwrap();
+        // 2026-10-24 21:00 UTC, a Geofabrik update.
+        fs::write(&pbf, test_file(ways, 1_792_875_600)).unwrap();
         let extract = extract(&pbf, &dir.join(VERSION), "bern", &mut |_, _, _| {}).unwrap();
         (dir, extract)
     }
@@ -676,11 +677,14 @@ mod tests {
         let pbf = dir.join("bern-latest.osm.pbf");
         fs::write(
             &pbf,
-            test_file(&[TestWay {
-                id: 40,
-                tags: &[("highway", "residential"), ("surface", "grass")],
-                nodes: &[5, 6],
-            }]),
+            test_file(
+                &[TestWay {
+                    id: 40,
+                    tags: &[("highway", "residential"), ("surface", "grass")],
+                    nodes: &[5, 6],
+                }],
+                1_792_875_600,
+            ),
         )
         .unwrap();
         let again = extract(&pbf, &dir.join(VERSION), "bern", &mut |_, _, _| {}).unwrap();

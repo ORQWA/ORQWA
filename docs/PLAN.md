@@ -633,7 +633,7 @@ physically based materials and light, restyled group by group.
     opt in download Geofabrik regions; the surfaces the tiles cannot tell (cobbles, paving,
     concrete, dirt, grass) and the roundabouts come from them, for courses prepared afterwards
     - [x] Own `.osm.pbf` reader and extractor; `orqwa-cli detail` measures a region
-    - [ ] Surfaces in prepared courses, carried in their course files
+    - [x] Surfaces in prepared courses, carried in their course files
     - [ ] Settings → Courses: the setting, the regions downloaded to update or delete
     - [ ] Roundabouts ridden the way traffic goes where the detail maps them
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns

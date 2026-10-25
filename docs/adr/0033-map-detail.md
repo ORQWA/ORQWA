@@ -1,6 +1,6 @@
 # ADR 0033 — Map detail from Geofabrik region downloads
 
-- Status: accepted (step 1 of 4: the reader and the extractor)
+- Status: accepted (steps 1 and 2 of 4: the reader and the extractor; surfaces in prepared courses)
 - Date: 2026-10-25
 - Requirements: R119, R126, R3, R32, R101
 
@@ -43,7 +43,13 @@ The data is in OpenStreetMap. Getting it per course was weighed against each ser
   regions. The date makes each path stand for one content, as course files expect (ADR 0007).
   `detail-v1` is raised when an extract's content changes.
 - **Only courses prepared afterwards use it.** They carry the cells they used, as they carry
-  their tiles, and name the extracts in their manifest; opening a course uses exactly those.
+  their tiles, and name the extracts in their manifest; opening a course uses exactly those
+  (ADR 0007, amendment of 2026-10-25). Video courses ride their video and use none.
+- **A region is ready** when its record, `osm/geofabrik/<id>.json` (`id`, `name`, `extract`,
+  `data_time`), names an extract that is there; installing a newer download of it removes the
+  older extract.
+- **Roads take the surfaces** of the mapped ways along them after the route is matched (ADR
+  0031, amendment of 2026-10-25): route matching sees the tiles' roads unchanged.
 - Four steps, each a PR: the reader and extractor; surfaces in prepared courses; the setting,
   downloads and their list; roundabouts.
 

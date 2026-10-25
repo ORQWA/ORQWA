@@ -305,6 +305,17 @@ pub struct MapData {
     pub lighthouses: Vec<LatLon>,
     /// Cities, towns and villages.
     pub places: Vec<Place>,
+    /// What the tiles leave out, where a region's map detail was asked for and is at hand.
+    pub detail: detail::Detail,
+}
+
+impl MapData {
+    /// Gives the roads the surfaces their [`detail`] knows (ADR 0033), splitting a road where
+    /// its surface changes. Matching a route reads the roads as the tiles have them, so this
+    /// comes after it.
+    pub fn apply_surfaces(&mut self) {
+        detail::apply::surfaces(&mut self.roads, self.detail.surfaces());
+    }
 }
 
 /// Downloads and caches map tiles.
@@ -313,6 +324,8 @@ pub struct Osm {
     client: reqwest::Client,
     online: bool,
     used: UsedFiles,
+    /// The map detail extracts read along with the tiles around a route.
+    detail: Vec<String>,
 }
 
 impl Osm {
@@ -336,6 +349,7 @@ impl Osm {
             client,
             online: true,
             used: UsedFiles::default(),
+            detail: Vec::new(),
         }
     }
 
@@ -353,6 +367,15 @@ impl Osm {
         self
     }
 
+    /// Also reads the map detail of these `extracts` (see [`detail`]) around a route, from the
+    /// cache only and recorded like the tiles: a region's detail is downloaded on its own,
+    /// never with the tiles.
+    #[must_use]
+    pub fn with_detail(mut self, extracts: Vec<String>) -> Self {
+        self.detail = extracts;
+        self
+    }
+
     /// Map features within `corridor` metres of the polyline `points`. `progress` is called
     /// with (tiles done, tiles total) as tiles arrive.
     ///
@@ -367,8 +390,12 @@ impl Osm {
         corridor: f64,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<MapData, OsmError> {
-        self.load(ZOOM, tiles_near(points, corridor), progress)
-            .await
+        let tiles = tiles_near(points, corridor);
+        let mut data = self.load(ZOOM, tiles.clone(), progress).await?;
+        if !self.detail.is_empty() {
+            data.detail = detail::load(&self.cache_dir, &self.detail, &tiles, &self.used).await;
+        }
+        Ok(data)
     }
 
     /// Map features between the corners `south_west` and `north_east`, from tiles at `zoom`

@@ -7,6 +7,8 @@ pub mod ambient;
 pub mod analysis;
 pub mod failure;
 use failure::{Failure, Kind};
+#[cfg(test)]
+mod detail_tests;
 pub mod hud;
 mod import;
 mod kept;
@@ -672,6 +674,8 @@ pub struct App {
     minimap: orqwa_world::FlatMap,
     /// The countries the loaded route passes, if looked up (#230).
     countries: Option<Vec<CourseCountry>>,
+    /// The map detail extracts the loaded route was prepared with (ADR 0033).
+    map_detail: Vec<String>,
     /// Whether the courses' countries are being looked up, and how many were found so far.
     filling_countries: Option<usize>,
     /// The gallery's estimated times (R67) by course, for the rider setup and power they
@@ -777,6 +781,7 @@ impl App {
             course_map: None,
             minimap: orqwa_world::FlatMap::default(),
             countries: None,
+            map_detail: Vec::new(),
             filling_countries: None,
             estimates: Estimates::default(),
             world: None,
@@ -1017,7 +1022,7 @@ impl App {
                 unpacked.gpx,
                 &unpacked.manifest.name,
                 (&cache, true),
-                video.is_some(),
+                (video.is_some(), &unpacked.manifest.map_detail),
                 &used,
                 &mut report,
             )
@@ -1097,7 +1102,8 @@ impl App {
                     // A course without a place keeps its own elevations: terrain data from
                     // wherever its drawn line lies would only spoil them.
                     (&cache, offline || !source.located),
-                    true,
+                    // Video courses ride the video: no world to give map detail to.
+                    (true, &[]),
                     &used,
                     &mut report,
                 )
@@ -1430,6 +1436,7 @@ impl App {
             profile: thin(&view::elevation_profile(route, PREVIEW_POINTS)),
             video: self.video.as_ref().map(|v| video_reference(v, route)),
             countries: self.countries.clone(),
+            map_detail: self.map_detail.clone(),
         };
         // Preparing the same course again must not fill the library with copies; one still
         // being written reports itself when done. A course named on import is the rider's
@@ -1965,6 +1972,7 @@ impl App {
         self.course_map = None;
         self.minimap = orqwa_world::FlatMap::default();
         self.countries = None;
+        self.map_detail.clear();
         self.loaded = None;
         self.used = UsedFiles::default();
         self.used.clone()
@@ -3888,14 +3896,15 @@ impl App {
     fn route_loaded(&mut self, imported: Imported, events: &mut Vec<AppEvent>) {
         let Imported {
             route,
+            map,
             name,
             gpx,
             course_map,
             minimap,
             countries,
             driving_left,
-            ..
         } = imported;
+        self.map_detail = map.detail.extracts().to_vec();
         self.loaded = Some((name.clone(), gpx));
         self.course_map = course_map;
         self.minimap = minimap;
@@ -4393,7 +4402,7 @@ mod tests {
                 xml.clone(),
                 "zig-zag",
                 (&dir, true),
-                video,
+                (video, &[]),
                 &UsedFiles::default(),
                 &mut |_, _, _| {},
             )
@@ -5442,6 +5451,7 @@ mod tests {
             profile: Vec::new(),
             video: None,
             countries: None,
+            map_detail: Vec::new(),
         };
         let path = dir.join("sample.tqc");
         course::write(&path, &manifest, "<gpx/>", dir, &[]).unwrap();
