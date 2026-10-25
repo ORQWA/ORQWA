@@ -199,3 +199,20 @@ Road, street, path and railway shaders draw exposed backs too. Their back materi
 surface markings, grass, sleepers and polished rail heads. This applies to kept worlds
 immediately. A software-Vulkan test renders all four surface materials from each side and
 checks actual pixel opacity, since headless scene tests cannot catch back-face culling.
+
+### Distant ground (2026-10-25, R43)
+
+In towns every street levels the ground across it, so the terrain there is cut into pieces of
+about 2.7 m and stayed so up to the view distance: on a city course the ground beyond 600 m
+took a quarter to two fifths of an Ultra frame. Each chunk's ground now gets Godot's own mesh
+LODs (`ImporterMesh.generate_lods`, meshoptimizer with locked borders), so distant ground is
+drawn coarser yet within about a pixel, and neighbouring chunks still meet. Making them takes
+seconds for a city: worker threads make them after the chunk is uploaded, the full ground
+showing until they replace it, so a ride starts as before. Sidewalks and curbs end at 700 m on
+every preset, measured to a chunk's middle; the ground's paving carries the look beyond.
+
+Streets, sidewalks and water keep casting shadows: mapped streets include raised bridge decks
+and sidewalks raised walls, whose shadows went missing without. Street ribbons are all edge,
+so locked-border LODs cannot simplify them; cheaper distant streets need a different
+approach. Neither generator nor stored format changes; kept worlds draw the same.
+See [the measurements](../benchmarks/city-courses.md#distant-ground).

@@ -1,6 +1,6 @@
 extends SceneTree
-## Headless checks of the ride HUD: its editor (R51, R54) and the line under a large power
-## figure.
+## Headless checks of the ride HUD: its editor (R51, R54), the line under a large power
+## figure and the minimap.
 ## Run: godot --headless --path app -s res://tests/hud_smoke.gd
 
 var _failed: bool = false
@@ -13,6 +13,7 @@ func _initialize() -> void:
 func _run() -> void:
 	_hud_editor()
 	_power_detail()
+	await _minimap()
 	if not _failed:
 		print("HUD SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -105,3 +106,49 @@ func _check(condition: bool, what: String) -> void:
 	if not condition:
 		push_error("HUD SMOKE TEST FAILED: " + what)
 		_failed = true
+
+
+## The minimap draws its map once and only moves and turns it as the rider goes: a city's
+## thousands of lines drawn anew every frame held whole courses to ten frames a second. Every
+## point of the map still lies where the view puts it, close up and over the whole route.
+func _minimap() -> void:
+	var map: Minimap = Minimap.new()
+	map.size = Vector2(300, 300)
+	root.add_child(map)
+	var line: Dictionary = {
+		"points": PackedVector2Array([Vector2(-200, 50), Vector2(300, 400)]),
+		"width": 2.0,
+		"color": Color.WHITE,
+	}
+	var no_area: Dictionary = {"vertices": PackedVector2Array(), "colors": PackedColorArray()}
+	map.set_map({"background": Color.BLACK, "land": no_area, "lines": [line], "corridor": no_area})
+	map.set_track(PackedVector2Array([Vector2.ZERO, Vector2(800, 600), Vector2(1500, -200)]))
+	var layer: Node2D = map.get("_map")
+	var drawn: Array[int] = [0]
+	layer.draw.connect(func() -> void: drawn[0] += 1)
+	await process_frame
+	var first: int = drawn[0]
+	_check(first > 0, "the map is drawn")
+	for step: int in range(5):
+		map.set_rider(Vector2(step * 40.0, step * 25.0), step * 0.4)
+		await process_frame
+	_check(drawn[0] == first, "riding moves and turns the map without drawing it again")
+	_check(_map_where_viewed(map), "close up, the map lies where the view puts it")
+	map.set("_follow", false)
+	map.call("_redraw_map")
+	await process_frame
+	_check(drawn[0] == first + 1, "the whole route is drawn once more, at its own scale")
+	_check(_map_where_viewed(map), "over the whole route, the map lies where the view puts it")
+	map.free()
+
+
+## Whether the minimap's drawn map, placed by its layer, matches its view, and the layer only
+## moves and turns it (so lines keep their widths in pixels).
+func _map_where_viewed(map: Minimap) -> bool:
+	var layer: Node2D = map.get("_map")
+	var drawn_at: Transform2D = map.get("_map_scale")
+	var view: Transform2D = map.call("_view")
+	for point: Vector2 in [Vector2(-200, 50), Vector2(300, 400), Vector2(1500, -200)]:
+		if (layer.transform * (drawn_at * point)).distance_to(view * point) > 0.01:
+			return false
+	return is_equal_approx(absf(layer.transform.determinant()), 1.0)

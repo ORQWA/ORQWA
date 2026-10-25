@@ -228,8 +228,10 @@ wait for all chunks while hidden, pause the rider and include city streets, benc
 - Warnings are errors in this project: untyped `Variant` arguments fail to parse; give values a
   typed local first.
 - Free-camera shots can end up inside a hillside; prefer `NEAR_MODEL` or the drone camera.
-- Very dense scenes are slow under lavapipe; that says little about a real GPU. For frame rate,
-  ask the user to check on their M1.
+- Very dense scenes are slow under lavapipe; that says little about a real GPU. Measure frame
+  rate on a Mac with `scripts/perf/mac.sh`, or ask the user to; `scripts/perf/software.sh`
+  counts draw calls and primitives in the container
+  ([Measuring frame rate](../../../docs/development.md#measuring-frame-rate)).
 
 ## Sharing results
 
