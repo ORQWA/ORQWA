@@ -462,9 +462,11 @@ physically based materials and light, restyled group by group.
   - [x] The minimap draws its map once per view and size and only moves and turns it as the
     rider goes, instead of drawing every line of the map anew each frame
   - [ ] The minimap's lines as one mesh rather than one draw each
-  - [ ] Coarser ground, streets and sidewalks in the distance
-  - [ ] No shadows from flat ways; building models in the shadow maps without the `discard`
-    that keeps Godot from its shared depth-only material
+  - [x] Coarser ground in the distance: Godot's own mesh LODs for each chunk's ground, made on
+    worker threads with chunk edges kept; sidewalks and curbs to 700 m on every preset
+  - [ ] Cheaper distant streets: their ribbons are all edge, which locked-border LODs keep
+  - [ ] Building models in the shadow maps without the `discard` that keeps Godot from its
+    shared depth-only material
   - [ ] Building cells faded by their own centre, not their chunk's
   - [ ] MetalFX upscaling on Retina displays
   - [ ] Building models over a shorter range, with their materials merged, and only where the

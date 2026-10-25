@@ -167,6 +167,17 @@ func _upload_chunks() -> void:
 			% [count, frames, total / 1000, slowest / 1000]
 		)
 	)
+	# Coarser ground, made on worker threads, replaces the full one as it comes (GroundLods).
+	var lods: Object = _world.get("_ground_lods")
+	if lods == null:
+		return
+	var waited: int = Time.get_ticks_msec()
+	while true:
+		var pending: bool = lods.call("pending")
+		if not pending:
+			break
+		await process_frame
+	print("PERF ground LODs in place %d ms after the upload" % (Time.get_ticks_msec() - waited))
 
 
 func _start_ride() -> void:

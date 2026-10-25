@@ -69,6 +69,32 @@ fades by an instance's origin but hides by its bounds), so near the switch betwe
 and shells up to 230 cells were drawn transparent, some fully faded out; turning fading off
 changed nothing measurable here.
 
+## Distant ground
+
+Each chunk's ground got Godot's own mesh LODs, made on worker threads after the chunk is
+uploaded, and sidewalks and curbs end at 700 m on every preset
+([ADR 0020](../adr/0020-realistic-look.md#distant-ground-2026-10-25-r43)). Two pairs of runs
+with the minimap shown, the second in reverse order so that drift favours neither:
+
+| Place | Before | After | Before (2) | After (2) |
+|---|---:|---:|---:|---:|
+| Bellevue | 18.2 ms | 16.2 ms | 18.7 ms | 16.7 ms |
+| Bürkliplatz | 24.8 ms | 21.4 ms | 25.6 ms | 21.8 ms |
+| Old town | 20.5 ms | 17.3 ms | 22.5 ms | 17.6 ms |
+| Above the city at 30 km | 33.5 ms | 29.4 ms | 35.5 ms | 29.6 ms |
+
+The first pair also left streets, tracks and water without shadows. The second did not: decks
+of mapped bridges and raised sidewalks lost their shadows that way, for 1 M shadow primitives
+less. Chunks uploaded as quickly as before (1.6–1.8 s, the slowest frame 130–140 ms); their
+coarser ground was in place 0.25–0.3 s later. Made in the frame instead, it held the upload to
+8.4 s with frames of up to 221 ms. The pictures differ only where water, grass and trees move,
+far views included:
+
+| View | Before | After |
+|---|---|---|
+| Drone above the city | ![Drone before](../images/issues/zurich-distant-drone-before.jpg) | ![Drone after](../images/issues/zurich-distant-drone-after.jpg) |
+| Lakefront | ![Lakefront before](../images/issues/zurich-distant-lake-before.jpg) | ![Lakefront after](../images/issues/zurich-distant-lake-after.jpg) |
+
 ## How these were measured
 
 With an earlier form of the scripts now in `scripts/perf/`
