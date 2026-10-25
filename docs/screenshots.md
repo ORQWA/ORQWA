@@ -147,7 +147,26 @@ camera above and beside the transition, with vegetation and buildings omitted.
 |---|---|
 | ![Raised slab and duplicate railing at the tunnel exit](images/issues/alpenbrevet-bridge-transition-before.jpg) | ![Single road surface leading onto the bridge](images/issues/alpenbrevet-bridge-transition-after.jpg) |
 
-### Railway approaches
+### Underground railway profiles
+
+Generator 35 keeps mapped railway tunnels below valley terrain (R139). The Zürich report
+is at **3.84 km to go**, approximately 33.776 km into the full saved course: the old estimate
+extended a connected surface section's height through the tunnel, placing tracks at roughly
+414 m elevation, above terrain near 405 m. The new profile is near 397 m there, leaving the river and
+the independent road bridge clear. Track elevations remain estimates from saved map/terrain
+inputs, without surveyed railway heights or extra downloads.
+
+The Oberalp comparison uses the full saved Alpenbrevet Gold course at 11.10 km from the
+start. Lowered tunnel profiles retain railway grades; real portal approaches still open
+where the hill covers the tube. These pairs share cameras, terrain inputs and app materials;
+buildings and vegetation are omitted.
+
+| Location | Before | After |
+|---|---|---|
+| Zürich river crossing | ![Railway tunnel shell above the river](images/issues/zurich-railway-tunnel-before.jpg) | ![River and road bridge clear of the underground railway](images/issues/zurich-railway-tunnel-after.jpg) |
+| Oberalp summit | ![Exposed railway tunnel roof on the hillside](images/issues/oberalp-railway-tunnel-before.jpg) | ![Railway tunnel below the hillside](images/issues/oberalp-railway-tunnel-after.jpg) |
+
+### Railway bridge approaches
 
 Alpenbrevet Gold at 102.99 and 98.74 km to go (107.75 and 112.00 km into the full course).
 Generator 17 keeps one clearance across the whole crossing instead of forcing adjacent

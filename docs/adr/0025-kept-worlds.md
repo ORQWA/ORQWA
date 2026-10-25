@@ -267,6 +267,13 @@ Generator 34 bounds sidewalk segment intersections to each clipping remnant's fi
 footprint. Thin remnants cannot join separate walks across gaps and incorrectly qualify
 short corners for the minimum length. The 12 m rule and stored format 3 are unchanged.
 
+Generator 35 constrains estimated mapped railway tunnel profiles below valley terrain,
+including lines with only one known surface approach. Height reductions spread into the
+approaches at railway grades, with rack grades inferred before lowering. Mapped stretches
+outside real portals still open onto the ground; tile-cut tunnel ends retain underground
+cover. No terrain hill is invented over the railway. Saved course inputs suffice offline;
+stored format remains 3.
+
 ## Amendment — 2026-10-24: one world at a time
 
 The settings' Courses tab lists each kept world by its course's name with its size in MB or

@@ -949,8 +949,8 @@ async fn railways_tunnel_through_hills_rather_than_climb_them() {
 #[tokio::test]
 async fn railway_tunnels_under_the_road_stay_below_it() {
     // Flat land 3 m below the road ridden (500 m), which crosses it on an embankment, and a line
-    // passing under it at 500 m in a tunnel 240 m long: its 4.5 m arch would show through the
-    // road and the embankment (#138).
+    // passing under it at 500 m in a tunnel 240 m long (#138, R139). The estimated railway
+    // profile must leave room for its arch beneath the land as well as the road.
     struct Low;
     impl ElevationModel for Low {
         fn elevation(
@@ -1002,10 +1002,16 @@ async fn railway_tunnels_under_the_road_stay_below_it() {
         .filter(|v| v[0].abs() > 80.0)
         .map(|v| v[1])
         .fold(f32::MIN, f32::max);
+    let floor = rail_bed(&world)
+        .into_iter()
+        .filter(|v| v[0].abs() > 80.0 && v[0].abs() < 100.0)
+        .map(|v| v[1])
+        .fold(f32::MIN, f32::max);
     assert!(
-        arch > 497.0 + 4.0,
-        "the arch only reaches {arch} away from the road"
+        arch > floor + 4.0,
+        "the tunnel keeps a full arch away from the road"
     );
+    assert!(arch < 497.0, "the tunnel roof must stay below the terrain");
 }
 
 #[tokio::test]

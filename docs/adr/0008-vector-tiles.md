@@ -29,6 +29,14 @@ these same saved tiles (R119, [ADR 0031](0031-road-appearance.md)). This adds no
 provider. Exact widths, lane counts and detailed surface materials are not supplied by the
 current schema; the renderer uses documented visual defaults for missing information.
 
+Railways retain `brunnel` bridge/tunnel tags, but ORQWA's decoded railway features have no
+surveyed track elevations. Heights are estimated from the terrain and connected surface
+sections. Mapped tunnel profiles also need an underground-cover bound: extending a single
+known approach's height through a tunnel can otherwise put it above a valley (Zürich at
+3.84 km remaining). Generator 35 lowers mapped tunnels below the terrain and propagates
+those reductions into their approaches at railway grades, without raising the terrain over
+them. The same rule covers interpolated profiles between two approaches.
+
 - The same 36 km line now loads in **5 s cold, 1 s for map data** with no failures.
 - Attribution: "© OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors".
 - Features crossing tile borders arrive clipped per tile; land cover and roads are unaffected,

@@ -1,6 +1,7 @@
 //! The railways of the map around the route (#75, #85). A railway runs on a smooth line of
 //! its own, not over every bump of the ground: each line is sampled along the terrain, smoothed
-//! and held to a railway's gentle grades; tunnels and bridges run straight between their ends;
+//! and held to a railway's gentle grades; bridges run straight between their ends and mapped
+//! tunnels stay below the terrain, including where only one portal lies in the saved map;
 //! where the hill rises far above the track it goes into a tunnel, where the ground falls far
 //! below it onto a viaduct. The lines then shape the ground like the road ridden does — level
 //! across the bed, cuttings into hillsides, embankments down to valleys — carry bridges and
@@ -166,8 +167,9 @@ fn chains(
 }
 
 /// A railway's centre line: heights from the terrain, smoothed and held to its grades, bridges
-/// and tunnels straight between their ends, tunnels and viaducts where the ground lies far off,
-/// its crossings with the road ridden, and alongside the tracks `laid` out before it, with them.
+/// between their ends, mapped tunnels below the terrain, tunnels and viaducts where the ground
+/// lies far off, its crossings with the road ridden, and alongside the tracks `laid` out before
+/// it, with them.
 /// `None` without any terrain height.
 fn lay_out(
     points: &[Point],
@@ -200,6 +202,10 @@ fn lay_out(
     }
     let mut heights = fill_between(&known, &along)?;
     heights = smooth(&heights, &along, SMOOTHING_M);
+    // Infer rack grades from the hillside before underground cover lowers the track.
+    let limit =
+        (!funicular).then(|| MAX_GRADE.max(sustained_grade(&heights, &along).min(RACK_MAX_GRADE)));
+    bury_tunnels(points, &mut heights, &along, limit);
     let mut surfaces: Vec<Surface> = points.iter().map(|p| p.surface).collect();
     let mut pins = crossings(points, &surfaces, road);
     let beside: Vec<Option<(f64, Surface)>> = (0..points.len())
@@ -221,10 +227,6 @@ fn lay_out(
             .enumerate()
             .filter_map(|(k, b)| b.map(|(height, _)| (k, height, Pin::Exactly))),
     );
-    // Held to `MAX_GRADE`, a line up a rack railway's hillside would leave the ground on
-    // viaducts below and sink into it above (#116: the Oberalp line at Nätschen).
-    let limit =
-        (!funicular).then(|| MAX_GRADE.max(sustained_grade(&heights, &along).min(RACK_MAX_GRADE)));
     hold_grades(&mut heights, &along, &pins, limit);
     // Tunnels where the hill rises far above the track, viaducts where the ground falls far
     // below it.
@@ -268,6 +270,68 @@ fn lay_out(
             })
             .collect(),
     )
+}
+
+/// A mapped tunnel is underground even where its interpolated or extrapolated portal heights
+/// would put it above a valley. Lower its profile for cover, spreading the descent into its
+/// approaches without inventing a hill over the railway or steps at its mapped boundaries.
+fn bury_tunnels(points: &[Point], heights: &mut [f64], along: &[f64], limit: Option<f64>) {
+    let mut changed = false;
+    let mut start = 0;
+    while start < points.len() {
+        if points[start].surface != Surface::Tunnel {
+            start += 1;
+            continue;
+        }
+        let end = (start..points.len())
+            .find(|&k| points[k].surface != Surface::Tunnel)
+            .unwrap_or(points.len());
+        let covered = |k: &usize| {
+            points[*k]
+                .terrain
+                .is_some_and(|h| h - heights[*k] >= TUNNEL_COVER)
+        };
+        // Mapped tunnel tags often extend beyond the real mouths. Leave those open ends
+        // for `open_portals` to fit to the hill; a tile-cut end has no such surface approach.
+        let from = if start > 0 {
+            (start..end).find(covered).unwrap_or(start)
+        } else {
+            start
+        };
+        let to = if end < points.len() {
+            (start..end).rfind(covered).map_or(end, |k| k + 1)
+        } else {
+            end
+        };
+        for k in from..to {
+            if let Some(terrain) = points[k].terrain {
+                let ceiling = terrain - TUNNEL_COVER;
+                changed |= heights[k] > ceiling;
+                heights[k] = heights[k].min(ceiling);
+            }
+        }
+        start = end;
+    }
+    if !changed {
+        return;
+    }
+    // Funiculars still need continuous approaches: keep at least their existing steepest
+    // grade rather than imposing the main-line/rack limit on them.
+    let limit = limit.unwrap_or_else(|| {
+        points
+            .windows(2)
+            .zip(along.windows(2))
+            .filter_map(|(p, a)| {
+                Some((p[1].terrain? - p[0].terrain?).abs() / (a[1] - a[0]).max(1e-9))
+            })
+            .fold(RACK_MAX_GRADE, f64::max)
+    });
+    for k in 1..heights.len() {
+        heights[k] = heights[k].min(heights[k - 1] + limit * (along[k] - along[k - 1]));
+    }
+    for k in (0..heights.len() - 1).rev() {
+        heights[k] = heights[k].min(heights[k + 1] + limit * (along[k + 1] - along[k]));
+    }
 }
 
 /// Heights everywhere from those known: straight between known ones, level beyond the first
@@ -449,6 +513,41 @@ fn drop_short_structures(surfaces: &mut [Surface], along: &[f64], mapped: &[Surf
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mapped_tunnels_stay_below_a_valley_with_one_or_two_known_portals() {
+        // R139: a tunnel crossing a valley, with only its far approach in the saved tiles
+        // (Zürich), or both approaches around a valley. Surface heights are not track heights.
+        for one_portal in [false, true] {
+            let points: Vec<_> = (0..=400)
+                .map(|i| Point {
+                    position: (300.0, f64::from(i) * STEP_M),
+                    surface: if (one_portal || i >= 100) && i <= 300 {
+                        Surface::Tunnel
+                    } else {
+                        Surface::Ground
+                    },
+                    terrain: Some(if (150..=250).contains(&i) {
+                        480.0
+                    } else {
+                        500.0
+                    }),
+                })
+                .collect();
+            let empty = RoadIndex::from_lines(&[]);
+            let line = lay_out(&points, false, &empty, &empty).expect("connected railway");
+            let heights: Vec<_> = line.iter().map(|p| p.elevation).collect();
+            let along: Vec<_> = line.iter().map(|p| p.distance).collect();
+            assert!(grade_at(&heights, &along) <= MAX_GRADE + 1e-9);
+            for (point, centre) in points.iter().zip(&line) {
+                if point.surface == Surface::Tunnel {
+                    assert!(centre.elevation <= point.terrain.unwrap() - TUNNEL_COVER + 1e-9);
+                    assert_eq!(centre.surface, Surface::Tunnel);
+                }
+            }
+            assert!((line.last().unwrap().elevation - 500.0).abs() < 1e-9);
+        }
+    }
 
     fn grade_at(heights: &[f64], along: &[f64]) -> f64 {
         heights
