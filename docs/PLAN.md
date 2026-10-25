@@ -456,6 +456,19 @@ physically based materials and light, restyled group by group.
   its own value, kept per computer
 - [x] Default frame rate capped at 60 fps, including Auto at every quality preset (R111),
   from startup; explicit frame rate limits and Unlimited remain available
+- [ ] City courses at frame rate (R43): Zürich rode at 7–10 fps on Ultra on an M5 Pro
+  ([measurements](benchmarks/city-courses.md)); views reaching far keep their land, streets
+  and town, only drawn more cheaply:
+  - [x] The minimap draws its map once per view and size and only moves and turns it as the
+    rider goes, instead of drawing every line of the map anew each frame
+  - [ ] The minimap's lines as one mesh rather than one draw each
+  - [ ] Coarser ground, streets and sidewalks in the distance
+  - [ ] No shadows from flat ways; building models in the shadow maps without the `discard`
+    that keeps Godot from its shared depth-only material
+  - [ ] Building cells faded by their own centre, not their chunk's
+  - [ ] MetalFX upscaling on Retina displays
+  - [ ] Building models over a shorter range, with their materials merged, and only where the
+    route comes close enough to show them
 - [x] Asset pipeline: Blender 5.2 LTS in an x86-64 art container (`scripts/art.sh`), scripted
   models, an in-game preview renderer (`scripts/render-models.sh`), agent skills for the look,
   the pipeline and render review (`.claude/skills`)
