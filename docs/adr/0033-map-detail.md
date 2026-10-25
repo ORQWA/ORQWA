@@ -96,6 +96,12 @@ Roundabouts on three prepared courses, checked with
 | Bielersee–Obedüre | 44 | 9.7 m at Erlach | none |
 | Alpenbrevet Gold | 19 | 30.1 m and 4.0 m near Biasca | none |
 
+Marking rings one-way showed a matching fault both kinds of ring share: points of a file
+beside a ring past its way out, matched onto it, took the line round again to reach them
+(Erlach 603°, two rings near Biasca 1245° and 435°). Generator 35 leaves such points out, so
+the line takes the way out the first time it passes it (R145): Erlach 240°, Biasca 147° and
+50°. The check above also measures how far round each ring the route turns per pass.
+
 The check counts a step of the route only if its middle lies on the ring too: a route that
 cuts straight across a small ring, as at a mini-roundabout in Biel whose exit the tiles leave
 1.4 m from the ring's nearest point, goes round none of it.

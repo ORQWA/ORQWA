@@ -129,6 +129,15 @@ Generator 34 keeps sidewalk segment intersections inside each cut polygon's fini
 Nearly collinear remnants with degenerate end edges cannot act as infinite bands, connect
 walks across gaps or hide distant exposed edges. The 12 m minimum and stored format 3 remain.
 
+Generator 35 goes round a roundabout once per visit (R145). A run of a file's points matched
+on a ring, or at it on a street leading off it (within 3 m), is left out where going through
+them would take the line more than a lap and 5 m round between the points before and after
+the run (`Network::once_round` in `orqwa-routes/src/snap.rs`): they lie beside the ring past
+the way out, as where a file follows a path beside it or rests there. The line then leaves
+the ring the first time it passes its way out. A turn back at a roundabout, once round, stays.
+Rings the map detail marks (R143) and those R126 finds by their shape are treated alike, so
+courses without detail can come out differently too. Stored format 3 remains.
+
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
 both water meshes and channel beds use those shared elevations. Keep these profiles

@@ -650,7 +650,8 @@ physically based materials and light, restyled group by group.
     - [x] Own `.osm.pbf` reader and extractor; `orqwa-cli detail` measures a region
     - [x] Surfaces in prepared courses, carried in their course files
     - [x] Settings → Courses: the setting, the regions downloaded to update or delete (R142)
-    - [x] Roundabouts ridden the way traffic goes where the detail maps them (R143)
+    - [x] Roundabouts ridden the way traffic goes where the detail maps them (R143), once
+      round per visit, leaving at the first pass of the way out (R145, generator 35)
     - [x] Courses in the library take a region's detail once opened, their kept worlds built
       again (R144)
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns

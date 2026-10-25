@@ -268,6 +268,86 @@ fn wrong_way_round(route: &[LatLon], roads: &[Road]) -> Vec<(LatLon, f64)> {
     found
 }
 
+/// How far round each mapped roundabout the route turns on each pass (degrees,
+/// counter-clockwise positive): its rings are the roads marked as going round one, joined end
+/// to start; a pass, the route's points within the ring.
+fn turns_round(route: &[LatLon], roads: &[Road]) -> Vec<(LatLon, f64)> {
+    let flat = |origin: LatLon, p: LatLon| {
+        let east = (p.1 - origin.1) * 111_195.0 * origin.0.to_radians().cos();
+        (east, (p.0 - origin.0) * 111_195.0)
+    };
+    let marked: Vec<&Road> = roads.iter().filter(|r| r.details.roundabout).collect();
+    // Rings: pieces whose ends meet, gathered.
+    let mut ring_of: Vec<usize> = (0..marked.len()).collect();
+    let find = |ring_of: &mut Vec<usize>, mut i: usize| {
+        while ring_of[i] != i {
+            i = ring_of[i];
+        }
+        i
+    };
+    for a in 0..marked.len() {
+        for b in a + 1..marked.len() {
+            let ends = |r: &Road| [r.line[0], r.line[r.line.len() - 1]];
+            let meet = ends(marked[a]).iter().any(|&p| {
+                ends(marked[b]).iter().any(|&q| {
+                    let (x, y) = flat(p, q);
+                    x.hypot(y) < 1.5
+                })
+            });
+            if meet {
+                let (ra, rb) = (find(&mut ring_of, a), find(&mut ring_of, b));
+                ring_of[ra] = rb;
+            }
+        }
+    }
+    let mut passes = Vec::new();
+    let roots: std::collections::BTreeSet<usize> =
+        (0..marked.len()).map(|i| find(&mut ring_of, i)).collect();
+    for root in roots {
+        let points: Vec<LatLon> = (0..marked.len())
+            .filter(|&i| find(&mut ring_of, i) == root)
+            .flat_map(|i| marked[i].line.iter().copied())
+            .collect();
+        #[allow(clippy::cast_precision_loss)] // a few dozen points
+        let n = points.len() as f64;
+        let middle = (
+            points.iter().map(|p| p.0).sum::<f64>() / n,
+            points.iter().map(|p| p.1).sum::<f64>() / n,
+        );
+        let radius = points
+            .iter()
+            .map(|&p| {
+                let (x, y) = flat(middle, p);
+                x.hypot(y)
+            })
+            .fold(0.0, f64::max);
+        let mut turned: Option<f64> = None;
+        let mut last: Option<f64> = None;
+        for &point in route {
+            let (x, y) = flat(middle, point);
+            if x.hypot(y) > radius + 2.0 {
+                if let Some(turn) = turned.take() {
+                    passes.push((middle, turn));
+                }
+                last = None;
+                continue;
+            }
+            let angle = y.atan2(x);
+            if let Some(before) = last {
+                let step = (angle - before + std::f64::consts::PI)
+                    .rem_euclid(std::f64::consts::TAU)
+                    - std::f64::consts::PI;
+                *turned.get_or_insert(0.0) += step.to_degrees();
+            }
+            last = Some(angle);
+        }
+        if let Some(turn) = turned {
+            passes.push((middle, turn));
+        }
+    }
+    passes
+}
+
 /// Each mapped roundabout the course at `ORQWA_COURSE` goes round is ridden the way traffic
 /// goes (R126, ADR 0033), with the regions downloaded into this computer's cache:
 /// `ORQWA_COURSE=… cargo test -p orqwa-app -- --ignored --nocapture roundabouts_of_a_course`.
@@ -326,5 +406,18 @@ fn roundabouts_of_a_course_are_ridden_the_way_traffic_goes() {
         .count();
     let wrong = wrong_way_round(&route, &imported.map.roads);
     println!("{rings} pieces of roundabouts mapped; the wrong way round: {wrong:?}");
+    let passes = turns_round(&route, &imported.map.roads);
+    for (at, turn) in &passes {
+        println!("round {:.5},{:.5}: {turn:.0}°", at.0, at.1);
+    }
+    let laps: Vec<_> = passes
+        .iter()
+        .filter(|(_, turn)| turn.abs() > 400.0)
+        .collect();
     assert_eq!(wrong, Vec::new());
+    assert_eq!(
+        laps,
+        Vec::<&(LatLon, f64)>::new(),
+        "once round at most per pass"
+    );
 }
