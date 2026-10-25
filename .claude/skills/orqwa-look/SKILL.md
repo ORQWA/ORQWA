@@ -67,8 +67,10 @@ Blender Python; its header shows how to run it).
   on Low); colour and roughness as lossy WebP (quality 90), normal maps lossless WebP, about
   2 MB per material in the repository; VRAM-compressed with mipmaps on import. Share materials
   between models rather than baking per model. No Git LFS below about 150 MB of textures.
-- **Frame time:** 60 fps on Medium on an M1 (R43). Check `scripts/render-views.sh` timing and a
-  ride on the reference route after every group.
+- **Frame time:** 60 fps on Medium on an M1 (R43). After every group, measure it with
+  `scripts/perf/` (frame times on a Mac, draw calls and primitives in the container; see
+  [Measuring frame rate](../../../docs/development.md#measuring-frame-rate)) and ride the
+  reference route.
 - **Forest density (R103):** mapped woods have their own 4 m candidate grid within 300 m
   of the route and thin to an equivalent 10 m spacing beyond it. Keep wooded slopes wooded
   and clearings clear; scattered plants on open land use a separate 7 m grid. Check the

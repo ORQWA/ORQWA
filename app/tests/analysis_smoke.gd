@@ -83,6 +83,10 @@ func _fitness_and_weeks() -> void:
 		bands.append(FitnessChart.band(form))
 	_expect(bands, ["Transition", "Fresh", "Grey zone", "Optimal", "High risk"], "form bands")
 	_check(FitnessChart.short_date(86400 * 20738) == "12 Oct", "a short date")
+	var weeks: PackedStringArray = PackedStringArray()
+	for monday: int in [20738, 20724]:
+		weeks.append(FitnessChart.week_dates(86400 * monday))
+	_expect(weeks, ["12–18 Oct", "28 Sep – 4 Oct"], "a week's days, Monday to Sunday (R140)")
 	var tab: AnalysisTab = AnalysisTab.new()
 	root.add_child(tab)
 	var week: Dictionary = {
@@ -114,7 +118,8 @@ func _fitness_and_weeks() -> void:
 	tab.free()
 
 
-## Progress (R65): weeks named by their Monday, months by name, gaps where nothing was ridden.
+## Progress (R65): weeks named by their days (R140), months by name, gaps where nothing was
+## ridden.
 func _progress_chart() -> void:
 	var chart: TrendChart = TrendChart.new()
 	root.add_child(chart)
@@ -123,8 +128,8 @@ func _progress_chart() -> void:
 	var month: String = chart.call("_period_name", 1, true)
 	_check(month == "Oct 2026", "a month in full: %s" % month)
 	chart.set_periods(PackedInt64Array([86400 * 20738]), false)
-	var week: String = chart.call("_period_name", 0, false)
-	_check(week == "12 Oct", "a week by its Monday: %s" % week)
+	var week: String = chart.call("_period_name", 0, true)
+	_check(week == "12–18 Oct", "a week Monday to Sunday: %s" % week)
 	chart.add_series(PackedFloat64Array([250.0, -1.0]), Color.WHITE, "20 min", false, false)
 	var span: Vector2 = chart.call("_value_range")
 	_check(span.x < 250.0 and span.y > 250.0, "room around the values: %s" % span)

@@ -2951,10 +2951,6 @@ msgstr ""
 msgid "Wed"
 msgstr ""
 
-#: app/ui/trend_chart.gd app/ui/weekly_bars.gd
-msgid "Week of %s"
-msgstr ""
-
 #: app/scenes/analysis_tab.gd
 msgid "Weekly"
 msgstr ""
