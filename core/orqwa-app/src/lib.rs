@@ -480,6 +480,8 @@ enum JobResult {
     CourseAdded(Result<PathBuf, Failure>),
     /// The loaded route was saved as this course.
     CourseSaved(Result<PathBuf, Failure>),
+    /// A course's file was brought up to date: what the library shows of it changed.
+    CourseUpdated,
     /// The course at the first path has its own copy of its video at the second (#165).
     VideoKept(PathBuf, PathBuf),
     Upload(Box<uploads::Done>),
@@ -1003,6 +1005,10 @@ impl App {
         self.course = Some(path.clone());
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
+        // A course in the library takes the map detail of the regions here (R144): its file
+        // is brought up to date, and its kept world built again with it.
+        let ready = orqwa_osm::detail::installed(&cache.join("osm"));
+        let in_library = path.starts_with(self.courses_dir());
         self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
@@ -1051,29 +1057,24 @@ impl App {
                 });
             }
             let mut report = |stage, done, total| reporter.report(stage, done, total);
+            let carried = unpacked.manifest.clone();
+            let detail = detail_to_read(video.is_some(), &carried.map_detail, &ready);
             let mut imported = import_gpx(
                 unpacked.gpx,
                 &unpacked.manifest.name,
                 (&cache, true),
-                (video.is_some(), &unpacked.manifest.map_detail),
+                (video.is_some(), &detail),
                 &used,
                 &mut report,
             )
             .await
-            .map(|mut imported| {
-                // Older shared courses may know their country without having bundled the
-                // border tiles. A single known country gives a useful offline fallback.
-                if let Some(countries) = &unpacked.manifest.countries
-                    && let [country] = countries.as_slice()
-                {
-                    let left = traffic::keeps_left(Some(&country.code));
-                    for side in &mut imported.driving_left {
-                        side.get_or_insert(left);
-                    }
-                }
-                imported.name = unpacked.manifest.name;
-                imported
-            });
+            .map(|imported| as_carried(imported, &carried));
+            if let Ok(imported) = &imported
+                && in_library
+                && with_detail(&path, &carried, imported, (&cache, &used)).await
+            {
+                let _ = tx.send(JobResult::CourseUpdated);
+            }
             // The map of the course's land, from the tiles its file brought along (R70). A
             // course from before #236 lacks them, one from before #203 has a picture of its
             // corridor only: theirs comes online, for the minimap and a new picture.
@@ -3844,6 +3845,7 @@ impl App {
                     self.saving = None;
                     events.push(AppEvent::Error(message));
                 }
+                JobResult::CourseUpdated => events.push(AppEvent::CoursesChanged),
                 JobResult::VideoKept(course, kept) => {
                     if let Err(e) = refer_to_kept_video(&course, &kept) {
                         events.push(AppEvent::Error(Failure::new(Kind::SaveVideo, e)));
@@ -4129,6 +4131,85 @@ fn poll_sensor(
                 reports.batteries.remove(&kind);
                 break;
             }
+        }
+    }
+}
+
+/// A course's route `imported` again, named as the course `carried` it. Older shared courses
+/// may know their country without having bundled the border tiles: a single known country
+/// gives a useful offline fallback for the side traffic keeps to.
+fn as_carried(mut imported: Imported, carried: &Manifest) -> Imported {
+    if let Some(countries) = &carried.countries
+        && let [country] = countries.as_slice()
+    {
+        let left = traffic::keeps_left(Some(&country.code));
+        for side in &mut imported.driving_left {
+            side.get_or_insert(left);
+        }
+    }
+    imported.name.clone_from(&carried.name);
+    imported
+}
+
+/// The map detail extracts a course opened reads: for a video course, which rides its video,
+/// those it `carried`; else those of the regions `ready` here too (R144).
+fn detail_to_read(
+    video: bool,
+    carried: &[String],
+    ready: &[orqwa_osm::detail::Region],
+) -> Vec<String> {
+    if video {
+        carried.to_vec()
+    } else {
+        orqwa_osm::detail::for_course(carried, ready)
+    }
+}
+
+/// Brings the course file at `path`, which `carried` the manifest, up to date with the map
+/// detail its route was `imported` with, where that differs (R144): the detail's cells read
+/// (recorded in `used` under the cache) in place of those it carried, and the manifest's
+/// figures of the route matched with it. Whether it did; a file that cannot be written stays
+/// as it was.
+async fn with_detail(
+    path: &Path,
+    carried: &Manifest,
+    imported: &Imported,
+    (cache, used): (&Path, &UsedFiles),
+) -> bool {
+    if imported.map.detail.extracts() == carried.map_detail.as_slice() {
+        return false;
+    }
+    let route = &imported.route;
+    let manifest = Manifest {
+        map_detail: imported.map.detail.extracts().to_vec(),
+        length_m: route.length().0,
+        elevation_gain_m: route.elevation_gain().0,
+        max_grade_percent: route.max_grade().0,
+        track: thin(&view::track(route, PREVIEW_POINTS)),
+        profile: thin(&view::elevation_profile(route, PREVIEW_POINTS)),
+        ..carried.clone()
+    };
+    let under = format!("osm/{}", orqwa_osm::detail::VERSION);
+    let detail_dir = cache.join(&under);
+    let cells: Vec<PathBuf> = used
+        .paths()
+        .into_iter()
+        .filter(|file| file.starts_with(&detail_dir))
+        .collect();
+    let (path, cache) = (path.to_owned(), cache.to_owned());
+    let written = tokio::task::spawn_blocking(move || {
+        course::replace_data(&path, &manifest, (&cache, &under), &cells)
+    })
+    .await;
+    match written {
+        Ok(Ok(())) => true,
+        Ok(Err(error)) => {
+            warn!(%error, "course not brought up to date with the map detail");
+            false
+        }
+        Err(error) => {
+            warn!(%error, "course not brought up to date with the map detail");
+            false
         }
     }
 }

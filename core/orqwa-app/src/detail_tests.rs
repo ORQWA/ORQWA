@@ -158,13 +158,56 @@ fn a_course_prepared_with_a_regions_detail_carries_its_surfaces() {
     let surfaces = surfaces_on_opening(&dir, &cobbled, &street);
     assert!(!surfaces.is_empty() && surfaces.iter().all(|&s| s == RoadSurface::Cobbles));
 
-    // Prepared before the region was there, a course stays as it was.
+    // Prepared without the region and opened where it is not, a course stays as it was.
     let manifest = course::unpack(&plain_course, &dir.join("plain"))
         .unwrap()
         .manifest;
     assert_eq!(manifest.map_detail, Vec::<String>::new());
     let surfaces = surfaces_on_opening(&dir, &plain_course, &street);
     assert!(!surfaces.is_empty() && !surfaces.contains(&RoadSurface::Cobbles));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn a_course_in_the_library_takes_the_detail_of_a_region_downloaded_since_once_opened() {
+    let dir = temp_dir("detail-opened");
+    let cache = dir.join("cache");
+    let street = cache_with_tile(&cache);
+    let gpx = gpx_along(&dir, &street);
+    let mut app = App::new(dir.join("data"), cache.clone()).unwrap();
+    let course = prepare(&mut app, &gpx);
+    let before = course::fingerprint(&course).unwrap();
+    install_bern(&cache, &street);
+
+    app.open_course(course.clone());
+    let events = run_until(&mut app, |e| {
+        matches!(e, AppEvent::RouteLoaded(_) | AppEvent::Error(_))
+    });
+
+    assert!(
+        events.iter().any(|e| matches!(e, AppEvent::CoursesChanged)),
+        "the library shows it anew: {events:?}"
+    );
+    let WorldPlan::OnRequest(Some(map)) = &app.world_plan else {
+        panic!("no map data for the world");
+    };
+    let cobbled = map
+        .roads
+        .iter()
+        .filter(|r| r.line.iter().all(|p| street.line.contains(p)))
+        .all(|r| r.details.surface == RoadSurface::Cobbles);
+    assert!(cobbled, "its street is cobbled now");
+    app.shutdown();
+    let manifest = course::read_manifest(&course).unwrap();
+    assert_eq!(manifest.map_detail, [EXTRACT], "its file names the detail");
+    assert_ne!(
+        course::fingerprint(&course).unwrap(),
+        before,
+        "so its kept world is built again"
+    );
+    // And it carries the detail to a computer without the region.
+    let surfaces = surfaces_on_opening(&dir, &course, &street);
+    assert!(!surfaces.is_empty() && surfaces.iter().all(|&s| s == RoadSurface::Cobbles));
     std::fs::remove_dir_all(dir).unwrap();
 }
 

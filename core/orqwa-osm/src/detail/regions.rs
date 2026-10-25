@@ -193,6 +193,38 @@ pub fn installed(osm_dir: &Path) -> Vec<Region> {
     regions
 }
 
+/// The extracts a course opened here reads (R144): those of the regions ready here, and those
+/// it `carried` of regions that are not; a region's extract here takes the place of an older
+/// one the course carried.
+#[must_use]
+pub fn for_course(carried: &[String], ready: &[Region]) -> Vec<String> {
+    let mut extracts: Vec<String> = ready.iter().map(|region| region.extract.clone()).collect();
+    for extract in carried {
+        let here = ready
+            .iter()
+            .any(|region| region_of(extract) == Some(file_name(&region.id).as_str()));
+        if !here && !extracts.contains(extract) {
+            extracts.push(extract.clone());
+        }
+    }
+    extracts.sort();
+    extracts
+}
+
+/// The region of an extract's name: all but its date (`-yyyy-mm-dd`).
+fn region_of(extract: &str) -> Option<&str> {
+    let (region, date) = extract.split_at_checked(extract.len().checked_sub(11)?)?;
+    let digits = |range: std::ops::Range<usize>| date[range].bytes().all(|b| b.is_ascii_digit());
+    let dated = date.len() == 11
+        && date.as_bytes()[0] == b'-'
+        && date.as_bytes()[5] == b'-'
+        && date.as_bytes()[8] == b'-'
+        && digits(1..5)
+        && digits(6..8)
+        && digits(9..11);
+    dated.then_some(region)
+}
+
 /// Makes the map detail of region `id` from its download (see [`download_path`]), the file
 /// `source` Geofabrik served if known, and records it as ready under `name`. The extract of
 /// an earlier download of the region goes: courses prepared with it carry what they used.
@@ -351,6 +383,42 @@ mod tests {
         assert_eq!(left, ["germany"]);
         assert!(!osm.join(VERSION).join(&bern.extract).exists());
         fs::remove_dir_all(osm).unwrap();
+    }
+
+    #[test]
+    fn a_course_opened_reads_the_regions_here_and_its_own_of_the_others() {
+        let ready = |id: &str, extract: &str| Region {
+            id: id.to_owned(),
+            name: id.to_owned(),
+            extract: extract.to_owned(),
+            data_time: None,
+            source: None,
+        };
+        let here = [
+            ready("switzerland", "switzerland-2026-11-20"),
+            ready("us/california", "us-california-2026-11-20"),
+        ];
+        let carried = [
+            "switzerland-2026-10-24".to_owned(),
+            "france-2026-10-24".to_owned(),
+            "us-california-2026-10-01".to_owned(),
+        ];
+
+        assert_eq!(
+            for_course(&carried, &here),
+            [
+                "france-2026-10-24",
+                "switzerland-2026-11-20",
+                "us-california-2026-11-20"
+            ]
+        );
+        assert_eq!(for_course(&carried, &[]), {
+            let mut own = carried.to_vec();
+            own.sort();
+            own
+        });
+        assert_eq!(region_of("bern-2026-10-24"), Some("bern"));
+        assert_eq!(region_of("bern-latest"), None);
     }
 
     #[test]

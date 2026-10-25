@@ -134,6 +134,6 @@ generator is ridden until the rider has it built again.
 A course prepared while the rider has a region's map detail carries the cells it read, as it
 carries its tiles: `data/osm/detail-v1/<region>-<date of the data>/12/<x>/<y>.json`. The
 manifest's optional `map_detail` names their extracts, and opening the course reads exactly
-those, so it comes out the same on any computer, with the region downloaded or not. A course
-prepared without names none and reads none, even where a region is downloaded later. Format 1
-stays: older ORQWA versions leave both unread.
+those, so it comes out the same on any computer, with the region downloaded or not. Format 1
+stays: older ORQWA versions leave both unread. Opened in the library of a computer with a
+region's detail ready, a course takes it and its file is rewritten with it (R144, ADR 0033).

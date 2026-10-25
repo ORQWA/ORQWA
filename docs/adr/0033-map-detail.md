@@ -43,9 +43,10 @@ The data is in OpenStreetMap. Getting it per course was weighed against each ser
   A way is whole in every zoom-12 cell it passes; its id keeps it once across cells and
   regions. The date makes each path stand for one content, as course files expect (ADR 0007).
   `detail-v1` is raised when an extract's content changes.
-- **Only courses prepared afterwards use it.** They carry the cells they used, as they carry
-  their tiles, and name the extracts in their manifest; opening a course uses exactly those
-  (ADR 0007, amendment of 2026-10-25). Video courses ride their video and use none.
+- **Only courses prepared afterwards use it** (superseded below: library courses take it
+  when opened, R144). They carry the cells they used, as they carry their tiles, and name the
+  extracts in their manifest (ADR 0007, amendment of 2026-10-25). Video courses ride their
+  video and use none.
 - **A region is ready** when its record, `osm/geofabrik/<id>.json` (`id`, `name`, `extract`,
   `data_time`), names an extract that is there; installing a newer download of it removes the
   older extract.
@@ -106,3 +107,19 @@ cuts straight across a small ring, as at a mini-roundabout in Biel whose exit th
 - Downloads take room: 0.5–5 GB for a country, beside an extract of tens to hundreds of MB.
 - The data stays © OpenStreetMap contributors (ODbL 1.0); the cells a course carries share it
   under the same licence, credited as its tiles are.
+
+## Amendment 2026-10-25 — courses opened take the detail (R144)
+
+Riders expected a course already in their library to look right once they downloaded its
+region; deleting and importing it again was the only way, and importing the same file opens
+the course already there. Now a library course opened reads the extracts of the regions ready
+on this computer, in place of an older extract of the same region it carries, and keeps those
+it carries of regions not downloaded here (`detail::for_course`). Where that changes what it
+carries, the opening brings its file up to date before the route is reported: the manifest's
+`map_detail`, length, climbing and previews from the route matched with the detail, and the
+cells under `data/osm/detail-v1/` in place of the old (`course::replace_data`; the rest of
+the file is copied unchanged). The file's fingerprint changes with it, so its kept world is
+built again on the next ride (R101) and the old one is tidied away. The route key comes from
+the track as recorded, so the rider's records on the course stay its own. A course opened
+from outside the library, or with no region ready, stays as it was; a video course keeps
+what it carries.
