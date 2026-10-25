@@ -55,6 +55,16 @@ static func short_date(unix_s: int) -> String:
 	return "%s %s" % [parts[1], parts[2]] if parts.size() >= 3 else ""
 
 
+## "19–25 Oct": a week's days, Monday to Sunday, from its Monday's start; "28 Sep – 4 Oct"
+## across two months. Its Monday alone reads as that day, not as the week.
+static func week_dates(monday_unix_s: int) -> String:
+	var first: String = short_date(monday_unix_s)
+	var last: String = short_date(monday_unix_s + 6 * 86400)
+	if first.get_slice(" ", 1) == last.get_slice(" ", 1):
+		return "%s–%s" % [first.get_slice(" ", 0), last]
+	return "%s – %s" % [first, last]
+
+
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 

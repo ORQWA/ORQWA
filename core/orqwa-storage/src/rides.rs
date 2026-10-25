@@ -381,7 +381,8 @@ pub fn export_file_name(title: &str) -> String {
     format!("{}.fit", if stem.is_empty() { "ride" } else { stem })
 }
 
-/// The FIT files in `dir`, newest first (file names start with the UTC start time).
+/// The FIT files in `dir`, by name. Their order says nothing of when they were ridden: see
+/// [`newest_first`].
 #[must_use]
 pub fn fit_files(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir) else {
@@ -392,8 +393,14 @@ pub fn fit_files(dir: &Path) -> Vec<PathBuf> {
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("fit")))
         .collect();
-    files.sort_by(|a, b| b.cmp(a));
+    files.sort();
     files
+}
+
+/// Orders `rides` newest first by when they started. Their file names cannot tell: Torqa
+/// named its rides `torqa-…`, which sorts after every `orqwa-…` ride ridden since (R102).
+pub fn newest_first(rides: &mut [(PathBuf, RideRecord)]) {
+    rides.sort_by(|(a_fit, a), (b_fit, b)| b.start.cmp(&a.start).then_with(|| b_fit.cmp(a_fit)));
 }
 
 #[cfg(test)]
@@ -599,25 +606,48 @@ mod tests {
     }
 
     #[test]
-    fn lists_fit_files_newest_first() {
+    fn lists_the_fit_files_alone() {
         let dir = temp_dir("list");
-        for name in [
-            "orqwa-20260101-080000.fit",
-            "orqwa-20261001-080000.fit",
-            "notes.txt",
-        ] {
+        for name in ["orqwa-20261001-080000.fit", "Imported.FIT", "notes.txt"] {
             std::fs::write(dir.join(name), b"").unwrap();
         }
 
-        let names: Vec<String> = fit_files(&dir)
+        let mut names: Vec<String> = fit_files(&dir)
             .iter()
             .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
             .collect();
+        names.sort();
 
+        assert_eq!(names, ["Imported.FIT", "orqwa-20261001-080000.fit"]);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn rides_from_torqa_and_orqwa_come_newest_first() {
+        let ride = |name: &str, secs: u64| {
+            let record = RideRecord {
+                start: UNIX_EPOCH + Duration::from_secs(secs),
+                ..record()
+            };
+            (PathBuf::from(name), record)
+        };
+        // 2026-10-19 and 2026-10-24, after the rename; 2026-10-12, before it.
+        let mut rides = vec![
+            ride("orqwa-20261019-071500.fit", 1_792_394_100),
+            ride("torqa-20261012-071500.fit", 1_791_789_300),
+            ride("orqwa-20261024-071500.fit", 1_792_826_100),
+        ];
+
+        newest_first(&mut rides);
+
+        let names: Vec<&str> = rides.iter().map(|(fit, _)| fit.to_str().unwrap()).collect();
         assert_eq!(
             names,
-            ["orqwa-20261001-080000.fit", "orqwa-20260101-080000.fit"]
+            [
+                "orqwa-20261024-071500.fit",
+                "orqwa-20261019-071500.fit",
+                "torqa-20261012-071500.fit",
+            ]
         );
-        std::fs::remove_dir_all(dir).unwrap();
     }
 }

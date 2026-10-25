@@ -749,6 +749,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
 - [x] Progress (R65): the best 1 / 5 / 20 min week by week or month by month, the FTP over time
   and the FTP tests; an FTP estimated from the last 90 days' best efforts (Morton's
   three-parameter critical power, else 95 % of 20 min) offered, never applied
+- [x] Weeks named by their days, Monday to Sunday ("19–25 Oct"), on the weekly bars and the
+  progress chart (R140); the history newest first by start again, Torqa's rides included (R139)
 - **Exit:** a season of real rides shows where the rider got stronger, and how fit and fresh
   they are, without leaving ORQWA
 
