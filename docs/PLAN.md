@@ -543,7 +543,9 @@ physically based materials and light, restyled group by group.
       plants keep off them
     - [x] Mapped railway tunnels stay below valley terrain even with only one known
       surface approach; lower their profiles with continuous railway-grade approaches.
-      Check Zürich at 3.84 km to go and the saved Alpenbrevet Oberalp section (generator 35, R139).
+      Check Zürich at 3.84 km to go and the saved Alpenbrevet Oberalp section (generator 35, R141).
+      Reserve full portal clearance below road cuttings, including road tunnel tags that
+      open later; inspect the western Oberalp lake mouth at 10.78 km from the start.
     - [x] A wider view in the mountains: coarse land (240 m facets, from zoom-10 terrain tiles)
       beyond the 1.5 km corridor out to 12 km, coloured by its shape (meadow, forest, lakes;
       rock and snow by the shader), fading into the haze, so the edge of the map never shows

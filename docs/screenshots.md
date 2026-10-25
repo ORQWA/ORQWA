@@ -149,7 +149,7 @@ camera above and beside the transition, with vegetation and buildings omitted.
 
 ### Underground railway profiles
 
-Generator 35 keeps mapped railway tunnels below valley terrain (R139). The Zürich report
+Generator 35 keeps mapped railway tunnels below valley terrain (R141). The Zürich report
 is at **3.84 km to go**, approximately 33.776 km into the full saved course: the old estimate
 extended a connected surface section's height through the tunnel, placing tracks at roughly
 414 m elevation, above terrain near 405 m. The new profile is near 397 m there, leaving the river and
@@ -165,6 +165,18 @@ buildings and vegetation are omitted.
 |---|---|---|
 | Zürich river crossing | ![Railway tunnel shell above the river](images/issues/zurich-railway-tunnel-before.jpg) | ![River and road bridge clear of the underground railway](images/issues/zurich-railway-tunnel-after.jpg) |
 | Oberalp summit | ![Exposed railway tunnel roof on the hillside](images/issues/oberalp-railway-tunnel-before.jpg) | ![Railway tunnel below the hillside](images/issues/oberalp-railway-tunnel-after.jpg) |
+
+The close-up correction below is at the **western Oberalp lake portal, 10.782 km from the
+start** of the full saved Alpenbrevet Gold course (about 199.96 km to go). Checking natural
+terrain cover alone left the full-height stone collar above a tube compressed beneath the
+road. The track profile now reserves the complete portal envelope below the road cutting,
+including road sections whose tunnel tags are opened as approaches later. The road and
+its bank stay clear without inventing a hill over the railway. A nearby lower railway
+entrance at 3.015 km was checked with the same camera and retains its opening.
+
+| Portal through the road bank | Underground clearance below the road |
+|---|---|
+| ![Freestanding railway arch and exposed tube beside the road](images/issues/oberalp-portal-road-before.jpg) | ![Continuous road bank with the railway below it](images/issues/oberalp-portal-road-after.jpg) |
 
 ### Railway bridge approaches
 

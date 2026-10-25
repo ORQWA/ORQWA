@@ -742,6 +742,15 @@ pub(crate) fn tube(railway: bool) -> (f64, f64) {
     (half, arch_height(half, railway))
 }
 
+/// Outer width around each track and headroom for the tallest bundled railway portal.
+/// Clearance includes its stone collar and ground cover, not only the inner tube.
+pub(crate) fn railway_portal_envelope() -> (f64, f64) {
+    (
+        RAIL_TUNNEL_RADIUS + COLLAR_WIDTH,
+        TUNNEL_HEIGHT + COLLAR_WIDTH + PORTAL_COVER,
+    )
+}
+
 /// How high a tunnel's arch rises over a tube `half` wide: the road ridden's a semicircle,
 /// flattened past `TUNNEL_HEIGHT`; a railway's at least `RAIL_TUNNEL_HEIGHT`, so a single track's
 /// is taller than wide.

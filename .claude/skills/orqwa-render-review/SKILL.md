@@ -182,13 +182,18 @@ For railway transitions, check Alpenbrevet around 102.99 and 98.74 km to go (107
 clearance, with gentle approaches in both tracks. Nearby tracks at different vertical levels
 must not share elevation pins. Retain true level crossings and road/rail underpass clearance.
 
-For underground railway profiles (R139), check the saved Zürich course at 3.84 km to go
+For underground railway profiles (R141), check the saved Zürich course at 3.84 km to go
 (33.776 km from the start), looking across the river bridge, and Alpenbrevet's Oberalp
 summit around 11–12.3 km from the start. Tunnel tags alone do not supply surveyed track
 heights: a profile extended from one connected surface approach can float above a valley.
 Check the whole arch below terrain/water, smooth approaches and shared parallel portals;
 do not hide the error under an artificial hill. Retain real portals where tags extend
 beyond the hillside and independent railway bridges.
+Include the western Oberalp lake portal at 10.782 km from the saved Alpenbrevet Gold start
+(about 199.96 km to go). Inspect it close up from above and from the road: a stone ring
+above the road and an exposed flattened tube are failures even when the centre line is
+below the DEM. Check the full collar and ground backing after road cuts and portal opening;
+road sections still tagged as tunnels during railway layout can become open approaches.
 
 At bridge junctions, check the end height and the kerb and railing opening from the ridden
 road. Compare a connection at deck level with an overpass at a different height; only the

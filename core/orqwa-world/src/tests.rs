@@ -949,7 +949,7 @@ async fn railways_tunnel_through_hills_rather_than_climb_them() {
 #[tokio::test]
 async fn railway_tunnels_under_the_road_stay_below_it() {
     // Flat land 3 m below the road ridden (500 m), which crosses it on an embankment, and a line
-    // passing under it at 500 m in a tunnel 240 m long (#138, R139). The estimated railway
+    // passing under it at 500 m in a tunnel 240 m long (#138, R141). The estimated railway
     // profile must leave room for its arch beneath the land as well as the road.
     struct Low;
     impl ElevationModel for Low {

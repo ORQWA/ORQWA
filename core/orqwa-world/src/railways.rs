@@ -205,7 +205,7 @@ fn lay_out(
     // Infer rack grades from the hillside before underground cover lowers the track.
     let limit =
         (!funicular).then(|| MAX_GRADE.max(sustained_grade(&heights, &along).min(RACK_MAX_GRADE)));
-    bury_tunnels(points, &mut heights, &along, limit);
+    bury_tunnels(points, &mut heights, &along, limit, road);
     let mut surfaces: Vec<Surface> = points.iter().map(|p| p.surface).collect();
     let mut pins = crossings(points, &surfaces, road);
     let beside: Vec<Option<(f64, Surface)>> = (0..points.len())
@@ -275,7 +275,13 @@ fn lay_out(
 /// A mapped tunnel is underground even where its interpolated or extrapolated portal heights
 /// would put it above a valley. Lower its profile for cover, spreading the descent into its
 /// approaches without inventing a hill over the railway or steps at its mapped boundaries.
-fn bury_tunnels(points: &[Point], heights: &mut [f64], along: &[f64], limit: Option<f64>) {
+fn bury_tunnels(
+    points: &[Point],
+    heights: &mut [f64],
+    along: &[f64],
+    limit: Option<f64>,
+    road: &RoadIndex,
+) {
     let mut changed = false;
     let mut start = 0;
     while start < points.len() {
@@ -312,6 +318,7 @@ fn bury_tunnels(points: &[Point], heights: &mut [f64], along: &[f64], limit: Opt
         }
         start = end;
     }
+    changed |= cover_below_roads(points, heights, road);
     if !changed {
         return;
     }
@@ -332,6 +339,42 @@ fn bury_tunnels(points: &[Point], heights: &mut [f64], along: &[f64], limit: Opt
     for k in (0..heights.len() - 1).rev() {
         heights[k] = heights[k].min(heights[k + 1] + limit * (along[k + 1] - along[k]));
     }
+}
+
+/// A road cutting can remove the cover the natural terrain appeared to provide. Its portal
+/// fitting happens later: a route still tagged as tunnel here may become an open approach.
+fn cover_below_roads(points: &[Point], heights: &mut [f64], road: &RoadIndex) -> bool {
+    let (radius, cover) = crate::structures::railway_portal_envelope();
+    let mut changed = false;
+    for (point, height) in points.iter().zip(heights) {
+        let Some(natural) = point.terrain else {
+            continue;
+        };
+        // Leave overlong tunnel tags on genuinely open approaches for `open_portals`.
+        if point.surface != Surface::Tunnel || natural - *height < TUNNEL_COVER - 1e-9 {
+            continue;
+        }
+        let roads: Vec<_> = road
+            .near_shaped(
+                point.position.0,
+                point.position.1,
+                crate::LEVEL_REACH + radius,
+            )
+            .into_iter()
+            .filter(|r| r.1 >= *height)
+            // The closest edge of the outer arch can be on the road even when the track
+            // centre is beyond its verge. Include the collar and parallel-track headroom.
+            .map(|(distance, elevation, _)| {
+                ((distance - radius).max(0.0), elevation, Surface::Ground)
+            })
+            .collect();
+        if !roads.is_empty() {
+            let ceiling = crate::shape(natural, &roads) - cover;
+            changed |= *height > ceiling;
+            *height = height.min(ceiling);
+        }
+    }
+    changed
 }
 
 /// Heights everywhere from those known: straight between known ones, level beyond the first
@@ -515,8 +558,46 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_covered_railway_approach_clears_the_road_cut_with_its_complete_portal() {
+        for surface in [Surface::Ground, Surface::Tunnel] {
+            let road = RoadIndex::from_lines(&[(0..=200)
+                .map(|i| Centre {
+                    position: (0.0, f64::from(i) * STEP_M),
+                    elevation: 500.0,
+                    distance: f64::from(i) * STEP_M,
+                    surface,
+                    mapped: true,
+                })
+                .collect()]);
+            let points: Vec<_> = (0..=200)
+                .map(|i| Point {
+                    position: (6.0, f64::from(i) * STEP_M),
+                    surface: if (60..=140).contains(&i) {
+                        Surface::Tunnel
+                    } else {
+                        Surface::Ground
+                    },
+                    terrain: Some(if (60..=140).contains(&i) {
+                        510.0
+                    } else {
+                        497.0
+                    }),
+                })
+                .collect();
+            let line = lay_out(&points, false, &road, &RoadIndex::from_lines(&[])).unwrap();
+            let heights: Vec<_> = line.iter().map(|p| p.elevation).collect();
+            let along: Vec<_> = line.iter().map(|p| p.distance).collect();
+            assert!(grade_at(&heights, &along) <= MAX_GRADE + 1e-9);
+            // R141: natural cover alone hid this failure. The full portal must fit below
+            // the road even before its overlong tunnel tags are opened onto the ground.
+            let crown = crate::structures::tube(true).1;
+            assert!(line[100].elevation + crown + 1.0 < 500.0 - crate::ROAD_SINK);
+        }
+    }
+
+    #[test]
     fn mapped_tunnels_stay_below_a_valley_with_one_or_two_known_portals() {
-        // R139: a tunnel crossing a valley, with only its far approach in the saved tiles
+        // R141: a tunnel crossing a valley, with only its far approach in the saved tiles
         // (Zürich), or both approaches around a valley. Surface heights are not track heights.
         for one_portal in [false, true] {
             let points: Vec<_> = (0..=400)

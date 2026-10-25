@@ -36,6 +36,11 @@ known approach's height through a tunnel can otherwise put it above a valley (Z�
 3.84 km remaining). Generator 35 lowers mapped tunnels below the terrain and propagates
 those reductions into their approaches at railway grades, without raising the terrain over
 them. The same rule covers interpolated profiles between two approaches.
+Natural cover alone is insufficient beside a road cutting. Profiles also leave room for
+the complete railway portal below the road's shaped ground, including road sections whose
+tunnel tags are later opened as approaches. This prevents a full-height stone collar from
+standing over a compressed tube or cutting through the road, as at the western Oberalp lake
+portal on the saved Alpenbrevet Gold course.
 
 - The same 36 km line now loads in **5 s cold, 1 s for map data** with no failures.
 - Attribution: "© OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors".

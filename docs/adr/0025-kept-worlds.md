@@ -271,7 +271,11 @@ Generator 35 constrains estimated mapped railway tunnel profiles below valley te
 including lines with only one known surface approach. Height reductions spread into the
 approaches at railway grades, with rack grades inferred before lowering. Mapped stretches
 outside real portals still open onto the ground; tile-cut tunnel ends retain underground
-cover. No terrain hill is invented over the railway. Saved course inputs suffice offline;
+cover. Profiles also reserve the complete portal envelope below nearby road cuttings,
+including the outer collar and bundled-track headroom. The constraint uses the ridden
+road's height even while its tags still say tunnel: road portal fitting may later open
+that stretch onto the ground. Height reductions retain the railway's grade limit.
+No terrain hill is invented over the railway. Saved course inputs suffice offline;
 stored format remains 3.
 
 ## Amendment — 2026-10-24: one world at a time
