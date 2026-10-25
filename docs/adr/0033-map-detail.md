@@ -1,8 +1,9 @@
 # ADR 0033 — Map detail from Geofabrik region downloads
 
-- Status: accepted (steps 1 and 2 of 4: the reader and the extractor; surfaces in prepared courses)
+- Status: accepted (steps 1–3 of 4: the reader and the extractor; surfaces in prepared courses;
+  the setting and the downloads)
 - Date: 2026-10-25
-- Requirements: R119, R126, R3, R32, R101
+- Requirements: R142, R119, R126, R3, R32, R101
 
 ## Context
 
@@ -50,6 +51,16 @@ The data is in OpenStreetMap. Getting it per course was weighed against each ser
   older extract.
 - **Roads take the surfaces** of the mapped ways along them after the route is matched (ADR
   0031, amendment of 2026-10-25): route matching sees the tiles' roads unchanged.
+- **Downloads** (R142): the rider's list comes from Geofabrik's `index-v1-nogeom.json`, kept in
+  the cache to name regions offline; continents are only headings. A region's `-latest`
+  address leads to its dated file, whose size a `HEAD` request tells before the download and
+  whose name the record keeps as `source`: asking again with that name unchanged is "up to
+  date". A download is written beside its final name with the dated name next to it, and a
+  later attempt at the same file goes on with an HTTP range; only a whole one replaces the
+  earlier download. Reading stops between blobs when asked; the earlier extract stays ready.
+  One region at a time. Downloads in the cache without a ready record — put there by hand, or
+  stopped while being read — are prepared when the setting is turned on and at start-up.
+  Turning the setting off asks first, then deletes every region.
 - Four steps, each a PR: the reader and extractor; surfaces in prepared courses; the setting,
   downloads and their list; roundabouts.
 
@@ -70,7 +81,8 @@ under 1 GB. Coordinates stored as differences would make extracts smaller if tha
 
 ## Consequences
 
-- A new server, `download.geofabrik.de`, joins the wiki's list when downloads arrive (step 3).
+- A new server, `download.geofabrik.de`, is in the wiki's list of servers ORQWA contacts: only
+  when the rider lists, adds or updates a region in the settings.
 - Downloads take room: 0.5–5 GB for a country, beside an extract of tens to hundreds of MB.
 - The data stays © OpenStreetMap contributors (ODbL 1.0); the cells a course carries share it
   under the same licence, credited as its tiles are.

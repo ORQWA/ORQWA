@@ -634,7 +634,7 @@ physically based materials and light, restyled group by group.
     concrete, dirt, grass) and the roundabouts come from them, for courses prepared afterwards
     - [x] Own `.osm.pbf` reader and extractor; `orqwa-cli detail` measures a region
     - [x] Surfaces in prepared courses, carried in their course files
-    - [ ] Settings → Courses: the setting, the regions downloaded to update or delete
+    - [x] Settings → Courses: the setting, the regions downloaded to update or delete (R142)
     - [ ] Roundabouts ridden the way traffic goes where the detail maps them
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked

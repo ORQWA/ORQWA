@@ -3,6 +3,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 
 use serde::{Deserialize, Serialize};
 
@@ -24,6 +25,10 @@ pub struct Region {
     /// When its data was current (Unix seconds), if the download says.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_time: Option<i64>,
+    /// The file Geofabrik served, dated, e.g. `switzerland-261024.osm.pbf`: a newer one is an
+    /// update. `None` for a download ORQWA did not make itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 /// Where region `id`'s download goes in the map cache `osm_dir`.
@@ -38,6 +43,136 @@ fn record_path(osm_dir: &Path, id: &str) -> PathBuf {
     osm_dir
         .join(DOWNLOADS)
         .join(format!("{}.json", file_name(id)))
+}
+
+/// Where a download of region `id` cut short lies, to go on with.
+pub(crate) fn partial_path(osm_dir: &Path, id: &str) -> PathBuf {
+    with_suffix(&download_path(osm_dir, id), ".part")
+}
+
+/// Beside a download, whole or cut short: the file Geofabrik served, dated.
+pub(crate) fn source_path(download: &Path) -> PathBuf {
+    with_suffix(download, ".name")
+}
+
+fn with_suffix(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = path.as_os_str().to_owned();
+    name.push(suffix);
+    PathBuf::from(name)
+}
+
+/// The file Geofabrik served for region `id`'s whole download, if ORQWA downloaded it.
+#[must_use]
+pub fn download_source(osm_dir: &Path, id: &str) -> Option<String> {
+    let download = download_path(osm_dir, id);
+    if !download.is_file() {
+        return None;
+    }
+    fs::read_to_string(source_path(&download)).ok()
+}
+
+/// A region in the map cache: its download, whole or cut short, and its detail once made.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Kept {
+    /// Geofabrik's name for it; without a record, that of its download's file.
+    pub id: String,
+    /// Its record, once its detail is ready.
+    pub ready: Option<Region>,
+    /// Whether its download is whole: ready, or to make the detail of.
+    pub downloaded: bool,
+    /// The bytes its download, a download cut short and its detail take together.
+    pub size: u64,
+}
+
+/// The regions in the map cache `osm_dir`, by id: those with a download, whole or cut short,
+/// or with detail ready.
+#[must_use]
+pub fn kept(osm_dir: &Path) -> Vec<Kept> {
+    let ready = installed(osm_dir);
+    let mut ids: Vec<String> = ready.iter().map(|region| region.id.clone()).collect();
+    if let Ok(entries) = fs::read_dir(osm_dir.join(DOWNLOADS)) {
+        for entry in entries.filter_map(Result::ok) {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let stem = name
+                .strip_suffix(".osm.pbf")
+                .or_else(|| name.strip_suffix(".osm.pbf.part"));
+            if let Some(stem) = stem
+                && !ids.iter().any(|id| file_name(id) == stem)
+            {
+                ids.push(stem.to_owned());
+            }
+        }
+    }
+    ids.sort();
+    ids.into_iter()
+        .map(|id| {
+            let region = ready.iter().find(|r| r.id == id).cloned();
+            let download = download_path(osm_dir, &id);
+            let mut size = [download.clone(), partial_path(osm_dir, &id)]
+                .iter()
+                .filter_map(|path| fs::metadata(path).ok())
+                .map(|meta| meta.len())
+                .sum();
+            if let Some(region) = &region {
+                size += dir_size(&osm_dir.join(VERSION).join(&region.extract));
+            }
+            Kept {
+                downloaded: download.is_file(),
+                ready: region,
+                id,
+                size,
+            }
+        })
+        .collect()
+}
+
+fn dir_size(dir: &Path) -> u64 {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .filter_map(Result::ok)
+        .map(|entry| match entry.file_type() {
+            Ok(kind) if kind.is_dir() => dir_size(&entry.path()),
+            Ok(_) => entry.metadata().map_or(0, |meta| meta.len()),
+            Err(_) => 0,
+        })
+        .sum()
+}
+
+/// Deletes region `id` from the map cache `osm_dir`: its download, whole or cut short, its
+/// record and its detail. Courses prepared with it carry what they used. One already gone is
+/// no error.
+///
+/// # Errors
+/// [`OsmError::Cache`] if a file is there but cannot be deleted.
+pub fn remove(osm_dir: &Path, id: &str) -> Result<(), OsmError> {
+    let record = record_path(osm_dir, id);
+    let region: Option<Region> = fs::read(&record)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok());
+    // The record first: a region half deleted is never ready.
+    let download = download_path(osm_dir, id);
+    let partial = partial_path(osm_dir, id);
+    for file in [
+        record,
+        source_path(&download),
+        download,
+        source_path(&partial),
+        partial,
+    ] {
+        match fs::remove_file(&file) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(error.into()),
+            _ => {}
+        }
+    }
+    if let Some(region) = region {
+        let extract = osm_dir.join(VERSION).join(file_name(&region.extract));
+        if extract.is_dir() {
+            fs::remove_dir_all(extract)?;
+        }
+    }
+    Ok(())
 }
 
 /// The regions whose map detail is ready in the map cache `osm_dir`, by id; a record whose
@@ -58,24 +193,27 @@ pub fn installed(osm_dir: &Path) -> Vec<Region> {
     regions
 }
 
-/// Makes the map detail of region `id` from its download (see [`download_path`]) and records
-/// it as ready under `name`. The extract of an earlier download of the region goes: courses
-/// prepared with it carry what they used.
+/// Makes the map detail of region `id` from its download (see [`download_path`]), the file
+/// `source` Geofabrik served if known, and records it as ready under `name`. The extract of
+/// an earlier download of the region goes: courses prepared with it carry what they used.
+/// Once `stop` is set, it stops, the earlier extract still ready.
 ///
 /// # Errors
 /// [`OsmError::Cache`] if the download cannot be read or the detail written,
-/// [`OsmError::Invalid`] if it is no OpenStreetMap download this can read.
+/// [`OsmError::Invalid`] if it is no OpenStreetMap download this can read,
+/// [`OsmError::Stopped`] once stopped.
 pub fn install(
     osm_dir: &Path,
-    id: &str,
-    name: &str,
+    (id, name, source): (&str, &str, Option<&str>),
     progress: &mut dyn FnMut(Stage, u64, u64),
+    stop: &AtomicBool,
 ) -> Result<Region, OsmError> {
     let made = extract(
         &download_path(osm_dir, id),
         &osm_dir.join(VERSION),
         id,
         progress,
+        stop,
     )?;
     let record = record_path(osm_dir, id);
     let earlier: Option<Region> = fs::read(&record)
@@ -86,6 +224,7 @@ pub fn install(
         name: name.to_owned(),
         extract: made.name,
         data_time: made.data_time,
+        source: source.map(ToOwned::to_owned),
     };
     let json = serde_json::to_vec_pretty(&region).map_err(|e| OsmError::Invalid(e.to_string()))?;
     let aside = record.with_extension("json.part");
@@ -126,7 +265,13 @@ mod tests {
         assert_eq!(installed(&osm), []);
         fs::write(download_path(&osm, "bern"), test_file(&SETT, 1_792_875_600)).unwrap();
 
-        let region = install(&osm, "bern", "Bern", &mut |_, _, _| {}).unwrap();
+        let region = install(
+            &osm,
+            ("bern", "Bern", None),
+            &mut |_, _, _| {},
+            &AtomicBool::new(false),
+        )
+        .unwrap();
 
         assert_eq!(region.extract, "bern-2026-10-24");
         assert_eq!(installed(&osm), vec![region]);
@@ -137,11 +282,23 @@ mod tests {
     fn a_newer_download_replaces_the_extract_of_the_earlier() {
         let osm = cache("update");
         fs::write(download_path(&osm, "bern"), test_file(&SETT, 1_792_875_600)).unwrap();
-        install(&osm, "bern", "Bern", &mut |_, _, _| {}).unwrap();
+        install(
+            &osm,
+            ("bern", "Bern", None),
+            &mut |_, _, _| {},
+            &AtomicBool::new(false),
+        )
+        .unwrap();
         // A day later.
         fs::write(download_path(&osm, "bern"), test_file(&SETT, 1_792_962_000)).unwrap();
 
-        let region = install(&osm, "bern", "Bern", &mut |_, _, _| {}).unwrap();
+        let region = install(
+            &osm,
+            ("bern", "Bern", None),
+            &mut |_, _, _| {},
+            &AtomicBool::new(false),
+        )
+        .unwrap();
 
         assert_eq!(region.extract, "bern-2026-10-25");
         assert_eq!(installed(&osm), vec![region]);
@@ -151,10 +308,62 @@ mod tests {
     }
 
     #[test]
+    fn the_regions_kept_are_listed_with_their_room_ready_or_not_and_deleted_whole() {
+        let osm = cache("kept");
+        fs::write(download_path(&osm, "bern"), test_file(&SETT, 1_792_875_600)).unwrap();
+        let bern = install(
+            &osm,
+            ("bern", "Bern", Some("bern-261024.osm.pbf")),
+            &mut |_, _, _| {},
+            &AtomicBool::new(false),
+        )
+        .unwrap();
+        // A download put there by hand, its detail not made yet, and one cut short.
+        fs::write(download_path(&osm, "germany"), [0; 700]).unwrap();
+        fs::write(partial_path(&osm, "us/california"), [0; 300]).unwrap();
+
+        let listed = kept(&osm);
+
+        let ids: Vec<_> = listed
+            .iter()
+            .map(|k| (k.id.as_str(), k.downloaded))
+            .collect();
+        assert_eq!(
+            ids,
+            [("bern", true), ("germany", true), ("us-california", false)]
+        );
+        assert_eq!(listed[0].ready.as_ref(), Some(&bern));
+        assert_eq!(
+            listed[0].ready.as_ref().unwrap().source.as_deref(),
+            Some("bern-261024.osm.pbf")
+        );
+        let extract = dir_size(&osm.join(VERSION).join(&bern.extract));
+        assert!(extract > 0);
+        let download = fs::metadata(download_path(&osm, "bern")).unwrap().len();
+        assert_eq!(listed[0].size, download + extract);
+        assert_eq!((listed[1].ready.is_none(), listed[1].size), (true, 700));
+        assert_eq!(listed[2].size, 300);
+
+        remove(&osm, "bern").unwrap();
+        remove(&osm, "us/california").unwrap();
+        remove(&osm, "bern").expect("one already gone is no error");
+        let left: Vec<_> = kept(&osm).into_iter().map(|k| k.id).collect();
+        assert_eq!(left, ["germany"]);
+        assert!(!osm.join(VERSION).join(&bern.extract).exists());
+        fs::remove_dir_all(osm).unwrap();
+    }
+
+    #[test]
     fn a_region_without_its_extract_is_not_ready() {
         let osm = cache("gone");
         fs::write(download_path(&osm, "bern"), test_file(&SETT, 1_792_875_600)).unwrap();
-        let region = install(&osm, "bern", "Bern", &mut |_, _, _| {}).unwrap();
+        let region = install(
+            &osm,
+            ("bern", "Bern", None),
+            &mut |_, _, _| {},
+            &AtomicBool::new(false),
+        )
+        .unwrap();
         fs::remove_dir_all(osm.join(VERSION).join(&region.extract)).unwrap();
 
         assert_eq!(installed(&osm), []);

@@ -48,6 +48,9 @@ pub enum OsmError {
     /// Reading or writing the cache failed.
     #[error("map cache: {0}")]
     Cache(#[from] std::io::Error),
+    /// Stopped as asked, before it was done.
+    #[error("stopped")]
+    Stopped,
 }
 
 /// What covers an area of land.

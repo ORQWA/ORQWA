@@ -95,6 +95,10 @@ msgstr ""
 msgid "%s has no timestamps for a ghost rider."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "%s is up to date."
+msgstr ""
+
 #: app/scenes/history_screen.gd core/orqwa-app/src/failure.rs
 msgid "%s no longer accepts the account: connect it again."
 msgstr ""
@@ -113,6 +117,14 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "%s was not found. It holds the course's slopes: put it next to the RLV file."
+msgstr ""
+
+#: app/ui/region_picker.gd
+msgid "%s: %s to download."
+msgstr ""
+
+#: app/ui/region_picker.gd
+msgid "%s: its size is unknown."
 msgstr ""
 
 #: app/scenes/course_detail.gd
@@ -227,6 +239,14 @@ msgstr ""
 msgid "Add a ZWO, ERG, MRC or FIT workout file"
 msgstr ""
 
+#: app/ui/region_picker.gd
+msgid "Add a region"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Add a region…"
+msgstr ""
+
 #: app/ui/video_align_dialog.gd
 msgid "Add point"
 msgstr ""
@@ -331,6 +351,14 @@ msgstr ""
 msgid "Ascent to go"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Asking Geofabrik for %s…"
+msgstr ""
+
+#: app/ui/region_picker.gd
+msgid "Asking for the size of %s…"
+msgstr ""
+
 #: app/ui/ui_theme.gd
 msgid "Aug"
 msgstr ""
@@ -377,6 +405,10 @@ msgstr ""
 
 #: app/scenes/overlay_hud.gd
 msgid "Back to the whole ride screen (O or Esc)"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Being prepared…"
 msgstr ""
 
 #: app/scenes/ride_screen.gd
@@ -485,6 +517,10 @@ msgstr ""
 
 #: app/scenes/workouts_tab.gd
 msgid "Choose"
+msgstr ""
+
+#: app/ui/region_picker.gd
+msgid "Choose a country, or a part of a large one: it downloads faster."
 msgstr ""
 
 #: app/scenes/course_edit_dialog.gd
@@ -668,6 +704,10 @@ msgid "Could not delete the workout."
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
+msgid "Could not download the map detail of %s."
+msgstr ""
+
+#: core/orqwa-app/src/failure.rs
 msgid "Could not download the update."
 msgstr ""
 
@@ -692,6 +732,10 @@ msgid "Could not load the ghost rider."
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
+msgid "Could not load the regions to download."
+msgstr ""
+
+#: core/orqwa-app/src/failure.rs
 msgid "Could not load the workout."
 msgstr ""
 
@@ -709,6 +753,10 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "Could not prepare the course."
+msgstr ""
+
+#: core/orqwa-app/src/failure.rs
+msgid "Could not prepare the map detail of %s."
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
@@ -807,6 +855,10 @@ msgstr ""
 msgid "Courses"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Courses you prepare get real road surfaces, such as cobbles, where you add a region."
+msgstr ""
+
 #: app/scenes/profile_tab.gd
 msgid "Custom"
 msgstr ""
@@ -839,7 +891,7 @@ msgstr ""
 msgid "Default"
 msgstr ""
 
-#: app/scenes/course_detail.gd app/scenes/history_screen.gd app/scenes/profile_tab.gd app/ui/workout_editor.gd
+#: app/scenes/course_detail.gd app/scenes/history_screen.gd app/scenes/profile_tab.gd app/ui/course_settings.gd app/ui/workout_editor.gd
 msgid "Delete"
 msgstr ""
 
@@ -849,6 +901,10 @@ msgstr ""
 
 #: app/scenes/course_detail.gd
 msgid "Delete course?"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Delete region"
 msgstr ""
 
 #: app/scenes/history_screen.gd
@@ -931,8 +987,24 @@ msgstr ""
 msgid "Down (left pod)"
 msgstr ""
 
+#: app/ui/region_picker.gd
+msgid "Download"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Download again"
+msgstr ""
+
 #: app/ui/update_dialog.gd
 msgid "Download it from its release page."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Download map detail"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Downloading %s: %s of %s"
 msgstr ""
 
 #: app/ui/update_dialog.gd
@@ -1479,6 +1551,10 @@ msgstr ""
 msgid "Loading the course"
 msgstr ""
 
+#: app/ui/region_picker.gd
+msgid "Loading the regions…"
+msgstr ""
+
 #: app/scenes/account_dialog.gd
 msgid "Log in to %s in your browser and let ORQWA upload your rides. Then come back here."
 msgstr ""
@@ -1747,12 +1823,20 @@ msgstr ""
 msgid "Not found: %s. Wake the devices, then scan again."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Not ready"
+msgstr ""
+
 #: app/scenes/button_dialog.gd
 msgid "Nothing"
 msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "Nothing in your library matches this search and these filters."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Nothing is downloaded unless you add it."
 msgstr ""
 
 #: app/scenes/workouts_tab.gd
@@ -2015,6 +2099,10 @@ msgstr ""
 msgid "Power zones, the top of each as a share of FTP"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Preparing %s…"
+msgstr ""
+
 #: app/scenes/button_dialog.gd
 msgid "Press"
 msgstr ""
@@ -2055,6 +2143,10 @@ msgstr ""
 msgid "Ramp to"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Reading %s…"
+msgstr ""
+
 #: core/orqwa-app/src/import.rs
 msgid "Reading route"
 msgstr ""
@@ -2089,6 +2181,14 @@ msgstr ""
 
 #: app/scenes/course_detail.gd
 msgid "Regenerate world"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Regions"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Regions come from Geofabrik; a country takes half a gigabyte to five."
 msgstr ""
 
 #: app/scenes/remote_dialog.gd core/orqwa-remote/src/lib.rs
@@ -2279,7 +2379,7 @@ msgstr ""
 msgid "Screen"
 msgstr ""
 
-#: app/scenes/devices_tab.gd
+#: app/scenes/devices_tab.gd app/ui/region_picker.gd
 msgid "Search"
 msgstr ""
 
@@ -2419,6 +2519,10 @@ msgstr ""
 msgid "Step completed on target."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Stop"
+msgstr ""
+
 #: core/orqwa-app/src/failure.rs core/orqwa-upload/src/strava.rs
 msgid "Strava has switched off your API application: the account that owns it needs a Strava subscription. Subscribe, reactivate the application in Strava's API settings, then upload again."
 msgstr ""
@@ -2517,6 +2621,10 @@ msgstr ""
 
 #: app/scenes/analysis_tab.gd
 msgid "The period before"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "The regions downloaded are deleted: %s."
 msgstr ""
 
 #: app/scenes/history_screen.gd app/scenes/ride_summary_dialog.gd
@@ -2669,6 +2777,10 @@ msgstr ""
 
 #: app/ui/ui_theme.gd
 msgid "Tue"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Turn map detail off?"
 msgstr ""
 
 #: app/scenes/workouts_tab.gd

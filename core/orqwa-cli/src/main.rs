@@ -241,13 +241,15 @@ async fn detail(pbf: PathBuf, out: PathBuf, region: Option<String>) -> Result<()
     let started = std::time::Instant::now();
     let extract = tokio::task::spawn_blocking(move || {
         let mut shown = None;
-        orqwa_osm::detail::extract(&pbf, &out, &region, &mut |stage, done, total| {
+        let mut progress = |stage, done: u64, total: u64| {
             let percent = (done * 100).checked_div(total).unwrap_or(100);
             if shown != Some((stage, percent)) {
                 shown = Some((stage, percent));
                 eprint!("\r{stage:?} {percent:3} %");
             }
-        })
+        };
+        let never = std::sync::atomic::AtomicBool::new(false);
+        orqwa_osm::detail::extract(&pbf, &out, &region, &mut progress, &never)
     })
     .await??;
     eprintln!();

@@ -6,7 +6,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::fs;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -94,20 +94,27 @@ pub(crate) fn cell_path(dir: &Path, name: &str, (x, y): (u32, u32)) -> PathBuf {
 
 /// Reads the region's download `pbf` and writes its map detail under `dir`, as
 /// `<region>-<date of the data>`, replacing an extract of that name. It is written aside and
-/// moved into place whole, so an extract is never seen half written.
+/// moved into place whole, so an extract is never seen half written. Once `stop` is set, it
+/// stops.
 ///
 /// # Errors
 /// [`OsmError::Cache`] if the file cannot be read or the extract written,
-/// [`OsmError::Invalid`] if it is no OpenStreetMap download this can read.
+/// [`OsmError::Invalid`] if it is no OpenStreetMap download this can read,
+/// [`OsmError::Stopped`] once stopped.
 pub fn extract(
     pbf: &Path,
     dir: &Path,
     region: &str,
     progress: &mut dyn FnMut(Stage, u64, u64),
+    stop: &AtomicBool,
 ) -> Result<Extract, OsmError> {
-    let (header, found) = pbf::fold(pbf, Ways::default, Ways::read, &mut |done, size| {
-        progress(Stage::Ways, done, size);
-    })?;
+    let (header, found) = pbf::fold(
+        pbf,
+        Ways::default,
+        Ways::read,
+        &mut |done, size| progress(Stage::Ways, done, size),
+        stop,
+    )?;
     let ways = Ways::joined(found);
     let mut needed = ways.refs.clone();
     needed.sort_unstable();
@@ -126,6 +133,7 @@ pub fn extract(
             Ok(())
         },
         &mut |done, size| progress(Stage::Nodes, done, size),
+        stop,
     )?;
     let at = |node: &i64| {
         let i = needed.binary_search(node).ok()?;
@@ -177,6 +185,9 @@ pub fn extract(
     let mut bytes = 0;
     let total = cells.len() as u64;
     for (done, (&cell, content)) in cells.iter().enumerate() {
+        if stop.load(Ordering::Relaxed) {
+            return Err(OsmError::Stopped);
+        }
         let path = cell_path(dir, &aside_name, cell);
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
@@ -493,7 +504,14 @@ pub(crate) mod tests {
         let pbf = dir.join("bern-latest.osm.pbf");
         // 2026-10-24 21:00 UTC, a Geofabrik update.
         fs::write(&pbf, test_file(ways, 1_792_875_600)).unwrap();
-        let extract = extract(&pbf, &dir.join(VERSION), "bern", &mut |_, _, _| {}).unwrap();
+        let extract = extract(
+            &pbf,
+            &dir.join(VERSION),
+            "bern",
+            &mut |_, _, _| {},
+            &AtomicBool::new(false),
+        )
+        .unwrap();
         (dir, extract)
     }
 
@@ -687,7 +705,14 @@ pub(crate) mod tests {
             ),
         )
         .unwrap();
-        let again = extract(&pbf, &dir.join(VERSION), "bern", &mut |_, _, _| {}).unwrap();
+        let again = extract(
+            &pbf,
+            &dir.join(VERSION),
+            "bern",
+            &mut |_, _, _| {},
+            &AtomicBool::new(false),
+        )
+        .unwrap();
         assert_eq!(again.name, first.name);
         let cells = cells(&dir, &again);
         assert_eq!(cells.len(), 1);
@@ -695,6 +720,31 @@ pub(crate) mod tests {
         let left: Vec<_> = fs::read_dir(dir.join(VERSION)).unwrap().collect();
         assert_eq!(left.len(), 1, "nothing written aside is left");
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// The download of `tests/data/bern.osm.pbf`, for tests elsewhere: Kramgasse's setts.
+    fn bern_download() -> Vec<u8> {
+        test_file(
+            &[TestWay {
+                id: 10,
+                tags: &[("highway", "residential"), ("surface", "sett")],
+                nodes: &[1, 2, 3],
+            }],
+            1_792_875_600,
+        )
+    }
+
+    #[test]
+    fn the_bern_download_for_tests_elsewhere_is_current() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/bern.osm.pbf");
+        if std::env::var_os("ORQWA_WRITE_DETAIL_FIXTURE").is_some() {
+            fs::write(&path, bern_download()).unwrap();
+        }
+        assert_eq!(
+            fs::read(&path).unwrap(),
+            bern_download(),
+            "write it again with ORQWA_WRITE_DETAIL_FIXTURE=1"
+        );
     }
 
     #[test]

@@ -96,6 +96,12 @@ the prepared OpenFreeMap transportation data, © OpenStreetMap contributors (ODb
 Map and terrain data credits are shown in the app and stored in every course file; see
 [Courses](https://github.com/ORQWA/ORQWA/wiki/Courses).
 
+Map detail (R142, [ADR 0033](adr/0033-map-detail.md)) reads the regions riders download from
+[Geofabrik's download server](https://download.geofabrik.de), which offers them free of
+charge: OpenStreetMap data, © OpenStreetMap contributors (ODbL 1.0). The road surfaces and
+roundabouts ORQWA keeps of them, and carries in course files, are shared under the same
+licence. The test download `core/orqwa-osm/tests/data/bern.osm.pbf` is made by its tests.
+
 The sample course ORQWA ships (`core/orqwa-gd/courses/twann-chasseral.tqc`, R95) holds such
 data: map tiles © OpenFreeMap © OpenMapTiles, data © OpenStreetMap contributors (ODbL 1.0), and
 terrain by Mapterhorn (CC BY 4.0) and AWS Terrain Tiles.

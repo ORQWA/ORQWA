@@ -2353,3 +2353,87 @@ msgstr "Das war dein erstes Mal auf {course}. Nächstes Mal weisst du, was kommt
 
 msgid "First ride on {course}."
 msgstr "Erste Fahrt auf {course}."
+
+msgid "%s is up to date."
+msgstr "%s ist auf dem neusten Stand."
+
+msgid "%s: %s to download."
+msgstr "%s: %s zum Herunterladen."
+
+msgid "%s: its size is unknown."
+msgstr "%s: Die Grösse ist unbekannt."
+
+msgid "Add a region"
+msgstr "Region hinzufügen"
+
+msgid "Add a region…"
+msgstr "Region hinzufügen …"
+
+msgid "Asking Geofabrik for %s…"
+msgstr "Frage Geofabrik nach %s …"
+
+msgid "Asking for the size of %s…"
+msgstr "Frage nach der Grösse von %s …"
+
+msgid "Being prepared…"
+msgstr "Wird vorbereitet …"
+
+msgid "Choose a country, or a part of a large one: it downloads faster."
+msgstr "Wähle ein Land oder einen Teil eines grossen: Der ist schneller heruntergeladen."
+
+msgid "Could not download the map detail of %s."
+msgstr "Die Kartendetails von %s konnten nicht heruntergeladen werden."
+
+msgid "Could not load the regions to download."
+msgstr "Die Regionen zum Herunterladen konnten nicht geladen werden."
+
+msgid "Could not prepare the map detail of %s."
+msgstr "Die Kartendetails von %s konnten nicht vorbereitet werden."
+
+msgid "Courses you prepare get real road surfaces, such as cobbles, where you add a region."
+msgstr "Routen, die du vorbereitest, erhalten echte Strassenbeläge wie Kopfsteinpflaster, wo du eine Region hinzufügst."
+
+msgid "Delete region"
+msgstr "Region löschen"
+
+msgid "Download"
+msgstr "Herunterladen"
+
+msgid "Download again"
+msgstr "Erneut herunterladen"
+
+msgid "Download map detail"
+msgstr "Kartendetails herunterladen"
+
+msgid "Downloading %s: %s of %s"
+msgstr "Lade %s herunter: %s von %s"
+
+msgid "Loading the regions…"
+msgstr "Lade die Regionen …"
+
+msgid "Not ready"
+msgstr "Nicht bereit"
+
+msgid "Nothing is downloaded unless you add it."
+msgstr "Heruntergeladen wird nur, was du hinzufügst."
+
+msgid "Preparing %s…"
+msgstr "Bereite %s vor …"
+
+msgid "Reading %s…"
+msgstr "Lese %s …"
+
+msgid "Regions"
+msgstr "Regionen"
+
+msgid "Regions come from Geofabrik; a country takes half a gigabyte to five."
+msgstr "Die Regionen kommen von Geofabrik; ein Land braucht ein halbes bis fünf Gigabyte."
+
+msgid "Stop"
+msgstr "Stopp"
+
+msgid "The regions downloaded are deleted: %s."
+msgstr "Die heruntergeladenen Regionen werden gelöscht: %s."
+
+msgid "Turn map detail off?"
+msgstr "Kartendetails ausschalten?"

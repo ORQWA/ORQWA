@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::num::NonZeroUsize;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, SyncSender};
 use std::sync::{Mutex, PoisonError};
 use std::thread;
@@ -179,16 +180,17 @@ pub(crate) struct Header {
 
 /// Reads the file's data blocks on every core. Each block, unpacked, is folded into the state
 /// of the thread that took it (each made by `init`); the states come back in no order.
-/// `progress` hears the bytes read of the file's size.
+/// `progress` hears the bytes read of the file's size; once `stop` is set, it stops.
 ///
 /// # Errors
 /// [`OsmError::Cache`] if the file cannot be read, [`OsmError::Invalid`] if it is no PBF file
-/// this reader understands or `fold` refuses a block.
+/// this reader understands or `fold` refuses a block, [`OsmError::Stopped`] once stopped.
 pub(crate) fn fold<T: Send>(
     path: &Path,
     init: impl Fn() -> T + Sync,
     fold: impl Fn(&mut T, &[u8]) -> Result<(), OsmError> + Sync,
     progress: &mut dyn FnMut(u64, u64),
+    stop: &AtomicBool,
 ) -> Result<(Header, Vec<T>), OsmError> {
     let file = File::open(path)?;
     let size = file.metadata()?.len();
@@ -225,7 +227,7 @@ pub(crate) fn fold<T: Send>(
                 })
             })
             .collect();
-        let header = read_blobs(&mut reader, size, &tx, progress, &failed);
+        let header = read_blobs(&mut reader, size, &tx, progress, (&failed, stop));
         drop(tx);
         let mut states = Vec::with_capacity(workers);
         for thread in threads {
@@ -241,18 +243,21 @@ pub(crate) fn fold<T: Send>(
     })
 }
 
-/// Reads the file's blobs in order, handing data blobs on to the workers, until its end or a
-/// worker's failure.
+/// Reads the file's blobs in order, handing data blobs on to the workers, until its end, a
+/// worker's failure or `stop`.
 fn read_blobs(
     reader: &mut impl Read,
     size: u64,
     tx: &SyncSender<Vec<u8>>,
     progress: &mut dyn FnMut(u64, u64),
-    failed: &Mutex<Option<OsmError>>,
+    (failed, stop): (&Mutex<Option<OsmError>>, &AtomicBool),
 ) -> Result<Header, OsmError> {
     let mut header = None;
     let mut done = 0u64;
     while let Some(length) = blob_header_length(reader)? {
+        if stop.load(Ordering::Relaxed) {
+            return Err(OsmError::Stopped);
+        }
         if length > MAX_HEADER {
             return Err(invalid("a blob header is too long"));
         }
@@ -453,6 +458,7 @@ mod tests {
                 Ok(())
             },
             &mut |done, size| last = (done, size),
+            &AtomicBool::new(false),
         )
         .unwrap();
         std::fs::remove_file(&path).unwrap();
@@ -494,7 +500,13 @@ mod tests {
             .required_features
             .push("HistoricalInformation".to_owned());
         let path = temp_file("history", &write::file(&needs, &[]));
-        let read = fold(&path, || (), |(), _| Ok(()), &mut |_, _| {});
+        let read = fold(
+            &path,
+            || (),
+            |(), _| Ok(()),
+            &mut |_, _| {},
+            &AtomicBool::new(false),
+        );
         std::fs::remove_file(&path).unwrap();
         assert!(matches!(read, Err(OsmError::Invalid(m)) if m.contains("HistoricalInformation")));
     }
@@ -504,9 +516,38 @@ mod tests {
         let blocks = vec![nodes(&[1, 2], &[(1, 1), (2, 2)])];
         let whole = write::file(&header(), &blocks);
         let path = temp_file("cut", &whole[..whole.len() - 3]);
-        let read = fold(&path, || (), |(), _| Ok(()), &mut |_, _| {});
+        let read = fold(
+            &path,
+            || (),
+            |(), _| Ok(()),
+            &mut |_, _| {},
+            &AtomicBool::new(false),
+        );
         std::fs::remove_file(&path).unwrap();
         assert!(read.is_err());
+    }
+
+    #[test]
+    fn a_read_stops_when_asked() {
+        let blocks: Vec<Vec<u8>> = (0..50).map(|n| nodes(&[n + 1], &[(n, n)])).collect();
+        let path = temp_file("stopped", &write::file(&header(), &blocks));
+        let stop = AtomicBool::new(false);
+        let mut blobs = 0;
+        let read = fold(
+            &path,
+            || (),
+            |(), _| Ok(()),
+            &mut |_, _| {
+                blobs += 1;
+                if blobs == 10 {
+                    stop.store(true, Ordering::Relaxed);
+                }
+            },
+            &stop,
+        );
+        std::fs::remove_file(&path).unwrap();
+        assert!(matches!(read, Err(OsmError::Stopped)));
+        assert_eq!(blobs, 10, "no blob read after");
     }
 
     #[test]
@@ -518,6 +559,7 @@ mod tests {
             || (),
             |(), _| Err(OsmError::Invalid("refused".to_owned())),
             &mut |_, _| {},
+            &AtomicBool::new(false),
         );
         std::fs::remove_file(&path).unwrap();
         assert!(matches!(read, Err(OsmError::Invalid(m)) if m == "refused"));

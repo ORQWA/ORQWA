@@ -7,6 +7,7 @@ pub mod ambient;
 pub mod analysis;
 pub mod failure;
 use failure::{Failure, Kind};
+mod detail;
 #[cfg(test)]
 mod detail_tests;
 pub mod hud;
@@ -23,6 +24,7 @@ pub mod uploads;
 pub mod video;
 pub mod view;
 
+pub use detail::{DetailRegion, DetailStep, RegionOffer};
 pub use import::{Imported, LoadStage, Progress, countries, course_map, import_gpx, import_route};
 pub use kept::KeptWorld;
 
@@ -401,6 +403,32 @@ pub enum AppEvent {
     UpdateDownloaded,
     /// Looking for, or downloading, an update failed.
     UpdateFailed(Failure),
+    /// The regions Geofabrik offers, for map detail (ADR 0033).
+    RegionOffers(Vec<RegionOffer>),
+    /// How large a region's download is; `None` if the server did not tell.
+    RegionSize {
+        /// The region.
+        id: String,
+        /// Its download's size in bytes.
+        size: Option<u64>,
+    },
+    /// Downloading or preparing a region's map detail advanced.
+    MapDetailProgress {
+        /// The region.
+        id: String,
+        /// What it is doing.
+        step: DetailStep,
+        /// Units done in this step.
+        done: u64,
+        /// Units in this step.
+        total: u64,
+    },
+    /// A region's map detail was made ready, or its download stopped: the regions changed.
+    MapDetailChanged,
+    /// The rider asked for a region whose latest download is ready already.
+    MapDetailUpToDate(String),
+    /// Listing, downloading or preparing regions failed.
+    MapDetailFailed(Failure),
     /// Uploading a ride failed.
     UploadFailed {
         /// The ride's FIT file.
@@ -456,6 +484,8 @@ enum JobResult {
     VideoKept(PathBuf, PathBuf),
     Upload(Box<uploads::Done>),
     Update(updates::Done),
+    /// Map detail's work, by the number of its job (0 for none).
+    Detail(u64, detail::Done),
     /// The countries of the course at the path, prepared at the given time, were found
     /// (#230); `None` once the lookup is over.
     Countries(Option<(PathBuf, u64, Vec<CourseCountry>)>),
@@ -710,6 +740,8 @@ pub struct App {
     /// The training platforms rides can be uploaded to and the uploads under way (R29).
     uploads: uploads::UploadState,
     updates: updates::UpdateState,
+    /// Map detail's downloads (ADR 0033).
+    detail: detail::DetailState,
     data_dir: PathBuf,
     cache_dir: PathBuf,
     /// This computer's own settings (R78), next to the cache: never synced with the data.
@@ -803,6 +835,7 @@ impl App {
             profile,
             uploads: uploads::UploadState::new(uploads::platforms()),
             updates: updates::UpdateState::default(),
+            detail: detail::DetailState::default(),
             data_dir,
             cache_dir,
             computer,
@@ -3708,6 +3741,7 @@ impl App {
     /// Disconnects all devices, waiting at most a few seconds.
     pub fn shutdown(&mut self) {
         self.remote = None;
+        self.stop_region_download();
         let trainer = self.trainer.take();
         let sensor = self.sensor.take();
         let power_meter = self.power_meter.take();
@@ -3817,6 +3851,7 @@ impl App {
                 }
                 JobResult::Upload(done) => events.push(self.upload_work_done(*done)),
                 JobResult::Update(done) => events.extend(self.update_done(done)),
+                JobResult::Detail(serial, done) => events.extend(self.detail_done(serial, done)),
                 JobResult::Countries(found) => self.countries_found(found, events),
                 JobResult::Scan(Err(message)) => self.scan_failed(message, events),
                 JobResult::Route(_, Err(message))

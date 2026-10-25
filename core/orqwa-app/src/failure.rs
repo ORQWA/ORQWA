@@ -142,6 +142,12 @@ pub enum Kind {
     DownloadUpdate,
     /// Could not start the update's installer.
     InstallUpdate,
+    /// Could not load the regions to download.
+    LoadRegions,
+    /// Could not download the map detail of %s.
+    DownloadRegion,
+    /// Could not prepare the map detail of %s.
+    PrepareRegion,
 }
 impl Kind {
     /// Unformatted English gettext key; translate before substituting arguments.
@@ -230,6 +236,9 @@ impl Kind {
             Self::CheckUpdate => "Could not look for a newer version of ORQWA.",
             Self::DownloadUpdate => "Could not download the update.",
             Self::InstallUpdate => "Could not start the update's installer.",
+            Self::LoadRegions => "Could not load the regions to download.",
+            Self::DownloadRegion => "Could not download the map detail of %s.",
+            Self::PrepareRegion => "Could not prepare the map detail of %s.",
         }
         // i18n-end
     }

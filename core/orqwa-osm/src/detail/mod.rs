@@ -4,11 +4,15 @@
 
 pub(crate) mod apply;
 mod extract;
+mod geofabrik;
 mod pbf;
 mod regions;
 
 pub use extract::{Extract, Stage, VERSION, extract};
-pub use regions::{DOWNLOADS, Region, download_path, install, installed};
+pub use geofabrik::{Geofabrik, INDEX, Latest, Offer, cached_offers};
+pub use regions::{
+    DOWNLOADS, Kept, Region, download_path, download_source, install, installed, kept, remove,
+};
 
 use std::collections::BTreeSet;
 use std::path::Path;

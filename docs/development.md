@@ -274,6 +274,10 @@ The automatic-finish, manual-finish and discard flows are checked by `summary_sm
 For a graphics/settings change, capture only the settings with
 `SCREENSHOT_SETTINGS_ONLY=1 scripts/screenshots.sh` in the container; this avoids building
 a course or populating sample rides. `SCREENSHOT_LOCALE=de` selects German for the same run.
+The Courses tab turns map detail on for its picture and lists the regions in the container's
+cache: copy a region's download to `~/.cache/orqwa/osm/geofabrik/<id>.osm.pbf` first (e.g.
+Switzerland's), and it is prepared before the capture; the setting is restored afterwards,
+which deletes the region if map detail was off.
 
 ```sh
 scripts/dev.sh sh -c 'XDG_DATA_HOME=$PWD/screenshots/refresh-data SCREENSHOT_DIR=$PWD/screenshots/refresh/app timeout 240 xvfb-run -a godot --path app --resolution 1600x900 -s res://tools/capture_details.gd'
