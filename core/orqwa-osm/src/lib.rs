@@ -1,11 +1,13 @@
 //! OpenStreetMap data for ORQWA: buildings, land cover, water, roads, bridges and tunnels around
 //! a route, and the countries it passes (#230), from [`OpenFreeMap`](https://openfreemap.org)
-//! vector tiles (`OpenMapTiles` schema), cached on disk for offline rides (R3).
+//! vector tiles (`OpenMapTiles` schema), cached on disk for offline rides (R3); and the
+//! [`detail`] those tiles leave out, from regions a rider downloads.
 //!
 //! © `OpenFreeMap`, © `OpenMapTiles`, data © OpenStreetMap contributors (ODbL 1.0) — attribution
 //! must be shown where the data is used.
 
 mod countries;
+pub mod detail;
 mod iso;
 mod mvt;
 mod traffic_territories;
@@ -19,6 +21,7 @@ use std::time::Duration;
 
 use futures::{StreamExt, stream};
 use orqwa_domain::files::UsedFiles;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 /// A position as (latitude, longitude) in degrees.
@@ -134,7 +137,8 @@ pub struct RoadDetails {
 }
 
 /// Road hierarchy retained for widths and markings, without changing routing priorities.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RoadKind {
     /// No detailed classification; use the broad road class.
     #[default]
@@ -163,7 +167,8 @@ pub enum RoadKind {
 
 /// Surface information, as detailed as the source permits. OpenMapTiles normally supplies
 /// only paved/unpaved; specific materials are accepted when present, never inferred as facts.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RoadSurface {
     /// Untagged or unsupported material.
     #[default]

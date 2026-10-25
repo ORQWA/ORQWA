@@ -9,9 +9,11 @@ publish.workspace = true
 
 [dependencies]
 orqwa-domain.workspace = true
+flate2.workspace = true
 futures.workspace = true
 geo-types.workspace = true
 mvt-reader.workspace = true
+prost.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 serde.workspace = true
 serde_json.workspace = true

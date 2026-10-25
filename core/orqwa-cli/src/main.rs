@@ -60,6 +60,18 @@ enum Command {
     /// Write weeks of made-up rides to the active rider's history, e.g. for screenshots of
     /// the Analysis tab.
     SampleRides(sample_rides::SampleRidesArgs),
+    /// Make the map detail of an OpenStreetMap region download (`.osm.pbf`, e.g. from
+    /// Geofabrik): its road surfaces and roundabouts, with how long it took and its size.
+    Detail {
+        /// The region's download.
+        pbf: PathBuf,
+        /// Where to write the extract.
+        out: PathBuf,
+        /// The region's name in the extract's; the download's name without `-latest.osm.pbf`
+        /// if not given.
+        #[arg(long)]
+        region: Option<String>,
+    },
     /// Show the steps of a workout file (ZWO, ERG, MRC, FIT) or built-in workout.
     Workout {
         /// Workout file, or `builtin:<name>`; `builtins` lists the built-in workouts.
@@ -212,9 +224,43 @@ async fn main() -> Result<()> {
         Command::GearCheck(args) => gear_check(&args).await,
         Command::Route(args) => route_info(&args).await,
         Command::Video { file, seconds } => video_check(&file, seconds),
+        Command::Detail { pbf, out, region } => detail(pbf, out, region).await,
         Command::Workout { workout, ftp } => workout_info(&workout, Watts(ftp)),
         Command::SampleRides(args) => sample_rides::write(&args),
     }
+}
+
+#[allow(clippy::cast_precision_loss)] // megabytes shown to a tenth
+async fn detail(pbf: PathBuf, out: PathBuf, region: Option<String>) -> Result<()> {
+    let region = region.unwrap_or_else(|| {
+        let name = pbf.file_name().map(|n| n.to_string_lossy().into_owned());
+        let name = name.unwrap_or_default();
+        let name = name.trim_end_matches(".osm.pbf");
+        name.trim_end_matches("-latest").to_owned()
+    });
+    let started = std::time::Instant::now();
+    let extract = tokio::task::spawn_blocking(move || {
+        let mut shown = None;
+        orqwa_osm::detail::extract(&pbf, &out, &region, &mut |stage, done, total| {
+            let percent = (done * 100).checked_div(total).unwrap_or(100);
+            if shown != Some((stage, percent)) {
+                shown = Some((stage, percent));
+                eprint!("\r{stage:?} {percent:3} %");
+            }
+        })
+    })
+    .await??;
+    eprintln!();
+    println!(
+        "{}: {} surfaces, {} roundabouts in {} cells, {:.1} MB, {:.0} s",
+        extract.name,
+        extract.surfaces,
+        extract.roundabouts,
+        extract.cells,
+        extract.bytes as f64 / 1e6,
+        started.elapsed().as_secs_f64(),
+    );
+    Ok(())
 }
 
 async fn scan(seconds: u64) -> Result<()> {
