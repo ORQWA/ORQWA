@@ -1,5 +1,6 @@
 """Adds what only the Android build needs to its copy of the project (ADR 0024): the extension's
-Android library, Android's texture formats, ORQWA's Android plugin and the Android preset.
+Android library, Android's texture formats, ORQWA's Android plugin, the Android preset and the
+launcher icon's layers.
 And the version of rustls-platform-verifier's Java part that matches the crate in Cargo.lock,
 and ORQWA's version from Cargo.toml as the APK's: Android installs an update only over a lower
 version code.
@@ -8,6 +9,7 @@ Usage: stage.py <copied app folder> <android/godot/export_preset.cfg> <core/Carg
 
 import re
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 app = Path(sys.argv[1])
@@ -44,6 +46,25 @@ def set_setting(text: str, section: str, key: str, value: str) -> str:
     body = pattern.sub(line, body) if pattern.search(body) else body.rstrip("\n") + f"\n{line}\n"
     return text[:start] + body + text[end:]
 
+
+# Android lays the launcher icon's foreground over its background and crops both to a shape of the
+# launcher's choosing, leaving only a circle of 66 dp of the 108 dp layers sure to show. Given the
+# desktop icon whole, it cut the logo off. So the foreground is the logo without its tile, its
+# enclosing circle (centre 382 367, radius 295 in icon.svg's units) inside that one, and the
+# background the tile's colour.
+SVG = "http://www.w3.org/2000/svg"
+ET.register_namespace("", SVG)
+icon = ET.parse(app / "icon.svg")
+tile = icon.getroot().find(f"{{{SVG}}}rect")
+if tile is None:
+    sys.exit("icon.svg has no tile")
+icon.getroot().remove(tile)
+icon.getroot().set("viewBox", "-118 -133 1000 1000")
+icon.write(app / "icon_foreground.svg")
+(app / "icon_background.svg").write_text(
+    f'<svg xmlns="{SVG}" viewBox="0 0 432 432">'
+    f'<rect width="432" height="432" fill="{tile.get("fill")}"/></svg>\n'
+)
 
 project = app / "project.godot"
 text = project.read_text()
