@@ -54,3 +54,9 @@ Service too, next to FTMS. Cadence sensors talk the **Cycling Speed and Cadence 
 - No `SensorDriver` trait yet: like the heart-rate strap, the meter runs as a `DeviceHandle`.
   The trait comes with a second transport.
 - The meter's left/right balance is read past and not recorded yet.
+
+## Amendment 2026-10-21: Tacx trainers (R110)
+
+Discovery also keeps a Tacx FE-C-over-Bluetooth device in the trainer row before considering
+its Cycling Power Service. FTMS stays preferred when both trainer services exist. The
+power-meter and cadence-source selection rules are unchanged; see [ADR 0028](0028-tacx-bluetooth.md).

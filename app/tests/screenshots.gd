@@ -311,18 +311,53 @@ func _run() -> void:
 
 
 func _settings_screens(start: StartPage, out_dir: String) -> void:
+	var orqwa: OrqwaApp = _main.get_node("Orqwa")
+	var kept: bool = orqwa.keeps_worlds()
+	await _keep_a_world(orqwa)
 	var settings: SettingsDialog = start.get("_settings")
 	var settings_button: Button = start.get("_settings_button")
 	settings_button.pressed.emit()
 	var settings_tabs: TabContainer = settings.get("_tabs")
-	for page: Array in [[0, "settings-graphics"], [1, "settings-courses"], [2, "settings-about"]]:
-		var index: int = page[0]
+	# By page, not position: a new tab (Sound) once moved About from where the index pointed.
+	for page: Array in [
+		[&"_graphics", "settings-graphics"],
+		[&"_courses", "settings-courses"],
+		[&"_about", "settings-about"],
+	]:
+		var property: StringName = page[0]
+		var tab: Node = settings.get(property)
+		while tab.get_parent() != settings_tabs:
+			tab = tab.get_parent()
 		var file: String = page[1]
-		settings_tabs.current_tab = index
+		settings_tabs.current_tab = tab.get_index()
 		await create_timer(0.5).timeout
 		root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
 		print("saved ", file)
 	settings.hide()
+	# As this computer had it: turned off, the worlds kept for the picture go.
+	orqwa.set_keeps_worlds(kept)
+
+
+## A course's world kept, for the Courses tab to list (R136): the loaded course's, or else
+## that of the library's first, the sample course on a new library, built for it.
+func _keep_a_world(orqwa: OrqwaApp) -> void:
+	orqwa.set_keeps_worlds(true)
+	if orqwa.loaded_course().is_empty():
+		var library: Array = orqwa.courses()
+		if library.is_empty():
+			return
+		var first: Dictionary = library[0]
+		var path: String = first["path"]
+		orqwa.route_loaded.connect(
+			func(_info: Variant = null) -> void: orqwa.call_deferred("build_world"),
+			CONNECT_ONE_SHOT
+		)
+		orqwa.open_course(path)
+	# The world is kept in the background once built; a debug build takes minutes for it.
+	var until: int = Time.get_ticks_msec() + 600000
+	while orqwa.kept_worlds().is_empty() and Time.get_ticks_msec() < until:
+		await create_timer(0.5).timeout
+	_check(not orqwa.kept_worlds().is_empty(), "a world kept")
 
 
 func _software_render(world: RideWorld) -> void:

@@ -25,6 +25,9 @@ pub struct Activity {
     pub name: String,
     /// ORQWA's own id for it, so a platform can tell a second upload of the same ride.
     pub external_id: String,
+    /// Whether the ride followed a route, so the file carries its positions: a virtual ride
+    /// with a map, a workout on a course too (R58). A workout on its own (R56) has none.
+    pub along_route: bool,
 }
 
 /// Where an upload landed.

@@ -648,12 +648,16 @@ fn activity(fit: &Path, title: &str) -> Result<Activity, AppError> {
     } else {
         title.to_owned()
     };
+    // From the file rather than its metadata: platforms go by the positions they are sent.
+    let along_route = orqwa_storage::decode_fit(&bytes)
+        .is_ok_and(|(_, samples)| samples.iter().any(|s| s.location.is_some()));
     Ok(Activity {
         fit: bytes,
         name,
         external_id: fit
             .file_stem()
             .map_or_else(String::new, |s| s.to_string_lossy().into_owned()),
+        along_route,
     })
 }
 
@@ -725,7 +729,8 @@ mod tests {
     use std::collections::BTreeMap;
     use std::time::{Duration, UNIX_EPOCH};
 
-    use orqwa_domain::recording::RideSummary;
+    use orqwa_domain::recording::{Location, RideSummary, Sample};
+    use orqwa_domain::units::{GradePercent, Meters, MetersPerSecond, Watts};
     use orqwa_domain::upload::BoxFuture;
     use orqwa_storage::profiles;
     use orqwa_storage::rides::RideRecord;
@@ -1142,6 +1147,43 @@ mod tests {
         upload(&mut app, &fit, " ");
 
         assert_eq!(fake.received()[0].name, "Morning loop");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn rides_whose_file_has_positions_go_up_as_along_a_route() {
+        let (mut app, fake, dir) = app("along-route");
+        connect(&mut app, "good");
+        let at = |location| Sample {
+            elapsed: Duration::ZERO,
+            location,
+            distance: Meters(0.0),
+            speed: MetersPerSecond(8.0),
+            power: Some(Watts(200.0)),
+            cadence: None,
+            heart_rate: None,
+        };
+        let on_course = Location {
+            lat: 46.9,
+            lon: 7.4,
+            elevation: Meters(540.0),
+            grade: GradePercent(2.0),
+        };
+        // FIT's time starts in 1990.
+        let start = UNIX_EPOCH + Duration::from_secs(1_790_000_000);
+        for (stem, location) in [
+            ("orqwa-20261012-071500", Some(on_course)),
+            ("orqwa-20261013-071500", None),
+        ] {
+            let fit = ride_at(&app, stem, None);
+            let bytes = orqwa_storage::encode_fit(start, &[at(location)]).unwrap();
+            std::fs::write(&fit, bytes).unwrap();
+            upload(&mut app, &fit, "Ride");
+        }
+
+        let sent = fake.received();
+        assert!(sent[0].along_route, "a ride along a route keeps its map");
+        assert!(!sent[1].along_route, "a workout without a route has none");
         std::fs::remove_dir_all(dir).unwrap();
     }
 
