@@ -73,7 +73,15 @@ static func popup(dialog: Window, wanted: Vector2i) -> void:
 static func _system_scale(screen: int) -> float:
 	match DisplayServer.get_name():
 		"macOS":
-			return DisplayServer.screen_get_scale(screen)
+			# Godot gives every window as many pixels per point as the screen with the
+			# highest scale has, whichever screen it is on: beside a Retina screen, a window
+			# on a 1x one has two pixels per point too, and at its screen's own scale it
+			# would draw at half the size.
+			return DisplayServer.screen_get_max_scale()
+		"Android":
+			# Android's own unit, the dp, is the screen's DPI over 160, which follows the
+			# rider's display size setting; Godot's scale is rounded to a step and capped.
+			return DisplayServer.screen_get_dpi(screen) / 160.0
 		"Wayland":
 			# Only the window's own scale is exact there, fractional ones too.
 			return DisplayServer.screen_get_scale(DisplayServer.SCREEN_OF_MAIN_WINDOW)
