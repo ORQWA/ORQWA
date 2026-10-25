@@ -47,4 +47,6 @@ static func add_to(parent: Node3D, chunk: Dictionary, distance_m: float) -> void
 	instance.visibility_range_end = distance_m
 	instance.visibility_range_end_margin = 100.0
 	instance.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+	# The same distance on every preset: a sidewalk is as small on screen on all of them.
+	instance.set_meta("fixed_range", true)
 	parent.add_child(instance)

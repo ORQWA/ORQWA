@@ -110,10 +110,19 @@ func _draw_series(series: Dictionary, span: Vector2) -> void:
 		previous = point
 
 
-## About eight labels under the chart: months by name, weeks by their Monday.
+## Up to eight labels under the chart, as many as fit side by side: months by name, weeks by
+## their days.
 func _draw_periods(font: Font) -> void:
 	var count: int = _starts.size()
 	var labels: int = mini(8, count)
+	var widest: float = 0.0
+	for k: int in range(labels):
+		var i: int = roundi(float(k) * (count - 1) / maxf(labels - 1, 1))
+		var text: String = _period_name(i, false)
+		widest = maxf(
+			widest, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+		)
+	labels = clampi(floori(_plot().size.x / (widest + 12.0)), 1, labels)
 	for k: int in range(labels):
 		var i: int = roundi(float(k) * (count - 1) / maxf(labels - 1, 1))
 		var text: String = _period_name(i, false)
@@ -150,15 +159,14 @@ func _draw_readout(font: Font, plot: Rect2) -> void:
 		left += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 18.0
 
 
-## A month as "Oct" ("Oct 2026" in full), a week as "12 Oct" ("Week of 12 Oct").
+## A month as "Oct" ("Oct 2026" in full), a week as "19–25 Oct".
 func _period_name(index: int, full: bool) -> String:
+	if not _monthly:
+		return FitnessChart.week_dates(_starts[index])
 	var parts: PackedStringArray = UiTheme.date(_starts[index]).get_slice(",", 0).split(" ")
 	if parts.size() < 4:
 		return ""
-	if _monthly:
-		return "%s %s" % [parts[2], parts[3]] if full else parts[2]
-	var day: String = "%s %s" % [parts[1], parts[2]]
-	return tr("Week of %s") % day if full else day
+	return "%s %s" % [parts[2], parts[3]] if full else parts[2]
 
 
 func _format(value: float, with_unit: bool) -> String:

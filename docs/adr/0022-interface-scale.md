@@ -16,9 +16,10 @@ never seen narrower than 1600 units, so many had fixed widths that only fit ther
 **One interface unit is as large as the system's own interface on the window's screen**
 (R94). The stretch mode is off, and `UiScale` sets the window's `content_scale_factor`:
 
-- **The system's scale**: `screen_get_scale` on macOS and Wayland, the screen's DPI over 96 on
-  Windows (its display scaling). X11 has no scale of its own, so `UiScale` guesses one from
-  the screen's size and DPI, as Godot's editor does.
+- **The system's scale**: `screen_get_scale` on Wayland, `screen_get_max_scale` on macOS, the
+  screen's DPI over 96 on Windows (its display scaling) and over 160 on Android (its dp). X11
+  has no scale of its own, so `UiScale` guesses one from the screen's size and DPI, as Godot's
+  editor does. (macOS and Android since the amendment of 2026-10-25.)
 - **Again on another screen**: the factor is checked whenever the window moves or its DPI
   changes. Windows sends no DPI event, but moving the window is enough.
 - **Never too large for the screen**: the scale is lowered only where the smallest window,
@@ -80,3 +81,19 @@ can feed back through the bar. This also keeps the content from shifting sideway
 comes and goes (R53). It costs a strip as wide as the bar at the right of pages that don't
 scroll. `window_smoke.gd` checks that the cards keep their width when the gallery scrolls,
 and sweeps the window through every width at the height where the loop was seen.
+
+## Amendment 2026-10-25: macOS beside a Retina screen, and Android
+
+On a Mac with a Retina screen and a 1x monitor, the interface drew at half its size on the
+monitor. Godot's macOS windows have as many pixels per point as the screen with the highest
+scale (`screen_get_max_scale`, fixed when ORQWA starts), on whichever screen they are, so a
+window on the 1x monitor has two pixels per point as well. `screen_get_scale` of the window's
+own screen gave 1. `UiScale` now takes the highest scale on macOS. The interface no longer
+changes size when the window moves between screens there, as macOS's own interface doesn't:
+a point is as large on both.
+
+Android had no branch and drew at a scale of 1, a third of its own size on a phone. It now
+takes the screen's DPI over 160, Android's dp, which follows the rider's display size
+setting. Godot's `screen_get_scale` would round that to a step and cap it at 800 × 600. On a
+phone in landscape, about 900 × 410 dp, the smallest window of 1024 × 640 units still makes
+the interface draw at about two thirds of Android's size; tablets get the full size.

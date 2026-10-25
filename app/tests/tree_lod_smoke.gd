@@ -24,6 +24,7 @@ func _run() -> void:
 		_model(name)
 	_batches()
 	_rebatch()
+	await _ground()
 	if not _failed:
 		print("TREE LOD SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -142,6 +143,68 @@ func _imported(path: String) -> ArrayMesh:
 	var mesh: ArrayMesh = VegetationModels._find_mesh(node).mesh as ArrayMesh
 	node.free()
 	return mesh
+
+
+## A chunk's ground gets coarser versions for the distance, made on a worker thread: the full
+## ground shows meanwhile and stays as it was, and every version keeps the ground's edges, where
+## neighbouring chunks meet it.
+func _ground() -> void:
+	var size: int = 41
+	var vertices: PackedVector3Array = PackedVector3Array()
+	var normals: PackedVector3Array = PackedVector3Array()
+	var uvs: PackedVector2Array = PackedVector2Array()
+	var colors: PackedColorArray = PackedColorArray()
+	var edge: Array[int] = []
+	for row: int in size:
+		for column: int in size:
+			vertices.append(Vector3(column * 3.0, row * 0.4, -row * 3.0))
+			normals.append(Vector3(0.0, 1.0, 0.13).normalized())
+			uvs.append(Vector2.ZERO)
+			colors.append(Color(0.3, 0.6, 0.2))
+			if row == 0 or column == 0 or row == size - 1 or column == size - 1:
+				edge.append(row * size + column)
+	var indices: PackedInt32Array = PackedInt32Array()
+	for row: int in size - 1:
+		for column: int in size - 1:
+			var corner: int = row * size + column
+			indices.append_array(
+				[corner, corner + 1, corner + size, corner + 1, corner + size + 1, corner + size]
+			)
+	var arrays: Dictionary = {
+		"vertices": vertices, "normals": normals, "uvs": uvs, "colors": colors, "indices": indices
+	}
+	var ground: MeshInstance3D = MeshInstance3D.new()
+	ground.mesh = WorldMeshes.from_arrays(arrays)
+	root.add_child(ground)
+	var full: Mesh = ground.mesh
+	var lods: GroundLods = GroundLods.new()
+	lods.make(ground, arrays)
+	_check(lods.pending() and ground.mesh == full, "the full ground shows until its versions")
+	var until: int = Time.get_ticks_msec() + 10000
+	while lods.pending() and Time.get_ticks_msec() < until:
+		await process_frame
+		lods.add_ready()
+	var mesh: ArrayMesh = ground.mesh as ArrayMesh
+	_check(not lods.pending() and mesh != full, "its versions replace the full ground")
+	_check(
+		(
+			mesh.surface_get_array_len(0) == vertices.size()
+			and mesh.surface_get_array_index_len(0) == indices.size()
+		),
+		"the full detail stays as it was"
+	)
+	var versions: Array = RenderingServer.mesh_get_surface(mesh.get_rid(), 0)["lods"]
+	_check(not versions.is_empty(), "coarser versions of the ground reach the renderer")
+	for version: Dictionary in versions:
+		var data: PackedByteArray = version["index_data"]
+		var used: Dictionary[int, bool] = {}
+		for offset: int in range(0, data.size(), 2):
+			used[data.decode_u16(offset)] = true
+		_check(data.size() / 2 < indices.size(), "a version draws fewer triangles")
+		var whole: bool = edge.all(func(vertex: int) -> bool: return used.has(vertex))
+		_check(whole, "a version keeps every vertex of the edges, where chunks meet")
+	lods.finish()
+	ground.free()
 
 
 func _check(ok: bool, message: String) -> void:
