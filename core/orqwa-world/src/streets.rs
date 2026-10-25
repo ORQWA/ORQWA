@@ -661,6 +661,7 @@ impl Levels {
         streets: &[Street],
         appearance: &crate::appearance::Index,
         road: &RoadIndex,
+        rails: &RoadIndex,
     ) -> Self {
         let lines: Vec<_> = streets
             .iter()
@@ -713,11 +714,16 @@ impl Levels {
                 ) {
                     continue;
                 }
-                let gap = road
+                let road_gap = road
                     .nearest_profile(middle.0, middle.1, 25.0)
                     .map_or(f64::INFINITY, |(distance, appearance)| {
                         distance - appearance.width / 2.0 - half
                     });
+                let rail_gap = rails
+                    .nearest(middle.0, middle.1, 25.0)
+                    .filter(|r| r.2 == Surface::Ground)
+                    .map_or(f64::INFINITY, |r| r.0 - railways::BED_M / 2.0 - half);
+                let gap = road_gap.min(rail_gap);
                 let subdivisions = if gap < 2.0 {
                     crate::TIGHT_SUB
                 } else {

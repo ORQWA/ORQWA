@@ -63,15 +63,18 @@ fn roads() -> MapData {
 #[tokio::test]
 async fn a_close_parallel_service_road_keeps_its_bed_beside_the_ridden_cutting() {
     let map = MapData {
-        roads: vec![Road {
-            class: RoadClass::Service,
-            details: RoadDetails {
-                kind: RoadKind::Service,
-                ..RoadDetails::default()
+        roads: vec![
+            road_north(),
+            Road {
+                class: RoadClass::Service,
+                details: RoadDetails {
+                    kind: RoadKind::Service,
+                    ..RoadDetails::default()
+                },
+                line: vec![at(9.0, 100.0), at(9.0, 900.0)],
+                structure: None,
             },
-            line: vec![at(9.0, 100.0), at(9.0, 900.0)],
-            structure: None,
-        }],
+        ],
         ..MapData::default()
     };
     let world = generate(
@@ -269,6 +272,40 @@ async fn all_formed_ways_have_level_beds_across_slopes_and_chunk_edges() {
 }
 
 #[tokio::test]
+async fn a_service_road_beside_a_railway_keeps_its_own_bed() {
+    let service = Road {
+        class: RoadClass::Service,
+        details: RoadDetails {
+            kind: RoadKind::Service,
+            ..RoadDetails::default()
+        },
+        line: vec![at(205.4, 100.0), at(205.4, 900.0)],
+        structure: None,
+    };
+    let map = MapData {
+        roads: vec![road_north(), service],
+        railways: vec![railway(&[(200.0, 100.0), (200.0, 900.0)], None)],
+        ..MapData::default()
+    };
+    let world = generate(
+        &route_north(&[]).await,
+        &mut Hillside(0.6),
+        &map,
+        &mut |_, _| {},
+    )
+    .await;
+    for north in [300.0, 479.9, 480.1, 700.0] {
+        let left = street_at(&world, 203.8, -north).unwrap();
+        let right = street_at(&world, 207.0, -north).unwrap();
+        assert!(
+            (left - right).abs() < 0.04,
+            "folded road beside railway at {north}: {left}, {right}"
+        );
+        assert!((left - 623.24).abs() < 0.15);
+    }
+}
+
+#[tokio::test]
 async fn ground_profiles_are_shared_at_tag_changes_and_branch_endpoints() {
     struct Bump;
     impl ElevationModel for Bump {
@@ -294,7 +331,12 @@ async fn ground_profiles_are_shared_at_tag_changes_and_branch_endpoints() {
     let projection = LocalProjection::for_route(&route);
     let streets = streets::lines(&map, &projection, &mut Bump).await;
     let road = RoadIndex::new(&route, &projection);
-    let levels = streets::Levels::new(&streets, &appearance::Index::new(&map, &projection), &road);
+    let levels = streets::Levels::new(
+        &streets,
+        &appearance::Index::new(&map, &projection),
+        &road,
+        &RoadIndex::from_lines(&[]),
+    );
     for (east, north) in [
         (200.0, 480.0),
         (200.0, 479.99),

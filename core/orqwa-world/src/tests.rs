@@ -5496,6 +5496,7 @@ async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
         &streets,
         &appearance::Index::new(&map, &projection),
         &ridden,
+        &rails,
     );
     let ground = foundations::Ground(&world.chunks);
     let mut line: Vec<_> = (0..=40)

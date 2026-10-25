@@ -261,6 +261,8 @@ them. A joining road contacts the ridden road by its edges, and shared profile a
 preserved. Suppressed mapped copies of the ridden pavement do not shape terrain a second
 time. On sloping approaches, the nearest road profile supplies the datum, rather than lower
 downstream segment endpoints within the shaping radius.
+Railway neighbours use their actual bed width for this spacing and blend, so a narrower
+track's terrain envelope cannot swallow the side road.
 
 Only cells touching close independent carriageways receive 24 subdivisions per side
 (0.67 m), or 48 (0.33 m) for gaps below 2 m. Ordinary detailed cells retain six (2.67 m).

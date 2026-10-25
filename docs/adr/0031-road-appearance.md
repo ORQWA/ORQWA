@@ -102,6 +102,8 @@ Suppressed copies of the ridden pavement therefore leave the terrain index too. 
 keeps its local datum while the intervening bank blends between them; downhill segment
 endpoints must not introduce steps into a sloping junction. Ground contacts include the
 joining carriageway's width, while existing branch anchors remain pinned.
+For railway neighbours, use the track bed's actual width when measuring the gap and
+blending elevations; the wider ridden-road reference must not consume the street bed.
 
 Refine only cells touching these close carriageways to 24 or 48 subdivisions, retaining
 six elsewhere. The 48-way split serves gaps below 2 m. Height queries, draping, foundations

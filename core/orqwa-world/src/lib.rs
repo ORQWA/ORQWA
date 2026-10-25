@@ -180,7 +180,12 @@ impl Ways {
             islands: roundabouts::islands(map, projection),
             channels: channels::Channels::new(&streams, &pools, &streets),
             water_levels,
-            levels: streets::Levels::new(&streets, &appearance::Index::new(map, projection), road),
+            levels: streets::Levels::new(
+                &streets,
+                &appearance::Index::new(map, projection),
+                road,
+                &network.index,
+            ),
             streets,
             network,
             streams,
@@ -1499,8 +1504,21 @@ impl Shapers<'_> {
         let Some((level, _)) = bed else {
             return shaped;
         };
-        let Some(road) = roads
-            .iter()
+        let Some(road) = self
+            .road
+            .near_shaped(east, north, LEVEL_REACH)
+            .into_iter()
+            .chain(
+                self.rails
+                    .near(east, north, LEVEL_REACH)
+                    .into_iter()
+                    .map(|mut rail| {
+                        // Road distances use a six-metre reference cross-section. Railway beds
+                        // are narrower; their terrain envelope must not swallow a nearby street.
+                        rail.0 += ROAD_HALF_WIDTH - railways::BED_M / 2.0;
+                        rail
+                    }),
+            )
             .filter(|r| r.2 == Surface::Ground)
             .min_by(|a, b| a.0.total_cmp(&b.0))
         else {
@@ -1517,7 +1535,7 @@ impl Shapers<'_> {
         let blend = t * t * (3.0 - 2.0 * t);
         // A sloping road's downstream segment ends also lie within its terrain reach.
         // Their lower heights must not become steps across a same-level joining street.
-        let road_ground = shape(natural, &[*road]);
+        let road_ground = shape(natural, &[road]);
         let supported = road_ground + (levelled - road_ground) * blend;
         let structures: Vec<_> = roads
             .into_iter()
