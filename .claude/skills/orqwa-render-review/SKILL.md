@@ -35,6 +35,10 @@ tunnel and bridge views. Concrete facing must meet the actual cut terrain withou
 Also check the full saved Alpenbrevet Gold course at 32.40 km / 178.34 km remaining: the
 service road beside the ridden cutting must keep a driveable surface, and the bank must not
 be paved by inferred city cover. Include sloping joins and mixed terrain resolutions.
+Also inspect Alpenbrevet at 40.07 km / 170.68 km remaining, from the approach and inside
+the tunnel. Reapplying its cover after side-road blending must not close the ridden road.
+Check both mouths beyond their short clipping volumes and every terrain/paving intersection
+inside the tube; a valid roof can mask another surface when only the first height is tested.
 
 - `scripts/dev.sh scripts/render-views.sh` — the **standard views** (`app/tools/render_views.gd`):
   fixed shots on the fixture routes (village, climb, hairpin, lake, rain, morning, evening,

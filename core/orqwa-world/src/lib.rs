@@ -53,7 +53,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 35;
+pub const GENERATOR: u32 = 36;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -1504,9 +1504,13 @@ impl Shapers<'_> {
         let Some((level, _)) = bed else {
             return shaped;
         };
-        let Some(road) = self
-            .road
-            .near_shaped(east, north, LEVEL_REACH)
+        let ridden = self.road.near_shaped(east, north, LEVEL_REACH);
+        let clearance = ridden
+            .iter()
+            .filter(|r| r.2 == Surface::Ground)
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+            .copied();
+        let Some(road) = ridden
             .into_iter()
             .chain(
                 self.rails
@@ -1527,20 +1531,32 @@ impl Shapers<'_> {
         let padding = level.padding;
         let road_room = (road.0 - ROAD_HALF_WIDTH - padding).max(0.0);
         let street_room = (level.distance - level.half - padding).max(0.0);
-        let t = if road_room + street_room > 1e-9 {
-            road_room / (road_room + street_room)
-        } else {
-            0.0
-        };
-        let blend = t * t * (3.0 - 2.0 * t);
+        let blend = bank_blend(road_room, street_room);
         // A sloping road's downstream segment ends also lie within its terrain reach.
         // Their lower heights must not become steps across a same-level joining street.
         let road_ground = shape(natural, &[road]);
         let supported = road_ground + (levelled - road_ground) * blend;
-        let structures: Vec<_> = roads
+        let mut structures: Vec<_> = roads
             .into_iter()
             .filter(|r| r.2 != Surface::Ground)
             .collect();
+        // Tunnel cover is applied here again after blending the independent beds. The
+        // ridden footprint must still cut that hill away on the approach to either mouth.
+        // Ease its banks back towards the side road, rather than ending the cut at a wall.
+        if structures.iter().any(|r| r.2 == Surface::Tunnel)
+            && let Some(road) = clearance
+        {
+            let subdivisions =
+                self.streets
+                    .detail_near(east, north, GRID * std::f64::consts::FRAC_1_SQRT_2);
+            #[allow(clippy::cast_precision_loss)] // one of the fixed subdivision counts
+            let margin = GRID / subdivisions as f64 * std::f64::consts::SQRT_2 + 0.2;
+            let covered = shape(supported, &structures);
+            structures.push(road);
+            let cleared = shape(supported, &structures);
+            let blend = bank_blend((road.0 - ROAD_HALF_WIDTH - margin).max(0.0), street_room);
+            return cleared + (covered - cleared) * blend;
+        }
         shape(supported, &structures)
     }
 
@@ -1593,6 +1609,16 @@ impl Shapers<'_> {
         );
         found
     }
+}
+
+/// Blend the bank between protected footprints, retaining the ridden datum on overlap.
+fn bank_blend(road_room: f64, street_room: f64) -> f64 {
+    let t = if road_room + street_room > 1e-9 {
+        road_room / (road_room + street_room)
+    } else {
+        0.0
+    };
+    t * t * (3.0 - 2.0 * t)
 }
 
 /// The ground at a point with natural height `natural`, shaped around the pieces of road near

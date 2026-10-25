@@ -650,7 +650,9 @@ physically based materials and light, restyled group by group.
     faces. Small paths retain the terrain. Junctions, roundabouts and separate structures
     keep their ownership. Close service roads retain their own beds beside the ridden road's
     cutting; local refinement closes narrow banks and junctions without paved terrain folds.
-    Generator 35 / stored format 3.
+    The ridden carriageway retains final clearance priority when tunnel cover is reapplied;
+    approach checks extend beyond the portal cut, and full interiors remain hollow.
+    Generator 36 / stored format 3.
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)

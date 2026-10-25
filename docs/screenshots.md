@@ -65,7 +65,7 @@ See the [boulder gallery](../art/README.md#vegetation).
 ### Surrounding road beds
 
 Surrounding vehicle roads, unpaved service roads, tracks and cycleways have level road beds
-and continuous terrain-derived profiles (R141, generator 35). Modest slopes use earth
+and continuous terrain-derived profiles (R141, generator 36). Modest slopes use earth
 cuttings and fills; steep banks combine earth cuttings with concrete retaining faces.
 Hiking trails and generic footpaths retain their terrain-following treatment, even if paved.
 
@@ -88,7 +88,7 @@ structures and the ridden road retain their own levels.
 
 The saved full Alpenbrevet Gold course at **32.40 km**, about **178.34 km to go**, exposed
 a service road being pulled back onto the ridden road's cutting and dense-city paving
-covering that bank. Generator 35 keeps the nearby carriageways at their own profiles,
+covering that bank. Generator 36 keeps the nearby carriageways at their own profiles,
 joins their datums where they meet and refines only the narrow intervening terrain. The
 cut bank keeps natural ground rather than inferred paving. These matching geometry views
 retain the full course's projection and grid, with vegetation, props and rider omitted:
@@ -97,6 +97,25 @@ retain the full course's projection and grid, with vegetation, props and rider o
 |---|---|
 | ![Alpenbrevet at 32.40 km before](images/road-earthworks/alpenbrevet-32400-before.jpg) | ![Alpenbrevet at 32.40 km after](images/road-earthworks/alpenbrevet-32400-after.jpg) |
 | ![Close view of the folded service road](images/road-earthworks/alpenbrevet-32400-close-before.jpg) | ![Close view of its continuous formed surface](images/road-earthworks/alpenbrevet-32400-close-after.jpg) |
+
+### Ridden tunnel clearance beside formed roads
+
+Alpenbrevet Gold at **40.07 km / 170.68 km to go** exposed tunnel cover being reapplied
+after side-road bed blending without the ridden approach's clearance constraint. Generator
+36 retains that constraint through the final shaping step, including a margin for the local
+terrain triangles. The full curved tunnel remains hollow; paving shares its volume cuts.
+The cutting eases into the intervening bank rather than ending in a sudden clearance wall.
+These fixed-camera exports keep the full saved course's projection and grid, omitting
+vegetation, props and rider to expose the geometry. The interior and opposite mouth check
+that opening the entrance also preserves the complete passage.
+
+| Previous build `7ef00a9` | Ridden-road clearance retained |
+|---|---|
+| ![Terrain blocks the tunnel approach](images/road-earthworks/alpenbrevet-40070-before.jpg) | ![Clear approach into the tunnel](images/road-earthworks/alpenbrevet-40070-after.jpg) |
+
+| Corrected interior | Corrected opposite mouth |
+|---|---|
+| ![Clear tunnel interior](images/road-earthworks/alpenbrevet-40120-interior.jpg) | ![Clear opposite tunnel mouth](images/road-earthworks/alpenbrevet-40290-exit.jpg) |
 
 ### Andermatt sidewalks
 

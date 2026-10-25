@@ -91,7 +91,7 @@ material, using its completed triangles. This shares terrain openings and chunk 
 instead of introducing a wall sampled independently of the visible ground. Use the existing
 zero-alpha structure tint in street buffers, so no shader or storage contract changes.
 
-Generator **35** offers regeneration; stored format **3** and course inputs are unchanged.
+Generator **36** offers regeneration; stored format **3** and course inputs are unchanged.
 Validation covers cross-sections for all included road types, excluded paved footpaths,
 modest versus steep earthworks, local profile grades, shared junction elevations, roundabouts,
 chunk boundaries and existing bridge/tunnel behavior. Offline comparison fixtures use the
@@ -111,6 +111,16 @@ and edge conformity share each cell's actual resolution. Inferred dense-city pav
 at unwalkable banks, rather than covering the cutting with pavers. The saved full Alpenbrevet
 Gold route at 32.40 km reproduces and verifies this case; projection and grid alignment are
 preserved while exporting nearby geometry for fixed-camera review.
+
+The ridden road has final clearance priority. When tunnel cover is reapplied after a bed
+blend, retain the nearest ridden ground section inside its carriageway and local triangle
+margin. Omitting that constraint heaps the tunnel hill across the approach outside the
+portal's clipped volume. Alpenbrevet's 40.07 km entrance reproduces this failure. Check both
+mouths and every terrain/paving intersection inside the tube, not only the first height
+returned at a point; an intact roof can conceal another surface below it.
+Ease the cutting into the bank outside the protected footprint, retaining a continuous
+hillside rather than a sudden clearance wall. A flat-terrain approach fixture checks that
+its bank stays continuous as well as keeping the riding surface clear.
 
 ## Amendment — local traffic lanes (2026-10-23, R120)
 

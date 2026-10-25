@@ -198,6 +198,11 @@ without steps from downstream samples; suppressed ridden copies cannot overwrite
 road's terrain. Narrow intervening banks use local refinement, and inferred city paving does
 not coat unwalkable cuttings.
 
+Ridden-road priority (2026-10-25, R141): surrounding-road earthworks must preserve the
+ridden carriageway's obstacle clearance as a final constraint, including both tunnel
+approaches beyond the portal cut and the complete tunnel interior. Neither terrain nor
+surrounding paving may obstruct it when tunnel cover is reapplied.
+
 Rendering implementation note (2026-10-21, R43/R108): trees retain their chosen population
 and placement while rendering simpler canopy and shadow geometry at smaller projected sizes.
 This automatic detail reduction also applies to kept worlds without regeneration; Low keeps

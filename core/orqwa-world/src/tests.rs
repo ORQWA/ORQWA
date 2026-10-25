@@ -4059,15 +4059,19 @@ async fn terrain_and_paving_stay_out_of_the_complete_tunnel_interior() {
         ..MapData::default()
     };
     let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let surfaces: [fn(&TerrainChunk) -> &MeshData; 4] =
+        [|c| &c.mesh, |c| &c.streets, |c| &c.tracks, |c| &c.urban];
+    // Inspect every intersection: a valid roof must not hide a second surface inside it.
+    let surrounding: Vec<_> = surfaces
+        .into_iter()
+        .flat_map(|surface| chunk_triangles(&world, surface))
+        .collect();
     for north in (450..550).step_by(3) {
         for x in [-3.0_f32, 0.0, 3.0, 4.0] {
             let ceiling = 500.0 + (25.0 - x * x).sqrt() - 0.2;
-            for height in [
-                ground_at(&world, x, -(north as f32)),
-                street_at(&world, x, -(north as f32)),
-            ]
-            .into_iter()
-            .flatten()
+            for height in surrounding
+                .iter()
+                .filter_map(|&triangle| triangle_height(triangle, x, -(north as f32)))
             {
                 assert!(
                     height <= 499.85 || height >= ceiling,

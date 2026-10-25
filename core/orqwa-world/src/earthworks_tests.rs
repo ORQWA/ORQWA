@@ -61,6 +61,72 @@ fn roads() -> MapData {
 }
 
 #[tokio::test]
+async fn side_road_earthworks_cannot_close_either_ridden_tunnel_approach() {
+    let route = route_north(&[Structure {
+        kind: StructureKind::Tunnel,
+        line: vec![at(0.0, 300.0), at(0.0, 700.0)],
+    }])
+    .await;
+    let map = MapData {
+        roads: vec![
+            road_north(),
+            Road {
+                class: RoadClass::Service,
+                details: RoadDetails {
+                    kind: RoadKind::Service,
+                    ..RoadDetails::default()
+                },
+                line: vec![at(12.0, 200.0), at(12.0, 800.0)],
+                structure: None,
+            },
+        ],
+        ..MapData::default()
+    };
+    let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let inside = palette::srgb("structure.tunnel", 0.0);
+    let (entrance, exit) = world
+        .structures
+        .vertices
+        .iter()
+        .zip(&world.structures.colors)
+        .filter(|(_, color)| **color == inside)
+        .fold((f32::MAX, f32::MIN), |(low, high), (v, _)| {
+            (low.min(-v[2]), high.max(-v[2]))
+        });
+    for (mouth, outward) in [(entrance, -1.0), (exit, 1.0)] {
+        // Beyond the portal's short clipping volume, the approach itself must cut
+        // through the hill. A clear tube alone does not ensure a usable entrance.
+        for step in 8..=35 {
+            let north = mouth + outward * step as f32;
+            for east in [-2.9, 0.0, 2.9] {
+                for height in [
+                    ground_at(&world, east, -north),
+                    street_at(&world, east, -north),
+                ]
+                .into_iter()
+                .flatten()
+                {
+                    assert!(
+                        height < 500.1,
+                        "side-road earthworks block the ridden tunnel approach at {east}, {north}: {height}"
+                    );
+                }
+            }
+        }
+        let north = mouth + outward * 12.0;
+        for step in -24..32 {
+            let east = step as f32 * 0.5;
+            let a = ground_at(&world, east, -north).unwrap();
+            let b = ground_at(&world, east + 0.5, -north).unwrap();
+            assert!(
+                (a - b).abs() < 0.8,
+                "the approach cutting ends in an abrupt wall on flat terrain at {east}, {north}: {a}, {b}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn a_close_parallel_service_road_keeps_its_bed_beside_the_ridden_cutting() {
     let map = MapData {
         roads: vec![

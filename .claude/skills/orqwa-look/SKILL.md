@@ -110,6 +110,9 @@ plus connected junctions and separate bridge/tunnel levels. Heights and walls ar
 Include close service roads inside the ridden road's cutting radius, not only isolated ways.
 Their beds must keep their own datum and join by their edges. Suppressed ridden copies must
 not shape the bank again. Dense-city paving must not coat unwalkable cuttings.
+The ridden road keeps final clearance priority when tunnel cover is applied. Retain open
+approaches and complete interiors, and ease the cutting into adjacent banks instead of
+ending the clearance in an artificial wall. Review portal walls and banks from road height.
 
 Urban surfaces (R105, ADR 0027) distinguish dense-city paving, commercial/industrial asphalt
 and suburban lawns. Mapped parks and other natural land take precedence. Review sidewalk

@@ -246,7 +246,7 @@ recorded tracks come out as before; files whose points skip the ring no longer t
 way against the traffic. Kept worlds built with the old route offer regeneration because their
 ridden road follows it. Stored format remains 3.
 
-Generator 35 gives surrounding vehicle roads, unpaved service roads, tracks and cycleways
+Generator 36 gives surrounding vehicle roads, unpaved service roads, tracks and cycleways
 shared road-bed profiles before terrain chunks are built. Heights use a cached global 16 m
 terrain lattice, with 24 m local smoothing and a 20 % intermediate-grade envelope. Chain ends
 and mapped branch/tag-change endpoints retain their common terrain datum; if endpoint heights
@@ -263,6 +263,14 @@ time. On sloping approaches, the nearest road profile supplies the datum, rather
 downstream segment endpoints within the shaping radius.
 Railway neighbours use their actual bed width for this spacing and blend, so a narrower
 track's terrain envelope cannot swallow the side road.
+
+The ridden carriageway retains final clearance priority after independent beds blend.
+Reapplying tunnel cover must also retain the nearest ridden ground section within the
+carriageway and its terrain-triangle margin. Otherwise the hill can grow across an approach
+beyond the mouth's clipping volume, even though the tunnel itself is hollow. Use that local
+section's datum rather than downstream segment ends, so sloping side-road joins remain smooth.
+Outside the protected footprint, ease this cutting back towards the side-road bed through
+the intervening bank; ending the clearance at a hard boundary makes an artificial cliff.
 
 Only cells touching close independent carriageways receive 24 subdivisions per side
 (0.67 m), or 48 (0.33 m) for gaps below 2 m. Ordinary detailed cells retain six (2.67 m).
