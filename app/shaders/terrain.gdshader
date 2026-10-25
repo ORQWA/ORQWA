@@ -50,8 +50,8 @@ uniform float rock_tile = 7.0;
 // show as a pale green: from canopy_from to canopy_full metres from the camera, forest ground
 // becomes the canopy seen from above, out to the horizon.
 uniform float canopy_tile = 32.0;
-uniform float canopy_from = 250.0;
-uniform float canopy_full = 650.0;
+uniform float canopy_from = 150.0;
+uniform float canopy_full = 300.0;
 
 varying vec3 world_position;
 varying vec3 world_normal;

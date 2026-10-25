@@ -86,8 +86,9 @@ Blender Python; its header shows how to run it).
   Godot selects by projected size for camera and shadow geometry; Medium–Ultra use 160 m
   batches, Low keeps 480 m batches. Review forest coverage from chase and drone cameras,
   check switching while moving, and compare native FPS with Low included.
-- **Distant canopy (R139):** beyond 100–250 m (nearer the fewer trees are drawn) forest
-  ground turns into the baked `canopy` texture over 400 m, out to the horizon land; tracks and
+- **Distant canopy (R145):** forest ground turns into the baked `canopy` texture over 150 m,
+  complete by 300 m where the woods thin out (150 m on Low: nearer the fewer trees are drawn),
+  out to the horizon land, so no thinned wood shows its floor from the route; tracks and
   paths end at 1 km so they draw no bright lines across it. Judge it from the drone above
   forested hills and from road height towards them, on Low and Ultra: woods dense and dark,
   meadows light, no seams, nearby woods still their drawn trees.

@@ -74,7 +74,7 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
   are under `art/sources/rock-boulder-dry/`. It replaced procedural noise after comparison
   on identical boulders in the same light. `rock.gdshaderinc` adds broad fractures at an 8 m
   scale for cliffs and 0.65 m for boulders. Review close and overview distances (R115).
-- `build.py -- canopy` bakes the canopy distant forest ground turns into (R139): round crowns
+- `build.py -- canopy` bakes the canopy distant forest ground turns into (R145): round crowns
   from Voronoi domes, rims and crevices in shade, tiled every 32 m. A 2 × 2 tile only shows
   seams; judge the look in the world, from the drone above forested hills.
 - `build.py -- bridge_concrete` converts CC0 Poly Haven **Concrete Wall 007** using

@@ -34,6 +34,25 @@ save a little.
 The first after-run showed a 95th-percentile frame of 166 ms at its first place, once; no other
 run did. A Low run measured alone read 9.7 ms; back to back with before, Low was the faster.
 
+## Complete by the dense belt
+
+Riding along the Sihl valley, its slopes a few hundred metres away still showed thinned trees on
+pale floor: they lie beyond the dense belt along the route (300 m), but the canopy covered
+them fully only from 650 m on Ultra. It is now complete by 300 m (by 150 m on Low, starting
+150 m earlier). Before (the canopy as above) and after, back to back and again in reverse
+order, from the drone; median frame time:
+
+| Place | Preset | Before | After | After | Before |
+|---|---|---:|---:|---:|---:|
+| 20 km, Sihl valley | Ultra | 31.8 ms | 32.0 ms | 32.2 ms | 32.0 ms |
+| 24 km, Adliswil | Ultra | 31.0 ms | 31.2 ms | 31.1 ms | 31.8 ms |
+| 30 km, above the city | Ultra | 34.1 ms | 31.7 ms | 31.6 ms | 32.2 ms |
+| 20 km, Sihl valley | Low | 8.4 ms | 8.7 ms | 7.9 ms | 8.1 ms |
+| 24 km, Adliswil | Low | 8.9 ms | 9.6 ms | 8.0 ms | 7.7 ms |
+
+Pairs taken next to each other differ by at most 0.3 ms on Ultra; Low varies by about 1 ms from
+run to run either way. The pictures below show this version.
+
 ## Pictures
 
 | View | Before | After |

@@ -229,6 +229,8 @@ func _distant_ground(world: RideWorld) -> void:
 		var full: float = material.get_shader_parameter("canopy_full")
 		_check(full > from, preset + " blends the crowns in over a distance")
 		_check(from >= previous_from, preset + " turns forest into crowns no nearer")
+		# Beyond the dense belt woods are thinned out: none may show its floor.
+		_check(full <= TerrainMaterial.DENSE_BELT, preset + " covers thinned woods in crowns")
 		previous_from = from
 	world.apply_quality("low")
 	var sparse: float = material.get_shader_parameter("canopy_from")
