@@ -68,6 +68,9 @@ const MODEL_FADE: float = 40.0
 const DETAIL_RANGE: float = 1800.0
 ## Bushes and rocks are smaller still.
 const SMALL_PLANT_RANGE: float = 600.0
+## Sidewalks and curbs are small: beyond this the ground's paving under them carries the look,
+## on every preset. Measured to the middle of a chunk's: none ends nearer than about 360 m.
+const SIDEWALK_RANGE: float = 700.0
 const CAMERA_SMOOTHING: float = 6.0
 ## Leaning in and out of bends takes a moment (1 / seconds).
 const LEAN_SMOOTHING: float = 3.0
@@ -247,6 +250,7 @@ var _track_material: ShaderMaterial = ShaderMaterial.new()
 var _rail_material: ShaderMaterial = ShaderMaterial.new()
 ## The railways near the route, on their own lines like the road (#85).
 var _railways: MeshInstance3D = MeshInstance3D.new()
+var _ground_lods: GroundLods = GroundLods.new()
 
 @onready var _terrain: Node3D = $Terrain
 @onready var _road: MeshInstance3D = $Road
@@ -541,11 +545,16 @@ func _ready() -> void:
 	apply_conditions("Midday", "Clear")
 
 
+func _exit_tree() -> void:
+	_ground_lods.finish()
+
+
 func _process(delta: float) -> void:
 	if not _paused:
 		_wind_time += delta
 		RenderingServer.global_shader_parameter_set("wind_time", _wind_time)
 	_build_some_chunks()
+	_ground_lods.add_ready()
 	if _rain.emitting:
 		# Round the camera, falling straight whichever way it looks.
 		_rain.global_position = _camera.global_position + Vector3.UP * RAIN_ABOVE
@@ -614,6 +623,7 @@ func _build_some_chunks() -> void:
 		var terrain_arrays: Dictionary = chunk["terrain"]
 		var building_arrays: Dictionary = chunk["buildings"]
 		var ground: MeshInstance3D = _mesh_instance(terrain_arrays, _terrain_material)
+		_ground_lods.make(ground, terrain_arrays)
 		ground.visibility_range_end = VISIBILITY_RANGE * _distance
 		node.add_child(ground)
 		for surface: Array in [
@@ -626,7 +636,7 @@ func _build_some_chunks() -> void:
 				var way: MeshInstance3D = _mesh_instance(arrays, material)
 				way.visibility_range_end = VISIBILITY_RANGE * _distance
 				node.add_child(way)
-		UrbanSurfaces.add_to(node, chunk, DETAIL_RANGE * _distance)
+		UrbanSurfaces.add_to(node, chunk, SIDEWALK_RANGE)
 		var buildings: MeshInstance3D = _mesh_instance(building_arrays, _building_material)
 		buildings.visibility_range_end = DETAIL_RANGE * _distance
 		node.add_child(buildings)
@@ -910,7 +920,7 @@ func _set_distance(factor: float) -> void:
 			var tree_range: float = _quality["tree_range"]
 			geometry.visibility_range_end = tree_range
 			geometry.visibility_range_end_margin = minf(tree_range * 0.15, 300.0)
-		elif geometry.visibility_range_end > 0.0:
+		elif geometry.visibility_range_end > 0.0 and not geometry.has_meta("fixed_range"):
 			geometry.visibility_range_end *= change
 	_camera.far = maxf(VISIBILITY_RANGE * factor * 1.6, HORIZON_RANGE)
 

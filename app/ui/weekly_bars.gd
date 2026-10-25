@@ -104,12 +104,21 @@ func _draw() -> void:
 		_draw_readout(font, plot)
 
 
+## Up to six weeks' dates under the chart, evenly spread, as many as fit side by side.
 func _draw_dates(font: Font, plot: Rect2, step: float) -> void:
 	var count: int = _starts.size()
 	var labels: int = mini(6, count)
+	var widest: float = 0.0
 	for k: int in range(labels):
 		var i: int = roundi(float(k) * (count - 1) / maxf(labels - 1, 1))
-		var text: String = FitnessChart.short_date(_starts[i])
+		var text: String = FitnessChart.week_dates(_starts[i])
+		widest = maxf(
+			widest, font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
+		)
+	labels = clampi(floori(plot.size.x / (widest + 12.0)), 1, labels)
+	for k: int in range(labels):
+		var i: int = roundi(float(k) * (count - 1) / maxf(labels - 1, 1))
+		var text: String = FitnessChart.week_dates(_starts[i])
 		var width: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 		var x: float = clampf(plot.position.x + (i + 0.5) * step - width / 2.0, 0.0, size.x - width)
 		draw_string(
@@ -128,7 +137,7 @@ func _draw_readout(font: Font, plot: Rect2) -> void:
 	var stack: PackedFloat64Array = _stacks[_hover]
 	var total: String = _format.call(_total(stack))
 	var parts: Array[Array] = [
-		[tr("Week of %s") % FitnessChart.short_date(_starts[_hover]), UiTheme.TEXT],
+		[FitnessChart.week_dates(_starts[_hover]), UiTheme.TEXT],
 		[total, UiTheme.TEXT],
 	]
 	if not _names.is_empty():

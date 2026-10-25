@@ -34,6 +34,9 @@ does the same.
 | Render only the English/German error-details views, without preparing a route | `SCREENSHOT_ERRORS_ONLY=1 scripts/screenshots.sh` |
 | Render the screenshots in another window size, e.g. the smallest the layouts are made for (R94) | `SCREENSHOT_SIZE=1024x640 scripts/screenshots.sh` |
 | Render the standard views of the 3D world (before and after a visual change) into `screenshots/views/` | `scripts/render-views.sh` |
+| Count what a course's world draws at chosen places (draw calls, primitives), with each kind of geometry, effect or panel taken away in turn; frame times need a Mac ([Measuring frame rate](#measuring-frame-rate)) | `scripts/perf/software.sh` |
+| Export the resource pack that measures frame rate in a copy of the native app on a Mac (`scripts/perf/mac.sh`, on the Mac) | `scripts/perf/pack.sh` |
+| Compare measuring runs as a Markdown table for a pull request | `python3 scripts/perf/compare.py screenshots/perf/frames.csv` |
 | Render the 3D models (buildings, plants, clouds) and the riders for review; with `GALLERY=docs/images/models`, also the galleries in `art/README.md` | `scripts/render-models.sh`, `scripts/render-riders.sh` |
 | Redraw the wordmark and the lockups in `docs/brand/` after changing their geometry ([ADR 0026](adr/0026-the-name-orqwa.md)) | `python3 scripts/brand/wordmark.py` |
 | Regenerate the boot splash PNG after a logo change | `scripts/render-splash.sh` |
@@ -65,6 +68,55 @@ Generator 7 shares the carriageway's tangent arcs with the sidewalk at junctions
 bends and clips footway polygons against the road instead of discarding complete sections.
 The road-facing border uses separate 18 cm curbstones with a 2 cm beveled lip and 75 cm joints.
 Bench and vegetation queries use the same clipped footprints as the rendered meshes.
+
+Generator 27 keeps the matched original map feature alongside each ridden road segment's
+appearance, plus its projected position on the matched local map section. Copies of that
+section share one sidewalk and pavement owner, so coarse GPX bends and chained tile pieces
+cannot create a second footway that cuts gaps in the ridden strip. Superseded map clearance
+does not cut the new walk. Independent streets, joining arms and unridden parallel arms of
+the same map feature keep their walks. This matching data is temporary; stored format 3
+is unchanged.
+Its walking tops follow the owning street profile, rather than a nearby lower road's bank.
+Ridden endpoints use road elevations, mapped walks use centre-line terrain samples, and
+junction curves use their inner edge. Both sides share the same grade and cross-section
+datum; access ramps and bench/bin height queries agree with that surface. Solid sides
+extend down to terrain, with buried edges kept correctly wound. Stored format remains 3.
+Generator 28 carries both endpoint widths through walking strips, joins and access offsets.
+Actual ridden carriageway triangles replace the wider terrain-shaping envelope in sidewalk
+clearance, avoiding false gaps where road width changes. Partial overlaps with drawn building
+outlines are clipped, preserving the clear walking width and closing the new outer edges.
+Submillimetre GPU clipping slivers are discarded before normals are computed. Footprints
+and height queries remain shared with vegetation and furniture; stored format stays 3.
+Generator 29 limits a rounded bend's replacement triangle to the original outer sidewalk
+miter, plus a 2 cm allowance. Its previous three-radius reach could cut a nearby parallel
+street's walk while the curved replacement stayed beside its own road. The full saved
+Andermatt comparison includes both streets; stored format remains 3.
+Generator 30 shares the straight walking surfaces' grade fields with curved joins, across
+the full tangent cross-section. Each arc section blends the same two parents using its
+fraction along the whole corner; street-centre anchors supply fallback profiles. Review
+the joints from road height too: matching footprints can still conceal a vertical step.
+Generator 31 clips overlapping walking footprints to one top and fits a common grade through
+each connected overlap region, easing into adjoining profiles over one walking width.
+Folded inner offsets become bounded footprints before road clipping. Profiles at overlaps
+and chunk boundaries share globally sampled endpoint heights instead of extrapolating a
+different grade from each chunk.
+Corner pieces require walking approaches at both ends; a paved junction alone cannot add
+isolated sidewalk tiles beside a service road. Junction fans are reserved for distinct
+street arms; a continuous street already owns its bend geometry, including inside a loop.
+Walking overlap components are determined before ownership trimming and include touching
+overlap groups, so clipping cannot split their grade. Stored format remains 3.
+Generator 32 clips side extrusions to the exposed walking perimeter and ignores repeated
+mask vertices, preventing internal side walls and duplicate boolean pieces. Stored format
+remains 3.
+Generator 33 requires at least 12 m of connected inferred raised sidewalk after clipping
+and overlap ownership, before chunking. Surviving longitudinal intervals accumulate across
+straight and curved pieces, with clipping partitions counted once. Isolated remnants do
+not inherit missing source length. Access paths and forecourts retain their own rules;
+stored format remains 3.
+
+Generator 34 keeps sidewalk segment intersections inside each cut polygon's finite bounds.
+Nearly collinear remnants with degenerate end edges cannot act as infinite bands, connect
+walks across gaps or hide distant exposed edges. The 12 m minimum and stored format 3 remain.
 
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
@@ -290,6 +342,71 @@ the route gallery to `docs/images/views/`. Copy the reviewed model JPEGs from th
 gallery into `docs/images/models/`. Historical comparison baselines stay with their original
 reviews. Phone-remote browser screenshots require a separate browser capture; these helpers
 do not replace them.
+
+## Measuring frame rate
+
+Frame rate needs a real GPU: software Vulkan in the container draws the same draw calls and
+primitives, but its timings say nothing about a GPU. `app/tools/measure_frames.gd` measures a
+course's world either way. It opens a course (a `.tqc`, built offline from its saved inputs, or
+a GPX route), waits for every chunk, pauses the rider at each distance in `PLACES` and samples
+the frames there: everything shown (`all`), then with one thing taken away at a time, as `TAKE`
+asks. Each sample appends a row to `frames.csv`: frame rate, median and 95th-percentile frame
+time, and the draw calls and primitives in view and in the shadow maps. Each place gets a
+screenshot, the run a log with the world's build and upload times and its geometry by kind.
+
+| `TAKE` | Samples |
+|---|---|
+| `kinds` | Each kind of chunk geometry hidden: terrain, streets and tracks, sidewalks (`urban`), building models and shells, trees, grass, water, props |
+| `effects` | Each of the preset's effects off: reflections, ambient occlusion, bloom, soft shadows, multisampling, the sun's shadows; two shadow splits; shadows to 300 m |
+| `interface` | The minimap, the whole ride screen, all chunks hidden |
+| `distance` | The ground, ways, sidewalks and water of chunks beyond `FAR` metres (600) hidden, each and together: the most that drawing them more cheaply far off could save |
+
+`QUALITY` picks the preset (Ultra unless set), `CAMERA` the camera (0 chase, 1 first person,
+2 drone), `MINIMAP` its view (`close`, `route` or `hidden`).
+
+**On a Mac.** Release builds take neither `-s` nor `--main-pack`. So `scripts/perf/pack.sh`
+exports the project's resource pack in the container with the tool as its main loop, and
+`scripts/perf/mac.sh` runs a copy of the installed app in `/tmp` with that pack, an ad-hoc
+signature and a throwaway `HOME`: the rider's own profile, rides, settings and kept worlds stay
+untouched, and the copy does not look for updates. The copy brings its own Rust extension, so
+the installed app measures GDScript changes; for a Rust change set `APP` to the macOS app CI
+built from the branch (the run's `ORQWA-macos-arm64.zip`).
+
+```sh
+scripts/dev.sh scripts/perf/pack.sh               # screenshots/perf/measure.pck
+COURSE=core/orqwa-gd/courses/twann-chasseral.tqc PLACES="2750 9000" TAKE=kinds,effects \
+    scripts/perf/mac.sh screenshots/perf/measure.pck branch
+```
+
+To compare with another commit, pack its project (with today's tool) and measure both alike:
+
+```sh
+mkdir -p screenshots/perf/main && git archive origin/main app | tar -x -C screenshots/perf/main
+scripts/dev.sh scripts/perf/pack.sh screenshots/perf/main.pck screenshots/perf/main/app
+COURSE=... PLACES=... scripts/perf/mac.sh screenshots/perf/main.pck main
+scripts/dev.sh python3 scripts/perf/compare.py screenshots/perf/frames.csv main branch
+```
+
+`compare.py` prints a Markdown table of median frame times with the change from the first
+label to the last, ready for a pull request. Keep the window in front and run nothing else
+meanwhile (checks, renders, builds), on the same power source for every run; follow a run
+with `tail -f screenshots/perf/<label>.log`. A city's world takes about a minute to build, then
+each sample about four seconds. The window is 1600 × 900 points, twice that in pixels each way
+on a Retina display; the log notes the viewport. Write lasting results into
+`docs/benchmarks/` with their conditions, as in [city courses](benchmarks/city-courses.md).
+
+**In the container.** `scripts/perf/software.sh` runs the tool under software Vulkan, for the
+counts alone: what a change does to draw calls and primitives when no Mac is at hand. Set the
+tool's settings inside `sh -c` so they reach the container:
+
+```sh
+scripts/dev.sh sh -c 'COURSE=core/orqwa-gd/courses/twann-chasseral.tqc PLACES=2750 TAKE=distance scripts/perf/software.sh'
+```
+
+On Windows the portable Godot editor runs the tool directly with the extension cross-built
+for it (`scripts/build-gdext.sh release windows`):
+`godot --path app -s res://tools/measure_frames.gd`, with `TIMED=1`, an absolute `OUT_DIR` and
+the settings above in the environment.
 
 ## Checking music controls
 

@@ -132,6 +132,7 @@ impl HistoryIndex {
         }
         let present: HashSet<&Path> = records.iter().map(|(fit, _)| fit.as_path()).collect();
         self.store(dir, &changed, &present)?;
+        rides::newest_first(&mut records);
         Ok(records)
     }
 
@@ -290,6 +291,31 @@ mod tests {
         let later = index.records(&dir.join("rides"), counting(&reads)).unwrap();
         assert_eq!(reads.get(), 2);
         assert_eq!(later, first);
+    }
+
+    #[test]
+    fn rides_kept_from_torqa_stay_behind_newer_ones() {
+        let dir = temp_dir("renamed");
+        let file = dir.join("cache").join(FILE);
+        let torqa = ride(
+            &dir,
+            "torqa-20261012-071500",
+            &record("Gurten", 1_791_789_300),
+        );
+        let orqwa = ride(
+            &dir,
+            "orqwa-20261024-071500",
+            &record("Moron", 1_792_826_100),
+        );
+        let reads = Cell::new(0);
+
+        let mut index = HistoryIndex::open(&file).unwrap();
+        let read = index.records(&dir.join("rides"), counting(&reads)).unwrap();
+        let indexed = index.records(&dir.join("rides"), counting(&reads)).unwrap();
+
+        let fits: Vec<&PathBuf> = read.iter().map(|(fit, _)| fit).collect();
+        assert_eq!(fits, [&orqwa, &torqa]);
+        assert_eq!(indexed, read);
     }
 
     #[test]

@@ -456,6 +456,21 @@ physically based materials and light, restyled group by group.
   its own value, kept per computer
 - [x] Default frame rate capped at 60 fps, including Auto at every quality preset (R111),
   from startup; explicit frame rate limits and Unlimited remain available
+- [ ] City courses at frame rate (R43): Zürich rode at 7–10 fps on Ultra on an M5 Pro
+  ([measurements](benchmarks/city-courses.md)); views reaching far keep their land, streets
+  and town, only drawn more cheaply:
+  - [x] The minimap draws its map once per view and size and only moves and turns it as the
+    rider goes, instead of drawing every line of the map anew each frame
+  - [ ] The minimap's lines as one mesh rather than one draw each
+  - [x] Coarser ground in the distance: Godot's own mesh LODs for each chunk's ground, made on
+    worker threads with chunk edges kept; sidewalks and curbs to 700 m on every preset
+  - [ ] Cheaper distant streets: their ribbons are all edge, which locked-border LODs keep
+  - [ ] Building models in the shadow maps without the `discard` that keeps Godot from its
+    shared depth-only material
+  - [ ] Building cells faded by their own centre, not their chunk's
+  - [ ] MetalFX upscaling on Retina displays
+  - [ ] Building models over a shorter range, with their materials merged, and only where the
+    route comes close enough to show them
 - [x] Asset pipeline: Blender 5.2 LTS in an x86-64 art container (`scripts/art.sh`), scripted
   models, an in-game preview renderer (`scripts/render-models.sh`), agent skills for the look,
   the pipeline and render review (`.claude/skills`)
@@ -656,6 +671,17 @@ physically based materials and light, restyled group by group.
   - [x] Rounded sidewalk corners and kerbs: follow the carriageway's junction arcs, round
     outer bends, trim intersecting surfaces instead of removing whole slabs, and draw a
     separate 18 cm curb-stone border with joints and a beveled lip (R105/R112).
+  - [x] Andermatt sidewalk continuity: one sidewalk owner for offset GPX/map lines,
+    walking surfaces anchored to their street, and continuous clear widths beside obstacles;
+    bounded corner replacement preserves neighbouring walks. Compared the full saved
+    Alpenbrevet route at 209.36 km to go from above and beside the street; connected islands
+    share a grade and only exposed sides close to terrain. Generic width, direction and
+    chunk-boundary regressions plus village, city and Oberalp renders pass (R131–R135).
+  - [x] Minimum inferred sidewalk length: require 12 m of connected walking surface
+    after clipping, across straight/curved sections and chunk boundaries. Omit detached
+    corner and island remnants; preserve long runs and separate building access (R137).
+    Finite clipping bounds prevent nearly collinear remnants from lending length across
+    real gaps; checked the 117.44 km-to-go corner and translated/reversed masks (R138).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs
@@ -730,6 +756,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
 - [x] Progress (R65): the best 1 / 5 / 20 min week by week or month by month, the FTP over time
   and the FTP tests; an FTP estimated from the last 90 days' best efforts (Morton's
   three-parameter critical power, else 95 % of 20 min) offered, never applied
+- [x] Weeks named by their days, Monday to Sunday ("19–25 Oct"), on the weekly bars and the
+  progress chart (R140); the history newest first by start again, Torqa's rides included (R139)
 - **Exit:** a season of real rides shows where the rider got stronger, and how fit and fresh
   they are, without leaving ORQWA
 
