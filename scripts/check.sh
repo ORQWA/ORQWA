@@ -18,6 +18,7 @@ deps=true
 release=true
 i18n=true
 wiki=true
+perf=true
 gd_files=""
 godot=true
 if $quick; then
@@ -29,6 +30,7 @@ if $quick; then
     release=false
     i18n=false
     wiki=false
+    perf=false
     godot=false
     for path in $changed; do
         case "$path" in
@@ -55,6 +57,9 @@ if $quick; then
             app/*) godot=true ;;
         esac
         case "$path" in
+            scripts/perf/*) perf=true ;;
+        esac
+        case "$path" in
             wiki | docs/* | README.md | scripts/wiki/*) wiki=true ;;
         esac
         case "$path" in
@@ -74,6 +79,9 @@ cd "$root/core"
 if $wiki; then
     python3 "$root/scripts/wiki/check.py"
     python3 -m unittest discover -s "$root/scripts/wiki" -p 'test_*.py'
+fi
+if $perf; then
+    python3 -m unittest discover -s "$root/scripts/perf" -p 'test_*.py'
 fi
 if $release; then
     python3 -m unittest discover -s "$root/scripts/release" -p 'test_*.py'
