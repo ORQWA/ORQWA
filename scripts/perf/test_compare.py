@@ -54,6 +54,31 @@ class TableTest(unittest.TestCase):
         self.assertIn("| 100 | all | 16.0 ms (60 fps) | 20.0 ms (50 fps) | +25% |", table)
         self.assertIn("| 100 | -msaa | 14.0 ms (70 fps) | – | – |", table)
 
+    def test_rows_of_runs_not_compared_are_left_out(self):
+        table = compare.table(
+            rows(
+                "a,ultra,100,all,50.0,20.00,21.00,1,1,1,1",
+                "b,ultra,100,all,60.0,16.00,17.00,1,1,1,1",
+                "c,ultra,200,all,40.0,25.00,26.00,1,1,1,1",
+            ),
+            ["a", "b"],
+        )
+        self.assertNotIn("| 200 |", table)
+
+    def test_a_place_visited_again_is_a_row_of_its_own(self):
+        table = compare.table(
+            rows(
+                "a,ultra,2510,all,55.0,18.20,18.90,1,1,1,1",
+                "a,ultra,2510,all,50.0,20.10,20.60,1,1,1,1",
+                "b,ultra,2510,all,61.5,16.25,16.50,1,1,1,1",
+                "b,ultra,2510,all,61.5,16.26,16.50,1,1,1,1",
+            )
+        )
+        self.assertIn("| 2510 | all | 18.2 ms (55 fps) | 16.2 ms (62 fps) | -11% |", table)
+        self.assertIn(
+            "| 2510 (visit 2) | all | 20.1 ms (50 fps) | 16.3 ms (62 fps) | -19% |", table
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

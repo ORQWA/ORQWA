@@ -57,18 +57,27 @@ def table(rows, labels=None):
     """The Markdown table comparing the runs named by `labels`."""
     labels = labels or list(dict.fromkeys(row["label"] for row in rows))
     by_time = timed(rows)
+    # A run may come back to a place, e.g. to see how far it drifted: each visit is its own row.
     samples = {}
+    visits = {}
     for row in rows:
-        samples.setdefault((row["place_m"], row["sample"]), {})[row["label"]] = row
+        seen = (row["label"], row["place_m"], row["sample"])
+        visits[seen] = visits.get(seen, 0) + 1
+        key = (row["place_m"], row["sample"], visits[seen])
+        samples.setdefault(key, {})[row["label"]] = row
     unit = "median frame time" if by_time else "draw calls / primitives, view + shadows"
     lines = [
         f"| Place (m) | Sample | {' | '.join(labels)} | Change |",
         "|---:|---|" + "---:|" * (len(labels) + 1),
     ]
-    for (place, sample), runs in samples.items():
+    for (place, sample, visit), runs in samples.items():
+        # frames.csv collects every run: some rows belong to none of those compared.
+        if not any(label in runs for label in labels):
+            continue
         figures = [cell(runs.get(label), by_time) for label in labels]
         moved = change(runs.get(labels[0]), runs.get(labels[-1]), by_time)
-        lines.append(f"| {place} | {sample} | {' | '.join(figures)} | {moved} |")
+        where = place if visit == 1 else f"{place} (visit {visit})"
+        lines.append(f"| {where} | {sample} | {' | '.join(figures)} | {moved} |")
     return f"{unit.capitalize()}:\n\n" + "\n".join(lines)
 
 
