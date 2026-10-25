@@ -96,6 +96,8 @@ The fixed village, lakeside junction, city-bench and Oberalp hairpin/tunnel view
 also regenerated and reviewed with the correction.
 The village, junction, city-bench and Oberalp hairpin views were refreshed again for the
 minimum-length rule; the long city walk and its bench/bin placement remain intact.
+The city-bench view was checked again with the finite clipping bounds in generator 34;
+its continuous walking surface and furniture placement remain intact.
 
 | Before | Continuous sidewalk at street height |
 |---|---|
