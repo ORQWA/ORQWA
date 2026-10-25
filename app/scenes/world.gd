@@ -50,6 +50,8 @@ const TEXTURES: Dictionary[String, Texture2D] = {
 	"gravel_normal": preload("res://assets/textures/gravel_normal.webp"),
 	"rock_albedo": preload("res://assets/textures/rock_albedo.webp"),
 	"rock_normal": preload("res://assets/textures/rock_normal.webp"),
+	"canopy_albedo": preload("res://assets/textures/canopy_albedo.webp"),
+	"canopy_normal": preload("res://assets/textures/canopy_normal.webp"),
 	"asphalt_albedo": preload("res://assets/textures/asphalt_albedo.webp"),
 	"asphalt_normal": preload("res://assets/textures/asphalt_normal.webp"),
 	"asphalt_rough": preload("res://assets/textures/asphalt_rough.webp"),
@@ -71,6 +73,9 @@ const SMALL_PLANT_RANGE: float = 600.0
 ## Sidewalks and curbs are small: beyond this the ground's paving under them carries the look,
 ## on every preset. Measured to the middle of a chunk's: none ends nearer than about 360 m.
 const SIDEWALK_RANGE: float = 700.0
+## Tracks and paths are narrow and light: far off they drew bright lines across the crowns that
+## hide them (terrain.gdshader), so they end here, on every preset, measured likewise.
+const TRACK_RANGE: float = 1000.0
 const CAMERA_SMOOTHING: float = 6.0
 ## Leaning in and out of bends takes a moment (1 / seconds).
 const LEAN_SMOOTHING: float = 3.0
@@ -406,6 +411,8 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	)
 	var distance: float = _quality["distance"]
 	_set_distance(distance)
+	var tree_density: float = _quality["tree_density"]
+	TerrainMaterial.set_tree_density(_terrain_material, tree_density)
 	# A course may already be uploaded when settings change before the next ride.
 	if previous_density != _quality["tree_density"] or previous_cell != _quality["tree_cell"]:
 		_restart_chunks()
@@ -479,16 +486,7 @@ func reset_view() -> void:
 
 func _ready() -> void:
 	# Shared surface textures keep street and terrain materials consistent (ADR 0020).
-	_terrain_material.shader = preload("res://shaders/terrain.gdshader")
-	for material: String in ["grass", "dirt", "gravel", "rock"]:
-		_set_textures(_terrain_material, material, material)
-	UrbanSurfaces.configure_terrain(_terrain_material)
-	for cover: String in ["meadow", "farmland", "orchard", "forest", "town", "industrial", "rock"]:
-		var colour: Color = Palette.color("ground." + cover)
-		_terrain_material.set_shader_parameter(
-			"cover_" + cover, Vector3(colour.r, colour.g, colour.b)
-		)
-	_terrain_material.set_shader_parameter("snow_color", Palette.color("ground.snow"))
+	TerrainMaterial.configure(_terrain_material, TEXTURES)
 	for road_material: ShaderMaterial in [_road_material, _street_material, _track_material]:
 		RoadMaterials.configure(road_material, road_material == _road_material)
 	_water_material.shader = preload("res://shaders/water.gdshader")
@@ -635,6 +633,9 @@ func _build_some_chunks() -> void:
 				var material: ShaderMaterial = surface[1]
 				var way: MeshInstance3D = _mesh_instance(arrays, material)
 				way.visibility_range_end = VISIBILITY_RANGE * _distance
+				if material == _track_material:
+					way.visibility_range_end = TRACK_RANGE
+					way.set_meta("fixed_range", true)
 				node.add_child(way)
 		UrbanSurfaces.add_to(node, chunk, SIDEWALK_RANGE)
 		var buildings: MeshInstance3D = _mesh_instance(building_arrays, _building_material)
@@ -979,10 +980,3 @@ func _camera_target(rider: Transform3D) -> Transform3D:
 			eye = origin - flat_forward * 6.5 + Vector3.UP * 2.6
 			look_at = origin + flat_forward * 10.0 + Vector3.UP * 1.0
 	return Transform3D(Basis.IDENTITY, eye).looking_at(look_at, Vector3.UP)
-
-
-## Gives `material` the colour and normal maps of baked texture `texture_name` as its uniforms
-## `<uniform>_albedo` and `<uniform>_normal`.
-static func _set_textures(material: ShaderMaterial, texture_name: String, uniform: String) -> void:
-	material.set_shader_parameter(uniform + "_albedo", TEXTURES[texture_name + "_albedo"])
-	material.set_shader_parameter(uniform + "_normal", TEXTURES[texture_name + "_normal"])

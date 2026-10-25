@@ -451,6 +451,11 @@ physically based materials and light, restyled group by group.
 - [x] Authored tree LODs (R43, R108): retain nearby detail and forest population, simplify
   distant canopies and their shadows, with screen-size selection and bounded spatial batches;
   verify native FPS and Low's rendering cost without changing kept worlds.
+- [ ] Distant woods read as dense forest (R139, [measurements](benchmarks/distant-forest.md)):
+  - [x] Forest ground turns into a baked canopy of crowns with distance, nearer the fewer trees
+    are drawn, out to the horizon; tracks and paths end at 1 km
+  - [ ] Canopy shells from the wood outlines for volume and ridgeline silhouettes, rising with
+    distance; ways through woods hidden under them rather than ended by distance
 - [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
   its own value, kept per computer

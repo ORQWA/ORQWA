@@ -22,6 +22,8 @@ uniform sampler2D paving_albedo : source_color, filter_linear_mipmap_anisotropic
 uniform sampler2D paving_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D asphalt_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D asphalt_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D canopy_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D canopy_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
 
 // The vertex colours of the covers (palette `ground.*`, sRGB): they identify, not colour.
 uniform vec3 cover_meadow = vec3(0.698, 0.757, 0.471);
@@ -44,6 +46,12 @@ uniform float grass_tile = 3.0;
 uniform float dirt_tile = 2.5;
 uniform float gravel_tile = 1.5;
 uniform float rock_tile = 7.0;
+// Far off the trees thin out (R103) and fewer are drawn (R108), so the floor between them would
+// show as a pale green: from canopy_from to canopy_full metres from the camera, forest ground
+// becomes the canopy seen from above, out to the horizon.
+uniform float canopy_tile = 32.0;
+uniform float canopy_from = 250.0;
+uniform float canopy_full = 650.0;
 
 varying vec3 world_position;
 varying vec3 world_normal;
@@ -143,6 +151,15 @@ void fragment() {
 	vec3 moss = grass * vec3(0.6, 0.68, 0.5);
 	vec3 floor_colour = mix(moss, dirt * 0.7, bare * 0.7);
 	vec3 floor_normal = normalize(mix(grass_n, dirt_n, bare * 0.7));
+	// Far off, the crowns cover the floor; `canopy` is how much of the ground here they cover.
+	float far = smoothstep(canopy_from, canopy_full, length(VERTEX));
+	float canopy = far * w_forest / total;
+	if (canopy > 0.001) {
+		vec3 crowns;
+		vec3 crowns_n = from_above(canopy_albedo, canopy_normal, canopy_tile, 1.0, crowns);
+		floor_colour = mix(floor_colour, crowns, far);
+		floor_normal = normalize(mix(floor_normal, crowns_n, far));
+	}
 
 	// Meadows vary as growth does: lusher and drier patches over a hundred metres and more,
 	// drier on steep ground, yellower above the tree line.
@@ -167,12 +184,15 @@ void fragment() {
 	// Steep banks show earth through the grass, steeper ground is bare rock; the edges broken up
 	// by the textures themselves.
 	float bank = 1.0 - smoothstep(rock_slope + 0.02, rock_slope + 0.12, world_normal.y + (dirt.r - 0.3) * 0.2);
+	// Crowns hide the earth of steep wooded slopes, and their rock up to cliffs.
+	bank *= 1.0 - canopy;
 	albedo = mix(albedo, dirt * 0.8, bank * 0.6 * (1.0 - bed));
 	normal = normalize(mix(normal, dirt_n, bank * 0.6 * (1.0 - bed)));
 	// Exposure breaks through in patches rather than tracing straight terrain cells.
 	vec2 face = vec2(world_position.x + world_position.z * 0.73, world_position.y);
 	float exposure = (ground_noise(face / 5.0) - 0.5) * 0.16;
 	float steep = 1.0 - smoothstep(rock_slope - 0.03, rock_slope + 0.03, world_normal.y + exposure + (rock.r - 0.4) * 0.1);
+	steep *= 1.0 - canopy * smoothstep(0.3, 0.45, world_normal.y);
 	// Exposed channel sides are rock too; triplanar mapping avoids stretched vertical mud.
 	albedo = mix(albedo, rock * mix(1.0, 0.55, bed), steep);
 	normal = normalize(mix(normal, rock_n, steep));

@@ -216,3 +216,20 @@ and sidewalks raised walls, whose shadows went missing without. Street ribbons a
 so locked-border LODs cannot simplify them; cheaper distant streets need a different
 approach. Neither generator nor stored format changes; kept worlds draw the same.
 See [the measurements](../benchmarks/city-courses.md#distant-ground).
+
+### Distant forest canopy (2026-10-25, R139)
+
+Trees thin out beyond 300 m from the route (R103) and the lighter presets draw only a share
+of them (R108), so distant woods showed as scattered trees on pale floor, hills as savanna.
+Beyond a distance, nearer the fewer trees are drawn (100 m at an eighth, 250 m from half),
+`terrain.gdshader` turns forest ground into a canopy seen from above over 400 m: the baked
+`canopy` texture (round crowns of conifers and broadleaves meeting in shade, 32 m tiles) in
+place of the floor, covering steep wooded slopes up to cliffs. Measured per pixel, it has no
+chunk seams, reaches the horizon land, and leaves nearby woods to their drawn trees; kept
+worlds get it at once. Light tracks and paths now end 1 km away on every preset: they drew
+bright lines across that canopy. It costs no measurable frame time.
+
+Canopy shells, geometry rising from the wood outlines for volume and ridgeline silhouettes,
+are the next step; they change the generator and stored format. A prototype lifting forest
+ground showed the look but also flat slabs, chunk seams where it switched, and nearby forest
+covered when it started too near. See [the measurements](../benchmarks/distant-forest.md).

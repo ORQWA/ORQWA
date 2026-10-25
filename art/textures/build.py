@@ -322,6 +322,40 @@ def gravel(t):
     t.output(col, rough, height, 1.0, 0.025)
 
 
+def canopy(t):
+    # A wood seen from above, as distant forest ground shows it (terrain.gdshader): crowns of a
+    # few metres side by side, conifers darker than broadleaves, each a dome of leafy clumps lit
+    # on top, sinking into soft shade where it meets its neighbours. The tile is about 24 m;
+    # Voronoi cells come about 2π times the scale per tile, so 1.1 gives crowns of about 3.5 m.
+    rim = t.noise(7, detail=5, rough=0.65, offset=7.0)
+    wobble = t.math("MULTIPLY", t.math("SUBTRACT", rim.outputs["Fac"], 0.5), 0.35)
+    crowns = t.voronoi(1.1, feature="F1", rand=1.0)
+    crown_edge = t.voronoi(1.1, feature="DISTANCE_TO_EDGE", rand=1.0)
+    # Clumps of leaves, about a metre: the dome is made of them.
+    clumps = t.voronoi(6.0, feature="F1", rand=1.0)
+    leaves = t.noise(40, detail=6, rough=0.7)
+    # 1 at a crown's top, falling towards its rim and into a wide shade where crowns meet.
+    dome = t.math("POWER", t.math("SUBTRACT", 1.0, t.math(
+        "MULTIPLY", t.math("ADD", crowns.outputs["Distance"], wobble), 1.2, clamp=True)), 0.7)
+    shade = t.math("POWER", t.math(
+        "MULTIPLY", t.math("ADD", crown_edge.outputs["Distance"], wobble), 3.0, clamp=True), 0.8)
+    bumps = t.math("SUBTRACT", 1.0, t.math("MULTIPLY", clumps.outputs["Distance"], 1.4,
+                                          clamp=True))
+    top = t.math("MULTIPLY", t.math("MULTIPLY", dome, shade),
+                 t.math("ADD", 0.55, t.math("MULTIPLY", bumps, 0.45)))
+    tone = t.ramp(crowns.outputs["Color"], [
+        (0.0, (0.022, 0.04, 0.018)), (0.45, (0.035, 0.062, 0.025)),
+        (0.75, (0.06, 0.09, 0.03)), (1.0, (0.085, 0.11, 0.035)),
+    ])
+    col = t.mix(tone, t.ramp(leaves.outputs["Fac"], [(0.3, (0.7, 0.7, 0.7)),
+                                                     (0.75, (1.2, 1.2, 1.1))]), 1.0, "MULTIPLY")
+    col = t.mix(col, t.ramp(top, [(0.0, (0.1, 0.1, 0.1)), (0.35, (0.45, 0.45, 0.45)),
+                                  (0.8, (1.05, 1.05, 1.0)), (1.0, (1.2, 1.2, 1.1))]), 1.0,
+                "MULTIPLY")
+    height = t.math("ADD", top, t.math("MULTIPLY", leaves.outputs["Fac"], 0.1))
+    t.output(col, 0.9, height, 1.0, 0.06)
+
+
 def plaster(t):
     # Rendered wall, light and neutral (the app tints it per building): a fine trowelled grain,
     # soft large blotches where it weathered, faint streaks running down.
@@ -439,7 +473,7 @@ def paving(t):
 MATERIALS = {
     "rock": None, "bridge_concrete": None, "grass": grass, "dirt": dirt, "sand": sand, "bark": bark, "asphalt": asphalt,
     "gravel": gravel, "plaster": plaster, "roof_tiles": roof_tiles, "planks": planks,
-    "masonry": masonry, "slate": slate, "concrete": concrete, "paving": paving,
+    "masonry": masonry, "slate": slate, "concrete": concrete, "paving": paving, "canopy": canopy,
 }
 
 

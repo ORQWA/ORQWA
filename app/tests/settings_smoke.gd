@@ -26,6 +26,7 @@ func _run() -> void:
 	var world: RideWorld = main.get_node("World")
 	_tree_quality(world)
 	_tree_density_override(world)
+	_distant_ground(world)
 	_courses(orqwa, dialog)
 	_sound(orqwa, dialog)
 	_about(dialog)
@@ -214,6 +215,42 @@ func _tree_density_override(world: RideWorld) -> void:
 	var automatic: Dictionary = world.get("_quality")
 	var auto_density: float = automatic["tree_density"]
 	_check(auto_density == 0.125, "Auto follows Low again")
+	world.apply_quality("medium")
+
+
+## Far off, forest ground turns into crowns, the nearer the fewer trees are drawn (R108, R109);
+## tracks and sidewalks end at the same distance on every view distance, the ground goes on.
+func _distant_ground(world: RideWorld) -> void:
+	var material: ShaderMaterial = world.get("_terrain_material")
+	var previous_from: float = 0.0
+	for preset: String in ["low", "medium", "high", "ultra"]:
+		world.apply_quality(preset)
+		var from: float = material.get_shader_parameter("canopy_from")
+		var full: float = material.get_shader_parameter("canopy_full")
+		_check(full > from, preset + " blends the crowns in over a distance")
+		_check(from >= previous_from, preset + " turns forest into crowns no nearer")
+		previous_from = from
+	world.apply_quality("low")
+	var sparse: float = material.get_shader_parameter("canopy_from")
+	world.apply_quality("ultra", {"tree_density": "low"})
+	var overridden: float = material.get_shader_parameter("canopy_from")
+	_check(overridden == sparse and sparse < previous_from, "crowns follow the trees drawn")
+	world.apply_quality("low")
+	var terrain: Node3D = world.get_node("Terrain")
+	var track: MeshInstance3D = MeshInstance3D.new()
+	track.visibility_range_end = RideWorld.TRACK_RANGE
+	track.set_meta("fixed_range", true)
+	var ground: MeshInstance3D = MeshInstance3D.new()
+	ground.visibility_range_end = RideWorld.VISIBILITY_RANGE
+	terrain.add_child(track)
+	terrain.add_child(ground)
+	world.apply_quality("low", {"view_distance": "ultra"})
+	_check(track.visibility_range_end == RideWorld.TRACK_RANGE, "tracks end where they did")
+	_check(ground.visibility_range_end > RideWorld.VISIBILITY_RANGE, "the ground goes farther")
+	terrain.remove_child(track)
+	terrain.remove_child(ground)
+	track.free()
+	ground.free()
 	world.apply_quality("medium")
 
 
