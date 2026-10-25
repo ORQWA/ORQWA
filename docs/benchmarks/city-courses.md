@@ -71,13 +71,18 @@ changed nothing measurable here.
 
 ## How these were measured
 
-Release builds ignore `-s` and `--main-pack`. A copy of the installed app in `/tmp` got a
-resource pack exported in Docker whose `application/run/main_loop_type` is a measuring
-`SceneTree` script, and an ad-hoc signature; it ran with `HOME` pointing at a throwaway
-folder, so the rider's own profile, history, settings and kept worlds stayed untouched.
-The script opened the course, waited for every chunk, then hid one kind of geometry, effect
-or panel at a time. Software rendering in the dev container gave the same draw-call and
-primitive counts but no usable timings. Run nothing else on the Mac meanwhile.
+With an earlier form of the scripts now in `scripts/perf/`
+([Measuring frame rate](../development.md#measuring-frame-rate)): a measuring `SceneTree` as the
+main loop of a pack exported in Docker, run in a copy of the installed app with a throwaway `HOME`, so the rider's own profile, rides, settings and kept
+worlds stayed untouched. The tool opened the course, waited for every chunk, then hid one kind
+of geometry, effect or panel at a time. The first runs still showed the update dialog of a
+fresh `HOME`, which the scripts now turn off. Software rendering in the dev container gave the
+same draw-call and primitive counts but no usable timings.
+
+```sh
+COURSE=zurich.tqc PLACES="2510 2903 34743 20000" TAKE=kinds,effects,interface,distance \
+    scripts/perf/mac.sh screenshots/perf/measure.pck after
+```
 
 To recheck a downloaded build: ride Zürich on Ultra with V-Sync Off and frame limit Unlimited,
 pause at the same places, and compare sustained FPS as in
