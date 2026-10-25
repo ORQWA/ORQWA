@@ -1871,6 +1871,32 @@ fn walking_connection(first: &[Point], second: &[Point]) -> bool {
 fn segment_inside(a: Point, b: Point, polygon: &[Point]) -> Option<(f64, f64)> {
     let sign = signed_area(polygon).signum();
     let (mut low, mut high) = (0.0_f64, 1.0_f64);
+    // A clipping sliver can have submicrometre end edges, ignored below. Its remaining
+    // planes describe an unbounded band; keep intersections inside its finite footprint.
+    for axis in 0..2 {
+        let coordinate = |p: Point| if axis == 0 { p.0 } else { p.1 };
+        let (min, max) = polygon
+            .iter()
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), &p| {
+                (min.min(coordinate(p)), max.max(coordinate(p)))
+            });
+        let (start, delta) = (coordinate(a), coordinate(b) - coordinate(a));
+        if delta.abs() < 1e-12 {
+            if start < min - 0.0001 || start > max + 0.0001 {
+                return None;
+            }
+        } else {
+            let (from, to) = (
+                (min - 0.0001 - start) / delta,
+                (max + 0.0001 - start) / delta,
+            );
+            low = low.max(from.min(to));
+            high = high.min(from.max(to));
+        }
+        if high <= low {
+            return None;
+        }
+    }
     for (&p, &q) in polygon
         .iter()
         .zip(polygon.iter().cycle().skip(1))
@@ -2131,6 +2157,58 @@ mod tests {
             }
             urban.retain_walk_runs();
             assert!(urban.shapes.iter().all(|s| s.is_empty() != keep));
+        }
+    }
+
+    #[test]
+    fn thin_clipping_remnants_cannot_join_walks_across_a_real_gap() {
+        for shift in [0.0, 30_000.0] {
+            let mut urban = Urban::default();
+            let point = |north| (shift, shift + north);
+            walk(
+                &mut urban,
+                ribbon(point(0.0), point(4.0), WALK_WIDTH / 2.0),
+                true,
+            );
+            walk(
+                &mut urban,
+                ribbon(point(20.0), point(40.0), WALK_WIDTH / 2.0),
+                true,
+            );
+            walk(
+                &mut urban,
+                ribbon(point(20.0), point(23.0), WALK_WIDTH / 2.0),
+                true,
+            );
+            // A nearly collinear leftover along the long walk's outer edge. Its tiny
+            // end faces must not turn it into an infinite band reaching the short walk.
+            let a = (shift + WALK_WIDTH / 2.0 - 2e-7, shift + 20.0);
+            let b = (a.0, shift + 23.0);
+            urban.shapes[2] = vec![ribbon(a, b, 2e-7)];
+            urban.retain_walk_runs();
+            assert_eq!(
+                urban.shapes[0].len(),
+                0,
+                "short walk borrowed length across a gap"
+            );
+            assert_eq!(
+                urban.shapes[1].len(),
+                1,
+                "independent long walk must remain"
+            );
+        }
+    }
+
+    #[test]
+    fn segment_intersections_stay_inside_a_slivers_finite_extent() {
+        for shift in [0.0, 30_000.0] {
+            let point = |north| (shift, shift + north);
+            let mut mask = ribbon(point(20.0), point(23.0), 2e-7);
+            for _ in 0..2 {
+                assert_eq!(segment_inside(point(0.0), point(4.0), &mask), None);
+                assert!(segment_inside(point(20.5), point(22.5), &mask).is_some());
+                mask.reverse();
+            }
         }
     }
 

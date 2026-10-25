@@ -212,6 +212,17 @@ Building paths, forecourts and garden walls retain their own rules. No course na
 coordinates enter the decision. The temporary component index adds no stored fields;
 stored format remains 3.
 
+### Finite clipping footprint amendment (2026-10-25)
+
+Generator 34 bounds segment intersections by the clipped polygon's finite extent before
+testing its convex edge planes. Submicrometre end edges are ignored as degenerate; without
+the bounds, a nearly collinear remnant can describe an infinite band and join two footways
+across a real gap. The short footway then incorrectly borrows length from the longer one.
+The same bounded intersection keeps a distant sliver from hiding an exposed side wall.
+The 0.1 mm GPU-coordinate tolerance remains, as does the 12 m minimum. Regression tests
+cover separated walks, reversed masks and coordinates translated 30 km from the origin.
+Stored format remains 3.
+
 ## Validation and limits
 
 Tests cover raised curbs, clear junctions/carriageways, building access and lowered curbs,

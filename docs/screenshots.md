@@ -64,7 +64,7 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ### Andermatt sidewalks
 
-Generators 27–33 give sidewalk copies one owner using the local mapped section matched to
+Generators 27–34 give sidewalk copies one owner using the local mapped section matched to
 the ride. Coarse GPX bends no longer leave duplicate footways or phantom clearance cuts;
 independent nearby streets and unridden parallel arms of the same map feature remain.
 Walking tops follow their owning street's height and grade instead of draping down a bank
@@ -83,6 +83,8 @@ extrude through the tread. Repeated boolean-cut vertices cannot duplicate paving
 Inferred raised sidewalks now require at least 12 m of connected walking length after
 clipping. Short corner remnants disappear; small construction sections that join into a
 long walk qualify together, including around bends and across terrain chunks.
+Clipping remnants have finite intersection bounds: an almost collinear piece cannot connect
+across a real gap and let a short corner borrow the length of a separate walk.
 
 These matching overview cameras use the full saved Alpenbrevet Gold inputs at
 209.36 km to go (about 1.38 km from the start), near Andermatt. Nearby geometry alone is
@@ -112,6 +114,17 @@ vegetation is omitted as in the Andermatt views above.
 | Short sidewalk fragments | Minimum connected walking length |
 |---|---|
 | ![Short raised sidewalk stubs along a village street](images/issues/sidewalk-minimum-before.jpg) | ![Short stubs omitted and the continuous village sidewalk retained](images/issues/sidewalk-minimum-after.jpg) |
+
+At **117.44 km to go** (93.30 km from the start), the small curved corner to the rider's
+right survived the first length filter because a thin clipping remnant incorrectly joined
+it to a longer sidewalk across a gap. Generator 34 keeps those intersection tests inside
+the remnant's finite footprint. The corner is now omitted while the independent longer
+walks remain; the 12 m minimum is unchanged. These matching close cameras use the full
+saved course, with generated building shells and vegetation omitted.
+
+| Corner borrowing length across a gap | Separate runs qualify independently |
+|---|---|
+| ![Small isolated sidewalk corner beside the reported junction](images/issues/sidewalk-gap-before.jpg) | ![The corner is omitted and the junction edge remains clear](images/issues/sidewalk-gap-after.jpg) |
 
 ### Bridge ownership
 

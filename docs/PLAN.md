@@ -658,6 +658,8 @@ physically based materials and light, restyled group by group.
   - [x] Minimum inferred sidewalk length: require 12 m of connected walking surface
     after clipping, across straight/curved sections and chunk boundaries. Omit detached
     corner and island remnants; preserve long runs and separate building access (R137).
+    Finite clipping bounds prevent nearly collinear remnants from lending length across
+    real gaps; checked the 117.44 km-to-go corner and translated/reversed masks (R138).
   - [x] City benches (R106): regular candidates on alternate sidewalks, paired bins, placement
     at sidewalk height, clear entrances and junctions; no seats on unsuitable slopes.
   - [x] Buildings: textured plaster, clay tiles, slate, boards, masonry and gravel roofs

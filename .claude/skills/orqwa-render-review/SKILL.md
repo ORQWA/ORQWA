@@ -112,6 +112,10 @@ remnants and the Alpenbrevet village at 116.93 km to go alongside long village s
 Short construction sections and curves must qualify together across chunk boundaries;
 clipped-away street length, width partitions and point contacts cannot qualify a fragment.
 Use an elongated island for overlap/grade checks; a short isolated island is omitted.
+At Alpenbrevet's 117.44 km-to-go village report, inspect the small corner to the rider's
+right and the gap to the next longer sidewalk. Thin clipping remnants must not connect
+across empty ground and let the corner borrow length. Include translated and reversed
+near-collinear masks in regression checks; preserve genuine joined walking edges.
 Check the entire island perimeter at close range: a surviving raised rim with a channel
 inside it is still incorrect. Junction construction wedges must not excavate an existing
 walking run; rounded carriageway fans must remain clear of paving.

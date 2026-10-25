@@ -263,6 +263,10 @@ Generator 33 omits inferred raised sidewalk components shorter than 12 m after c
 Connected straight and curved pieces qualify together before chunking, while detached
 remnants qualify separately. Component metadata is temporary; stored format remains 3.
 
+Generator 34 bounds sidewalk segment intersections to each clipping remnant's finite
+footprint. Thin remnants cannot join separate walks across gaps and incorrectly qualify
+short corners for the minimum length. The 12 m rule and stored format 3 are unchanged.
+
 ## Amendment — 2026-10-24: one world at a time
 
 The settings' Courses tab lists each kept world by its course's name with its size in MB or

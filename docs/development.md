@@ -110,6 +110,10 @@ straight and curved pieces, with clipping partitions counted once. Isolated remn
 not inherit missing source length. Access paths and forecourts retain their own rules;
 stored format remains 3.
 
+Generator 34 keeps sidewalk segment intersections inside each cut polygon's finite bounds.
+Nearly collinear remnants with degenerate end edges cannot act as infinite bands, connect
+walks across gaps or hide distant exposed edges. The 12 m minimum and stored format 3 remain.
+
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
 both water meshes and channel beds use those shared elevations. Keep these profiles
