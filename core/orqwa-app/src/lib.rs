@@ -3135,10 +3135,12 @@ impl App {
                 Err(error) => warn!(%error, "reading every ride's file instead"),
             }
         }
-        rides::fit_files(&dir)
+        let mut records: Vec<(PathBuf, RideRecord)> = rides::fit_files(&dir)
             .into_iter()
             .filter_map(|fit| load(&fit).map(|record| (fit, record)))
-            .collect()
+            .collect();
+        rides::newest_first(&mut records);
+        records
     }
 
     /// The active rider's rides, newest first (R31), with the records each set.

@@ -1780,9 +1780,6 @@ msgstr "Wetter"
 msgid "Wed"
 msgstr "Mi"
 
-msgid "Week of %s"
-msgstr "Woche vom %s"
-
 msgid "Weekly"
 msgstr "Wöchentlich"
 

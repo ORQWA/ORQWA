@@ -2,6 +2,11 @@ class_name Minimap
 extends Control
 ## The map around the rider. The close view turns with the direction of travel (heading up);
 ## clicking switches to the whole route, north up.
+##
+## The map itself (land, rivers, roads and the route) is drawn once at the view's scale and then
+## only moved and turned as the rider goes: drawing a city's thousands of lines anew every frame
+## held whole courses to ten frames a second. The rider, ghost and north mark are drawn over it
+## every frame.
 
 ## A simulated ride's rider should jump to `position_m` (metres east/north of the start, #53).
 signal jump_requested(position_m: Vector2)
@@ -31,6 +36,8 @@ var jumpable: bool = false:
 var _ghost: Vector2 = Vector2.ZERO
 var _ghost_shown: bool = false
 var _track: PackedVector2Array = PackedVector2Array()
+## The track's extent, for the whole-route view.
+var _bounds: Rect2 = Rect2()
 var _rider: Vector2 = Vector2.ZERO
 ## Direction of travel, radians clockwise from north.
 var _heading: float = 0.0
@@ -40,11 +47,20 @@ var _lines: Array[Dictionary] = []
 var _corridor: ArrayMesh
 var _background: Color = Color(0.15, 0.17, 0.16)
 var _follow: bool = true
+## The map, drawn in metres scaled by `_map_scale`: scaled when drawn rather than by the layer,
+## so lines keep their widths in pixels. Each frame only moves and turns the layer.
+var _map: Node2D = Node2D.new()
+var _map_scale: Transform2D = Transform2D(Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)
+## The rider, ghost, north mark and caption over the map.
+var _marks: Node2D = Node2D.new()
 
 
 func set_track(track: PackedVector2Array) -> void:
 	_track = track
-	queue_redraw()
+	_bounds = Rect2(_track[0], Vector2.ZERO) if not _track.is_empty() else Rect2()
+	for point: Vector2 in _track:
+		_bounds = _bounds.expand(point)
+	_redraw_map()
 
 
 ## Takes the maps from `OrqwaApp.minimap_mesh()`.
@@ -52,34 +68,39 @@ func set_map(map: Dictionary) -> void:
 	_land = null
 	_lines.clear()
 	_corridor = null
-	if map.is_empty():
-		return
-	_background = map["background"]
-	var land: Dictionary = map["land"]
-	_land = _mesh(land)
-	var lines: Array = map["lines"]
-	_lines.assign(lines)
-	var corridor: Dictionary = map["corridor"]
-	_corridor = _mesh(corridor)
+	if not map.is_empty():
+		_background = map["background"]
+		var land: Dictionary = map["land"]
+		_land = _mesh(land)
+		var lines: Array = map["lines"]
+		_lines.assign(lines)
+		var corridor: Dictionary = map["corridor"]
+		_corridor = _mesh(corridor)
 	queue_redraw()
+	_redraw_map()
 
 
 ## The ghost's position in metres east/north of the start, or hides it with `visible` false.
 func set_ghost(position_m: Vector2, visible_on_map: bool) -> void:
 	_ghost = position_m
 	_ghost_shown = visible_on_map
-	queue_redraw()
+	_marks.queue_redraw()
 
 
 func set_rider(position_m: Vector2, heading: float) -> void:
 	_rider = position_m
 	_heading = heading
-	queue_redraw()
+	_place_map()
 
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
 	jumpable = jumpable
+	add_child(_map)
+	add_child(_marks)
+	_map.draw.connect(_draw_map)
+	_marks.draw.connect(_draw_marks)
+	resized.connect(_redraw_map)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -92,36 +113,62 @@ func _gui_input(event: InputEvent) -> void:
 		jump_requested.emit(_view().affine_inverse() * click.position)
 	else:
 		_follow = not _follow
-		queue_redraw()
+		_redraw_map()
 	accept_event()
 
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), _background)
-	var view: Transform2D = _view()
+
+
+## Draws the map again at the view's current scale, after the map, the track, the view or the
+## size changed.
+func _redraw_map() -> void:
+	_map_scale = Transform2D().scaled(_view().get_scale())
+	_map.queue_redraw()
+	_place_map()
+
+
+## Moves and turns the map drawn at `_map_scale` to where the view has it now: the view is that
+## scale followed by a turn and a shift, which leave the lines as they were drawn.
+func _place_map() -> void:
+	_marks.queue_redraw()
+	if is_zero_approx(_map_scale.x.x):
+		return
+	_map.transform = _view() * _map_scale.affine_inverse()
+
+
+func _draw_map() -> void:
+	if is_zero_approx(_map_scale.x.x):
+		return
 	if _land != null:
-		draw_mesh(_land, null, view)
+		_map.draw_mesh(_land, null, _map_scale)
 	for line: Dictionary in _lines:
 		var points: PackedVector2Array = line["points"]
 		var width: float = line["width"]
 		var color: Color = line["color"]
-		draw_polyline(view * points, color, width, true)
+		_map.draw_polyline(_map_scale * points, color, width, true)
 	if _corridor != null:
-		draw_mesh(_corridor, null, view)
+		_map.draw_mesh(_corridor, null, _map_scale)
 	if _track.size() >= 2:
-		draw_polyline(view * _track, Color(0, 0, 0, 0.35), 6.0, true)
-		draw_polyline(view * _track, TRACK_COLOR, 3.5, true)
-		draw_circle(view * _track[0], 5.0, START_COLOR)
-		draw_circle(view * _track[_track.size() - 1], 5.0, FINISH_COLOR)
+		var track: PackedVector2Array = _map_scale * _track
+		_map.draw_polyline(track, Color(0, 0, 0, 0.35), 6.0, true)
+		_map.draw_polyline(track, TRACK_COLOR, 3.5, true)
+		_map.draw_circle(track[0], 5.0, START_COLOR)
+		_map.draw_circle(track[track.size() - 1], 5.0, FINISH_COLOR)
+
+
+func _draw_marks() -> void:
+	var view: Transform2D = _view()
 	if _ghost_shown:
-		draw_circle(view * _ghost, 6.0, Color(0, 0, 0, 0.35))
-		draw_circle(view * _ghost, 4.5, UiTheme.GHOST_COLOR)
+		_marks.draw_circle(view * _ghost, 6.0, Color(0, 0, 0, 0.35))
+		_marks.draw_circle(view * _ghost, 4.5, UiTheme.GHOST_COLOR)
 	_draw_rider(view * _rider, _heading if not _follow else 0.0)
 	if _follow:
 		_draw_north(view)
 	var font: Font = get_theme_default_font()
 	var label: String = (tr("Close") if _follow else tr("Route")).to_upper()
-	draw_string(
+	_marks.draw_string(
 		font, Vector2(14, size.y - 12), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UiTheme.MUTED
 	)
 
@@ -149,9 +196,9 @@ func _draw_rider(center: Vector2, angle: float) -> void:
 	var arrow: PackedVector2Array = PackedVector2Array(
 		[center + tip, center + right, center + notch, center + left]
 	)
-	draw_circle(center, 14.0, Color(0, 0, 0, 0.25))
-	draw_colored_polygon(arrow, Color.WHITE)
-	draw_polyline(arrow + PackedVector2Array([center + tip]), UiTheme.ACCENT, 1.5, true)
+	_marks.draw_circle(center, 14.0, Color(0, 0, 0, 0.25))
+	_marks.draw_colored_polygon(arrow, Color.WHITE)
+	_marks.draw_polyline(arrow + PackedVector2Array([center + tip]), UiTheme.ACCENT, 1.5, true)
 
 
 ## A small "N" at the edge showing where north is in the rotated close view.
@@ -159,9 +206,9 @@ func _draw_north(view: Transform2D) -> void:
 	var north: Vector2 = (view.basis_xform(Vector2(0, 1))).normalized()
 	var center: Vector2 = size / 2.0
 	var position: Vector2 = center + north * (minf(size.x, size.y) / 2.0 - 18.0)
-	draw_circle(position, 10.0, Color(0, 0, 0, 0.45))
+	_marks.draw_circle(position, 10.0, Color(0, 0, 0, 0.45))
 	var font: Font = get_theme_default_font()
-	draw_string(
+	_marks.draw_string(
 		font, position + Vector2(-4.5, 4.5), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE
 	)
 
@@ -169,14 +216,14 @@ func _draw_north(view: Transform2D) -> void:
 ## Map metres to control pixels: heading up around the rider, or the whole route north up.
 func _view() -> Transform2D:
 	if not _follow and _track.size() >= 2:
-		var bounds: Rect2 = Rect2(_track[0], Vector2.ZERO)
-		for point: Vector2 in _track:
-			bounds = bounds.expand(point)
-		var extent: Vector2 = bounds.size.max(Vector2(1, 1))
+		var extent: Vector2 = _bounds.size.max(Vector2(1, 1))
 		var available: Vector2 = size - Vector2(PADDING, PADDING) * 2.0
 		var fit: float = minf(available.x / extent.x, available.y / extent.y)
-		return Transform2D().translated(-bounds.get_center()).scaled(Vector2(fit, -fit)).translated(
-			size / 2.0
+		return (
+			Transform2D()
+			. translated(-_bounds.get_center())
+			. scaled(Vector2(fit, -fit))
+			. translated(size / 2.0)
 		)
 	var scale_px: float = (minf(size.x, size.y) / 2.0) / CLOSE_RADIUS_M
 	# Turning the map by the heading (counter-clockwise in map space) puts travel at the top.
