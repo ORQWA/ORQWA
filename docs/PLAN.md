@@ -379,6 +379,8 @@ Built in rideable steps:
 - [x] Pause a ride and go on with it (button, P or space; also in the overlay)
 - [x] Full screen (R25, #218): F11 or Alt+Enter on any page, or Settings → Graphics;
   the choice is kept and ORQWA starts that way
+- [x] Full-screen button beside Overlay in the ride control bar (R150, #376), with an
+  icon and tooltip that follow the window when switched by the keyboard or settings too
 - [x] The overlay's place is each rider's, graphics quality and full screen this computer's
   (R78, #257): kept next to the cache, out of the synced data folder, carried over once
 - [x] The devices are each rider's (R82): remembered devices, cadence source and shifter

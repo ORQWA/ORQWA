@@ -520,7 +520,9 @@ func _ride_bar() -> void:
 	var bar: RideBar = RideBar.new()
 	root.add_child(bar)
 	var tools: Control = bar.get("_tools")
-	for button: Button in [bar.get("_settings"), bar.get("_overlay"), bar.get("_fold")]:
+	for button: Button in [
+		bar.get("_settings"), bar.get("_overlay"), bar.get("_fullscreen"), bar.get("_fold")
+	]:
 		_check(
 			button.icon != null and not button.tooltip_text.is_empty(),
 			"an icon with a tooltip: %s" % button.tooltip_text

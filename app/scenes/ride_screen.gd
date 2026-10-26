@@ -10,6 +10,8 @@ signal closed
 signal summary_requested(path: String)
 ## The rider wants the overlay (R55), or the whole screen back.
 signal overlay_requested(on: bool)
+## The rider wants to switch between full screen and a window (#376).
+signal fullscreen_requested
 ## The rider wants the overlay `steps` sizes larger, or smaller if negative (#124).
 signal overlay_zoom_requested(steps: int)
 
@@ -189,6 +191,7 @@ func _ready() -> void:
 	_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_bar.settings_requested.connect(_open_settings)
 	_bar.overlay_requested.connect(func() -> void: overlay_requested.emit(true))
+	_bar.fullscreen_requested.connect(fullscreen_requested.emit)
 	_bar.back_requested.connect(closed.emit)
 	_bar.speed_chosen.connect(_set_time_scale)
 	_bar.folded_changed.connect(func(folded: bool) -> void: _orqwa.set_ride_bar_folded(folded))
