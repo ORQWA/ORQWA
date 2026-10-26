@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.UserManager;
@@ -21,7 +22,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.godotengine.godot.Godot;
@@ -41,6 +43,9 @@ import org.godotengine.godot.plugin.UsedByGodot;
 public class OrqwaAndroid extends GodotPlugin {
     /** Android tells how an update's installation went with this broadcast, to ORQWA only. */
     private static final String UPDATE_STATUS = "org.orqwa.android.UPDATE_STATUS";
+
+    /** The request for "Photos and videos", told apart from Bluetooth's in the answer. */
+    private static final int VIDEOS = 2;
 
     /** An update waiting for the rider to allow ORQWA to install apps. */
     private String pendingUpdate;
@@ -76,7 +81,9 @@ public class OrqwaAndroid extends GodotPlugin {
 
     @Override
     public Set<SignalInfo> getPluginSignals() {
-        return Collections.singleton(new SignalInfo("update_failed", String.class));
+        return new HashSet<>(Arrays.asList(
+                new SignalInfo("update_failed", String.class),
+                new SignalInfo("videos_allowed", Boolean.class)));
     }
 
     @Override
@@ -94,6 +101,38 @@ public class OrqwaAndroid extends GodotPlugin {
                 : new String[] {Manifest.permission.ACCESS_FINE_LOCATION};
         activity.requestPermissions(bluetooth, 1);
         return null;
+    }
+
+    /**
+     * Whether ORQWA may read course videos a sync app put in its folder (R149). From Android 16
+     * an app targeting it needs "Photos and videos" for videos in its own `Android/media` folder
+     * that it did not write itself.
+     */
+    @UsedByGodot
+    public boolean canReadVideos() {
+        Activity activity = getActivity();
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA
+                || (activity != null
+                        && activity.checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO)
+                                == PackageManager.PERMISSION_GRANTED);
+    }
+
+    /** Asks Android for "Photos and videos"; `videos_allowed` tells the answer. */
+    @UsedByGodot
+    public void askToReadVideos() {
+        Activity activity = getActivity();
+        if (activity == null) {
+            emitSignal("videos_allowed", false);
+            return;
+        }
+        activity.requestPermissions(new String[] {Manifest.permission.READ_MEDIA_VIDEO}, VIDEOS);
+    }
+
+    @Override
+    public void onMainRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == VIDEOS) {
+            emitSignal("videos_allowed", canReadVideos());
+        }
     }
 
     /**

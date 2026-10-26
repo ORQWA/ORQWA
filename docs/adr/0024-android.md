@@ -212,3 +212,17 @@ syncs with a Nextcloud server instead.
   first.
 - **Removal.** `initStorage` and the plugin's call go with the plugin and the
   `target_os = "android"` code; `paths::android_shared_data_dir` with its move goes with them.
+
+## Amendment 2026-10-26: synced videos on Android 16 (R149)
+
+Tried on the Tab S7: course videos FolderSync put in `ORQWA/courses` would not open
+(`EACCES`), the course files beside them did. Android 16's MediaProvider applies "owned photos"
+(`ENABLE_OWNED_PHOTOS`) to apps targeting it, as Godot 4.7.2's `targetSdk 36` does: in an app's
+own `Android/media` folder, images and videos (by file extension) open only if the app wrote
+them or holds the permission to read them. Every sync app's videos are refused alike.
+
+- The plugin declares `READ_MEDIA_VIDEO` and asks for it only when the course page fails to
+  open a course while ORQWA may not read videos (`canReadVideos`, `askToReadVideos`); a granted
+  answer opens the course again. "Allow all" is needed: `.nomedia` keeps these videos out of
+  Android's picker for selected media.
+- A lower `targetSdk` would avoid the rule without asking, but holds back every other update.

@@ -1153,6 +1153,9 @@ msgstr "Normalisiert"
 msgid "Normalized power"
 msgstr "Normalisierte Leistung"
 
+msgid "Not allowed. In Android's settings for ORQWA, set Photos and videos to Allow all."
+msgstr "Nicht erlaubt. Setze in den Android-Einstellungen für ORQWA Fotos und Videos auf Alle zulassen."
+
 msgid "Not connected"
 msgstr "Nicht verbunden"
 
@@ -2317,6 +2320,9 @@ msgstr "Jede geplante Fahrt dieser Woche ist geschafft, alle {planned}!"
 
 msgid "All {planned} planned rides this week done."
 msgstr "Alle {planned} geplanten Fahrten dieser Woche erledigt."
+
+msgid "Allow videos"
+msgstr "Videos erlauben"
 
 msgid "That's {rides} rides this week, even more than the {planned} you planned!"
 msgstr "Das sind {rides} Fahrten diese Woche, sogar mehr als die {planned} geplanten!"

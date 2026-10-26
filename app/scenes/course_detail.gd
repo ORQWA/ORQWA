@@ -16,6 +16,7 @@ signal course_changed
 
 ## The course's side of the page takes this many times the ride options' share of its width.
 const COURSE_SHARE: float = 1.5
+const ANDROID: StringName = &"OrqwaAndroid"
 ## The map stands beside the figures only where it gets at least this width, else above them.
 const MAP_ROOM: float = 280.0
 
@@ -39,6 +40,8 @@ var _ride_button: Button = Button.new()
 var _loading_bar: ProgressBar = ProgressBar.new()
 var _log: PreparationLog = PreparationLog.new()
 var _status: Label = Label.new()
+## Asks Android to let ORQWA read a synced course video (R149), where it may not yet.
+var _videos_button: Button = Button.new()
 ## Turns beside the status while the route is prepared: climbs, records, the estimated time
 ## and Ride wait for it.
 var _spinner: Spinner = Spinner.new()
@@ -87,6 +90,7 @@ func open(course: Dictionary) -> void:
 	_loading_route = true
 	_spinner.show()
 	_status.text = tr("Loading the course") + " …"
+	_videos_button.hide()
 	if _orqwa.loaded_course() == _path and _orqwa.has_route():
 		_show_route()
 	else:
@@ -216,6 +220,10 @@ func _init() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_color_override("font_color", UiTheme.MUTED)
 	status_row.add_child(_status)
+	_videos_button.text = tr("Allow videos")
+	_videos_button.hide()
+	_videos_button.pressed.connect(_on_videos_pressed)
+	status_row.add_child(_videos_button)
 	right.add_child(status_row)
 	_ride_button.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_ride_button.text = tr("Ride", "ride_action")
@@ -388,6 +396,39 @@ func _on_failed(message: String) -> void:
 		_spinner.hide()
 		_loading_bar.hide()
 		_status.text = message
+		_videos_button.visible = _video_refused()
+
+
+## Whether opening failed because Android lets ORQWA read only the videos it wrote itself in
+## its folder (Android 16, R149): a sync app put this one there.
+func _video_refused() -> bool:
+	if not Engine.has_singleton(ANDROID):
+		return false
+	var failure: Dictionary = _orqwa.last_failure()
+	return (
+		failure.get("message", "") == "Could not open %s."
+		and not Engine.get_singleton(ANDROID).call(&"canReadVideos")
+	)
+
+
+func _on_videos_pressed() -> void:
+	var android: Object = Engine.get_singleton(ANDROID)
+	if not android.is_connected("videos_allowed", _on_videos_allowed):
+		android.connect("videos_allowed", _on_videos_allowed)
+	android.call(&"askToReadVideos")
+
+
+func _on_videos_allowed(allowed: bool) -> void:
+	if not allowed:
+		_status.text = tr(
+			"Not allowed. In Android's settings for ORQWA, set Photos and videos to Allow all."
+		)
+		return
+	_videos_button.hide()
+	_loading_route = true
+	_spinner.show()
+	_status.text = tr("Loading the course") + " …"
+	_orqwa.open_course(_path)
 
 
 func _show_option_groups() -> void:

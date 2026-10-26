@@ -308,6 +308,10 @@ msgid "All {planned} planned rides this week done."
 msgstr ""
 
 #: app/scenes/course_detail.gd
+msgid "Allow videos"
+msgstr ""
+
+#: app/scenes/course_detail.gd
 msgid "Along the video"
 msgstr ""
 
@@ -1809,6 +1813,10 @@ msgstr ""
 
 #: core/orqwa-app/src/hud.rs
 msgid "Normalized power"
+msgstr ""
+
+#: app/scenes/course_detail.gd
+msgid "Not allowed. In Android's settings for ORQWA, set Photos and videos to Allow all."
 msgstr ""
 
 #: app/scenes/profile_tab.gd
