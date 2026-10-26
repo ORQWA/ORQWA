@@ -33,12 +33,16 @@ clap = { version = "4.6.7", features = ["derive"] }
 ffmpeg-next = { version = "9.0.0", default-features = false, features = ["codec", "format", "software-scaling", "static"] }
 # QR codes for pairing a phone with the remote (#228); no image output, Godot draws it.
 fast_qr = { version = "0.14.0", default-features = false }
+# zlib through zlib-rs, as zip already has it: the blobs of OpenStreetMap's PBF files.
+flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs"] }
 embedded-io-adapters = { version = "0.7.0", features = ["std"] }
 futures = "0.3.34"
 geo-types = "0.7.20"
 image-webp = "0.2.4"
 mvt-reader = "2.5.0"
 png = "0.18.1"
+# Protocol Buffers for OpenStreetMap's PBF files; already in use under mvt-reader.
+prost = "0.14.4"
 quick-xml = "0.42.0"
 # Without its assembly here: the 1.1.0 package leaves out the headers its ARM assembly needs.
 # orqwa-video turns it on for x86_64, whose assembly the package has (ADR 0010).

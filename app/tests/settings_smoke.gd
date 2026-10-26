@@ -28,6 +28,7 @@ func _run() -> void:
 	_tree_density_override(world)
 	_distant_ground(world)
 	_courses(orqwa, dialog)
+	_map_detail(orqwa, dialog)
 	_sound(orqwa, dialog)
 	_about(dialog)
 	_updates(orqwa, dialog, main)
@@ -390,6 +391,72 @@ func _kept_worlds(courses: CourseSettings, worlds: VBoxContainer) -> void:
 			"a bin saying what it deletes: %s" % button.tooltip_text
 		)
 		_check(box != null and Color(box.bg_color, 1.0).is_equal_approx(UiTheme.DANGER), "in red")
+
+
+## Map detail (ADR 0033): off until this computer turns it on, which lists the regions
+## downloaded, each with its date or state, the room it takes, a button to download it again
+## and a bin, their total, and a button to add one; a download's progress and its outcome.
+func _map_detail(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
+	var courses: CourseSettings = dialog.get("_courses")
+	var detail: CheckBox = courses.get("_detail")
+	var note: Label = courses.get("_detail_note")
+	var regions: VBoxContainer = courses.get("_regions")
+	var was_on: bool = orqwa.map_detail()
+	orqwa.set_map_detail(false)
+	courses.refresh()
+	_check(not detail.button_pressed, "no map detail until asked")
+	_check(detail.text == "Download map detail", "the switch: %s" % detail.text)
+	_check(note.text.contains("Geofabrik"), "telling where it comes from: %s" % note.text)
+	_check(note.text.contains("half a gigabyte"), "and the room it takes: %s" % note.text)
+	_check(not regions.visible, "no regions to list")
+	detail.button_pressed = true
+	_check(orqwa.map_detail(), "on for this computer")
+	_check(regions.visible, "listing the regions")
+	courses.call("_list_regions", [], 0)
+	_check(_shows(regions, "None yet."), "none yet")
+	_check(_shows(regions, "Add a region…"), "one to add")
+	var listed: Array[Dictionary] = [
+		{
+			"id": "switzerland",
+			"name": "Switzerland",
+			"date": 1792875600,
+			"size": 586000000,
+			"ready": true,
+			"busy": false,
+		},
+		{
+			"id": "germany",
+			"name": "Germany",
+			"date": -1,
+			"size": 4868520794,
+			"ready": false,
+			"busy": true,
+		},
+		{"id": "bayern", "name": "Bayern", "date": -1, "size": 300, "ready": false, "busy": false},
+	]
+	courses.call("_list_regions", listed, 586000000 + 4868520794 + 300)
+	for text: String in ["Switzerland", "2026-10-24", "586 MB", "Germany", "Being prepared…"]:
+		_check(_shows(regions, text), "shows %s" % text)
+	_check(_shows(regions, "Not ready"), "one not prepared yet")
+	_check(_shows(regions, "Total") and _shows(regions, "5.5 GB"), "and their total")
+	var tips: Array = regions.find_children("*", "Button", true, false).map(
+		func(b: Button) -> String: return b.tooltip_text
+	)
+	_check(tips.count("Download again") == 3, "each to download again: %s" % [tips])
+	_check(tips.count("Delete region") == 3, "each with a bin: %s" % [tips])
+	courses.call("_on_detail_progress", "switzerland", "downloading", 120000000, 549162217)
+	var working: HBoxContainer = courses.get("_working")
+	var working_text: Label = courses.get("_working_text")
+	_check(working.visible, "a download shows its progress")
+	_check(working_text.text.ends_with("120 MB of 549 MB"), "in MB: %s" % working_text.text)
+	courses.call("_on_up_to_date", "Switzerland")
+	var status: Label = courses.get("_status")
+	_check(not working.visible, "done")
+	_check(status.visible and status.text == "Switzerland is up to date.", status.text)
+	detail.button_pressed = false
+	_check(not orqwa.map_detail(), "and off again")
+	_check(not regions.visible, "they are deleted")
+	orqwa.set_map_detail(was_on)
 
 
 ## Sizes in the units riders know from their drives: powers of 1000, MB and GB, not MiB and

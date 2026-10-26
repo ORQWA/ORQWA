@@ -17,7 +17,7 @@ use orqwa_app::failure::{Failure, Kind};
 use orqwa_app::hud::MetricKind;
 use orqwa_app::media::MediaCommand;
 use orqwa_app::moments::Moment;
-use orqwa_app::{App, AppEvent, GhostChoice, TrainerChoice, paths};
+use orqwa_app::{App, AppEvent, DetailStep, GhostChoice, TrainerChoice, paths};
 use orqwa_app::{library, view};
 use orqwa_devices::ble::{ControllerModel, DeviceKind};
 use orqwa_devices::fake::{FakeHeart, FakeRider};
@@ -205,6 +205,8 @@ impl INode for OrqwaApp {
             // Courses deleted on another computer, or an update, may leave kept worlds no
             // course needs (R101).
             app.tidy_kept_worlds();
+            // A region downloaded by hand, or whose preparation stopped, is made ready.
+            app.prepare_downloaded_regions();
         }
     }
 
@@ -337,6 +339,32 @@ impl OrqwaApp {
     /// Looking for or downloading an update failed, for the reason in `message`.
     #[signal]
     fn update_failed(message: GString);
+
+    /// The regions Geofabrik offers for map detail (ADR 0033), asked for with
+    /// `load_region_offers`: `[{id, name, parent}]`, `parent` "" for a continent.
+    #[signal]
+    fn region_offers(offers: VarArray);
+
+    /// The bytes of region `id`'s download, asked for with `load_region_size`; -1 if unknown.
+    #[signal]
+    fn region_size(id: GString, size: i64);
+
+    /// Downloading or preparing region `id` advanced: `step` is `downloading`, `reading` or
+    /// `writing`, `done` of `total` bytes, or cells while writing.
+    #[signal]
+    fn map_detail_progress(id: GString, step: GString, done: i64, total: i64);
+
+    /// A region's map detail is ready, or its download stopped: `map_detail_regions` changed.
+    #[signal]
+    fn map_detail_changed();
+
+    /// The region `name` asked for has its latest download ready already.
+    #[signal]
+    fn map_detail_up_to_date(name: GString);
+
+    /// Listing, downloading or preparing regions failed, for the reason in `message`.
+    #[signal]
+    fn map_detail_failed(message: GString);
 
     /// The ride in `path` is on `platform`, its page at `url` (R29).
     #[signal]
@@ -1794,6 +1822,103 @@ impl OrqwaApp {
         self.command(|app| app.delete_kept_world(&path))
     }
 
+    /// Whether this computer downloads regions' map detail for its courses (ADR 0033).
+    #[func]
+    fn map_detail(&self) -> bool {
+        self.app.as_ref().is_some_and(App::map_detail)
+    }
+
+    /// Turns map detail on (downloads already in the cache are prepared) or off (every region
+    /// downloaded is deleted) for this computer.
+    #[func]
+    fn set_map_detail(&mut self, on: bool) {
+        self.command(|app| app.set_map_detail(on));
+    }
+
+    /// The regions on this computer: `[{id, name, date, size, ready, busy}]`, `date` when its
+    /// data was current (Unix seconds, -1 if unknown), `size` the bytes it takes, `ready`
+    /// whether courses prepared now use it and `busy` whether it is being downloaded or
+    /// prepared. Empty while map detail is off.
+    #[func]
+    fn map_detail_regions(&self) -> VarArray {
+        let mut array = VarArray::new();
+        for region in self
+            .app
+            .as_ref()
+            .map(App::map_detail_regions)
+            .unwrap_or_default()
+        {
+            let dict = vdict! {
+                "id" => region.id.as_str(),
+                "name" => region.name.as_str(),
+                "date" => region.data_time.unwrap_or(-1),
+                "size" => i64::try_from(region.size).unwrap_or(i64::MAX),
+                "ready" => region.ready,
+                "busy" => region.busy,
+            };
+            array.push(&dict.to_variant());
+        }
+        array
+    }
+
+    /// How many bytes the regions on this computer take.
+    #[func]
+    fn map_detail_size(&self) -> i64 {
+        self.app.as_ref().map_or(0, |app| {
+            i64::try_from(app.map_detail_size()).unwrap_or(i64::MAX)
+        })
+    }
+
+    /// Whether a region is being downloaded or prepared.
+    #[func]
+    fn map_detail_busy(&self) -> bool {
+        self.app.as_ref().is_some_and(App::map_detail_busy)
+    }
+
+    /// Asks Geofabrik for its regions; emits `region_offers` or `map_detail_failed`.
+    #[func]
+    fn load_region_offers(&mut self) {
+        if let Some(app) = self.app.as_mut() {
+            app.load_region_offers();
+        }
+    }
+
+    /// Asks Geofabrik how large region `id`'s download is; emits `region_size`.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn load_region_size(&mut self, id: GString) {
+        if let Some(app) = self.app.as_mut() {
+            app.load_region_size(&id.to_string());
+        }
+    }
+
+    /// Downloads region `id` and prepares its detail, or tells it up to date; whether it
+    /// starts (one at a time, only while map detail is on). Emits `map_detail_progress`, then
+    /// `map_detail_changed`, `map_detail_up_to_date` or `map_detail_failed`.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn download_region(&mut self, id: GString) -> bool {
+        self.app
+            .as_mut()
+            .is_some_and(|app| app.download_region(&id.to_string()))
+    }
+
+    /// Stops the download or preparation under way; what was downloaded stays to go on with.
+    #[func]
+    fn stop_region_download(&mut self) {
+        if let Some(app) = self.app.as_mut() {
+            app.stop_region_download();
+        }
+    }
+
+    /// Deletes region `id`: its download and its detail. Emits `failed` on errors.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn delete_region(&mut self, id: GString) -> bool {
+        let id = id.to_string();
+        self.command(|app| app.delete_region(&id))
+    }
+
     /// Looks for a newer ORQWA in the background (R99): at start-up (`asked` false) only if
     /// this computer does, telling only a newer version; when the rider `asked`, also
     /// `up_to_date` or `update_failed`. Never during a ride. Whether it looks.
@@ -3203,6 +3328,59 @@ impl OrqwaApp {
         }
     }
 
+    /// Signals map detail's lists and downloads (ADR 0033).
+    fn emit_detail(&mut self, event: AppEvent) {
+        match event {
+            AppEvent::RegionOffers(offers) => {
+                let mut array = VarArray::new();
+                for offer in offers {
+                    let dict = vdict! {
+                        "id" => offer.id.as_str(),
+                        "name" => offer.name.as_str(),
+                        "parent" => offer.parent.as_deref().unwrap_or_default(),
+                    };
+                    array.push(&dict.to_variant());
+                }
+                self.signals().region_offers().emit(&array);
+            }
+            AppEvent::RegionSize { id, size } => {
+                let size = size.map_or(-1, |s| i64::try_from(s).unwrap_or(i64::MAX));
+                self.signals()
+                    .region_size()
+                    .emit(&GString::from(id.as_str()), size);
+            }
+            AppEvent::MapDetailProgress {
+                id,
+                step,
+                done,
+                total,
+            } => {
+                let step = match step {
+                    DetailStep::Downloading => "downloading",
+                    DetailStep::Reading => "reading",
+                    DetailStep::Writing => "writing",
+                };
+                self.signals().map_detail_progress().emit(
+                    &GString::from(id.as_str()),
+                    &GString::from(step),
+                    i64::try_from(done).unwrap_or(i64::MAX),
+                    i64::try_from(total).unwrap_or(i64::MAX),
+                );
+            }
+            AppEvent::MapDetailChanged => self.signals().map_detail_changed().emit(),
+            AppEvent::MapDetailUpToDate(name) => {
+                self.signals()
+                    .map_detail_up_to_date()
+                    .emit(&GString::from(name.as_str()));
+            }
+            AppEvent::MapDetailFailed(failure) => {
+                let summary = self.record_failure(&failure);
+                self.signals().map_detail_failed().emit(&summary);
+            }
+            _ => {}
+        }
+    }
+
     /// Signals the outcome of upload work (R29).
     fn emit_upload(&mut self, event: AppEvent) {
         match event {
@@ -3331,6 +3509,12 @@ impl OrqwaApp {
             | AppEvent::UpToDate
             | AppEvent::UpdateDownloaded
             | AppEvent::UpdateFailed(_)) => self.emit_update(event),
+            event @ (AppEvent::RegionOffers(_)
+            | AppEvent::RegionSize { .. }
+            | AppEvent::MapDetailProgress { .. }
+            | AppEvent::MapDetailChanged
+            | AppEvent::MapDetailUpToDate(_)
+            | AppEvent::MapDetailFailed(_)) => self.emit_detail(event),
             AppEvent::CourseAdded(path) => {
                 let path = path.display().to_string();
                 self.signals()

@@ -1,11 +1,13 @@
 //! OpenStreetMap data for ORQWA: buildings, land cover, water, roads, bridges and tunnels around
 //! a route, and the countries it passes (#230), from [`OpenFreeMap`](https://openfreemap.org)
-//! vector tiles (`OpenMapTiles` schema), cached on disk for offline rides (R3).
+//! vector tiles (`OpenMapTiles` schema), cached on disk for offline rides (R3); and the
+//! [`detail`] those tiles leave out, from regions a rider downloads.
 //!
 //! © `OpenFreeMap`, © `OpenMapTiles`, data © OpenStreetMap contributors (ODbL 1.0) — attribution
 //! must be shown where the data is used.
 
 mod countries;
+pub mod detail;
 mod iso;
 mod mvt;
 mod traffic_territories;
@@ -19,6 +21,7 @@ use std::time::Duration;
 
 use futures::{StreamExt, stream};
 use orqwa_domain::files::UsedFiles;
+use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 /// A position as (latitude, longitude) in degrees.
@@ -45,6 +48,9 @@ pub enum OsmError {
     /// Reading or writing the cache failed.
     #[error("map cache: {0}")]
     Cache(#[from] std::io::Error),
+    /// Stopped as asked, before it was done.
+    #[error("stopped")]
+    Stopped,
 }
 
 /// What covers an area of land.
@@ -131,10 +137,13 @@ pub struct RoadDetails {
     pub oneway: bool,
     /// A connecting ramp rather than the through carriageway.
     pub ramp: bool,
+    /// Goes round a roundabout, drawn the way traffic goes; known only from map detail.
+    pub roundabout: bool,
 }
 
 /// Road hierarchy retained for widths and markings, without changing routing priorities.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RoadKind {
     /// No detailed classification; use the broad road class.
     #[default]
@@ -163,7 +172,8 @@ pub enum RoadKind {
 
 /// Surface information, as detailed as the source permits. OpenMapTiles normally supplies
 /// only paved/unpaved; specific materials are accepted when present, never inferred as facts.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RoadSurface {
     /// Untagged or unsupported material.
     #[default]
@@ -300,6 +310,24 @@ pub struct MapData {
     pub lighthouses: Vec<LatLon>,
     /// Cities, towns and villages.
     pub places: Vec<Place>,
+    /// What the tiles leave out, where a region's map detail was asked for and is at hand.
+    pub detail: detail::Detail,
+}
+
+impl MapData {
+    /// Marks the roads going round the roundabouts their [`detail`] knows (ADR 0033), drawn
+    /// the way traffic goes, for matching a route to them; a road is split where a ring begins
+    /// or ends.
+    pub fn apply_roundabouts(&mut self) {
+        detail::apply::roundabouts(&mut self.roads, self.detail.roundabouts());
+    }
+
+    /// Gives the roads the surfaces their [`detail`] knows (ADR 0033), splitting a road where
+    /// its surface changes. Matching a route reads the roads as the tiles have them, so this
+    /// comes after it.
+    pub fn apply_surfaces(&mut self) {
+        detail::apply::surfaces(&mut self.roads, self.detail.surfaces());
+    }
 }
 
 /// Downloads and caches map tiles.
@@ -308,6 +336,8 @@ pub struct Osm {
     client: reqwest::Client,
     online: bool,
     used: UsedFiles,
+    /// The map detail extracts read along with the tiles around a route.
+    detail: Vec<String>,
 }
 
 impl Osm {
@@ -331,6 +361,7 @@ impl Osm {
             client,
             online: true,
             used: UsedFiles::default(),
+            detail: Vec::new(),
         }
     }
 
@@ -348,6 +379,15 @@ impl Osm {
         self
     }
 
+    /// Also reads the map detail of these `extracts` (see [`detail`]) around a route, from the
+    /// cache only and recorded like the tiles: a region's detail is downloaded on its own,
+    /// never with the tiles.
+    #[must_use]
+    pub fn with_detail(mut self, extracts: Vec<String>) -> Self {
+        self.detail = extracts;
+        self
+    }
+
     /// Map features within `corridor` metres of the polyline `points`. `progress` is called
     /// with (tiles done, tiles total) as tiles arrive.
     ///
@@ -362,8 +402,12 @@ impl Osm {
         corridor: f64,
         progress: &mut (dyn FnMut(usize, usize) + Send),
     ) -> Result<MapData, OsmError> {
-        self.load(ZOOM, tiles_near(points, corridor), progress)
-            .await
+        let tiles = tiles_near(points, corridor);
+        let mut data = self.load(ZOOM, tiles.clone(), progress).await?;
+        if !self.detail.is_empty() {
+            data.detail = detail::load(&self.cache_dir, &self.detail, &tiles, &self.used).await;
+        }
+        Ok(data)
     }
 
     /// Map features between the corners `south_west` and `north_east`, from tiles at `zoom`

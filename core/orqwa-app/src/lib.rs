@@ -7,6 +7,9 @@ pub mod ambient;
 pub mod analysis;
 pub mod failure;
 use failure::{Failure, Kind};
+mod detail;
+#[cfg(test)]
+mod detail_tests;
 pub mod hud;
 mod import;
 mod kept;
@@ -21,6 +24,7 @@ pub mod uploads;
 pub mod video;
 pub mod view;
 
+pub use detail::{DetailRegion, DetailStep, RegionOffer};
 pub use import::{Imported, LoadStage, Progress, countries, course_map, import_gpx, import_route};
 pub use kept::KeptWorld;
 
@@ -399,6 +403,32 @@ pub enum AppEvent {
     UpdateDownloaded,
     /// Looking for, or downloading, an update failed.
     UpdateFailed(Failure),
+    /// The regions Geofabrik offers, for map detail (ADR 0033).
+    RegionOffers(Vec<RegionOffer>),
+    /// How large a region's download is; `None` if the server did not tell.
+    RegionSize {
+        /// The region.
+        id: String,
+        /// Its download's size in bytes.
+        size: Option<u64>,
+    },
+    /// Downloading or preparing a region's map detail advanced.
+    MapDetailProgress {
+        /// The region.
+        id: String,
+        /// What it is doing.
+        step: DetailStep,
+        /// Units done in this step.
+        done: u64,
+        /// Units in this step.
+        total: u64,
+    },
+    /// A region's map detail was made ready, or its download stopped: the regions changed.
+    MapDetailChanged,
+    /// The rider asked for a region whose latest download is ready already.
+    MapDetailUpToDate(String),
+    /// Listing, downloading or preparing regions failed.
+    MapDetailFailed(Failure),
     /// Uploading a ride failed.
     UploadFailed {
         /// The ride's FIT file.
@@ -450,10 +480,14 @@ enum JobResult {
     CourseAdded(Result<PathBuf, Failure>),
     /// The loaded route was saved as this course.
     CourseSaved(Result<PathBuf, Failure>),
+    /// A course's file was brought up to date: what the library shows of it changed.
+    CourseUpdated,
     /// The course at the first path has its own copy of its video at the second (#165).
     VideoKept(PathBuf, PathBuf),
     Upload(Box<uploads::Done>),
     Update(updates::Done),
+    /// Map detail's work, by the number of its job (0 for none).
+    Detail(u64, detail::Done),
     /// The countries of the course at the path, prepared at the given time, were found
     /// (#230); `None` once the lookup is over.
     Countries(Option<(PathBuf, u64, Vec<CourseCountry>)>),
@@ -672,6 +706,8 @@ pub struct App {
     minimap: orqwa_world::FlatMap,
     /// The countries the loaded route passes, if looked up (#230).
     countries: Option<Vec<CourseCountry>>,
+    /// The map detail extracts the loaded route was prepared with (ADR 0033).
+    map_detail: Vec<String>,
     /// Whether the courses' countries are being looked up, and how many were found so far.
     filling_countries: Option<usize>,
     /// The gallery's estimated times (R67) by course, for the rider setup and power they
@@ -706,6 +742,8 @@ pub struct App {
     /// The training platforms rides can be uploaded to and the uploads under way (R29).
     uploads: uploads::UploadState,
     updates: updates::UpdateState,
+    /// Map detail's downloads (ADR 0033).
+    detail: detail::DetailState,
     data_dir: PathBuf,
     cache_dir: PathBuf,
     /// This computer's own settings (R78), next to the cache: never synced with the data.
@@ -777,6 +815,7 @@ impl App {
             course_map: None,
             minimap: orqwa_world::FlatMap::default(),
             countries: None,
+            map_detail: Vec::new(),
             filling_countries: None,
             estimates: Estimates::default(),
             world: None,
@@ -798,6 +837,7 @@ impl App {
             profile,
             uploads: uploads::UploadState::new(uploads::platforms()),
             updates: updates::UpdateState::default(),
+            detail: detail::DetailState::default(),
             data_dir,
             cache_dir,
             computer,
@@ -965,6 +1005,10 @@ impl App {
         self.course = Some(path.clone());
         let tx = self.jobs_tx.clone();
         let cache = self.cache_dir.clone();
+        // A course in the library takes the map detail of the regions here (R144): its file
+        // is brought up to date, and its kept world built again with it.
+        let ready = orqwa_osm::detail::installed(&cache.join("osm"));
+        let in_library = path.starts_with(self.courses_dir());
         self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
@@ -1013,29 +1057,24 @@ impl App {
                 });
             }
             let mut report = |stage, done, total| reporter.report(stage, done, total);
+            let carried = unpacked.manifest.clone();
+            let detail = detail_to_read(video.is_some(), &carried.map_detail, &ready);
             let mut imported = import_gpx(
                 unpacked.gpx,
                 &unpacked.manifest.name,
                 (&cache, true),
-                video.is_some(),
+                (video.is_some(), &detail),
                 &used,
                 &mut report,
             )
             .await
-            .map(|mut imported| {
-                // Older shared courses may know their country without having bundled the
-                // border tiles. A single known country gives a useful offline fallback.
-                if let Some(countries) = &unpacked.manifest.countries
-                    && let [country] = countries.as_slice()
-                {
-                    let left = traffic::keeps_left(Some(&country.code));
-                    for side in &mut imported.driving_left {
-                        side.get_or_insert(left);
-                    }
-                }
-                imported.name = unpacked.manifest.name;
-                imported
-            });
+            .map(|imported| as_carried(imported, &carried));
+            if let Ok(imported) = &imported
+                && in_library
+                && with_detail(&path, &carried, imported, (&cache, &used)).await
+            {
+                let _ = tx.send(JobResult::CourseUpdated);
+            }
             // The map of the course's land, from the tiles its file brought along (R70). A
             // course from before #236 lacks them, one from before #203 has a picture of its
             // corridor only: theirs comes online, for the minimap and a new picture.
@@ -1097,7 +1136,8 @@ impl App {
                     // A course without a place keeps its own elevations: terrain data from
                     // wherever its drawn line lies would only spoil them.
                     (&cache, offline || !source.located),
-                    true,
+                    // Video courses ride the video: no world to give map detail to.
+                    (true, &[]),
                     &used,
                     &mut report,
                 )
@@ -1430,6 +1470,7 @@ impl App {
             profile: thin(&view::elevation_profile(route, PREVIEW_POINTS)),
             video: self.video.as_ref().map(|v| video_reference(v, route)),
             countries: self.countries.clone(),
+            map_detail: self.map_detail.clone(),
         };
         // Preparing the same course again must not fill the library with copies; one still
         // being written reports itself when done. A course named on import is the rider's
@@ -1965,6 +2006,7 @@ impl App {
         self.course_map = None;
         self.minimap = orqwa_world::FlatMap::default();
         self.countries = None;
+        self.map_detail.clear();
         self.loaded = None;
         self.used = UsedFiles::default();
         self.used.clone()
@@ -3702,6 +3744,7 @@ impl App {
     /// Disconnects all devices, waiting at most a few seconds.
     pub fn shutdown(&mut self) {
         self.remote = None;
+        self.stop_region_download();
         let trainer = self.trainer.take();
         let sensor = self.sensor.take();
         let power_meter = self.power_meter.take();
@@ -3804,6 +3847,7 @@ impl App {
                     self.saving = None;
                     events.push(AppEvent::Error(message));
                 }
+                JobResult::CourseUpdated => events.push(AppEvent::CoursesChanged),
                 JobResult::VideoKept(course, kept) => {
                     if let Err(e) = refer_to_kept_video(&course, &kept) {
                         events.push(AppEvent::Error(Failure::new(Kind::SaveVideo, e)));
@@ -3811,6 +3855,7 @@ impl App {
                 }
                 JobResult::Upload(done) => events.push(self.upload_work_done(*done)),
                 JobResult::Update(done) => events.extend(self.update_done(done)),
+                JobResult::Detail(serial, done) => events.extend(self.detail_done(serial, done)),
                 JobResult::Countries(found) => self.countries_found(found, events),
                 JobResult::Scan(Err(message)) => self.scan_failed(message, events),
                 JobResult::Route(_, Err(message))
@@ -3890,14 +3935,15 @@ impl App {
     fn route_loaded(&mut self, imported: Imported, events: &mut Vec<AppEvent>) {
         let Imported {
             route,
+            map,
             name,
             gpx,
             course_map,
             minimap,
             countries,
             driving_left,
-            ..
         } = imported;
+        self.map_detail = map.detail.extracts().to_vec();
         self.loaded = Some((name.clone(), gpx));
         self.course_map = course_map;
         self.minimap = minimap;
@@ -4087,6 +4133,85 @@ fn poll_sensor(
                 reports.batteries.remove(&kind);
                 break;
             }
+        }
+    }
+}
+
+/// A course's route `imported` again, named as the course `carried` it. Older shared courses
+/// may know their country without having bundled the border tiles: a single known country
+/// gives a useful offline fallback for the side traffic keeps to.
+fn as_carried(mut imported: Imported, carried: &Manifest) -> Imported {
+    if let Some(countries) = &carried.countries
+        && let [country] = countries.as_slice()
+    {
+        let left = traffic::keeps_left(Some(&country.code));
+        for side in &mut imported.driving_left {
+            side.get_or_insert(left);
+        }
+    }
+    imported.name.clone_from(&carried.name);
+    imported
+}
+
+/// The map detail extracts a course opened reads: for a video course, which rides its video,
+/// those it `carried`; else those of the regions `ready` here too (R144).
+fn detail_to_read(
+    video: bool,
+    carried: &[String],
+    ready: &[orqwa_osm::detail::Region],
+) -> Vec<String> {
+    if video {
+        carried.to_vec()
+    } else {
+        orqwa_osm::detail::for_course(carried, ready)
+    }
+}
+
+/// Brings the course file at `path`, which `carried` the manifest, up to date with the map
+/// detail its route was `imported` with, where that differs (R144): the detail's cells read
+/// (recorded in `used` under the cache) in place of those it carried, and the manifest's
+/// figures of the route matched with it. Whether it did; a file that cannot be written stays
+/// as it was.
+async fn with_detail(
+    path: &Path,
+    carried: &Manifest,
+    imported: &Imported,
+    (cache, used): (&Path, &UsedFiles),
+) -> bool {
+    if imported.map.detail.extracts() == carried.map_detail.as_slice() {
+        return false;
+    }
+    let route = &imported.route;
+    let manifest = Manifest {
+        map_detail: imported.map.detail.extracts().to_vec(),
+        length_m: route.length().0,
+        elevation_gain_m: route.elevation_gain().0,
+        max_grade_percent: route.max_grade().0,
+        track: thin(&view::track(route, PREVIEW_POINTS)),
+        profile: thin(&view::elevation_profile(route, PREVIEW_POINTS)),
+        ..carried.clone()
+    };
+    let under = format!("osm/{}", orqwa_osm::detail::VERSION);
+    let detail_dir = cache.join(&under);
+    let cells: Vec<PathBuf> = used
+        .paths()
+        .into_iter()
+        .filter(|file| file.starts_with(&detail_dir))
+        .collect();
+    let (path, cache) = (path.to_owned(), cache.to_owned());
+    let written = tokio::task::spawn_blocking(move || {
+        course::replace_data(&path, &manifest, (&cache, &under), &cells)
+    })
+    .await;
+    match written {
+        Ok(Ok(())) => true,
+        Ok(Err(error)) => {
+            warn!(%error, "course not brought up to date with the map detail");
+            false
+        }
+        Err(error) => {
+            warn!(%error, "course not brought up to date with the map detail");
+            false
         }
     }
 }
@@ -4395,7 +4520,7 @@ mod tests {
                 xml.clone(),
                 "zig-zag",
                 (&dir, true),
-                video,
+                (video, &[]),
                 &UsedFiles::default(),
                 &mut |_, _, _| {},
             )
@@ -5444,6 +5569,7 @@ mod tests {
             profile: Vec::new(),
             video: None,
             countries: None,
+            map_detail: Vec::new(),
         };
         let path = dir.join("sample.tqc");
         course::write(&path, &manifest, "<gpx/>", dir, &[]).unwrap();

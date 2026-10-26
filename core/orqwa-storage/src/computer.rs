@@ -32,6 +32,8 @@ struct ComputerFile {
     check_updates: Option<bool>,
     /// Whether the courses' built worlds are kept (R101); off unless turned on.
     keep_worlds: Option<bool>,
+    /// Whether regions' map detail is downloaded for courses (ADR 0033); off unless turned on.
+    map_detail: Option<bool>,
 }
 
 /// The phone remote on this computer (#228): a phone pairs with the computer it rides beside.
@@ -180,6 +182,23 @@ pub fn set_keep_worlds(file: &Path, on: bool) -> Result<(), ProfileError> {
     save(file, &computer)
 }
 
+/// Whether this computer downloads regions' map detail for its courses (ADR 0033): no until
+/// turned on, as a region's download takes from half a gigabyte to several.
+#[must_use]
+pub fn map_detail(file: &Path) -> bool {
+    read(file).map_detail.unwrap_or(false)
+}
+
+/// Turns downloading regions' map detail on or off.
+///
+/// # Errors
+/// [`ProfileError`] if the file cannot be written.
+pub fn set_map_detail(file: &Path, on: bool) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.map_detail = Some(on);
+    save(file, &computer)
+}
+
 /// The phone remote as set on this computer.
 #[must_use]
 pub fn phone_remote(file: &Path) -> PhoneRemote {
@@ -279,6 +298,20 @@ mod tests {
         assert!(keep_worlds(&file), "kept beside other settings");
         set_keep_worlds(&file, false).unwrap();
         assert!(!keep_worlds(&file));
+    }
+
+    #[test]
+    fn map_detail_is_downloaded_once_turned_on() {
+        let file = temp_file("map-detail");
+        assert!(!map_detail(&file), "off for a new computer");
+
+        set_map_detail(&file, true).unwrap();
+        set_keep_worlds(&file, true).unwrap();
+
+        assert!(map_detail(&file), "kept beside other settings");
+        set_map_detail(&file, false).unwrap();
+        assert!(!map_detail(&file));
+        assert!(keep_worlds(&file));
     }
 
     #[test]

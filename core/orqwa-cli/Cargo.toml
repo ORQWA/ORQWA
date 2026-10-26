@@ -15,6 +15,7 @@ path = "src/main.rs"
 orqwa-app.workspace = true
 orqwa-domain.workspace = true
 orqwa-devices.workspace = true
+orqwa-osm.workspace = true
 orqwa-physics.workspace = true
 orqwa-routes.workspace = true
 orqwa-session.workspace = true
