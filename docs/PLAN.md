@@ -802,6 +802,11 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   to Android's installer by the plugin, without a prompt from Android 12 where Android allows it;
   tried on the Tab S7 on 2026-10-22. Where Advanced Protection forbids installing apps, the
   dialog explains how to turn it off
+- [ ] F — a data folder sync apps reach (R148): ORQWA's data in
+  `Android/media/org.orqwa.bike/ORQWA`, named by the plugin, the private folder's moved there
+  once, course videos out of the gallery
+  - [x] the folder, the move and the wiki
+  - [ ] tried on the Tab S7: the move, and rides and courses synced both ways with a computer
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
