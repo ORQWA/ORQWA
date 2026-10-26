@@ -396,7 +396,8 @@ Built in rideable steps:
   change a Click's + and −; the assignments kept for every shifter before stay each model's
 - [x] UI design system (sleek minimal) applied to all screens and dialogs, polished course
   summaries; no text bloat on course load, dialogs that reflow when resized (R52–R53):
-  - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189)
+  - [x] The ride view's controls as icons with tooltips in a bar that folds away (#189);
+    the folded panel shrinks to its chevron, including in simulations (#375)
   - [x] The summary's rename and delete as icon buttons (#190); buttons that delete are red
   - [x] The Profile tab and dialog: the rider as a heading, cards unfolding to every setting
     and the zones (#191, #194)
