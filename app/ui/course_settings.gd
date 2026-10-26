@@ -130,6 +130,10 @@ func _translate() -> void:
 		+ tr("Regions come from Geofabrik; a country takes half a gigabyte to five.")
 		+ " "
 		+ tr("Nothing is downloaded unless you add it.")
+		+ " "
+		+ tr("The map detail used is saved in the course's .tqc file.")
+		+ " "
+		+ tr("Shared or synced courses need no Geofabrik download on another device.")
 	)
 	_stop.tooltip_text = tr("Stop")
 	_confirm_off.title = tr("Turn map detail off?")

@@ -137,3 +137,5 @@ manifest's optional `map_detail` names their extracts, and opening the course re
 those, so it comes out the same on any computer, with the region downloaded or not. Format 1
 stays: older ORQWA versions leave both unread. Opened in the library of a computer with a
 region's detail ready, a course takes it and its file is rewritten with it (R144, ADR 0033).
+Sharing or syncing that `.tqc` carries the map detail used; the receiving device needs neither
+the full Geofabrik download nor a separate copy of its extracted region cache.

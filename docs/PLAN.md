@@ -81,8 +81,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   [syncing between devices](https://github.com/ORQWA/ORQWA/wiki/Syncing-between-devices),
   including direct Nextcloud folder sync; computer settings and caches stay local.
 - **Course files** (`.tqc`, [ADR 0007](adr/0007-course-files.md)): manifest, GPX, the
-  terrain and map tiles used and a picture of its map, so a course is rebuilt offline
-  anywhere; video courses refer to their video instead of embedding it.
+  terrain and map tiles used, any map detail used from Geofabrik regions and a picture of its
+  map, so a shared or synced course is rebuilt offline anywhere without downloading the region
+  again; video courses refer to their video instead of embedding it.
 - **3D world generation**: a 1.5 km corridor around the route, coarse land beyond it out to
   12 km; DEM → chunked heightmap meshes, finer near the road; the road shaped into the ground
   along the route snapped to the map; streets, railways, bridges and tunnels from the map;

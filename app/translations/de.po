@@ -2435,6 +2435,12 @@ msgstr "Regionen"
 msgid "Regions come from Geofabrik; a country takes half a gigabyte to five."
 msgstr "Die Regionen kommen von Geofabrik; ein Land braucht ein halbes bis fünf Gigabyte."
 
+msgid "The map detail used is saved in the course's .tqc file."
+msgstr "Die verwendeten Kartendetails werden in der .tqc-Datei der Route gespeichert."
+
+msgid "Shared or synced courses need no Geofabrik download on another device."
+msgstr "Für geteilte oder synchronisierte Routen musst du auf einem anderen Gerät nichts von Geofabrik herunterladen."
+
 msgid "Stop"
 msgstr "Stopp"
 
