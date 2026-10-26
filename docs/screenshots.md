@@ -64,58 +64,47 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ### Surrounding road beds
 
-Surrounding vehicle roads, unpaved service roads, tracks and cycleways have level road beds
-and continuous terrain-derived profiles (R141, generator 36). Modest slopes use earth
-cuttings and fills; steep banks combine earth cuttings with concrete retaining faces.
-Hiking trails and generic footpaths retain their terrain-following treatment, even if paved.
+Surrounding vehicle roads, unpaved service roads, tracks and cycleways near the ride have level
+road beds and continuous terrain-derived profiles (R141, generator 36), with earth banks and,
+for paved roads on steep hillsides, concrete faces. One priority rule decides every conflict:
+the ridden road, then railways, then other ways. The ridden carriageway with its verge, the
+cover over its tunnels and the ground its portals stand in look as without the surrounding
+way; the way yields there and follows the ground it is left. Widths, profiles and earthworks
+are inferred from saved map and terrain data, not surveyed construction.
 
-These controlled meshes come from the Rust generator with the application's materials and
-identical before/after cameras. The unpaved track used to follow the hillside's cross-slope.
+These views use the saved full Alpenbrevet Gold course at fixed cameras, before R141 (left)
+and with it (right). At **40.04 km** a track joins the ridden road just before a portal and
+climbs beside it: the portal keeps its hillside and position, and the track's bed is cut in
+beside the approach.
 
-| Terrain-following track | Formed road bed |
+| Before R141 | Ridden road first |
 |---|---|
-| ![Track tilted with a modest hillside](images/road-earthworks/modest-before.jpg) | ![Level track with earth banks](images/road-earthworks/modest-after.jpg) |
-| ![Track tilted with a steep hillside](images/road-earthworks/steep-before.jpg) | ![Level track between retaining banks](images/road-earthworks/steep-after.jpg) |
+| ![Portal approach at 40.04 km before](images/road-earthworks/alpenbrevet-40040-approach-before.jpg) | ![Portal approach at 40.04 km with formed track bed](images/road-earthworks/alpenbrevet-40040-approach-after.jpg) |
+| ![Portal and track from above at 40.07 km before](images/road-earthworks/alpenbrevet-40070-drone-before.jpg) | ![Portal and track from above at 40.07 km](images/road-earthworks/alpenbrevet-40070-drone-after.jpg) |
 
-![Paved road cutting and retaining faces on a steep hillside](images/road-earthworks/road-cutting.jpg)
+At **54.56 km** a track crosses over a tunnel near its mouth and keeps the portal's hill. At
+**36.40 km** pieces of the ridden road's own mapped line, where map and route change to a
+bridge a few metres apart, form no second road bed: the gorge's rock stays rock.
 
-The wider test scene also includes a primary road, unpaved service road, cycleway and excluded
-paved footpath, with terrain joining at the 480 m chunk boundary. Widths and earthworks are
-inferred scenery, not surveyed construction. Export with the ignored `earthworks_render_fixture`
-test and render `app/tools/render_earthworks.gd`; see [Development](development.md).
-The standard Oberalp tunnel, bridge-side and hairpin views below also check that separate
-structures and the ridden road retain their own levels.
-
-The saved full Alpenbrevet Gold course at **32.40 km**, about **178.34 km to go**, exposed
-a service road being pulled back onto the ridden road's cutting and dense-city paving
-covering that bank. Generator 36 keeps the nearby carriageways at their own profiles,
-joins their datums where they meet and refines only the narrow intervening terrain. The
-cut bank keeps natural ground rather than inferred paving. These matching geometry views
-retain the full course's projection and grid, with vegetation, props and rider omitted:
-
-| Reported folded service road and bank paving | Separate formed road beds |
+| Before R141 | Ridden road first |
 |---|---|
-| ![Alpenbrevet at 32.40 km before](images/road-earthworks/alpenbrevet-32400-before.jpg) | ![Alpenbrevet at 32.40 km after](images/road-earthworks/alpenbrevet-32400-after.jpg) |
-| ![Close view of the folded service road](images/road-earthworks/alpenbrevet-32400-close-before.jpg) | ![Close view of its continuous formed surface](images/road-earthworks/alpenbrevet-32400-close-after.jpg) |
+| ![Track over a tunnel mouth at 54.56 km before](images/road-earthworks/alpenbrevet-54560-approach-before.jpg) | ![Track over a tunnel mouth at 54.56 km](images/road-earthworks/alpenbrevet-54560-approach-after.jpg) |
+| ![Gorge at 36.40 km before](images/road-earthworks/alpenbrevet-36400-gorge-before.jpg) | ![Gorge at 36.40 km](images/road-earthworks/alpenbrevet-36400-gorge-after.jpg) |
 
-### Ridden tunnel clearance beside formed roads
+At **35.75 km** the ridden road's own mapped line no longer levels the ground beside it at the
+terrain's height: the grass berm it raised on the river side is gone, the ground falls to the
+river and a guard rail follows. At **32.40 km** the service road beside the ridden road keeps
+its own bed instead of folding onto the ridden cutting, and the cut bank is ground rather than
+inferred city paving.
 
-Alpenbrevet Gold at **40.07 km / 170.68 km to go** exposed tunnel cover being reapplied
-after side-road bed blending without the ridden approach's clearance constraint. Generator
-36 retains that constraint through the final shaping step, including a margin for the local
-terrain triangles. The full curved tunnel remains hollow; paving shares its volume cuts.
-The cutting eases into the intervening bank rather than ending in a sudden clearance wall.
-These fixed-camera exports keep the full saved course's projection and grid, omitting
-vegetation, props and rider to expose the geometry. The interior and opposite mouth check
-that opening the entrance also preserves the complete passage.
-
-| Previous build `7ef00a9` | Ridden-road clearance retained |
+| Before R141 | Ridden road first |
 |---|---|
-| ![Terrain blocks the tunnel approach](images/road-earthworks/alpenbrevet-40070-before.jpg) | ![Clear approach into the tunnel](images/road-earthworks/alpenbrevet-40070-after.jpg) |
+| ![Roadside at 35.75 km before](images/road-earthworks/alpenbrevet-35750-roadside-before.jpg) | ![Roadside at 35.75 km](images/road-earthworks/alpenbrevet-35750-roadside-after.jpg) |
+| ![Village service road at 32.40 km before](images/road-earthworks/alpenbrevet-32400-village-before.jpg) | ![Village service road at 32.40 km](images/road-earthworks/alpenbrevet-32400-village-after.jpg) |
 
-| Corrected interior | Corrected opposite mouth |
-|---|---|
-| ![Clear tunnel interior](images/road-earthworks/alpenbrevet-40120-interior.jpg) | ![Clear opposite tunnel mouth](images/road-earthworks/alpenbrevet-40290-exit.jpg) |
+Render these with `scripts/render-views.sh`, `COURSE` set to the saved course and `SHOTS`
+naming the distances; `app/tools/render_earthworks.gd` renders the controlled slopes of the
+ignored `earthworks_render_fixture` test (see [Development](development.md)).
 
 ### Andermatt sidewalks
 
