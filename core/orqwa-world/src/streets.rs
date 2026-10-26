@@ -55,6 +55,8 @@ pub(crate) struct Street {
     /// Engineered ground ways share one profile before chunks sample their terrain.
     bed: Option<Vec<f64>>,
     bed_anchors: Vec<usize>,
+    /// The hillside's slope across the way at each point, where its profile is known.
+    cross: Vec<f64>,
     formed: bool,
     min: (f64, f64),
     max: (f64, f64),
@@ -187,9 +189,10 @@ pub(crate) async fn lines<M: ElevationModel>(
         } else {
             None
         };
-        let (bed, bed_anchors) = profile.map_or((None, Vec::new()), |(heights, anchors)| {
-            (Some(heights), anchors)
-        });
+        let (bed, bed_anchors, cross) = profile.map_or(
+            (None, Vec::new(), Vec::new()),
+            |(heights, anchors, cross)| (Some(heights), anchors, cross),
+        );
         let (mut min, mut max) = (first, first);
         for &(e, n) in &points {
             min = (min.0.min(e), min.1.min(n));
@@ -202,6 +205,7 @@ pub(crate) async fn lines<M: ElevationModel>(
             points,
             bed,
             bed_anchors,
+            cross,
             formed,
             min,
             max,
@@ -231,11 +235,28 @@ pub(crate) fn connect(streets: &mut [Street], road: &RoadIndex) {
                         distances[i - 1] + (point.0 - previous.0).hypot(point.1 - previous.1),
                     );
                 }
-                if let Some(height) =
-                    road.ground_contact(point, street.appearance.width / 2.0 + 0.6)
+                if road
+                    .ground_contact(point, street.appearance.width / 2.0 + 0.6)
+                    .is_some()
                 {
                     connected = true;
-                    bed[i] = height - crate::ROAD_SINK;
+                    // Meet the ridden road's own ground at its edge, as it lies along slopes.
+                    let edge = road.ground_foot(point.0, point.1, 24.0).map_or(
+                        point,
+                        |(foot, distance, road_half)| {
+                            let share = (road_half / distance.max(1e-9)).min(1.0);
+                            (
+                                foot.0 + (point.0 - foot.0) * share,
+                                foot.1 + (point.1 - foot.1) * share,
+                            )
+                        },
+                    );
+                    let pieces: Vec<_> = road
+                        .near_shaped(edge.0, edge.1, crate::LEVEL_REACH)
+                        .into_iter()
+                        .filter(|r| r.2 != Surface::Tunnel)
+                        .collect();
+                    bed[i] = crate::shape(bed[i], &pieces);
                     if i > 0 {
                         anchors.push(i);
                     }
@@ -634,6 +655,19 @@ pub(crate) const LEVEL_REACH_M: f64 = 8.0;
 pub(crate) const LEVEL_FADE_M: f64 = 3.0;
 /// Index cell size of [`Levels`].
 const LEVEL_CELL_M: f64 = 20.0;
+/// A bank between a formed way and a ridden road or railway this narrow needs finer terrain
+/// than the usual pieces to stay off both carriageways; wider ones keep the usual detail.
+const CLOSE_GAP_M: f64 = 5.5;
+const TIGHT_GAP_M: f64 = 3.0;
+/// ...where its bed lies at least this much, and half the gap more, above or below theirs.
+const CLOSE_RISE_M: f64 = 0.5;
+/// Paved roads across hillsides this steep get retaining walls (`earthworks::shape`)...
+const STEEP_CROSS: f64 = 0.6;
+/// ...tracks and cycleways across hillsides this steep a narrow shelf of finer terrain, so
+/// their cuttings stay low grassed banks instead of wide scars.
+const EARTH_STEEP_CROSS: f64 = 0.35;
+/// Beds are formed this near the ridden road, where riders see their cross-sections.
+const FORMED_REACH_M: f64 = 120.0;
 
 /// A piece of a street's centre line, metres east/north: its two ends and the street's half
 /// width.
@@ -644,6 +678,13 @@ struct BedPiece {
     heights: Option<[f64; 2]>,
     subdivisions: usize,
     padding: f64,
+    /// The level ground beyond its edge that the terrain pieces under it need.
+    verge: f64,
+    /// Paved vehicle roads near the ride retain steep cuttings with walls; tracks and
+    /// cycleways keep earth.
+    facing: bool,
+    /// Its detail serves a narrow bank beside the ridden road or a railway.
+    close: bool,
 }
 
 /// Formed ground roads, vehicle tracks and cycleways. Small paths follow the land;
@@ -698,6 +739,11 @@ impl Levels {
         let mut cells: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
         for street in streets.iter().filter(|s| s.formed && !s.on_bridge()) {
             let half = street.half_width();
+            let facing = street.paved()
+                && matches!(
+                    street.class,
+                    RoadClass::Major | RoadClass::Street | RoadClass::Service
+                );
             for (i, pair) in street.points.windows(2).enumerate() {
                 let index = segments.len();
                 let bed = street.bed.as_ref().map(|bed| [bed[i], bed[i + 1]]);
@@ -705,33 +751,39 @@ impl Levels {
                     f64::midpoint(pair[0].0, pair[1].0),
                     f64::midpoint(pair[0].1, pair[1].1),
                 );
-                if road.covers_street(
+                // The ridden road owns its mapped pieces whatever either source tags there.
+                if road.owns_alignment(
                     middle,
                     half,
-                    Surface::Ground,
                     local_direction(&street.points, i),
                     &street.sources,
                 ) {
                     continue;
                 }
-                let road_gap = road
-                    .nearest_profile(middle.0, middle.1, 25.0)
-                    .map_or(f64::INFINITY, |(distance, appearance)| {
-                        distance - appearance.width / 2.0 - half
-                    });
-                let rail_gap = rails
-                    .nearest(middle.0, middle.1, 25.0)
-                    .filter(|r| r.2 == Surface::Ground)
-                    .map_or(f64::INFINITY, |r| r.0 - railways::BED_M / 2.0 - half);
-                let gap = road_gap.min(rail_gap);
-                let subdivisions = if gap < 2.0 {
-                    crate::TIGHT_SUB
+                // Riders see formed beds near the ride. Farther away tracks and cycleways follow
+                // the land, which keeps them in view of the coarser distant ground, and paved
+                // roads keep a plain shelf without walls.
+                let near = road
+                    .nearest_profile(middle.0, middle.1, FORMED_REACH_M)
+                    .is_some();
+                if !facing && !near {
+                    continue;
+                }
+                let walls = facing && near;
+                // Walls, and narrow shelves on steep hillsides, need the finer pieces.
+                let threshold = if walls {
+                    STEEP_CROSS
                 } else {
-                    crate::CLOSE_SUB
+                    EARTH_STEEP_CROSS
                 };
-                #[allow(clippy::cast_precision_loss)] // one of two fixed subdivision counts
-                let padding = (crate::GRID / subdivisions as f64 * std::f64::consts::SQRT_2 + 0.2)
-                    .min((gap / 3.0).max(0.1));
+                let steep = near
+                    && street
+                        .cross
+                        .get(i..=i + 1)
+                        .is_some_and(|c| c.iter().any(|&slope| slope >= threshold));
+                let level = bed.map(|[a, b]| f64::midpoint(a, b));
+                let (subdivisions, padding, close) =
+                    bed_detail((road, rails), (middle, half, level), steep);
                 segments.push(BedPiece {
                     from: pair[0],
                     to: pair[1],
@@ -739,6 +791,10 @@ impl Levels {
                     heights: bed,
                     subdivisions,
                     padding,
+                    #[allow(clippy::cast_precision_loss)] // one of the fixed subdivision counts
+                    verge: crate::GRID / subdivisions as f64 * std::f64::consts::SQRT_2 + 0.2,
+                    facing: walls,
+                    close,
                 });
                 // Pieces are at most a step long: both ends' cells cover them.
                 let (first, second) = (level_cell(pair[0]), level_cell(pair[1]));
@@ -762,7 +818,7 @@ impl Levels {
 
     /// Check every carriageway touching a cell, including ones hidden by a nearer ridden
     /// copy at its centre. Missing one leaves a coarse/fine seam through that side road.
-    pub(crate) fn detail_near(&self, east: f64, north: f64, reach: f64) -> usize {
+    pub(crate) fn detail_near(&self, east: f64, north: f64, reach: f64, close: bool) -> usize {
         let scan = reach + 5.25 + STEP_M;
         let (low, high) = (
             level_cell((east - scan, north - scan)),
@@ -773,6 +829,9 @@ impl Levels {
             for y in low.1..=high.1 {
                 for &i in self.cells.get(&(x, y)).into_iter().flatten() {
                     let p = &self.segments[i];
+                    if close && !p.close {
+                        continue;
+                    }
                     let foot = nearest_on(p.from, p.to, (east, north));
                     if (east - foot.0).hypot(north - foot.1) <= p.half + reach {
                         count = count.max(p.subdivisions);
@@ -813,6 +872,8 @@ impl Levels {
                             foot,
                             height: bed.map(|[a, b]| a + (b - a) * t),
                             padding: piece.padding,
+                            verge: piece.verge,
+                            facing: piece.facing,
                         });
                     }
                 }
@@ -822,6 +883,56 @@ impl Levels {
     }
 }
 
+/// Terrain pieces a side around a bed piece at `middle`, the margin its own carriageway keeps
+/// and whether that serves a close carriageway: finer where its bed lies at another height
+/// than a ridden road or railway too close for the usual pieces to hold the bank between them,
+/// or for walls and narrow shelves on a steep hillside (`steep`). A joining road at the ridden
+/// road's level needs no bank, and no finer terrain.
+fn bed_detail(
+    (road, rails): (&RoadIndex, &RoadIndex),
+    (middle, half, bed): ((f64, f64), f64, Option<f64>),
+    steep: bool,
+) -> (usize, f64, bool) {
+    let gap_to = |index: &RoadIndex, half_of: &dyn Fn(f64) -> f64| {
+        index
+            .ground_foot(middle.0, middle.1, 25.0)
+            .and_then(|(_, distance, road_half)| {
+                let (_, elevation, _) = index.nearest(middle.0, middle.1, 25.0)?;
+                Some((distance - half_of(road_half) - half, elevation))
+            })
+    };
+    let ridden = gap_to(road, &|road_half| road_half);
+    let railway = gap_to(rails, &|_| railways::BED_M / 2.0);
+    let gap = [ridden, railway]
+        .into_iter()
+        .flatten()
+        .map(|(gap, _)| gap)
+        .fold(f64::INFINITY, f64::min);
+    // Only a bank the usual pieces would crush needs them finer.
+    let close = [ridden, railway]
+        .into_iter()
+        .flatten()
+        .any(|(gap, elevation)| {
+            gap < CLOSE_GAP_M
+                && bed.is_some_and(|bed| {
+                    (bed - (elevation - crate::ROAD_SINK)).abs() > CLOSE_RISE_M + gap.max(0.0) * 0.5
+                })
+        });
+    let subdivisions = if close && gap < TIGHT_GAP_M {
+        crate::TIGHT_SUB
+    } else if close {
+        crate::CLOSE_SUB
+    } else if steep {
+        crate::STEEP_SUB
+    } else {
+        crate::SUB
+    };
+    #[allow(clippy::cast_precision_loss)] // one of the fixed subdivision counts
+    let padding = (crate::GRID / subdivisions as f64 * std::f64::consts::SQRT_2 + 0.2)
+        .min((gap / 3.0).max(0.1));
+    (subdivisions, padding, close)
+}
+
 /// Nearest road bed, with a centre-line fallback when saved terrain has missing samples.
 pub(crate) struct Level {
     pub(crate) distance: f64,
@@ -829,6 +940,8 @@ pub(crate) struct Level {
     pub(crate) foot: (f64, f64),
     pub(crate) height: Option<f64>,
     pub(crate) padding: f64,
+    pub(crate) verge: f64,
+    pub(crate) facing: bool,
 }
 
 /// The point of segment `from`–`to` nearest to `point`.

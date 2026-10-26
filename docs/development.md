@@ -247,51 +247,43 @@ way against the traffic. Kept worlds built with the old route offer regeneration
 ridden road follows it. Stored format remains 3.
 
 Generator 36 gives surrounding vehicle roads, unpaved service roads, tracks and cycleways
-shared road-bed profiles before terrain chunks are built. Heights use a cached global 16 m
-terrain lattice, with 24 m local smoothing and a 20 % intermediate-grade envelope. Chain ends
-and mapped branch/tag-change endpoints retain their common terrain datum; if endpoint heights
-require a steeper overall grade, that connection takes precedence. Closed loops retain their
-terrain datum so roundabout islands remain grounded. Small paths, including paved footpaths,
-retain their terrain-following treatment. Bridges and tunnels keep the existing structure
-rules. Ground road and railway beds retain their respective elevations.
+shared road-bed profiles before terrain chunks are built (R141, ADR 0031). Heights use a cached
+global 16 m terrain lattice, with 24 m local smoothing and a 20 % intermediate-grade envelope;
+chain ends and branch/tag-change endpoints keep their common datum. Small paths, including paved
+footpaths, keep following the terrain. Bridges and tunnels keep their structure rules.
 
-Close side roads keep their bed instead of being draped back onto the ridden road's cutting.
-Each carriageway's own datum wins within its footprint; their banks blend in the gap between
-them. A joining road contacts the ridden road by its edges, and shared profile anchors are
-preserved. Suppressed mapped copies of the ridden pavement do not shape terrain a second
-time. On sloping approaches, the nearest road profile supplies the datum, rather than lower
-downstream segment endpoints within the shaping radius.
-Railway neighbours use their actual bed width for this spacing and blend, so a narrower
-track's terrain envelope cannot swallow the side road.
+The terrain at a point is composed in one place, `Shapers::shape_at` in
+`core/orqwa-world/src/lib.rs`, from the priority rule: ridden road, then railways, then
+surrounding ways. `shape` is the ridden road's and railways' ground as before;
+`level_across` (`earthworks::shape`) is a way's bed and banks. `Shapers::keep` says how firmly
+the way holds a point (its own reach, the partition towards the ridden verge, and the shadow
+behind it seen from the ridden road); `Shapers::structure_keep` gives tunnel cover and portal
+surroundings back to the ridden road, and `hard_verge` keeps the ridden verge at its usual
+width unless a close way needs room. Every factor fades to zero at its own edge: a change that
+switches one on or off at a hard boundary leaves a terrain step. `drawn_ground` uses the same
+composition, so portals, bridges and props stand in the ground the chunks draw.
 
-The ridden carriageway retains final clearance priority after independent beds blend.
-Reapplying tunnel cover must also retain the nearest ridden ground section within the
-carriageway and its terrain-triangle margin. Otherwise the hill can grow across an approach
-beyond the mouth's clipping volume, even though the tunnel itself is hollow. Use that local
-section's datum rather than downstream segment ends, so sloping side-road joins remain smooth.
-Outside the protected footprint, ease this cutting back towards the side-road bed through
-the intervening bank; ending the clearance at a hard boundary makes an artificial cliff.
-
-Only cells touching close independent carriageways receive 24 subdivisions per side
-(0.67 m), or 48 (0.33 m) for gaps below 2 m. Ordinary detailed cells retain six (2.67 m).
-Fine edges conform to the neighbouring cell's resolution, including across chunk boundaries;
-draping and foundation queries use these same triangles. Dense urban cover only infers paving
-where the ground's upward normal is at least 0.98, so cut banks retain natural ground.
-
-Modest slopes use earth cuttings and embankments. Steep cross-slopes blend into a short earth
-bank and a battered retaining face before returning to the natural hill. Concrete facing
-uses the final terrain triangles and the existing cast-concrete material, so it shares cutouts,
-water carving and chunk edges rather than floating against an independently sampled DEM.
-Facing carries the existing zero-alpha structure tint, outside road-profile metadata; stored
-format 3 is unchanged. Widths, profiles and retaining treatments are inferred scenery, not
-surveyed construction. No provider, dependency or new course request is introduced.
+`Levels` forms beds within `FORMED_REACH_M` (120 m) of the ridden road; farther tracks and
+cycleways stay draped and paved roads keep a plain shelf without walls. It refines terrain
+(`bed_detail`) only beside a close bed at another height than a ridden carriageway or railway
+(gaps under 5.5 m: 24 pieces a side, under 3 m: 48; `CLOSE_RISE_M`), and for paved roads
+across hillsides steeper than 0.6, where walls need clean triangles, and tracks and cycleways
+steeper than 0.35, whose level shelf (`Level::verge`) narrows to the finer pieces' margin (12).
+Compare world triangle counts and build time before and after a change here: refining every
+close or steep piece at 24 cost 79 % more ground triangles on Alpenbrevet Gold, this rule
+17 %, with a build about 30 % longer (per-point shaping in the grid and its normals). Their earth banks
+(`earthworks::shape` without `facing`) meet the hillside instead of fading into it as a scar,
+and boulders beside formed ways follow the natural slope (`vegetation`). Pieces the ridden road owns, by alignment whatever their structure
+tags (`RoadIndex::owns_alignment`), form no bed. Concrete faces (`earthworks::retaining_faces`)
+dress only steep banks a paved vehicle road's earthworks moved and holds. Dense-city paving
+(`Urban::paint`) stops at engineered banks steeper than 20 % and natural ground steeper than
+about 35 %.
 
 For controlled visual review, run `cargo test --manifest-path core/Cargo.toml -p orqwa-world
 earthworks_render_fixture -- --ignored`, then render `app/tools/render_earthworks.gd` with
 `OUT_DIR` set to an existing absolute directory. `FIXTURE` selects an alternate exported JSON
-for an identical-camera baseline. The scene covers modest and steep slopes, vehicle roads,
-unpaved service roads, tracks, cycleways and an excluded paved footpath across the 480 m chunk
-boundary. Pair it with real-route Oberalp hairpin, bridge and tunnel views.
+for an identical-camera baseline. Pair it with the saved full Alpenbrevet Gold course at 32.40,
+35.75, 36.40, 40.07 and 54.60 km, rendered at the same cameras before and after.
 
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches

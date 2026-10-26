@@ -42,18 +42,18 @@ func _run() -> void:
 			scene.add_child(instance)
 		var camera: Camera3D = Camera3D.new()
 		scene.add_child(camera)
-		camera.position = Vector3(90.0, slope * 320.0 + 200.0, -290.0)
-		camera.look_at(Vector3(320.0, slope * 320.0, -490.0))
+		camera.position = Vector3(-200.0, slope * 30.0 + 200.0, -290.0)
+		camera.look_at(Vector3(30.0, slope * 30.0, -490.0))
 		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 		camera.size = 350.0
 		camera.current = true
 		await _save(out.path_join("slope-%s-overview.png" % slope))
 		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-		camera.position = Vector3(178.0, slope * 200.0 + 13.0, -465.0)
-		camera.look_at(Vector3(202.0, slope * 200.0, -495.0))
+		camera.position = Vector3(88.0, slope * 110.0 + 13.0, -465.0)
+		camera.look_at(Vector3(112.0, slope * 110.0, -495.0))
 		await _save(out.path_join("slope-%s-close.png" % slope))
-		camera.position = Vector3(302.0, slope * 320.0 + 10.0, -465.0)
-		camera.look_at(Vector3(321.0, slope * 320.0, -495.0))
+		camera.position = Vector3(-73.0, slope * -55.0 + 10.0, -465.0)
+		camera.look_at(Vector3(-54.0, slope * -55.0, -495.0))
 		await _save(out.path_join("slope-%s-track.png" % slope))
 		scene.queue_free()
 		await process_frame

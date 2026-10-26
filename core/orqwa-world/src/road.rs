@@ -398,6 +398,66 @@ impl RoadIndex {
             })
     }
 
+    /// Whether a mapped piece is the ridden road itself, whatever structure either source tags
+    /// there. Map and route tags change a few metres apart at bridges and tunnels; such a
+    /// remnant must not form a second road bed beside or over the ridden road (R141).
+    pub(crate) fn owns_alignment(
+        &self,
+        point: (f64, f64),
+        half: f64,
+        heading: (f64, f64),
+        sources: &[usize],
+    ) -> bool {
+        self.covers_street(point, half, Surface::Ground, heading, sources)
+            || self
+                .nearest_segment(point.0, point.1, half + 8.0)
+                .is_some_and(|((distance, _, _), index)| {
+                    let segment = &self.segments[index];
+                    let forward = direction(segment);
+                    let road_half = segment.appearance.unwrap_or_default().width / 2.0;
+                    (forward.0 * heading.0 + forward.1 * heading.1).abs() > 0.8
+                        && distance <= road_half.min(half).min(SAME_ROAD)
+                })
+    }
+
+    /// The nearest point of the road on the ground within `reach`, its distance and the road's
+    /// half width there.
+    pub(crate) fn ground_foot(
+        &self,
+        east: f64,
+        north: f64,
+        reach: f64,
+    ) -> Option<((f64, f64), f64, f64)> {
+        let (low_e, low_n) = cell_of(east - reach, north - reach);
+        let (high_e, high_n) = cell_of(east + reach, north + reach);
+        let mut best: Option<((f64, f64), f64, f64)> = None;
+        for ce in low_e..=high_e {
+            for cn in low_n..=high_n {
+                for &index in self.cells.get(&(ce, cn)).into_iter().flatten() {
+                    let segment = &self.segments[index];
+                    if segment.surface != Surface::Ground {
+                        continue;
+                    }
+                    let (de, dn) = (segment.b.0 - segment.a.0, segment.b.1 - segment.a.1);
+                    let length_squared = de * de + dn * dn;
+                    let t = if length_squared > 0.0 {
+                        (((east - segment.a.0) * de + (north - segment.a.1) * dn) / length_squared)
+                            .clamp(0.0, 1.0)
+                    } else {
+                        0.0
+                    };
+                    let foot = (segment.a.0 + de * t, segment.a.1 + dn * t);
+                    let distance = (east - foot.0).hypot(north - foot.1);
+                    if distance <= reach && best.is_none_or(|b| distance < b.1) {
+                        let half = segment.appearance.unwrap_or_default().width / 2.0;
+                        best = Some((foot, distance, half));
+                    }
+                }
+            }
+        }
+        best
+    }
+
     /// The ridden ground road's height at a connecting bridge end or protection edge.
     /// A large height difference describes an overpass, not a junction.
     pub(crate) fn ground_join(

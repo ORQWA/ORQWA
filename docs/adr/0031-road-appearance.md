@@ -72,55 +72,74 @@ the renderer makes a plausible world without claiming a surveyed road model.
 
 ## Amendment — surrounding road earthworks (2026-10-25, R141)
 
-All ground vehicle ways and cycleways receive a shared elevation profile and a level road
-bed, including unpaved service roads and tracks. Generic paths and footways remain draped;
-surface paving alone does not turn a hiking path into an engineered road. Existing bridges,
-tunnels, ridden pavement ownership and railway priority remain in force.
+Surrounding roads were draped on the terrain, tilted with every hillside. Ground vehicle ways,
+unpaved service roads, tracks and cycleways now get a shared elevation profile and a level road
+bed. Generic paths and footways remain draped; surface paving alone does not turn a hiking path
+into an engineered road.
 
-Sample one cached global terrain lattice before building chunks. Smooth local terrain humps
-over 24 m and constrain intermediate profile grades to 20 %, preserving the terrain height
-at shared chain, tag-change and branch endpoints. If those endpoints themselves require a
-steeper grade, preserve their connection. This cannot recover missing surveyed heights or
-invent switchbacks absent from the map. Closed road loops retain their terrain datum for
-roundabout/island continuity; missing terrain retains the existing chunk fallback.
+Profiles sample one cached global terrain lattice before chunks are built. They smooth local
+humps over 24 m and keep intermediate grades within 20 %, preserving the terrain height at
+shared chain, tag-change and branch endpoints; where those endpoints need a steeper grade, the
+connection wins. Closed loops keep their terrain datum for roundabout islands. A way joining
+the ridden road takes the ridden road's own ground at its edge as its datum there.
 
-The ground forms a flat bed and verge, then earth cuttings and fills on modest slopes.
-Steep hillsides blend into a short earth bank and a battered retaining face, returning to
-natural ground beyond it. Face the steep engineered terrain with the existing cast-concrete
-material, using its completed triangles. This shares terrain openings and chunk boundaries
-instead of introducing a wall sampled independently of the visible ground. Use the existing
-zero-alpha structure tint in street buffers, so no shader or storage contract changes.
+**One generic priority rule** decides every conflict, instead of per-case fixes: the ridden
+road, then railways, then surrounding ways. Each way proposes ground: the ridden road and
+railways their existing earthworks (unchanged from before), a surrounding way its bed, earth
+banks and, on steep hillsides, a battered face. The proposals combine as follows.
+
+- **Hard ground.** The ridden carriageway with its verge, the cover over a shallow tunnel tube
+  and the ground before, around and over the start of each portal keep exactly the ground
+  the ridden road gives them. A surrounding way yields there: its earthworks do not apply,
+  and its ribbon follows the ground it is left. At a portal this cuts the way's approach
+  naturally beside the headwall instead of notching the hill or moving the portal. Portal
+  placement itself sees that same ground, so the portal stands where it stood without the
+  way. Lengthening a tunnel over a way crossing its approach would be the structural
+  alternative; the saved Alpenbrevet Gold course has no such crossing, so it is not needed.
+- **Soft ground.** Beyond the hard ground the ridden road's embankments and cuttings yield to a
+  surrounding way's bed by how firmly the way holds the point: fully on its bed, fading
+  across its banks and towards the ridden verge. Every term reaches zero at the end of its
+  own reach, so no step opens where one earthwork meets another.
+- **Shadow.** Ground behind a surrounding way, seen from the ridden road, is released from the
+  ridden road's earthworks: an embankment ends at a lower road instead of burying it or
+  rising again as a berm beyond it.
+- **Room.** The ridden verge keeps its full width unless a way runs so close that both cannot
+  fit; it then narrows only as far as that way needs, never past the margin that keeps every
+  terrain piece touching the carriageway below it.
+- **Detail where seen.** Beds are formed within 120 m of the ridden road. Farther away tracks
+  and cycleways follow the terrain as before: formed shelves there gained nothing riders see,
+  and Godot's simplified distant ground swallowed their ribbons. Paved roads keep a plain
+  shelf without walls. Cells are split finer than the usual six pieces a side only beside a
+  close bed at another height than the ridden road or a railway (24, or 48 within 3 m; a
+  joining road at their level needs none) and under walls or narrow shelves on steep
+  hillsides (12). The saved Alpenbrevet Gold world has 17 % more ground triangles than before
+  R141 (streets 17 %, tracks 13 %) and takes about 30 % longer to build, against 79 % more
+  ground triangles and about twice the time for refining every close or steep piece at 24.
+
+Pieces of the ridden road's own mapped line never form a bed, whatever structure tags either
+source carries: map and route tags change a few metres apart at bridges and tunnels, and such
+a remnant had formed a second road with walls on Alpenbrevet's gorge rock at 36.40 km.
+
+Tracks, unpaved service roads and cycleways keep earth banks. A level shelf as wide as the
+usual terrain pieces need (about 4 m beyond the edge) cut tall bare scars into steep meadows,
+strewn with boulders, so across hillsides steeper than 0.35 these ways get finer pieces and a
+shelf of about 2 m. Their banks rise and fall at 0.7, short of the slope where the terrain
+shows earth through grass, or just steeper than a steeper hillside so they meet it within
+their reach; boulders beside a formed way follow the natural hillside's slope, not its
+banks'.
+
+Concrete faces use the completed terrain triangles and the existing zero-alpha structure tint,
+so they share openings and chunk edges and need no shader or storage change. They dress only
+steep banks a paved vehicle road's own earthworks moved by more than 0.3 m and that the road
+holds; natural rock, track and cycleway banks and the ridden road's ground stay bare.
 
 Generator **36** offers regeneration; stored format **3** and course inputs are unchanged.
-Validation covers cross-sections for all included road types, excluded paved footpaths,
-modest versus steep earthworks, local profile grades, shared junction elevations, roundabouts,
-chunk boundaries and existing bridge/tunnel behavior. Offline comparison fixtures use the
-real generator and app materials; real-route views cover Oberalp structures and hairpins.
-
-Close service roads need their own bed even inside the ridden road's terrain-shaping reach.
-Suppressed copies of the ridden pavement therefore leave the terrain index too. Each bed
-keeps its local datum while the intervening bank blends between them; downhill segment
-endpoints must not introduce steps into a sloping junction. Ground contacts include the
-joining carriageway's width, while existing branch anchors remain pinned.
-For railway neighbours, use the track bed's actual width when measuring the gap and
-blending elevations; the wider ridden-road reference must not consume the street bed.
-
-Refine only cells touching these close carriageways to 24 or 48 subdivisions, retaining
-six elsewhere. The 48-way split serves gaps below 2 m. Height queries, draping, foundations
-and edge conformity share each cell's actual resolution. Inferred dense-city paving stops
-at unwalkable banks, rather than covering the cutting with pavers. The saved full Alpenbrevet
-Gold route at 32.40 km reproduces and verifies this case; projection and grid alignment are
-preserved while exporting nearby geometry for fixed-camera review.
-
-The ridden road has final clearance priority. When tunnel cover is reapplied after a bed
-blend, retain the nearest ridden ground section inside its carriageway and local triangle
-margin. Omitting that constraint heaps the tunnel hill across the approach outside the
-portal's clipped volume. Alpenbrevet's 40.07 km entrance reproduces this failure. Check both
-mouths and every terrain/paving intersection inside the tube, not only the first height
-returned at a point; an intact roof can conceal another surface below it.
-Ease the cutting into the bank outside the protected footprint, retaining a continuous
-hillside rather than a sudden clearance wall. A flat-terrain approach fixture checks that
-its bank stays continuous as well as keeping the riding surface clear.
+Tests cover the intent: the ridden roadside unchanged beside a track, no step or berm beside a
+lower road on a steep hillside, a portal keeping its hillside while a track climbs beside it,
+no bed from the ridden road's own mapped pieces at tag changes, walls only on paved roads and
+refinement only beside close carriageways, besides the level beds, junction datums, railway
+neighbours and tunnel approaches. The saved full Alpenbrevet Gold course is the visual
+reference (32.40, 35.75, 36.40, 40.07 and 54.60 km), compared with the build before R141.
 
 ## Amendment — local traffic lanes (2026-10-23, R120)
 

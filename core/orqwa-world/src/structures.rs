@@ -80,6 +80,12 @@ const COLLAR_DEPTH: f64 = 1.0;
 /// Ground this far before a portal and this far inside it is cut to the tube's outline, this
 /// margin out (under the ring), down to this far over the line (the cutting's floor stays).
 const HOLLOW_FRONT: f64 = 4.0;
+/// Surrounding ways leave a portal the ground it stands in (R141): this far beside its ring
+/// and this far before its opening beyond the cutting's hollow, giving way over this much
+/// more.
+pub(crate) const PORTAL_SIDE: f64 = COLLAR_WIDTH + 3.0;
+const PORTAL_FRONT: f64 = 4.0;
+pub(crate) const PORTAL_FADE: f64 = 6.0;
 const HOLLOW_DEPTH: f64 = 6.0;
 const HOLLOW_MARGIN: f64 = 0.3;
 const HOLLOW_FLOOR: f64 = 0.05;
@@ -281,6 +287,17 @@ impl Portal {
         let ((pe, pn), (de, dn)) = self.plane;
         let (x, y) = (east - pe, north - pn);
         (x * de + y * dn, x * dn - y * de)
+    }
+
+    /// How much of the ground at (`east`, `north`) the portal keeps for itself (0–1): before
+    /// its opening, around its ring and over the start of its tube.
+    pub(crate) fn embeds(&self, east: f64, north: f64) -> f64 {
+        let (along, across) = self.local(east, north);
+        let outside = ((across.abs() - (self.half + PORTAL_SIDE)) / PORTAL_FADE)
+            .max((-along - HOLLOW_FRONT - PORTAL_FRONT) / PORTAL_FADE)
+            .max((along - PORTAL_HOLD) / PORTAL_FADE)
+            .clamp(0.0, 1.0);
+        1.0 - crate::earthworks::ease(outside)
     }
 
     /// Whether (`east`, `north`) lies within `reach` of the portal's plane, beside the cutting

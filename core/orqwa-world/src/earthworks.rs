@@ -10,6 +10,14 @@ const SMOOTH_M: f64 = 24.0;
 const GRADE: f64 = 0.20;
 const WALL_START: f64 = 2.5;
 const WALL_END: f64 = 6.0;
+/// Ground the earthworks moved by more than this is engineered rather than natural.
+const ENGINEERED_M: f64 = 0.3;
+/// Earth banks beside tracks and cycleways rise and fall at least this steeply (about 35°),
+/// short of the earth and bare rock the terrain shows through grass on steeper ground...
+const EARTH_CUT: f64 = 0.7;
+const EARTH_FILL: f64 = 0.7;
+/// ...and this much steeper than a hillside steeper still, so they meet it.
+const EARTH_MEETS: f64 = 1.15;
 
 /// Cache the global terrain lattice; profiling dense road networks must not resample it
 /// for every three-metre road station.
@@ -40,8 +48,9 @@ impl Samples {
         points: &[(f64, f64)],
         projection: &LocalProjection,
         model: &mut M,
-    ) -> Option<(Vec<f64>, Vec<usize>)> {
+    ) -> Option<(Vec<f64>, Vec<usize>, Vec<f64>)> {
         let mut heights = Vec::with_capacity(points.len());
+        let mut gradients = Vec::with_capacity(points.len());
         let mut distances = vec![0.0];
         for (i, &(east, north)) in points.iter().enumerate() {
             let (u, v) = (east / crate::GRID, north / crate::GRID);
@@ -61,11 +70,27 @@ impl Samples {
             let (fu, fv) = (u - u.floor(), v - v.floor());
             let [sw, se, nw, ne] = corners;
             heights.push((sw + (se - sw) * fu) * (1.0 - fv) + (nw + (ne - nw) * fu) * fv);
+            gradients.push((
+                ((se - sw) * (1.0 - fv) + (ne - nw) * fv) / crate::GRID,
+                ((nw - sw) * (1.0 - fu) + (ne - se) * fu) / crate::GRID,
+            ));
             if i > 0 {
                 let previous = points[i - 1];
                 distances.push(distances[i - 1] + (east - previous.0).hypot(north - previous.1));
             }
         }
+        // How steeply the hillside falls across the way: steep cross-slopes need walls.
+        let cross = (0..points.len())
+            .map(|i| {
+                let (a, b) = (
+                    points[i.saturating_sub(1)],
+                    points[(i + 1).min(points.len() - 1)],
+                );
+                let length = (b.0 - a.0).hypot(b.1 - a.1).max(1e-9);
+                let normal = (-(b.1 - a.1) / length, (b.0 - a.0) / length);
+                (gradients[i].0 * normal.0 + gradients[i].1 * normal.1).abs()
+            })
+            .collect();
         let mut anchors = vec![0];
         for (i, &point) in points.iter().enumerate().skip(1) {
             let (x, y) = junction_cell(point);
@@ -86,7 +111,7 @@ impl Samples {
             && (last.0 - first.0).hypot(last.1 - first.1) < 0.5
         {
             // Roundabouts already have a shared circular datum and raised island.
-            return Some((heights, anchors));
+            return Some((heights, anchors, cross));
         }
         let mut profile = heights.clone();
         for pair in anchors.windows(2) {
@@ -94,7 +119,7 @@ impl Samples {
             profile[start..=end]
                 .copy_from_slice(&smooth(&heights[start..=end], &distances[start..=end]));
         }
-        Some((profile, anchors))
+        Some((profile, anchors, cross))
     }
 }
 
@@ -158,18 +183,31 @@ pub(crate) fn smooth(raw: &[f64], distances: &[f64]) -> Vec<f64> {
         .collect()
 }
 
-/// A short earth bank meets a battered retaining face on steep hillsides. Both use the
-/// same shaped terrain, avoiding a wall floating above or intersecting a separate cutout.
-pub(crate) fn shape(natural: f64, level: f64, beyond: f64) -> f64 {
-    let room = (beyond - streets::LEVEL_VERGE_M).max(0.0);
-    let earth = natural.clamp(
-        level - room * crate::FILL_SLOPE,
-        level + room * crate::CUT_SLOPE,
-    );
+/// The ground `beyond` metres outside a formed way's edge whose bed lies at `level`: level out
+/// to `verge`, the margin its terrain pieces need, then earth cuttings and fills. A paved road
+/// (`facing`) meets steep hillsides with a short bank and a battered retaining face, sharing
+/// the shaped terrain rather than floating a separate wall. Tracks and cycleways keep earth
+/// banks gentle enough to stay grassed.
+pub(crate) fn shape(natural: f64, level: f64, beyond: f64, (verge, facing): (f64, bool)) -> f64 {
+    let room = (beyond - verge).max(0.0);
+    let slope = (natural - level).abs() / (beyond + 3.0).max(1.0);
+    // Earth banks just steeper than the hillside meet it within their reach, rather than
+    // running on and fading into it as a steep scar.
+    let (cut, fill) = if facing {
+        (crate::CUT_SLOPE, crate::FILL_SLOPE)
+    } else {
+        (
+            EARTH_CUT.max(slope * EARTH_MEETS),
+            EARTH_FILL.max(slope * EARTH_MEETS),
+        )
+    };
+    let earth = natural.clamp(level - room * fill, level + room * cut);
     let fade = ((room - (streets::LEVEL_REACH_M - streets::LEVEL_FADE_M)) / streets::LEVEL_FADE_M)
         .clamp(0.0, 1.0);
     let earth = earth + (natural - earth) * ease(fade);
-    let slope = (natural - level).abs() / (beyond + 3.0).max(1.0);
+    if !facing {
+        return earth;
+    }
     let retaining = ease(((slope - 0.65) / 0.4).clamp(0.0, 1.0));
     let foot = natural.clamp(
         level - room.min(WALL_START) * crate::FILL_SLOPE,
@@ -180,7 +218,7 @@ pub(crate) fn shape(natural: f64, level: f64, beyond: f64) -> f64 {
     earth + (wall - earth) * retaining
 }
 
-fn ease(t: f64) -> f64 {
+pub(crate) fn ease(t: f64) -> f64 {
     t * t * (3.0 - 2.0 * t)
 }
 
@@ -192,18 +230,21 @@ fn junction_cell(point: (f64, f64)) -> (i64, i64) {
     )
 }
 
-/// Dress steep engineered banks with cast concrete, following the final terrain triangles
-/// exactly, including chunk edges, intersecting roads, carved water and tunnel openings.
+/// Dress steep banks a paved road's bed formed with cast concrete, following the final
+/// terrain triangles exactly, including chunk edges, intersecting roads, carved water and
+/// tunnel openings. Natural rock, track and cycleway banks and ground the ridden road keeps
+/// for itself stay bare (R141).
 pub(crate) fn retaining_faces(
     terrain: &MeshData,
     origin: [f32; 3],
-    levels: &streets::Levels,
+    shapers: &crate::Shapers<'_>,
     heights: &crate::HeightGrid,
 ) -> MeshData {
     let mut mesh = MeshData::default();
-    if levels.is_empty() {
+    if shapers.streets.is_empty() {
         return mesh;
     }
+    let place = |p: [f64; 3]| (p[0] + f64::from(origin[0]), -p[2] - f64::from(origin[2]));
     for face in terrain.indices.as_chunks::<3>().0 {
         let corners = face.map(|i| terrain.vertices[i as usize].map(f64::from));
         let a = [0, 1, 2].map(|k| corners[1][k] - corners[0][k]);
@@ -218,23 +259,31 @@ pub(crate) fn retaining_faces(
             continue;
         }
         let centre = [0, 1, 2].map(|k| (corners[0][k] + corners[1][k] + corners[2][k]) / 3.0);
-        let (east, north) = (
-            centre[0] + f64::from(origin[0]),
-            -centre[2] - f64::from(origin[2]),
-        );
-        let Some(level) = levels.nearest(east, north, 0.0) else {
+        let (east, north) = place(centre);
+        let Some(level) = shapers.streets.nearest(east, north, 0.0) else {
             continue;
         };
-        let room = level.distance - level.half - streets::LEVEL_VERGE_M;
+        if !level.facing {
+            continue;
+        }
+        let room = level.distance - level.half - level.verge;
         if !(WALL_START - crate::FINE..=WALL_END + crate::FINE).contains(&room) {
             continue;
         }
+        // Only ground the earthworks moved: a natural cliff beside a road stays rock.
+        let engineered = corners.iter().any(|&p| {
+            let (east, north) = place(p);
+            (p[1] - heights.natural_at(east, north)).abs() > ENGINEERED_M
+        });
+        if !engineered {
+            continue;
+        }
+        let natural = heights.natural_at(east, north);
         let bed = level
             .height
             .unwrap_or_else(|| heights.natural_at(level.foot.0, level.foot.1));
-        let slope = (heights.natural_at(east, north) - bed).abs()
-            / (level.distance - level.half + 3.0).max(1.0);
-        if slope < 0.75 {
+        let slope = (natural - bed).abs() / (level.distance - level.half + 3.0).max(1.0);
+        if slope < 0.75 || shapers.holds(east, north, &level, natural) < 0.5 {
             continue;
         }
         let normal = cross.map(|n| n / length);

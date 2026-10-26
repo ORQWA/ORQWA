@@ -190,18 +190,19 @@ Sharing is file-based for now; a built-in online catalog may follow later.
 | R135 | Refines R105, R112 and R132 (2026-10-24): **inferred sidewalks form connected, continuous walking surfaces**. Curved corner pieces require walking approaches at both ends; a paved side-road junction alone must not create detached tiles. Overlapping footways inside a small turning island share one surface and grade, with smooth connections to adjoining strips rather than intersecting slabs. Kept worlds offer regeneration (R101). |
 | R137 | Refines R112 and R135 (2026-10-24): **inferred raised sidewalks require at least 12 metres of connected walking length after clipping**. Detached corner tiles, small island remnants and short strips between obstructions are omitted. Joined straight and curved sections count together across map pieces and terrain chunks; tessellation and clipping partitions cannot inflate their length. Building access paths and forecourts keep their separate eligibility rules. The rule applies to every course, without location exceptions; kept worlds offer regeneration (R101). |
 | R138 | Refines R137 (2026-10-25): **sidewalk length cannot cross a real gap through a clipping remnant**. Very thin or nearly collinear cut pieces stay within their finite footprint for connectivity and exposed-edge decisions. Separated short corners qualify independently of nearby longer sidewalks, including far from the projection origin. Genuine touching walking edges retain their connection. Kept worlds offer regeneration (R101). |
-| R141 | Extends R35, R89 and R119 (2026-10-25): **surrounding roads look driveable**, with level cross-sections, continuous terrain-derived elevation profiles, earth cuttings and embankments on modest slopes and retaining faces with cuttings on steep banks. Include unpaved service roads, vehicle tracks and cycleways; exclude hiking trails and other small paths. Keep junctions connected, preserve separate bridges and tunnel openings, and join terrain chunks without steps. Profiles and earthworks are inferred offline from saved course inputs, not surveyed engineering data. Kept worlds offer regeneration (R101). |
+| R141 | Extends R35, R89 and R119 (2026-10-25): **surrounding roads look driveable without changing the ridden road**. Vehicle roads, unpaved service roads, tracks and cycleways get level cross-sections and continuous terrain-derived profiles, with earth cuttings and embankments; paved roads retain steep banks with concrete faces. Hiking trails and other small paths follow the terrain. One generic priority rule resolves every conflict: the ridden road, then railways, then surrounding ways. The ridden carriageway with its verge, the cover over its tunnels and the ground its portals and bridge ends stand in look as without surrounding ways; a lower-priority way yields there and follows the ground it is left. Each way's earthworks fade out within their own reach, so no step opens where they meet, and the ridden road's embankments and cuttings end at an intervening way instead of burying it or rising again beyond it. Pieces of the ridden road's own mapped line never form a second road bed, whatever structure tags either source carries. Profiles and earthworks are inferred offline from saved course inputs, not surveyed engineering data. Kept worlds offer regeneration (R101). |
 
-Road-bed refinement (2026-10-25, R141): close surrounding carriageways retain their own
-profiles within the ridden road's cutting reach. Sloping junctions share the local road datum
-without steps from downstream samples; suppressed ridden copies cannot overwrite another
-road's terrain. Narrow intervening banks use local refinement, and inferred city paving does
-not coat unwalkable cuttings.
-
-Ridden-road priority (2026-10-25, R141): surrounding-road earthworks must preserve the
-ridden carriageway's obstacle clearance as a final constraint, including both tunnel
-approaches beyond the portal cut and the complete tunnel interior. Neither terrain nor
-surrounding paving may obstruct it when tunnel cover is reapplied.
+Road-bed detail (2026-10-26, R141): beds are formed within about 120 m of the ridden road,
+where riders see their cross-sections; farther tracks and cycleways follow the terrain and stay
+in view of the coarser distant ground, and paved roads keep a plain shelf without walls. Finer
+terrain is used only where a bed lies at another height than a ridden road or railway too
+close for the usual pieces, and for walls or narrow shelves on steep hillsides; the ridden
+road's verge narrows only as far as such a close way needs room for its bed. Concrete
+faces dress only banks a paved road's earthworks moved, never natural rock, tracks or the
+ridden road's own ground. Tracks and cycleways keep grassed earth banks: on hillsides steeper
+than about 19° they get narrow shelves of finer terrain, their banks meet the hillside just
+steeper than it, and no boulders grow on them. Inferred dense-city paving stops at engineered
+banks steeper than 20 % and natural ground steeper than about 35 %.
 
 Rendering implementation note (2026-10-21, R43/R108): trees retain their chosen population
 and placement while rendering simpler canopy and shadow geometry at smaller projected sizes.
