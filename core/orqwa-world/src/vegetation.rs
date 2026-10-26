@@ -292,6 +292,8 @@ pub(crate) struct Ground<'a> {
     pub(crate) heights: &'a HeightGrid,
     pub(crate) land: &'a LandIndex,
     pub(crate) road: &'a RoadIndex,
+    /// Formed ways' beds: the banks they cut are earth, not scree.
+    pub(crate) beds: &'a crate::streets::Levels,
     pub(crate) streets: &'a Clearance,
     pub(crate) buildings: &'a [Footprint],
     pub(crate) climate: Climate,
@@ -306,15 +308,21 @@ impl Ground<'_> {
 
     /// The ground's steepest rise over run at a point.
     fn slope(&self, east: f64, north: f64) -> f64 {
-        let step = 2.0;
-        let east_slope = (self.heights.at(east + step, north)
-            - self.heights.at(east - step, north))
-            / (2.0 * step);
-        let north_slope = (self.heights.at(east, north + step)
-            - self.heights.at(east, north - step))
-            / (2.0 * step);
-        east_slope.hypot(north_slope)
+        steepest(|e, n| self.heights.at(e, n), east, north)
     }
+
+    /// The natural hillside's steepest rise over run at a point, before earthworks.
+    fn natural_slope(&self, east: f64, north: f64) -> f64 {
+        steepest(|e, n| self.heights.natural_at(e, n), east, north)
+    }
+}
+
+/// The steepest rise over run of `height` at a point.
+fn steepest(height: impl Fn(f64, f64) -> f64, east: f64, north: f64) -> f64 {
+    let step = 2.0;
+    let east_slope = (height(east + step, north) - height(east - step, north)) / (2.0 * step);
+    let north_slope = (height(east, north + step) - height(east, north - step)) / (2.0 * step);
+    east_slope.hypot(north_slope)
 }
 
 /// Places trees, bushes, ferns and rocks within the square `[origin, origin + size]` (metres
@@ -392,11 +400,17 @@ fn choose(
     }
     let tropical = ground.climate.tropical_at(height);
     let near = road_distance.is_some();
-    // A mapped wooded hillside stays wooded; slope alone cannot turn it into scree.
-    if near
-        && (cover == Some(LandCover::Rock)
-            || (cover != Some(LandCover::Forest) && ground.slope(east, north) > ROCKY_SLOPE))
-    {
+    // A mapped wooded hillside stays wooded; slope alone cannot turn it into scree. Beside a
+    // surrounding way the hillside's own slope counts, not its banks' (R141).
+    let steep = || {
+        let slope = if ground.beds.nearest(east, north, 0.0).is_some() {
+            ground.natural_slope(east, north)
+        } else {
+            ground.slope(east, north)
+        };
+        slope > ROCKY_SLOPE
+    };
+    if near && (cover == Some(LandCover::Rock) || (cover != Some(LandCover::Forest) && steep())) {
         let share = if cover == Some(LandCover::Rock) {
             0.2
         } else {

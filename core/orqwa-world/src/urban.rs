@@ -24,6 +24,12 @@ const GAP: f64 = 0.12;
 const ACCESS_REACH: f64 = 35.0;
 const DENSE_RADIUS: f64 = 50.0;
 const DENSE_COVERAGE: f64 = 0.24;
+/// Ground the earthworks moved by more than this is engineered rather than natural...
+const ENGINEERED_M: f64 = 0.3;
+/// ...and paved between dense blocks up to a 20 % slope; natural ground up to about 35 %, as
+/// old towns' lanes and squares climb (upward normal components).
+const ENGINEERED_PAVED: f32 = 0.98;
+const NATURAL_PAVED: f32 = 0.94;
 
 /// Material codes in the urban mesh's vertex colour, separate from terrain's cover colours.
 #[derive(Clone, Copy, PartialEq)]
@@ -1034,9 +1040,21 @@ impl Urban {
             })
     }
 
-    /// Terrain between dense blocks is paved, while suburban gardens retain their lawns.
-    pub(crate) fn paint(&self, mesh: &mut MeshData, origin: [f64; 3], land: &LandIndex) {
-        for (v, color) in mesh.vertices.iter().zip(&mut mesh.colors) {
+    /// Walkable terrain between dense blocks is paved; engineered banks, steep hillsides and
+    /// gardens retain ground.
+    pub(crate) fn paint(
+        &self,
+        mesh: &mut MeshData,
+        origin: [f64; 3],
+        land: &LandIndex,
+        heights: &HeightGrid,
+    ) {
+        for ((v, normal), color) in mesh
+            .vertices
+            .iter()
+            .zip(&mesh.normals)
+            .zip(&mut mesh.colors)
+        {
             let point = (f64::from(v[0]) + origin[0], -f64::from(v[2]) - origin[2]);
             if !protected(point, land)
                 && matches!(
@@ -1044,6 +1062,11 @@ impl Urban {
                     Some(LandCover::Residential) | None
                 )
                 && self.dense(point)
+                // Density does not turn a cut bank or a steep hillside into a paved square.
+                && normal[1] >= NATURAL_PAVED
+                && (normal[1] >= ENGINEERED_PAVED
+                    || (f64::from(v[1]) + origin[1] - heights.natural_at(point.0, point.1)).abs()
+                        <= ENGINEERED_M)
             {
                 *color = palette::srgb("ground.urban", 0.0);
             }

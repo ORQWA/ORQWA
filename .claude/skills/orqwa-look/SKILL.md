@@ -109,6 +109,15 @@ bridges, rain and vegetation/prop clearance. Use only saved course inputs at gen
 At shallow junctions, side roads must extend under the ridden road without grass gaps or a
 gravel shoulder across the opening. Suppress only fully covered cross-sections and retain the
 joining segment. Nearby parallel paths must remain visible; include chunk boundaries in review.
+Surrounding vehicle roads, unpaved service ways, tracks and cycleways need formed beds (R141):
+level cross-sections, shared profiles, earth banks, concrete faces only on paved roads' steep
+banks they cut. Hiking trails and generic footpaths keep the hillside, even if paved. One
+priority rule applies everywhere: the ridden road, then railways, then other ways. The ridden
+carriageway, its verge, its tunnel cover and the ground its portals stand in must look as
+without the surrounding way; the way yields there. Compare such places with the build before
+R141, not only with an earlier fix: a portal must keep its hillside and position, the
+roadside its level strip, gorge rock stays rock. Earthworks must not end in steps or rise
+again as berms behind a lower road.
 
 Urban surfaces (R105, ADR 0027) distinguish dense-city paving, commercial/industrial asphalt
 and suburban lawns. Mapped parks and other natural land take precedence. Review sidewalk

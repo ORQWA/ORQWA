@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use orqwa_osm::{MapData, RoadClass, StructureKind};
+use orqwa_osm::{MapData, RoadClass, RoadKind, StructureKind};
 use orqwa_routes::{ElevationModel, LocalProjection, Surface};
 
 use crate::appearance::Appearance;
@@ -52,6 +52,12 @@ pub(crate) struct Street {
     pub(crate) appearance: Appearance,
     class: RoadClass,
     points: Vec<(f64, f64)>,
+    /// Engineered ground ways share one profile before chunks sample their terrain.
+    bed: Option<Vec<f64>>,
+    bed_anchors: Vec<usize>,
+    /// The hillside's slope across the way at each point, where its profile is known.
+    cross: Vec<f64>,
+    formed: bool,
     min: (f64, f64),
     max: (f64, f64),
     /// For bridges: the deck's height at both ends (the ground's there).
@@ -144,6 +150,7 @@ pub(crate) async fn lines<M: ElevationModel>(
     };
     let joined = chains::chains(&pieces, &alike);
     let mut streets = Vec::new();
+    let mut terrain = crate::earthworks::Samples::new(&projected);
     for (index, chain) in joined.into_iter().enumerate() {
         let road = &map.roads[chain[0].0];
         if road.structure == Some(StructureKind::Tunnel) {
@@ -176,6 +183,16 @@ pub(crate) async fn lines<M: ElevationModel>(
         } else {
             None
         };
+        let formed = road.class != RoadClass::Path || road.details.kind == RoadKind::Cycleway;
+        let profile = if formed && deck.is_none() {
+            terrain.profile(&points, projection, model).await
+        } else {
+            None
+        };
+        let (bed, bed_anchors, cross) = profile.map_or(
+            (None, Vec::new(), Vec::new()),
+            |(heights, anchors, cross)| (Some(heights), anchors, cross),
+        );
         let (mut min, mut max) = (first, first);
         for &(e, n) in &points {
             min = (min.0.min(e), min.1.min(n));
@@ -186,6 +203,10 @@ pub(crate) async fn lines<M: ElevationModel>(
             appearance: Appearance::of(road),
             class: road.class,
             points,
+            bed,
+            bed_anchors,
+            cross,
+            formed,
             min,
             max,
             deck,
@@ -196,9 +217,64 @@ pub(crate) async fn lines<M: ElevationModel>(
     streets
 }
 
-/// Resolve complete bridge profiles before either terrain or wearing surfaces use them.
+/// Resolve ground junctions and bridge profiles before terrain and wearing surfaces use them.
 pub(crate) fn connect(streets: &mut [Street], road: &RoadIndex) {
     for street in streets {
+        // The route already owns the approach, including its hill above the tunnel.
+        if street.owned_approach(road) {
+            continue;
+        }
+        if let Some(bed) = &mut street.bed {
+            let mut anchors = street.bed_anchors.clone();
+            let mut connected = false;
+            let mut distances = vec![0.0];
+            for (i, &point) in street.points.iter().enumerate() {
+                if i > 0 {
+                    let previous = street.points[i - 1];
+                    distances.push(
+                        distances[i - 1] + (point.0 - previous.0).hypot(point.1 - previous.1),
+                    );
+                }
+                if road
+                    .ground_contact(point, street.appearance.width / 2.0 + 0.6)
+                    .is_some()
+                {
+                    connected = true;
+                    // Meet the ridden road's own ground at its edge, as it lies along slopes.
+                    let edge = road.ground_foot(point.0, point.1, 24.0).map_or(
+                        point,
+                        |(foot, distance, road_half)| {
+                            let share = (road_half / distance.max(1e-9)).min(1.0);
+                            (
+                                foot.0 + (point.0 - foot.0) * share,
+                                foot.1 + (point.1 - foot.1) * share,
+                            )
+                        },
+                    );
+                    let pieces: Vec<_> = road
+                        .near_shaped(edge.0, edge.1, crate::LEVEL_REACH)
+                        .into_iter()
+                        .filter(|r| r.2 != Surface::Tunnel)
+                        .collect();
+                    bed[i] = crate::shape(bed[i], &pieces);
+                    if i > 0 {
+                        anchors.push(i);
+                    }
+                }
+            }
+            if connected {
+                anchors.sort_unstable();
+                anchors.dedup();
+                let heights = bed.clone();
+                for pair in anchors.windows(2) {
+                    let (start, end) = (pair[0], pair[1]);
+                    bed[start..=end].copy_from_slice(&crate::earthworks::smooth(
+                        &heights[start..=end],
+                        &distances[start..=end],
+                    ));
+                }
+            }
+        }
         let Some(ends) = street.deck else {
             continue;
         };
@@ -569,8 +645,8 @@ fn clearance_cell(east: f64, north: f64) -> (i64, i64) {
     )
 }
 
-/// Paved streets are level across, as built (#116): the ground under them and this far beyond
-/// their edges lies at the natural ground's height at their centre line, so every triangle of
+/// Formed ways are level across: the ground under them and this far beyond
+/// their edges lies at their shared profile's height, so every triangle of
 /// the fine ground they lie on is level across (the diagonal of a fine piece, and a little)...
 pub(crate) const LEVEL_VERGE_M: f64 = crate::FINE * std::f64::consts::SQRT_2 + 0.2;
 /// ...beyond, it is cut into the hillside or banked down to the natural ground, natural again
@@ -579,23 +655,55 @@ pub(crate) const LEVEL_REACH_M: f64 = 8.0;
 pub(crate) const LEVEL_FADE_M: f64 = 3.0;
 /// Index cell size of [`Levels`].
 const LEVEL_CELL_M: f64 = 20.0;
+/// A bank between a formed way and a ridden road or railway this narrow needs finer terrain
+/// than the usual pieces to stay off both carriageways; wider ones keep the usual detail.
+const CLOSE_GAP_M: f64 = 5.5;
+const TIGHT_GAP_M: f64 = 3.0;
+/// ...where its bed lies at least this much, and half the gap more, above or below theirs.
+const CLOSE_RISE_M: f64 = 0.5;
+/// Paved roads across hillsides this steep get retaining walls (`earthworks::shape`)...
+const STEEP_CROSS: f64 = 0.6;
+/// ...tracks and cycleways across hillsides this steep a narrow shelf of finer terrain, so
+/// their cuttings stay low grassed banks instead of wide scars.
+const EARTH_STEEP_CROSS: f64 = 0.35;
+/// Beds are formed this near the ridden road, where riders see their cross-sections.
+const FORMED_REACH_M: f64 = 120.0;
 
 /// A piece of a street's centre line, metres east/north: its two ends and the street's half
 /// width.
-type Piece = ((f64, f64), (f64, f64), f64);
+struct BedPiece {
+    from: (f64, f64),
+    to: (f64, f64),
+    half: f64,
+    heights: Option<[f64; 2]>,
+    subdivisions: usize,
+    padding: f64,
+    /// The level ground beyond its edge that the terrain pieces under it need.
+    verge: f64,
+    /// Paved vehicle roads near the ride retain steep cuttings with walls; tracks and
+    /// cycleways keep earth.
+    facing: bool,
+    /// Its detail serves a narrow bank beside the ridden road or a railway.
+    close: bool,
+}
 
-/// The paved streets on the ground, which level the ground across them (#116). Tracks and
-/// paths follow the land as it is; bridges stand above it.
+/// Formed ground roads, vehicle tracks and cycleways. Small paths follow the land;
+/// bridges retain their separate structure profiles.
 pub(crate) struct Levels {
     /// Connected bridge profiles lower their approach banks without filling their valleys.
     pub(crate) bridges: RoadIndex,
     /// Pieces of their centre lines, with their half widths.
-    segments: Vec<Piece>,
+    segments: Vec<BedPiece>,
     cells: HashMap<(i64, i64), Vec<usize>>,
 }
 
 impl Levels {
-    pub(crate) fn new(streets: &[Street], appearance: &crate::appearance::Index) -> Self {
+    pub(crate) fn new(
+        streets: &[Street],
+        appearance: &crate::appearance::Index,
+        road: &RoadIndex,
+        rails: &RoadIndex,
+    ) -> Self {
         let lines: Vec<_> = streets
             .iter()
             .filter(|s| s.joined)
@@ -629,11 +737,65 @@ impl Levels {
         bridges.set_appearances(appearance);
         let mut segments = Vec::new();
         let mut cells: HashMap<(i64, i64), Vec<usize>> = HashMap::new();
-        for street in streets.iter().filter(|s| s.paved() && !s.on_bridge()) {
+        for street in streets.iter().filter(|s| s.formed && !s.on_bridge()) {
             let half = street.half_width();
-            for pair in street.points.windows(2) {
+            let facing = street.paved()
+                && matches!(
+                    street.class,
+                    RoadClass::Major | RoadClass::Street | RoadClass::Service
+                );
+            for (i, pair) in street.points.windows(2).enumerate() {
                 let index = segments.len();
-                segments.push((pair[0], pair[1], half));
+                let bed = street.bed.as_ref().map(|bed| [bed[i], bed[i + 1]]);
+                let middle = (
+                    f64::midpoint(pair[0].0, pair[1].0),
+                    f64::midpoint(pair[0].1, pair[1].1),
+                );
+                // The ridden road owns its mapped pieces whatever either source tags there.
+                if road.owns_alignment(
+                    middle,
+                    half,
+                    local_direction(&street.points, i),
+                    &street.sources,
+                ) {
+                    continue;
+                }
+                // Riders see formed beds near the ride. Farther away tracks and cycleways follow
+                // the land, which keeps them in view of the coarser distant ground, and paved
+                // roads keep a plain shelf without walls.
+                let near = road
+                    .nearest_profile(middle.0, middle.1, FORMED_REACH_M)
+                    .is_some();
+                if !facing && !near {
+                    continue;
+                }
+                let walls = facing && near;
+                // Walls, and narrow shelves on steep hillsides, need the finer pieces.
+                let threshold = if walls {
+                    STEEP_CROSS
+                } else {
+                    EARTH_STEEP_CROSS
+                };
+                let steep = near
+                    && street
+                        .cross
+                        .get(i..=i + 1)
+                        .is_some_and(|c| c.iter().any(|&slope| slope >= threshold));
+                let level = bed.map(|[a, b]| f64::midpoint(a, b));
+                let (subdivisions, padding, close) =
+                    bed_detail((road, rails), (middle, half, level), steep);
+                segments.push(BedPiece {
+                    from: pair[0],
+                    to: pair[1],
+                    half,
+                    heights: bed,
+                    subdivisions,
+                    padding,
+                    #[allow(clippy::cast_precision_loss)] // one of the fixed subdivision counts
+                    verge: crate::GRID / subdivisions as f64 * std::f64::consts::SQRT_2 + 0.2,
+                    facing: walls,
+                    close,
+                });
                 // Pieces are at most a step long: both ends' cells cover them.
                 let (first, second) = (level_cell(pair[0]), level_cell(pair[1]));
                 cells.entry(first).or_default().push(index);
@@ -649,21 +811,41 @@ impl Levels {
         }
     }
 
-    /// Whether there are no paved streets at all, so the ground is nowhere levelled for one.
+    /// Whether there are no formed ground ways.
     pub(crate) fn is_empty(&self) -> bool {
         self.segments.is_empty()
     }
 
-    /// The paved street whose edge lies nearest to (`east`, `north`), if that is within its
+    /// Check every carriageway touching a cell, including ones hidden by a nearer ridden
+    /// copy at its centre. Missing one leaves a coarse/fine seam through that side road.
+    pub(crate) fn detail_near(&self, east: f64, north: f64, reach: f64, close: bool) -> usize {
+        let scan = reach + 5.25 + STEP_M;
+        let (low, high) = (
+            level_cell((east - scan, north - scan)),
+            level_cell((east + scan, north + scan)),
+        );
+        let mut count = crate::SUB;
+        for x in low.0..=high.0 {
+            for y in low.1..=high.1 {
+                for &i in self.cells.get(&(x, y)).into_iter().flatten() {
+                    let p = &self.segments[i];
+                    if close && !p.close {
+                        continue;
+                    }
+                    let foot = nearest_on(p.from, p.to, (east, north));
+                    if (east - foot.0).hypot(north - foot.1) <= p.half + reach {
+                        count = count.max(p.subdivisions);
+                    }
+                }
+            }
+        }
+        count
+    }
+
+    /// The formed way whose edge lies nearest to (`east`, `north`), if that is within its
     /// levelled ground (`LEVEL_VERGE_M` and `LEVEL_REACH_M` beyond its edge) and `extra`
-    /// metres more: the distance from its centre line, its half width and the nearest point of
-    /// its centre line.
-    pub(crate) fn nearest(
-        &self,
-        east: f64,
-        north: f64,
-        extra: f64,
-    ) -> Option<(f64, f64, (f64, f64))> {
+    /// metres more, including its shared profile height when terrain data is available.
+    pub(crate) fn nearest(&self, east: f64, north: f64, extra: f64) -> Option<Level> {
         let reach = LEVEL_VERGE_M + LEVEL_REACH_M + extra;
         // The widest street's centre, and a piece's far end a step beyond its nearest point.
         let scan = reach + 5.25 + STEP_M;
@@ -671,24 +853,95 @@ impl Levels {
             level_cell((east - scan, north - scan)),
             level_cell((east + scan, north + scan)),
         );
-        // How far beyond its edge, how far from its centre line, its half width, the nearest
-        // point of its centre line.
-        let mut best: Option<(f64, f64, f64, (f64, f64))> = None;
+        let mut best: Option<Level> = None;
         for x in low.0..=high.0 {
             for y in low.1..=high.1 {
                 for &index in self.cells.get(&(x, y)).into_iter().flatten() {
-                    let (from, to, half) = self.segments[index];
+                    let piece = &self.segments[index];
+                    let (from, to, half, bed) = (piece.from, piece.to, piece.half, piece.heights);
                     let foot = nearest_on(from, to, (east, north));
                     let distance = (east - foot.0).hypot(north - foot.1);
                     let beyond = distance - half;
-                    if beyond <= reach && best.is_none_or(|b| beyond < b.0) {
-                        best = Some((beyond, distance, half, foot));
+                    if beyond <= reach && best.as_ref().is_none_or(|b| beyond < b.distance - b.half)
+                    {
+                        let length = (to.0 - from.0).hypot(to.1 - from.1);
+                        let t = (foot.0 - from.0).hypot(foot.1 - from.1) / length.max(1e-9);
+                        best = Some(Level {
+                            distance,
+                            half,
+                            foot,
+                            height: bed.map(|[a, b]| a + (b - a) * t),
+                            padding: piece.padding,
+                            verge: piece.verge,
+                            facing: piece.facing,
+                        });
                     }
                 }
             }
         }
-        best.map(|(_, distance, half, foot)| (distance, half, foot))
+        best
     }
+}
+
+/// Terrain pieces a side around a bed piece at `middle`, the margin its own carriageway keeps
+/// and whether that serves a close carriageway: finer where its bed lies at another height
+/// than a ridden road or railway too close for the usual pieces to hold the bank between them,
+/// or for walls and narrow shelves on a steep hillside (`steep`). A joining road at the ridden
+/// road's level needs no bank, and no finer terrain.
+fn bed_detail(
+    (road, rails): (&RoadIndex, &RoadIndex),
+    (middle, half, bed): ((f64, f64), f64, Option<f64>),
+    steep: bool,
+) -> (usize, f64, bool) {
+    let gap_to = |index: &RoadIndex, half_of: &dyn Fn(f64) -> f64| {
+        index
+            .ground_foot(middle.0, middle.1, 25.0)
+            .and_then(|(_, distance, road_half)| {
+                let (_, elevation, _) = index.nearest(middle.0, middle.1, 25.0)?;
+                Some((distance - half_of(road_half) - half, elevation))
+            })
+    };
+    let ridden = gap_to(road, &|road_half| road_half);
+    let railway = gap_to(rails, &|_| railways::BED_M / 2.0);
+    let gap = [ridden, railway]
+        .into_iter()
+        .flatten()
+        .map(|(gap, _)| gap)
+        .fold(f64::INFINITY, f64::min);
+    // Only a bank the usual pieces would crush needs them finer.
+    let close = [ridden, railway]
+        .into_iter()
+        .flatten()
+        .any(|(gap, elevation)| {
+            gap < CLOSE_GAP_M
+                && bed.is_some_and(|bed| {
+                    (bed - (elevation - crate::ROAD_SINK)).abs() > CLOSE_RISE_M + gap.max(0.0) * 0.5
+                })
+        });
+    let subdivisions = if close && gap < TIGHT_GAP_M {
+        crate::TIGHT_SUB
+    } else if close {
+        crate::CLOSE_SUB
+    } else if steep {
+        crate::STEEP_SUB
+    } else {
+        crate::SUB
+    };
+    #[allow(clippy::cast_precision_loss)] // one of the fixed subdivision counts
+    let padding = (crate::GRID / subdivisions as f64 * std::f64::consts::SQRT_2 + 0.2)
+        .min((gap / 3.0).max(0.1));
+    (subdivisions, padding, close)
+}
+
+/// Nearest road bed, with a centre-line fallback when saved terrain has missing samples.
+pub(crate) struct Level {
+    pub(crate) distance: f64,
+    pub(crate) half: f64,
+    pub(crate) foot: (f64, f64),
+    pub(crate) height: Option<f64>,
+    pub(crate) padding: f64,
+    pub(crate) verge: f64,
+    pub(crate) facing: bool,
 }
 
 /// The point of segment `from`–`to` nearest to `point`.

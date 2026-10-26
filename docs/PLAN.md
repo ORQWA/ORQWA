@@ -649,6 +649,14 @@ physically based materials and light, restyled group by group.
     geometry and roadside placement follow widths. Shallow branches retain their joining
     segments and nearby parallel paths keep their visible surface. Existing course tiles only,
     no added downloads or ride-start requests. Generator 10 / stored format 3.
+  - [x] Surrounding road earthworks (R141, ADR 0031): shared elevation profiles and level
+    road beds for vehicle roads, unpaved tracks and cycleways, with earth banks and concrete
+    faces on paved roads' steep banks and grassed earth banks on narrow shelves for tracks
+    across steep meadows, within 120 m of the ride; small paths and far tracks keep the
+    terrain. One priority rule decides
+    conflicts: the ridden road's carriageway, verge, tunnel cover and portal ground stay as
+    without surrounding ways, other ways yield and follow the ground they are left, earthworks
+    fade out within their reach and end at an intervening way. Generator 36 / stored format 3.
   - [x] Map detail from region downloads ([ADR 0033](adr/0033-map-detail.md)): riders who
     opt in download Geofabrik regions; the surfaces the tiles cannot tell (cobbles, paving,
     concrete, dirt, grass) and the roundabouts come from them, for courses prepared afterwards

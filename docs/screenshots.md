@@ -62,6 +62,50 @@ See the [boulder gallery](../art/README.md#vegetation).
 
 ## Standard route views
 
+### Surrounding road beds
+
+Surrounding vehicle roads, unpaved service roads, tracks and cycleways near the ride have level
+road beds and continuous terrain-derived profiles (R141, generator 36), with earth banks and,
+for paved roads on steep hillsides, concrete faces. One priority rule decides every conflict:
+the ridden road, then railways, then other ways. The ridden carriageway with its verge, the
+cover over its tunnels and the ground its portals stand in look as without the surrounding
+way; the way yields there and follows the ground it is left. Widths, profiles and earthworks
+are inferred from saved map and terrain data, not surveyed construction.
+
+These views use the saved full Alpenbrevet Gold course at fixed cameras, before R141 (left)
+and with it (right). At **40.04 km** a track joins the ridden road just before a portal and
+climbs beside it: the portal keeps its hillside and position, and the track's bed is cut in
+beside the approach.
+
+| Before R141 | Ridden road first |
+|---|---|
+| ![Portal approach at 40.04 km before](images/road-earthworks/alpenbrevet-40040-approach-before.jpg) | ![Portal approach at 40.04 km with formed track bed](images/road-earthworks/alpenbrevet-40040-approach-after.jpg) |
+| ![Portal and track from above at 40.07 km before](images/road-earthworks/alpenbrevet-40070-drone-before.jpg) | ![Portal and track from above at 40.07 km](images/road-earthworks/alpenbrevet-40070-drone-after.jpg) |
+
+At **54.56 km** a track crosses over a tunnel near its mouth and keeps the portal's hill. At
+**36.40 km** pieces of the ridden road's own mapped line, where map and route change to a
+bridge a few metres apart, form no second road bed: the gorge's rock stays rock.
+
+| Before R141 | Ridden road first |
+|---|---|
+| ![Track over a tunnel mouth at 54.56 km before](images/road-earthworks/alpenbrevet-54560-approach-before.jpg) | ![Track over a tunnel mouth at 54.56 km](images/road-earthworks/alpenbrevet-54560-approach-after.jpg) |
+| ![Gorge at 36.40 km before](images/road-earthworks/alpenbrevet-36400-gorge-before.jpg) | ![Gorge at 36.40 km](images/road-earthworks/alpenbrevet-36400-gorge-after.jpg) |
+
+At **35.75 km** the ridden road's own mapped line no longer levels the ground beside it at the
+terrain's height: the grass berm it raised on the river side is gone, the ground falls to the
+river and a guard rail follows. At **32.40 km** the service road beside the ridden road keeps
+its own bed instead of folding onto the ridden cutting, and the cut bank is ground rather than
+inferred city paving.
+
+| Before R141 | Ridden road first |
+|---|---|
+| ![Roadside at 35.75 km before](images/road-earthworks/alpenbrevet-35750-roadside-before.jpg) | ![Roadside at 35.75 km](images/road-earthworks/alpenbrevet-35750-roadside-after.jpg) |
+| ![Village service road at 32.40 km before](images/road-earthworks/alpenbrevet-32400-village-before.jpg) | ![Village service road at 32.40 km](images/road-earthworks/alpenbrevet-32400-village-after.jpg) |
+
+Render these with `scripts/render-views.sh`, `COURSE` set to the saved course and `SHOTS`
+naming the distances; `app/tools/render_earthworks.gd` renders the controlled slopes of the
+ignored `earthworks_render_fixture` test (see [Development](development.md)).
+
 ### Andermatt sidewalks
 
 Generators 27–34 give sidewalk copies one owner using the local mapped section matched to

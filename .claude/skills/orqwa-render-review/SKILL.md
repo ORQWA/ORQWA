@@ -26,6 +26,17 @@ Review motorway/ramp shoulders and dashes, unmarked local ways, narrow ridden cy
 grass only in unpaved tracks. Pair the controlled scene with fixed real-route views, including
 Oberalp and rain; compare against current main using the same cameras and software settings.
 
+For surrounding road earthworks (R141), export `earthworks_render_fixture` with the same
+`cargo test` command pattern and render `app/tools/render_earthworks.gd`, setting `OUT_DIR`
+to an existing absolute directory. `FIXTURE` accepts a baseline JSON export. Then render the
+saved full Alpenbrevet Gold course with `COURSE`/`SHOTS` against the same cameras on the build
+before the change: 32.40 km (village service road and junction paving), 35.75 km (roadside
+before a portal), 36.40 km looking back (gorge rock, no concrete), 40.04–40.07 km chase, drone
+and both sides (a track joins just before the portal and climbs beside it; the portal keeps
+its hillside and position) and 54.60 km (a track over a tunnel near its mouth). Include far
+side views: distant switchback tracks must stay visible. Compare world triangle counts too;
+finer terrain belongs only beside close ridden carriageways and under walls.
+
 - `scripts/dev.sh scripts/render-views.sh` — the **standard views** (`app/tools/render_views.gd`):
   fixed shots on the fixture routes (village, climb, hairpin, lake, rain, morning, evening,
   shops, junctions, river, old town, roundabout, bridges and the Oberalp reference route) into

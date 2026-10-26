@@ -267,6 +267,45 @@ recorded tracks come out as before; files whose points skip the ring no longer t
 way against the traffic. Kept worlds built with the old route offer regeneration because their
 ridden road follows it. Stored format remains 3.
 
+Generator 36 gives surrounding vehicle roads, unpaved service roads, tracks and cycleways
+shared road-bed profiles before terrain chunks are built (R141, ADR 0031). Heights use a cached
+global 16 m terrain lattice, with 24 m local smoothing and a 20 % intermediate-grade envelope;
+chain ends and branch/tag-change endpoints keep their common datum. Small paths, including paved
+footpaths, keep following the terrain. Bridges and tunnels keep their structure rules.
+
+The terrain at a point is composed in one place, `Shapers::shape_at` in
+`core/orqwa-world/src/lib.rs`, from the priority rule: ridden road, then railways, then
+surrounding ways. `shape` is the ridden road's and railways' ground as before;
+`level_across` (`earthworks::shape`) is a way's bed and banks. `Shapers::keep` says how firmly
+the way holds a point (its own reach, the partition towards the ridden verge, and the shadow
+behind it seen from the ridden road); `Shapers::structure_keep` gives tunnel cover and portal
+surroundings back to the ridden road, and `hard_verge` keeps the ridden verge at its usual
+width unless a close way needs room. Every factor fades to zero at its own edge: a change that
+switches one on or off at a hard boundary leaves a terrain step. `drawn_ground` uses the same
+composition, so portals, bridges and props stand in the ground the chunks draw.
+
+`Levels` forms beds within `FORMED_REACH_M` (120 m) of the ridden road; farther tracks and
+cycleways stay draped and paved roads keep a plain shelf without walls. It refines terrain
+(`bed_detail`) only beside a close bed at another height than a ridden carriageway or railway
+(gaps under 5.5 m: 24 pieces a side, under 3 m: 48; `CLOSE_RISE_M`), and for paved roads
+across hillsides steeper than 0.6, where walls need clean triangles, and tracks and cycleways
+steeper than 0.35, whose level shelf (`Level::verge`) narrows to the finer pieces' margin (12).
+Compare world triangle counts and build time before and after a change here: refining every
+close or steep piece at 24 cost 79 % more ground triangles on Alpenbrevet Gold, this rule
+17 %, with a build about 30 % longer (per-point shaping in the grid and its normals). Their earth banks
+(`earthworks::shape` without `facing`) meet the hillside instead of fading into it as a scar,
+and boulders beside formed ways follow the natural slope (`vegetation`). Pieces the ridden road owns, by alignment whatever their structure
+tags (`RoadIndex::owns_alignment`), form no bed. Concrete faces (`earthworks::retaining_faces`)
+dress only steep banks a paved vehicle road's earthworks moved and holds. Dense-city paving
+(`Urban::paint`) stops at engineered banks steeper than 20 % and natural ground steeper than
+about 35 %.
+
+For controlled visual review, run `cargo test --manifest-path core/Cargo.toml -p orqwa-world
+earthworks_render_fixture -- --ignored`, then render `app/tools/render_earthworks.gd` with
+`OUT_DIR` set to an existing absolute directory. `FIXTURE` selects an alternate exported JSON
+for an identical-camera baseline. Pair it with the saved full Alpenbrevet Gold course at 32.40,
+35.75, 36.40, 40.07 and 54.60 km, rendered at the same cameras before and after.
+
 Single-track bridges fit the ballast plus a maintenance walkway. Concrete viaducts use
 low kerbs, open steel railings, capped columns and bearing walls at their ends; stone arches
 retain masonry parapets. Generator 16 builds road and railway structures after terrain chunks

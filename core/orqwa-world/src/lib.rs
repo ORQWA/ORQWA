@@ -12,6 +12,7 @@ mod channels;
 mod climate;
 pub mod course_map;
 mod drape;
+mod earthworks;
 mod foundations;
 mod horizon;
 mod junctions;
@@ -54,7 +55,7 @@ pub use vegetation::Trees;
 /// differently: a world kept with an older one is still ridden, and its course offers to build
 /// it again (R101). A change that also makes kept worlds unreadable raises
 /// [`stored::FORMAT`] instead or as well.
-pub const GENERATOR: u32 = 35;
+pub const GENERATOR: u32 = 36;
 
 /// Edge length of a terrain chunk.
 pub(crate) const CHUNK_SIZE: f64 = 480.0;
@@ -67,6 +68,28 @@ const ROAD_HALF_WIDTH: f64 = 3.0;
 /// Terrain cells near the road are split into this many pieces a side, so the ground can follow
 /// the road's verge, cuttings and embankments closely.
 const SUB: usize = 6;
+/// Walls and narrow shelves on steep hillsides need finer pieces than the usual ones...
+const STEEP_SUB: usize = 12;
+/// ...close, independently graded roads room for a bank between their carriageways.
+const CLOSE_SUB: usize = 24;
+/// Sub-metre gaps at joining streets need another step of local refinement.
+const TIGHT_SUB: usize = 48;
+/// Terrain within this distance of a close bed beside the ridden road or a railway is split
+/// as finely as that bed's bank needs (`Shapers::detail_count`).
+const CLOSE_REACH: f64 = 8.0;
+/// Beyond the ridden carriageway and the diagonal of the local terrain pieces, this margin
+/// keeps every triangle touching the road below it before surrounding ways may shape the
+/// ground (R141)...
+const HARD_MARGIN: f64 = 0.2;
+/// ...and their ground takes over across this much more.
+const YIELD_RAMP: f64 = 0.5;
+/// Behind a surrounding way, the ridden road's earthworks give way over this distance.
+const SHADOW_RAMP: f64 = 4.0;
+/// A way passing this far or more over a tunnel's cover keeps its own bed above it.
+const TUNNEL_KEEP_DEPTH: f64 = 6.0;
+/// The ground a portal keeps (`structures::Portal::embeds`) lies within this distance of its
+/// tunnel's line, which the pieces found within `LEVEL_REACH` always include.
+const PORTAL_REACH: f64 = 24.0;
 /// The size of those pieces.
 #[allow(clippy::cast_precision_loss)] // a small constant
 const FINE: f64 = GRID / SUB as f64;
@@ -152,7 +175,7 @@ struct Ways {
     /// Where water cuts the ground.
     channels: channels::Channels,
     water_levels: std::sync::Arc<water_levels::Levels>,
-    /// Where paved streets level the ground across them.
+    /// Shared road beds for surrounding roads, vehicle tracks and cycleways.
     levels: streets::Levels,
 }
 
@@ -177,7 +200,12 @@ impl Ways {
             islands: roundabouts::islands(map, projection),
             channels: channels::Channels::new(&streams, &pools, &streets),
             water_levels,
-            levels: streets::Levels::new(&streets, &appearance::Index::new(map, projection)),
+            levels: streets::Levels::new(
+                &streets,
+                &appearance::Index::new(map, projection),
+                road,
+                &network.index,
+            ),
             streets,
             network,
             streams,
@@ -549,6 +577,7 @@ impl Corridor<'_> {
             heights: &heights,
             land: self.land,
             road: self.shapers.road,
+            beds: &self.ways.levels,
             streets: &self.ways.clearance,
             buildings: &footprints,
             climate: self.climate,
@@ -567,7 +596,7 @@ impl Corridor<'_> {
         };
         let props = props::place(heights.origin, CHUNK_SIZE, &roadside, origin);
         vegetation::place_grass(&mut trees, heights.origin, CHUNK_SIZE, &ground, origin);
-        let (paved, mut unpaved, barriers) = streets::meshes(
+        let (mut paved, mut unpaved, barriers) = streets::meshes(
             (streets, &self.ways.corners),
             heights.origin,
             CHUNK_SIZE,
@@ -584,7 +613,13 @@ impl Corridor<'_> {
             origin,
         ));
         let mut mesh = heights.mesh(self.land, origin, self.shapers, &self.ways.islands);
-        self.urban.paint(&mut mesh, origin, self.land);
+        paved.append(earthworks::retaining_faces(
+            &mesh,
+            center,
+            self.shapers,
+            &heights,
+        ));
+        self.urban.paint(&mut mesh, origin, self.land, &heights);
         let chunk = TerrainChunk {
             center,
             mesh,
@@ -681,8 +716,8 @@ pub(crate) struct HeightGrid {
     heights: Vec<f64>,
     /// Natural heights of the grid's vertices, border included.
     natural: Vec<f64>,
-    /// Cells split into `SUB` × `SUB` pieces: the shaped heights of their vertices, row by row
-    /// from the south-west.
+    /// Fine cells, normally `SUB` pieces a side and more finely split between close roads.
+    /// Their square lattice's heights run row by row from the south-west.
     fine: HashMap<(usize, usize), Vec<f64>>,
     /// Local downward correction beneath ground crossings (culverts), coarse and fine.
     water_drop: Vec<f64>,
@@ -830,30 +865,43 @@ impl HeightGrid {
                 }
             }
         }
-        grid.close_edges();
+        grid.close_edges(shapers);
         (grid, fallbacks)
     }
 
     /// Where a split cell meets a plain one in the chunk, its edge takes the plain cell's
     /// straight edge, so no gap opens between them: a plain cell beside a street departs a
     /// little from the levelled ground (`PLAIN_TOLERANCE`).
-    fn close_edges(&mut self) {
+    fn close_edges(&mut self, shapers: &Shapers<'_>) {
         #[allow(clippy::cast_possible_wrap)] // small grid
         let cells = (self.side - 1) as isize;
         let split: Vec<(usize, usize)> = self.fine.keys().copied().collect();
         for (i, j) in split {
             #[allow(clippy::cast_possible_wrap)] // small grid indices
             let (ci, cj) = (i as isize, j as isize);
-            let plain = |di: isize, dj: isize| {
+            let count = self.fine[&(i, j)].len().isqrt() - 1;
+            let neighbour = |di: isize, dj: isize| {
                 let (ni, nj) = (ci + di, cj + dj);
-                (0..cells).contains(&ni)
-                    && (0..cells).contains(&nj)
-                    && usize::try_from(ni)
-                        .ok()
-                        .zip(usize::try_from(nj).ok())
-                        .is_some_and(|cell| !self.fine.contains_key(&cell))
+                if (0..cells).contains(&ni) && (0..cells).contains(&nj) {
+                    #[allow(clippy::cast_sign_loss)]
+                    return self
+                        .fine
+                        .get(&(ni as usize, nj as usize))
+                        .map_or(1, |f| f.len().isqrt() - 1);
+                }
+                #[allow(clippy::cast_precision_loss)]
+                let (east, north) = (
+                    self.origin.0 + (ni as f64 + 0.5) * GRID,
+                    self.origin.1 + (nj as f64 + 0.5) * GRID,
+                );
+                shapers.detail_count(east, north)
             };
-            let (west, east, south, north) = (plain(-1, 0), plain(1, 0), plain(0, -1), plain(0, 1));
+            let neighbours = [
+                neighbour(-1, 0),
+                neighbour(1, 0),
+                neighbour(0, -1),
+                neighbour(0, 1),
+            ];
             let (sw, se, nw, ne) = (
                 self.vertex(ci, cj),
                 self.vertex(ci + 1, cj),
@@ -863,44 +911,55 @@ impl HeightGrid {
             let Some(fine) = self.fine.get_mut(&(i, j)) else {
                 continue;
             };
-            for k in 0..=SUB {
-                #[allow(clippy::cast_precision_loss)] // a few pieces
-                let share = k as f64 / SUB as f64;
-                if south {
-                    fine[k] = sw + (se - sw) * share;
+            for (edge, neighbour) in neighbours.into_iter().enumerate() {
+                if neighbour >= count {
+                    continue;
                 }
-                if north {
-                    fine[SUB * (SUB + 1) + k] = nw + (ne - nw) * share;
+                let slot = |k| match edge {
+                    0 => k * (count + 1),
+                    1 => k * (count + 1) + count,
+                    2 => k,
+                    _ => count * (count + 1) + k,
+                };
+                let stride = count / neighbour;
+                if neighbour == 1 {
+                    let (a, b) = match edge {
+                        0 => (sw, nw),
+                        1 => (se, ne),
+                        2 => (sw, se),
+                        _ => (nw, ne),
+                    };
+                    fine[slot(0)] = a;
+                    fine[slot(count)] = b;
                 }
-                if west {
-                    fine[k * (SUB + 1)] = sw + (nw - sw) * share;
-                }
-                if east {
-                    fine[k * (SUB + 1) + SUB] = se + (ne - se) * share;
+                for start in (0..count).step_by(stride) {
+                    let (a, b) = (fine[slot(start)], fine[slot(start + stride)]);
+                    for k in 1..stride {
+                        #[allow(clippy::cast_precision_loss)]
+                        let t = k as f64 / stride as f64;
+                        fine[slot(start + k)] = a + (b - a) * t;
+                    }
                 }
             }
         }
     }
 
-    /// The ground at a point before channels cut it: natural, levelled across the paved
-    /// street nearest to it (#116), then shaped around the road ridden and the railways, which
-    /// come first.
+    /// The ground at a point before channels cut it (`Shapers::shape_at`).
     fn shaped_at(&self, east: f64, north: f64, shapers: &Shapers<'_>) -> f64 {
         let natural = self.natural_at(east, north);
-        if shapers.streets.is_empty() {
-            return shape(natural, &shapers.near(east, north, LEVEL_REACH));
-        }
-        let levelled = shapers.streets.nearest(east, north, 0.0).map_or(
+        let (roads, references) = shapers.near_with_references(east, north, LEVEL_REACH);
+        let level = shapers.bed(east, north, natural, &roads);
+        let datum = level.as_ref().map(|l| {
+            l.height
+                .unwrap_or_else(|| self.natural_at(l.foot.0, l.foot.1))
+        });
+        shapers.shape_at(
             natural,
-            |(distance, half, (foot_east, foot_north))| {
-                level_across(
-                    natural,
-                    self.natural_at(foot_east, foot_north),
-                    distance - half,
-                )
-            },
-        );
-        shape(levelled, &shapers.near(east, north, LEVEL_REACH))
+            east,
+            north,
+            (&roads, &references),
+            level.as_ref().zip(datum),
+        )
     }
 
     /// Whether the fine heights of cell (`i`, `j`) depart from its plain triangles by more than
@@ -914,12 +973,13 @@ impl HeightGrid {
             self.vertex(i, j + 1),
             self.vertex(i + 1, j + 1),
         );
-        (0..=SUB).any(|b| {
-            (0..=SUB).any(|a| {
+        let count = fine.len().isqrt() - 1;
+        (0..=count).any(|b| {
+            (0..=count).any(|a| {
                 #[allow(clippy::cast_precision_loss)] // small counts
-                let (u, v) = (a as f64 / SUB as f64, b as f64 / SUB as f64);
+                let (u, v) = (a as f64 / count as f64, b as f64 / count as f64);
                 let plain = on_triangles(sw, se, nw, ne, u, v);
-                (fine[b * (SUB + 1) + a] - plain).abs() > PLAIN_TOLERANCE
+                (fine[b * (count + 1) + a] - plain).abs() > PLAIN_TOLERANCE
             })
         })
     }
@@ -978,12 +1038,14 @@ impl HeightGrid {
             &std::sync::Arc<water_levels::Levels>,
         ),
     ) -> (Vec<f64>, Vec<f64>) {
-        let mut fine = Vec::with_capacity((SUB + 1) * (SUB + 1));
-        let mut drops = Vec::with_capacity((SUB + 1) * (SUB + 1));
-        for b in 0..=SUB {
-            for a in 0..=SUB {
+        let (east, north) = self.position(i, j, 0.5, 0.5);
+        let count = shapers.detail_count(east, north);
+        let mut fine = Vec::with_capacity((count + 1) * (count + 1));
+        let mut drops = Vec::with_capacity((count + 1) * (count + 1));
+        for b in 0..=count {
+            for a in 0..=count {
                 #[allow(clippy::cast_precision_loss)] // small counts
-                let (u, v) = (a as f64 / SUB as f64, b as f64 / SUB as f64);
+                let (u, v) = (a as f64 / count as f64, b as f64 / count as f64);
                 let (east, north) = self.position(i, j, u, v);
                 let shaped = self.shaped_at(east, north, shapers);
                 let cut = carve_at(water, east, north, shaped, shapers);
@@ -1024,8 +1086,11 @@ impl HeightGrid {
                     self.origin.0 + i as f64 * GRID,
                     self.origin.1 + j as f64 * GRID,
                 );
-                let (size, count) = if self.fine.contains_key(&(i, j)) {
-                    (FINE, SUB)
+                let (size, count) = if let Some(fine) = self.fine.get(&(i, j)) {
+                    let count = fine.len().isqrt() - 1;
+                    #[allow(clippy::cast_precision_loss)]
+                    let size = GRID / count as f64;
+                    (size, count)
                 } else {
                     (GRID, 1)
                 };
@@ -1159,16 +1224,17 @@ impl HeightGrid {
         if let (Ok(ci), Ok(cj)) = (usize::try_from(i), usize::try_from(j))
             && let Some(fine) = fine.get(&(ci, cj))
         {
-            #[allow(clippy::cast_precision_loss)]
-            let (su, sv) = (fu * SUB as f64, fv * SUB as f64);
+            let count = fine.len().isqrt() - 1;
+            #[allow(clippy::cast_precision_loss)] // fixed small subdivision counts
+            let (su, sv) = (fu * count as f64, fv * count as f64);
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let (column, row) = (
-                (su.floor() as usize).min(SUB - 1),
-                (sv.floor() as usize).min(SUB - 1),
+                (su.floor() as usize).min(count - 1),
+                (sv.floor() as usize).min(count - 1),
             );
             #[allow(clippy::cast_precision_loss)]
             let (pu, pv) = (su - column as f64, sv - row as f64);
-            let piece = |column: usize, row: usize| fine[row * (SUB + 1) + column];
+            let piece = |column: usize, row: usize| fine[row * (count + 1) + column];
             return on_triangles(
                 piece(column, row),
                 piece(column + 1, row),
@@ -1292,22 +1358,27 @@ impl HeightGrid {
                     }
                 };
                 if let Some(fine) = self.fine.get(&(i, j)) {
-                    let mut corners = Vec::with_capacity((SUB + 1) * (SUB + 1));
-                    for b in 0..=SUB {
-                        for a in 0..=SUB {
+                    let count = fine.len().isqrt() - 1;
+                    let mut corners = Vec::with_capacity((count + 1) * (count + 1));
+                    for b in 0..=count {
+                        for a in 0..=count {
                             #[allow(clippy::cast_precision_loss)]
-                            let (east, north) =
-                                self.position(i, j, a as f64 / SUB as f64, b as f64 / SUB as f64);
-                            let height = fine[b * (SUB + 1) + a];
+                            let (east, north) = self.position(
+                                i,
+                                j,
+                                a as f64 / count as f64,
+                                b as f64 / count as f64,
+                            );
+                            let height = fine[b * (count + 1) + a];
                             corners.push((
                                 push(&mut mesh, east, north, height),
                                 [east, north, height],
                             ));
                         }
                     }
-                    for b in 0..SUB {
-                        for a in 0..SUB {
-                            let at = |a: usize, b: usize| corners[b * (SUB + 1) + a];
+                    for b in 0..count {
+                        for a in 0..count {
+                            let at = |a: usize, b: usize| corners[b * (count + 1) + a];
                             add(
                                 &mut mesh,
                                 [at(a, b), at(a + 1, b), at(a, b + 1), at(a + 1, b + 1)],
@@ -1407,8 +1478,8 @@ fn on_triangles(sw: f64, se: f64, nw: f64, ne: f64, u: f64, v: f64) -> f64 {
 }
 
 /// What shapes the ground: the road ridden and the railways (`railways`), each level across just
-/// below it, with cuttings and embankments; and, giving way to them, the paved streets, level
-/// across (#116); and the portals of their tunnels, where those cuttings end and the ground
+/// below it, with cuttings and embankments; and, giving way to them, surrounding formed ways;
+/// and the portals of their tunnels, where those cuttings end and the ground
 /// keeps out of the openings (#135).
 pub(crate) struct Shapers<'a> {
     pub(crate) road: &'a RoadIndex,
@@ -1423,9 +1494,241 @@ pub(crate) struct Shapers<'a> {
 }
 
 impl Shapers<'_> {
+    /// Fine pieces a side in the cell centred at (`east`, `north`). Beds close beside the
+    /// ridden road or a railway need room for the bank between them; every cell that may hold
+    /// a narrowed hard verge (`Shapers::piece_diagonal`) shares that detail.
+    fn detail_count(&self, east: f64, north: f64) -> usize {
+        let half_diagonal = GRID * std::f64::consts::FRAC_1_SQRT_2;
+        self.streets
+            .detail_near(east, north, half_diagonal, false)
+            .max(
+                self.streets
+                    .detail_near(east, north, half_diagonal + CLOSE_REACH, true),
+            )
+    }
+
+    /// Diagonal of the coarsest terrain piece that can lie at (`east`, `north`) in a split
+    /// cell: any cell holding the point is split at least this finely (`detail_count`).
+    fn piece_diagonal(&self, east: f64, north: f64) -> f64 {
+        let count = self.streets.detail_near(east, north, CLOSE_REACH, true);
+        #[allow(clippy::cast_precision_loss)] // one of the fixed subdivision counts
+        let size = GRID / count as f64;
+        size * std::f64::consts::SQRT_2
+    }
+
+    /// The formed way shaping the ground at a point: the nearest within its own banks, or,
+    /// where the ridden road's or a railway's earthworks change the ground, the nearest lying
+    /// nearer than them, whose ground those earthworks must not cross.
+    fn bed(
+        &self,
+        east: f64,
+        north: f64,
+        natural: f64,
+        roads: &[(f64, f64, Surface)],
+    ) -> Option<streets::Level> {
+        if self.streets.is_empty() {
+            return None;
+        }
+        if let Some(level) = self.streets.nearest(east, north, 0.0) {
+            return Some(level);
+        }
+        let ground = nearest_ground(roads)?;
+        if (shape(natural, roads) - natural).abs() < 0.01 {
+            return None;
+        }
+        // Only a way nearer than the ridden road or railway can lie between them.
+        let reach = streets::LEVEL_VERGE_M + streets::LEVEL_REACH_M;
+        self.streets.nearest(east, north, (ground - reach).max(0.0))
+    }
+
+    /// The terrain at a point (R141). A formed surrounding way keeps its bed and banks where it
+    /// holds the ground; elsewhere the ridden road's and railways' earthworks shape it as
+    /// without the way. The ridden carriageway with its verge, the hill over its tunnels and
+    /// the ground its portals stand in never yield, so the ridden road looks and rides as
+    /// before; the way's ribbon follows whatever ground it is left.
+    fn shape_at(
+        &self,
+        natural: f64,
+        east: f64,
+        north: f64,
+        (roads, references): (&[(f64, f64, Surface)], &[f64]),
+        bed: Option<(&streets::Level, f64)>,
+    ) -> f64 {
+        let Some((level, height)) = bed else {
+            return shape(natural, roads);
+        };
+        let beyond = level.distance - level.half;
+        // A ridden structure's own ground keeps none of the way's earthworks.
+        let structure = self.structure_keep(east, north, height.min(natural), roads);
+        let formed = level_across(natural, height, beyond, level);
+        let formed = formed + (natural - formed) * structure;
+        let ground = ground_reference(roads, references);
+        // Without a ridden carriageway or railway near, the verge's width is never needed.
+        let hard = if ground.is_finite() {
+            hard_verge(
+                ground,
+                beyond,
+                level.padding,
+                self.piece_diagonal(east, north),
+            )
+        } else {
+            VERGE
+        };
+        let keep = self.keep((east, north), level, (ground, roads), hard) * (1.0 - structure);
+        shape_with(formed, (roads, references), keep, hard)
+    }
+
+    /// How firmly a formed way holds the ground at a point against the soft earthworks of the
+    /// ridden road and railways (0–1): fully on its bed, fading across its banks and towards
+    /// their carriageways (`hard`), so no step opens at either end. Ground behind the way, seen
+    /// from the ridden road, is released as well: an embankment or cutting ends at the way
+    /// rather than burying it or rising again beyond it.
+    fn keep(
+        &self,
+        (east, north): (f64, f64),
+        level: &streets::Level,
+        (ground, roads): (f64, &[(f64, f64, Surface)]),
+        hard: f64,
+    ) -> f64 {
+        let beyond = level.distance - level.half;
+        let own = 1.0
+            - earthworks::ease(((beyond - level.verge) / streets::LEVEL_REACH_M).clamp(0.0, 1.0));
+        if !ground.is_finite() {
+            return own;
+        }
+        let street_room = (beyond - level.padding).max(0.0);
+        let claim = own * bank_blend((ground - hard).max(0.0), street_room);
+        if claim >= 1.0 {
+            return claim;
+        }
+        claim.max(self.behind((east, north), level, roads))
+    }
+
+    /// Whether the formed way `level` lies between a point and the nearest ridden ground road
+    /// or railway, rather than beside the point or beyond it (0–1).
+    fn behind(
+        &self,
+        (east, north): (f64, f64),
+        level: &streets::Level,
+        roads: &[(f64, f64, Surface)],
+    ) -> f64 {
+        // Only a point outside the way, with the ridden road or railway beyond it, can be.
+        let Some(nearest) = nearest_ground(roads) else {
+            return 0.0;
+        };
+        if level.distance <= level.half || nearest <= level.half + VERGE {
+            return 0.0;
+        }
+        let Some(((foot_east, foot_north), distance, _)) = [
+            self.road.ground_foot(east, north, nearest + 1.0),
+            self.rails.ground_foot(east, north, nearest + 1.0),
+        ]
+        .into_iter()
+        .flatten()
+        .min_by(|a, b| a.1.total_cmp(&b.1)) else {
+            return 0.0;
+        };
+        if distance < 1e-6 {
+            return 0.0;
+        }
+        let toward = (
+            (foot_east - east) / distance,
+            (foot_north - north) / distance,
+        );
+        let (de, dn) = (level.foot.0 - east, level.foot.1 - north);
+        let ahead = de * toward.0 + dn * toward.1;
+        let aside = (de - ahead * toward.0).hypot(dn - ahead * toward.1);
+        let ramp = |t: f64| earthworks::ease((t / SHADOW_RAMP).clamp(0.0, 1.0));
+        ramp(ahead - level.half) * ramp(distance - ahead - VERGE) * (1.0 - ramp(aside - level.half))
+    }
+
+    /// How much of the ground at a point a ridden structure keeps for itself (0–1): the hill
+    /// over a shallow tunnel tube, and the ground before and around each portal. A way above
+    /// a deep tunnel keeps its own bed.
+    fn structure_keep(
+        &self,
+        east: f64,
+        north: f64,
+        low: f64,
+        roads: &[(f64, f64, Surface)],
+    ) -> f64 {
+        let (half, crown) = structures::tube(false);
+        let side = half + structures::PORTAL_SIDE;
+        // The pieces found for shaping include the ridden road's tunnels once portals are
+        // placed; while they are being placed, look them up.
+        let tunnels: Vec<_> = if self.hills {
+            roads
+                .iter()
+                .copied()
+                .filter(|r| r.2 == Surface::Tunnel)
+                .collect()
+        } else {
+            self.road
+                .near_shaped(east, north, side + structures::PORTAL_FADE)
+                .into_iter()
+                .filter(|r| r.2 == Surface::Tunnel)
+                .collect()
+        };
+        // A portal's ground lies beside its tunnel: without one near, there is none.
+        let near_tunnel = !tunnels.is_empty()
+            || self
+                .rails
+                .near(east, north, PORTAL_REACH)
+                .iter()
+                .any(|r| r.2 == Surface::Tunnel);
+        let mut keep: f64 = if near_tunnel {
+            self.portals
+                .iter()
+                .map(|portal| portal.embeds(east, north))
+                .fold(0.0, f64::max)
+        } else {
+            0.0
+        };
+        for (distance, elevation, _) in tunnels {
+            if distance > side + structures::PORTAL_FADE {
+                continue;
+            }
+            let beside =
+                earthworks::ease(((distance - side) / structures::PORTAL_FADE).clamp(0.0, 1.0));
+            let deep = earthworks::ease(
+                ((low - (elevation + crown + TUNNEL_HILL_COVER)) / TUNNEL_KEEP_DEPTH)
+                    .clamp(0.0, 1.0),
+            );
+            keep = keep.max((1.0 - beside) * (1.0 - deep));
+        }
+        keep
+    }
+
+    /// How firmly a formed way holds the ground at a point (`Shapers::keep`), for dressing the
+    /// banks it alone formed.
+    pub(crate) fn holds(&self, east: f64, north: f64, level: &streets::Level, natural: f64) -> f64 {
+        let (roads, references) = self.near_with_references(east, north, LEVEL_REACH);
+        let height = level.height.unwrap_or(natural);
+        let ground = ground_reference(&roads, &references);
+        let hard = hard_verge(
+            ground,
+            level.distance - level.half,
+            level.padding,
+            self.piece_diagonal(east, north),
+        );
+        self.keep((east, north), level, (ground, &roads), hard)
+            * (1.0 - self.structure_keep(east, north, height.min(natural), &roads))
+    }
+
     /// Every piece of road or railway within `reach` that shapes the ground, as
     /// [`RoadIndex::near`] gives them: the road's tunnels only with `hills`, a railway's never.
     pub(crate) fn near(&self, east: f64, north: f64, reach: f64) -> Vec<(f64, f64, Surface)> {
+        self.near_with_references(east, north, reach).0
+    }
+
+    /// [`Shapers::near`], with each piece's distance against the six-metre reference
+    /// cross-section of `VERGE`: a railway's narrower bed keeps a narrower hard verge.
+    fn near_with_references(
+        &self,
+        east: f64,
+        north: f64,
+        reach: f64,
+    ) -> (Vec<(f64, f64, Surface)>, Vec<f64>) {
         let mut found: Vec<_> = self
             .road
             .near_shaped(east, north, reach)
@@ -1440,38 +1743,80 @@ impl Shapers<'_> {
             .min_by(|a, b| a.0.total_cmp(&b.0))
             .copied();
         found.extend(self.streets.bridges.near_shaped(east, north, reach));
-        found.extend(
-            self.rails
-                .near(east, north, reach)
-                .into_iter()
-                .filter(|r| r.2 != Surface::Tunnel)
-                .map(|mut rail| {
-                    if let Some((distance, height, _)) = ground_road
-                        && height > rail.1
-                    {
-                        // Include the protection's footing and the fine triangles
-                        // touching it, beyond the margin needed by the asphalt alone.
-                        let roadside = (distance - VERGE - 1.0).max(0.0);
-                        let trackside =
-                            (rail.0 - railways::BED_M / 2.0 - FINE * std::f64::consts::SQRT_2)
-                                .max(0.0);
-                        let share = if roadside + trackside > 1e-9 {
-                            roadside / (roadside + trackside)
-                        } else {
-                            0.0
-                        };
-                        let blend = share * share * (3.0 - 2.0 * share);
-                        let level = height + (rail.1 - height) * blend;
-                        // Ease the railway cutting between the protected road verge and
-                        // its own bed, rather than dropping it at a hard distance threshold.
-                        let room = (rail.0 - VERGE).max(0.0);
-                        rail.1 = rail.1.max(level - room * CUT_SLOPE);
-                    }
-                    rail
-                }),
-        );
-        found
+        let mut references: Vec<f64> = found.iter().map(|r| r.0).collect();
+        for mut rail in self
+            .rails
+            .near(east, north, reach)
+            .into_iter()
+            .filter(|r| r.2 != Surface::Tunnel)
+        {
+            if let Some((distance, height, _)) = ground_road
+                && height > rail.1
+            {
+                // Include the protection's footing and the fine triangles
+                // touching it, beyond the margin needed by the asphalt alone.
+                let roadside = (distance - VERGE - 1.0).max(0.0);
+                let trackside =
+                    (rail.0 - railways::BED_M / 2.0 - FINE * std::f64::consts::SQRT_2).max(0.0);
+                let share = if roadside + trackside > 1e-9 {
+                    roadside / (roadside + trackside)
+                } else {
+                    0.0
+                };
+                let blend = share * share * (3.0 - 2.0 * share);
+                let level = height + (rail.1 - height) * blend;
+                // Ease the railway cutting between the protected road verge and
+                // its own bed, rather than dropping it at a hard distance threshold.
+                let room = (rail.0 - VERGE).max(0.0);
+                rail.1 = rail.1.max(level - room * CUT_SLOPE);
+            }
+            references.push(rail.0 + ROAD_HALF_WIDTH - railways::BED_M / 2.0);
+            found.push(rail);
+        }
+        (found, references)
     }
+}
+
+/// The reference distance (`Shapers::near_with_references`) to the nearest ground piece.
+fn ground_reference(roads: &[(f64, f64, Surface)], references: &[f64]) -> f64 {
+    roads
+        .iter()
+        .zip(references)
+        .filter(|(r, _)| r.2 == Surface::Ground)
+        .map(|(_, &reference)| reference)
+        .fold(f64::INFINITY, f64::min)
+}
+
+/// Where the ground a ridden carriageway or railway bed keeps for itself ends, as a reference
+/// distance from its centre (R141): its verge as without surrounding ways, narrowed only as
+/// far as a formed way `beyond` metres away needs room for its own bed, and never past the
+/// margin that keeps every terrain piece touching the carriageway below it.
+fn hard_verge(ground: f64, beyond: f64, padding: f64, diagonal: f64) -> f64 {
+    let room = (ground - ROAD_HALF_WIDTH).max(0.0) + beyond.max(0.0);
+    let needed = padding + YIELD_RAMP + diagonal;
+    ROAD_HALF_WIDTH
+        + (room - needed)
+            .min(VERGE - ROAD_HALF_WIDTH)
+            .max(diagonal + HARD_MARGIN)
+}
+
+/// The distance to the nearest piece on the ground among `roads`.
+fn nearest_ground(roads: &[(f64, f64, Surface)]) -> Option<f64> {
+    roads
+        .iter()
+        .filter(|r| r.2 == Surface::Ground)
+        .map(|r| r.0)
+        .min_by(f64::total_cmp)
+}
+
+/// Blend the bank between protected footprints, retaining the ridden datum on overlap.
+fn bank_blend(road_room: f64, street_room: f64) -> f64 {
+    let t = if road_room + street_room > 1e-9 {
+        road_room / (road_room + street_room)
+    } else {
+        0.0
+    };
+    t * t * (3.0 - 2.0 * t)
 }
 
 /// The ground at a point with natural height `natural`, shaped around the pieces of road near
@@ -1484,13 +1829,41 @@ impl Shapers<'_> {
 /// hillside (#135). Where the road passes more than once (hairpins), the ground stays below
 /// every pass.
 pub(crate) fn shape(natural: f64, roads: &[(f64, f64, Surface)]) -> f64 {
+    shape_yielding(natural, roads, |_| 0.0)
+}
+
+/// [`shape`] around ground a surrounding way formed (R141): each piece's cuttings, embankments
+/// and cut-off slopes beyond its carriageway and verge (`hard`, `hard_verge`) yield by `keep`
+/// (0–1). Within that verge, and over the ridden road's tunnels, nothing yields.
+fn shape_with(
+    ground: f64,
+    (roads, references): (&[(f64, f64, Surface)], &[f64]),
+    keep: f64,
+    hard: f64,
+) -> f64 {
+    if keep <= 0.0 {
+        return shape(ground, roads);
+    }
+    shape_yielding(ground, roads, |i| {
+        keep * earthworks::ease(((references[i] - hard) / YIELD_RAMP).clamp(0.0, 1.0))
+    })
+}
+
+/// [`shape`], where piece `i` lets the ground keep `yielding(i)` (0–1) of its own height
+/// beyond the earthworks it would otherwise impose.
+fn shape_yielding(
+    natural: f64,
+    roads: &[(f64, f64, Surface)],
+    yielding: impl Fn(usize) -> f64,
+) -> f64 {
     let nearest = roads
         .iter()
-        .filter(|r| r.2 != Surface::Tunnel)
-        .min_by(|a, b| a.0.total_cmp(&b.0));
+        .enumerate()
+        .filter(|(_, r)| r.2 != Surface::Tunnel)
+        .min_by(|a, b| a.1.0.total_cmp(&b.1.0));
     // Past a portal the line's pieces count as its tunnel's (`road`): the hill's ground there.
     let mut height = match nearest {
-        Some(&(distance, elevation, surface)) => {
+        Some((i, &(distance, elevation, surface))) => {
             let level = elevation - ROAD_SINK;
             let room = (distance - VERGE).max(0.0);
             let (floor, ceiling) = (level - room * FILL_SLOPE, level + room * CUT_SLOPE);
@@ -1499,7 +1872,8 @@ pub(crate) fn shape(natural: f64, roads: &[(f64, f64, Surface)]) -> f64 {
                 Surface::Bridge => natural.min(ceiling),
                 Surface::Ground | Surface::Tunnel => natural.clamp(floor, ceiling),
             };
-            shaped + (natural - shaped) * fade(distance)
+            let shaped = shaped + (natural - shaped) * fade(distance);
+            shaped + (natural - shaped) * yielding(i)
         }
         None => natural,
     };
@@ -1511,12 +1885,12 @@ pub(crate) fn shape(natural: f64, roads: &[(f64, f64, Surface)]) -> f64 {
             height = height.max(hill + (natural - hill) * fade(distance));
         }
     }
-    for &(distance, elevation, surface) in roads {
+    for (i, &(distance, elevation, surface)) in roads.iter().enumerate() {
         if surface == Surface::Tunnel {
             continue;
         }
         let ceiling = elevation - ROAD_SINK + (distance - VERGE).max(0.0) * CUT_SLOPE;
-        let allowed = ceiling + (natural - ceiling).max(0.0) * fade(distance);
+        let allowed = ceiling + (natural - ceiling).max(0.0) * fade(distance).max(yielding(i));
         height = height.min(allowed);
     }
     height
@@ -1551,7 +1925,7 @@ pub(crate) async fn drawn_natural<M: ElevationModel>(
 }
 
 /// The ground at a point as the chunks draw it, before channels cut it: the drawn natural
-/// ground levelled across the paved street nearest to it (#116) and shaped around the road
+/// ground shaped around the formed way nearest to it and around the road
 /// ridden and the railways, as [`HeightGrid::shaped_at`] does. `None` where the model has no
 /// data.
 pub(crate) async fn drawn_ground<M: ElevationModel>(
@@ -1561,28 +1935,30 @@ pub(crate) async fn drawn_ground<M: ElevationModel>(
     (east, north): (f64, f64),
 ) -> Option<f64> {
     let natural = drawn_natural(model, projection, (east, north)).await?;
-    let levelled = match shapers.streets.nearest(east, north, 0.0) {
-        Some((distance, half, foot)) => level_across(
-            natural,
-            drawn_natural(model, projection, foot).await?,
-            distance - half,
-        ),
-        None => natural,
+    let (roads, references) = shapers.near_with_references(east, north, LEVEL_REACH);
+    let level = shapers.bed(east, north, natural, &roads);
+    let datum = match &level {
+        Some(level) => Some(match level.height {
+            Some(height) => height,
+            None => drawn_natural(model, projection, level.foot).await?,
+        }),
+        None => None,
     };
-    Some(shape(levelled, &shapers.near(east, north, LEVEL_REACH)))
+    Some(shapers.shape_at(
+        natural,
+        east,
+        north,
+        (&roads, &references),
+        level.as_ref().zip(datum),
+    ))
 }
 
-/// The ground at a point with natural height `natural`, `beyond` metres outside the edge of a
-/// paved street whose centre line's nearest point lies on natural ground at `level` (#116):
-/// level with it out to `LEVEL_VERGE_M`, so the street is level across rather than tilted with
-/// the hillside, then cut into the hillside or banked down to the natural ground at most as
-/// steeply as the road's cuttings and embankments, natural again at `LEVEL_REACH_M`.
-fn level_across(natural: f64, level: f64, beyond: f64) -> f64 {
-    let room = (beyond - streets::LEVEL_VERGE_M).max(0.0);
-    let shaped = natural.clamp(level - room * FILL_SLOPE, level + room * CUT_SLOPE);
-    let t = ((room - (streets::LEVEL_REACH_M - streets::LEVEL_FADE_M)) / streets::LEVEL_FADE_M)
-        .clamp(0.0, 1.0);
-    shaped + (natural - shaped) * t * t * (3.0 - 2.0 * t)
+/// The ground at a point with natural height `natural`, `beyond` metres outside the edge of
+/// formed `way` whose shared profile lies at `level` (`earthworks::shape`): level across rather
+/// than tilted with the hillside, then its earth banks or, for paved roads on steep hillsides,
+/// battered retaining banks.
+fn level_across(natural: f64, level: f64, beyond: f64, way: &streets::Level) -> f64 {
+    earthworks::shape(natural, level, beyond, (way.verge, way.facing))
 }
 
 /// 0 where the ground is fully shaped around the road, rising to 1 at `LEVEL_REACH`.

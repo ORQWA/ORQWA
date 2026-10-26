@@ -913,6 +913,54 @@ async fn dense_blocks_get_paving_but_parks_and_suburban_gardens_stay_green() {
 }
 
 #[tokio::test]
+async fn dense_city_banks_do_not_become_paved_squares() {
+    struct Hillside;
+    impl ElevationModel for Hillside {
+        fn elevation(
+            &mut self,
+            _lat: f64,
+            lon: f64,
+        ) -> impl std::future::Future<Output = Result<f64, String>> + Send {
+            let east = (lon - 7.0) * METERS_PER_DEGREE * 46_f64.to_radians().cos();
+            std::future::ready(Ok(500.0 + east * 0.6))
+        }
+    }
+    let mut map = city();
+    for (i, north) in [200.0, 240.0, 280.0].into_iter().enumerate() {
+        map.buildings
+            .push(house(i64::try_from(i).unwrap(), 27.0, north, 14.0));
+    }
+    let world = generate(&route_north(&[]).await, &mut Hillside, &map, &mut |_, _| {}).await;
+    let urban = palette::srgb("ground.urban", 0.0);
+    let mut bank = 0;
+    let mut paved = 0;
+    for chunk in &world.chunks {
+        for ((vertex, normal), color) in chunk
+            .mesh
+            .vertices
+            .iter()
+            .zip(&chunk.mesh.normals)
+            .zip(&chunk.mesh.colors)
+        {
+            let (east, north) = (vertex[0] + chunk.center[0], -vertex[2] - chunk.center[2]);
+            if (5.0..45.0).contains(&east) && (210.0..270.0).contains(&north) {
+                if normal[1] < 0.95 {
+                    assert_ne!(*color, urban, "paving on an unwalkable bank");
+                    bank += 1;
+                }
+                if *color == urban {
+                    paved += 1;
+                }
+            }
+        }
+    }
+    assert!(
+        bank > 0 && paved > 0,
+        "need both a natural bank and level city paving: {bank}, {paved}"
+    );
+}
+
+#[tokio::test]
 async fn countryside_and_structures_do_not_get_inferred_city_sidewalks() {
     let rural = world(&MapData::default()).await;
     assert_eq!(props_of(&rural, "bench"), [] as [[f64; 3]; 0]);

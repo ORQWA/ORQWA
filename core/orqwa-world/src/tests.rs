@@ -19,6 +19,9 @@ mod urban;
 #[path = "water_tests.rs"]
 mod water;
 
+#[path = "earthworks_tests.rs"]
+mod earthworks;
+
 const METERS_PER_DEGREE: f64 = 111_195.0;
 
 /// Terrain rising 10 % towards the east, 500 m at the route start.
@@ -4057,15 +4060,19 @@ async fn terrain_and_paving_stay_out_of_the_complete_tunnel_interior() {
         ..MapData::default()
     };
     let world = generate(&route, &mut Level(500.0), &map, &mut |_, _| {}).await;
+    let surfaces: [fn(&TerrainChunk) -> &MeshData; 4] =
+        [|c| &c.mesh, |c| &c.streets, |c| &c.tracks, |c| &c.urban];
+    // Inspect every intersection: a valid roof must not hide a second surface inside it.
+    let surrounding: Vec<_> = surfaces
+        .into_iter()
+        .flat_map(|surface| chunk_triangles(&world, surface))
+        .collect();
     for north in (450..550).step_by(3) {
         for x in [-3.0_f32, 0.0, 3.0, 4.0] {
             let ceiling = 500.0 + (25.0 - x * x).sqrt() - 0.2;
-            for height in [
-                ground_at(&world, x, -(north as f32)),
-                street_at(&world, x, -(north as f32)),
-            ]
-            .into_iter()
-            .flatten()
+            for height in surrounding
+                .iter()
+                .filter_map(|&triangle| triangle_height(triangle, x, -(north as f32)))
             {
                 assert!(
                     height <= 499.85 || height >= ceiling,
@@ -5465,6 +5472,7 @@ async fn curved_bridge_protection_leaves_the_wearing_surface_open() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)] // compare the ground junction and elevated crossing together
 async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
     let ring = (0..=48)
         .map(|i| {
@@ -5488,7 +5496,13 @@ async fn bridge_tags_through_a_roundabout_do_not_fence_off_its_interior() {
     assert_eq!(islands.len(), 1);
     let rails = road::RoadIndex::from_lines(&[]);
     let streets = streets::lines(&map, &projection, &mut Level(500.0)).await;
-    let levels = streets::Levels::new(&streets, &appearance::Index::new(&map, &projection));
+    let ridden = RoadIndex::new(&route, &projection);
+    let levels = streets::Levels::new(
+        &streets,
+        &appearance::Index::new(&map, &projection),
+        &ridden,
+        &rails,
+    );
     let ground = foundations::Ground(&world.chunks);
     let mut line: Vec<_> = (0..=40)
         .map(|i| (0.0, 400.0 + f64::from(i) * 2.0))
