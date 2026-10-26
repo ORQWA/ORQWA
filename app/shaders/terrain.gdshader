@@ -46,12 +46,21 @@ uniform float grass_tile = 3.0;
 uniform float dirt_tile = 2.5;
 uniform float gravel_tile = 1.5;
 uniform float rock_tile = 7.0;
-// Far off the trees thin out (R103) and fewer are drawn (R108), so the floor between them would
-// show as a pale green: from canopy_from to canopy_full metres from the camera, forest ground
-// becomes the canopy seen from above, out to the horizon.
+// Beyond dense_forest metres from the route the generator thins the woods out (R103), and the
+// lighter presets draw fewer trees (R108), so the floor between them would show as a pale
+// green (R145). There forest ground is the canopy seen from above: wherever the woods are
+// thinned, whichever way the camera looks at them (a free camera may hover above them), and
+// from canopy_from to canopy_full metres from the camera on, out to the horizon.
 uniform float canopy_tile = 32.0;
 uniform float canopy_from = 150.0;
 uniform float canopy_full = 300.0;
+uniform float dense_forest = 300.0;
+// How far the land lies from the route, from route_origin (x and z) across route_size metres:
+// the red channel holds steps of route_step metres, up to 255. No route, no size.
+uniform sampler2D route_distance : filter_linear, repeat_disable;
+uniform vec2 route_origin = vec2(0.0);
+uniform vec2 route_size = vec2(0.0);
+uniform float route_step = 2.0;
 
 varying vec3 world_position;
 varying vec3 world_normal;
@@ -151,8 +160,18 @@ void fragment() {
 	vec3 moss = grass * vec3(0.6, 0.68, 0.5);
 	vec3 floor_colour = mix(moss, dirt * 0.7, bare * 0.7);
 	vec3 floor_normal = normalize(mix(grass_n, dirt_n, bare * 0.7));
-	// Far off, the crowns cover the floor; `canopy` is how much of the ground here they cover.
+	// Far off and where the woods are thinned, the crowns cover the floor; `canopy` is how much
+	// of the ground here they cover.
 	float far = smoothstep(canopy_from, canopy_full, length(VERTEX));
+	if (route_size.x > 0.0) {
+		vec2 cell = (world_position.xz - route_origin) / route_size;
+		float metres = texture(route_distance, cell).r * 255.0 * route_step;
+		// Outside the grid lies the land beyond the corridor.
+		if (any(lessThan(cell, vec2(0.0))) || any(greaterThan(cell, vec2(1.0)))) {
+			metres = dense_forest * 2.0;
+		}
+		far = max(far, smoothstep(dense_forest - 60.0, dense_forest, metres));
+	}
 	float canopy = far * w_forest / total;
 	if (canopy > 0.001) {
 		vec3 crowns;

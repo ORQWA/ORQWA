@@ -229,14 +229,34 @@ func _distant_ground(world: RideWorld) -> void:
 		var full: float = material.get_shader_parameter("canopy_full")
 		_check(full > from, preset + " blends the crowns in over a distance")
 		_check(from >= previous_from, preset + " turns forest into crowns no nearer")
-		# Beyond the dense belt woods are thinned out: none may show its floor.
-		_check(full <= TerrainMaterial.DENSE_BELT, preset + " covers thinned woods in crowns")
+		_check(full <= TerrainMaterial.CANOPY_FULL, preset + " covers the woods farther off")
 		previous_from = from
 	world.apply_quality("low")
 	var sparse: float = material.get_shader_parameter("canopy_from")
 	world.apply_quality("ultra", {"tree_density": "low"})
 	var overridden: float = material.get_shader_parameter("canopy_from")
 	_check(overridden == sparse and sparse < previous_from, "crowns follow the trees drawn")
+	# Woods the generator thins out are crowns wherever the camera is: the ground learns where
+	# they lie from the route, and without one has nothing to go by.
+	var orqwa: OrqwaApp = world.get("_orqwa")
+	_check(orqwa.route_distances().is_empty(), "no route, no distances")
+	var image: Image = Image.create_empty(4, 3, false, Image.FORMAT_R8)
+	var distances: Dictionary = {
+		"image": image,
+		"origin": Vector2(-1600.0, -1700.0),
+		"size": Vector2(64.0, 48.0),
+		"step": 2.0,
+		"dense": 300.0,
+	}
+	TerrainMaterial.set_route_distances(material, distances)
+	var texture: Texture2D = material.get_shader_parameter("route_distance")
+	var dense: float = material.get_shader_parameter("dense_forest")
+	var size: Vector2 = material.get_shader_parameter("route_size")
+	_check(texture != null and texture.get_width() == 4, "the ground gets the distances")
+	_check(dense == 300.0 and size == Vector2(64.0, 48.0), "and where they lie")
+	TerrainMaterial.set_route_distances(material, {})
+	var none: Vector2 = material.get_shader_parameter("route_size")
+	_check(none == Vector2.ZERO, "another course without a route clears them")
 	world.apply_quality("low")
 	var terrain: Node3D = world.get_node("Terrain")
 	var track: MeshInstance3D = MeshInstance3D.new()

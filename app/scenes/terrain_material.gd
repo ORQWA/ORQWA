@@ -7,8 +7,8 @@ const KINDS: Array[String] = ["grass", "dirt", "gravel", "rock", "canopy"]
 const COVERS: Array[String] = [
 	"meadow", "farmland", "orchard", "forest", "town", "industrial", "rock"
 ]
-## How far from the route woods keep their dense trees (R103).
-const DENSE_BELT: float = 300.0
+## How far from the camera, at the most, forest ground turns into crowns.
+const CANOPY_FULL: float = 300.0
 
 
 ## Gives `material` the ground shader, the `<kind>_albedo` and `<kind>_normal` maps of each of
@@ -25,11 +25,25 @@ static func configure(material: ShaderMaterial, textures: Dictionary[String, Tex
 	material.set_shader_parameter("snow_color", Palette.color("ground.snow"))
 
 
-## Forest ground turns into crowns over 150 m and is crowns from where the generator thins the
-## woods out, 300 m from the route (vegetation.rs, NEAR_DISTANCE): the camera stays on the
-## route, so no thinned wood shows its floor. The fewer trees are drawn (R108, R109), the
-## nearer: from 150 m at an eighth of them to 300 m at half or more, never starting within 60 m.
+## Near the camera the drawn trees carry the woods: from there forest ground turns into crowns
+## over 150 m, complete by CANOPY_FULL, the nearer the fewer trees are drawn (R108, R109): by
+## 150 m at an eighth of them. Woods the generator thins out are crowns wherever they are
+## (`set_route_distances`).
 static func set_tree_density(material: ShaderMaterial, density: float) -> void:
-	var full: float = lerpf(150.0, DENSE_BELT, clampf((density - 0.125) / 0.375, 0.0, 1.0))
+	var full: float = lerpf(150.0, CANOPY_FULL, clampf((density - 0.125) / 0.375, 0.0, 1.0))
 	material.set_shader_parameter("canopy_from", maxf(full - 150.0, 60.0))
 	material.set_shader_parameter("canopy_full", full)
+
+
+## Tells the ground where the woods are thinned (R145): `distances` as
+## `OrqwaApp.route_distances()` gives them, empty without a route.
+static func set_route_distances(material: ShaderMaterial, distances: Dictionary) -> void:
+	if distances.is_empty():
+		material.set_shader_parameter("route_size", Vector2.ZERO)
+		return
+	var image: Image = distances["image"]
+	material.set_shader_parameter("route_distance", ImageTexture.create_from_image(image))
+	material.set_shader_parameter("route_origin", distances["origin"])
+	material.set_shader_parameter("route_size", distances["size"])
+	material.set_shader_parameter("route_step", distances["step"])
+	material.set_shader_parameter("dense_forest", distances["dense"])

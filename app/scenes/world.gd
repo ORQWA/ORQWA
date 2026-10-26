@@ -580,6 +580,7 @@ func _apply_rider() -> void:
 func _on_world_ready(_info: Dictionary) -> void:
 	apply_quality(_orqwa.graphics_quality(), _orqwa.graphics_options())
 	_find_low_ground()
+	TerrainMaterial.set_route_distances(_terrain_material, _orqwa.route_distances())
 	_apply_rider()
 	_restart_chunks()
 	_chunk_count = _orqwa.world_chunk_count()
