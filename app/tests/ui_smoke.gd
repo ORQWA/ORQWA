@@ -19,7 +19,7 @@ func _run() -> void:
 	_picked_files()
 	_course_cards()
 	await _rider_switch()
-	_ride_bar()
+	await _ride_bar()
 	await _summary_icons()
 	await _chart_legend()
 	_profile_icons()
@@ -517,8 +517,15 @@ func _rider_switch() -> void:
 ## The ride view's controls (#189): icons with tooltips, the simulation's speeds when
 ## simulating, and a chevron that folds the bar away and back.
 func _ride_bar() -> void:
+	var screen: Control = Control.new()
+	screen.size = Vector2(1024, 640)
+	screen.theme = UiTheme.build()
+	root.add_child(screen)
 	var bar: RideBar = RideBar.new()
-	root.add_child(bar)
+	bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
+	bar.grow_horizontal = Control.GROW_DIRECTION_END
+	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	screen.add_child(bar)
 	var tools: Control = bar.get("_tools")
 	for button: Button in [bar.get("_settings"), bar.get("_overlay"), bar.get("_fold")]:
 		_check(
@@ -539,10 +546,32 @@ func _ride_bar() -> void:
 	var folds: Array[bool] = []
 	bar.folded_changed.connect(func(folded: bool) -> void: folds.append(folded))
 	var fold: Button = bar.get("_fold")
-	fold.pressed.emit()
-	_check(bar.folded and not tools.visible and folds == [true], "folded away: %s" % [folds])
-	fold.pressed.emit()
-	_check(not bar.folded and tools.visible and folds == [true, false], "unfolded again")
+	for simulating: bool in [false, true]:
+		bar.set_simulating(simulating)
+		await process_frame
+		await process_frame
+		var expanded: Vector2 = bar.size
+		var corner: Vector2 = bar.position + Vector2(0, bar.size.y)
+		folds.clear()
+		fold.pressed.emit()
+		await process_frame
+		await process_frame
+		_check(bar.folded and not tools.visible and folds == [true], "folded away: %s" % [folds])
+		var inset: Vector2 = bar.get_theme_stylebox("panel").get_minimum_size()
+		_check(bar.size.is_equal_approx(fold.size + inset), "folded: only room for the chevron")
+		_check(
+			(bar.position + Vector2(0, bar.size.y)).is_equal_approx(corner),
+			(
+				"folding keeps the bottom-left corner: %s, expected %s"
+				% [bar.position + Vector2(0, bar.size.y), corner]
+			)
+		)
+		fold.pressed.emit()
+		await process_frame
+		await process_frame
+		_check(not bar.folded and tools.visible and folds == [true, false], "unfolded again")
+		_check(bar.size.is_equal_approx(expanded), "unfolding restores room for every control")
+	bar.set_simulating(false)
 	var speeds: Control = bar.get("_simulation")
 	_check(not speeds.visible, "no speeds unless simulating")
 	bar.set_simulating(true)
@@ -562,7 +591,7 @@ func _ride_bar() -> void:
 	var pausing: Texture2D = pause.icon
 	bar.show_paused(true)
 	_check(pause.icon != pausing and pause.tooltip_text != "", "paused: play to go on")
-	bar.free()
+	screen.free()
 
 
 ## The rename, export and delete controls of a ride are icons with tooltips (#190); export

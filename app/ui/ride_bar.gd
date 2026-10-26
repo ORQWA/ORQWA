@@ -41,6 +41,8 @@ var _speed_buttons: Array[Button] = []
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# No parent container shrinks this corner-anchored panel when controls disappear.
+	minimum_size_changed.connect(_fit_controls)
 	add_theme_stylebox_override("panel", UiTheme.bar())
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
@@ -125,6 +127,12 @@ func show_settings(shown: bool) -> void:
 ## Shows the way back when a ride recorded nothing and has no summary.
 func show_back(shown: bool) -> void:
 	_back.visible = shown
+
+
+func _fit_controls() -> void:
+	var bottom: float = position.y + size.y
+	reset_size()
+	position.y = bottom - size.y
 
 
 func _toggle_fold() -> void:
