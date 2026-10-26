@@ -3045,6 +3045,40 @@ impl OrqwaApp {
             .map_or(0, |world| i64::try_from(world.chunks.len()).unwrap_or(0))
     }
 
+    /// How far the land around the loaded route lies from it, for the ground's distant canopy
+    /// (R146): `{image, origin, size, step, dense}`. `image` holds one distance per cell in its
+    /// red channel (R8, in `step`s of metres, 255 for that far or farther), laid over the land
+    /// from `origin` (Godot x and z of its north-west corner) across `size` (metres along x and
+    /// z); `dense` is how far from the route woods keep all their trees. Empty without a route.
+    #[func]
+    fn route_distances(&self) -> VarDictionary {
+        let Some(route) = self.app.as_ref().and_then(App::route) else {
+            return VarDictionary::new();
+        };
+        let field = orqwa_app::view::route_distances(route);
+        let (Ok(width), Ok(height)) = (i32::try_from(field.columns), i32::try_from(field.rows))
+        else {
+            return VarDictionary::new();
+        };
+        let data = PackedByteArray::from(field.steps);
+        let Some(image) = Image::create_from_data(width, height, false, ImageFormat::R8, &data)
+        else {
+            return VarDictionary::new();
+        };
+        #[allow(clippy::cast_precision_loss)] // at most 2048 cells a side
+        let size = vector2(
+            field.columns as f64 * field.cell,
+            field.rows as f64 * field.cell,
+        );
+        vdict! {
+            "image" => &image,
+            "origin" => vector2(field.north_west[0], -field.north_west[1]),
+            "size" => size,
+            "step" => orqwa_world::DISTANCE_STEP,
+            "dense" => orqwa_world::DENSE_FOREST,
+        }
+    }
+
     /// The land beyond the corridor: `{ground, water}` as mesh arrays in route coordinates,
     /// `ground` with land-cover colours like the chunks' terrain, `water` its lakes.
     #[func]

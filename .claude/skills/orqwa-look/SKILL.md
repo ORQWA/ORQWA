@@ -86,6 +86,13 @@ Blender Python; its header shows how to run it).
   Godot selects by projected size for camera and shadow geometry; Medium–Ultra use 160 m
   batches, Low keeps 480 m batches. Review forest coverage from chase and drone cameras,
   check switching while moving, and compare native FPS with Low included.
+- **Distant canopy (R146):** forest ground is the baked `canopy` texture where the generator
+  thinned the woods, beyond 300 m from the route, wherever the camera is (a free camera may
+  hover above them), and from 300 m from the camera on (150 m on Low: nearer the fewer trees
+  are drawn), out to the horizon land; tracks and paths end at 1 km so they draw no bright
+  lines across it. Judge it from the drone above forested hills, from road height towards
+  them and from a free camera hovering above a slope beside the route, on Low and Ultra:
+  woods dense and dark, meadows light, no seams, nearby woods still their drawn trees.
 - **Woodland floor (R104):** spreading and upright ferns grow in patches within 60 m of
   the route, sharing the shrub budget. Keep their arching fronds and paired leaflets legible
   at road height; use `plants.ferns`, the shared `frond` material and the short plant range.

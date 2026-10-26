@@ -26,6 +26,7 @@ func _run() -> void:
 	var world: RideWorld = main.get_node("World")
 	_tree_quality(world)
 	_tree_density_override(world)
+	_distant_ground(world)
 	_courses(orqwa, dialog)
 	_map_detail(orqwa, dialog)
 	_sound(orqwa, dialog)
@@ -215,6 +216,64 @@ func _tree_density_override(world: RideWorld) -> void:
 	var automatic: Dictionary = world.get("_quality")
 	var auto_density: float = automatic["tree_density"]
 	_check(auto_density == 0.125, "Auto follows Low again")
+	world.apply_quality("medium")
+
+
+## Far off, forest ground turns into crowns, the nearer the fewer trees are drawn (R108, R109);
+## tracks and sidewalks end at the same distance on every view distance, the ground goes on.
+func _distant_ground(world: RideWorld) -> void:
+	var material: ShaderMaterial = world.get("_terrain_material")
+	var previous_from: float = 0.0
+	for preset: String in ["low", "medium", "high", "ultra"]:
+		world.apply_quality(preset)
+		var from: float = material.get_shader_parameter("canopy_from")
+		var full: float = material.get_shader_parameter("canopy_full")
+		_check(full > from, preset + " blends the crowns in over a distance")
+		_check(from >= previous_from, preset + " turns forest into crowns no nearer")
+		_check(full <= TerrainMaterial.CANOPY_FULL, preset + " covers the woods farther off")
+		previous_from = from
+	world.apply_quality("low")
+	var sparse: float = material.get_shader_parameter("canopy_from")
+	world.apply_quality("ultra", {"tree_density": "low"})
+	var overridden: float = material.get_shader_parameter("canopy_from")
+	_check(overridden == sparse and sparse < previous_from, "crowns follow the trees drawn")
+	# Woods the generator thins out are crowns wherever the camera is: the ground learns where
+	# they lie from the route, and without one has nothing to go by.
+	var orqwa: OrqwaApp = world.get("_orqwa")
+	_check(orqwa.route_distances().is_empty(), "no route, no distances")
+	var image: Image = Image.create_empty(4, 3, false, Image.FORMAT_R8)
+	var distances: Dictionary = {
+		"image": image,
+		"origin": Vector2(-1600.0, -1700.0),
+		"size": Vector2(64.0, 48.0),
+		"step": 2.0,
+		"dense": 300.0,
+	}
+	TerrainMaterial.set_route_distances(material, distances)
+	var texture: Texture2D = material.get_shader_parameter("route_distance")
+	var dense: float = material.get_shader_parameter("dense_forest")
+	var size: Vector2 = material.get_shader_parameter("route_size")
+	_check(texture != null and texture.get_width() == 4, "the ground gets the distances")
+	_check(dense == 300.0 and size == Vector2(64.0, 48.0), "and where they lie")
+	TerrainMaterial.set_route_distances(material, {})
+	var none: Vector2 = material.get_shader_parameter("route_size")
+	_check(none == Vector2.ZERO, "another course without a route clears them")
+	world.apply_quality("low")
+	var terrain: Node3D = world.get_node("Terrain")
+	var track: MeshInstance3D = MeshInstance3D.new()
+	track.visibility_range_end = RideWorld.TRACK_RANGE
+	track.set_meta("fixed_range", true)
+	var ground: MeshInstance3D = MeshInstance3D.new()
+	ground.visibility_range_end = RideWorld.VISIBILITY_RANGE
+	terrain.add_child(track)
+	terrain.add_child(ground)
+	world.apply_quality("low", {"view_distance": "ultra"})
+	_check(track.visibility_range_end == RideWorld.TRACK_RANGE, "tracks end where they did")
+	_check(ground.visibility_range_end > RideWorld.VISIBILITY_RANGE, "the ground goes farther")
+	terrain.remove_child(track)
+	terrain.remove_child(ground)
+	track.free()
+	ground.free()
 	world.apply_quality("medium")
 
 
