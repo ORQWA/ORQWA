@@ -1589,6 +1589,7 @@ dependencies = [
  "orqwa-app",
  "orqwa-devices",
  "orqwa-domain",
+ "orqwa-osm",
  "orqwa-physics",
  "orqwa-routes",
  "orqwa-session",
@@ -1639,10 +1640,12 @@ dependencies = [
 name = "orqwa-osm"
 version = "0.5.2"
 dependencies = [
+ "flate2",
  "futures",
  "geo-types",
  "mvt-reader",
  "orqwa-domain",
+ "prost",
  "reqwest",
  "serde",
  "serde_json",

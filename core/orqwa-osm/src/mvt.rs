@@ -503,7 +503,19 @@ fn add_road(
 
 #[allow(clippy::float_cmp)] // integer flags encoded as MVT numbers, not measurements
 fn road_details(tags: &Tags) -> RoadDetails {
-    let kind = match (tags.text("class"), tags.text("subclass")) {
+    RoadDetails {
+        kind: road_kind(tags.text("class"), tags.text("subclass")),
+        surface: road_surface(tags.text("surface")),
+        oneway: matches!(tags.text("oneway"), "1" | "-1" | "yes")
+            || tags.number("oneway").is_some_and(|n| n.abs() == 1.0),
+        ramp: tags.text("ramp") == "1" || tags.number("ramp") == Some(1.0),
+        roundabout: false,
+    }
+}
+
+/// The road hierarchy of a way of the transportation layer, from its `class` and `subclass`.
+pub(crate) fn road_kind(class: &str, subclass: &str) -> RoadKind {
+    match (class, subclass) {
         ("motorway", _) => RoadKind::Motorway,
         ("trunk", _) => RoadKind::Trunk,
         ("primary", _) => RoadKind::Primary,
@@ -515,8 +527,12 @@ fn road_details(tags: &Tags) -> RoadDetails {
         ("path", "cycleway") => RoadKind::Cycleway,
         ("path", _) => RoadKind::Path,
         _ => RoadKind::Unknown,
-    };
-    let surface = match tags.text("surface") {
+    }
+}
+
+/// A `surface` value: the tiles' `paved`/`unpaved`, or one of OpenStreetMap's materials.
+pub(crate) fn road_surface(surface: &str) -> RoadSurface {
+    match surface {
         "paved" => RoadSurface::Paved,
         "unpaved" => RoadSurface::Unpaved,
         "asphalt" | "chipseal" => RoadSurface::Asphalt,
@@ -527,20 +543,9 @@ fn road_details(tags: &Tags) -> RoadDetails {
         "dirt" | "earth" | "ground" | "mud" | "clay" => RoadSurface::Dirt,
         "grass" | "grass_paver" => RoadSurface::Grass,
         _ => RoadSurface::Unknown,
-    };
-    RoadDetails {
-        kind,
-        surface,
-        oneway: matches!(tags.text("oneway"), "1" | "-1" | "yes")
-            || tags.number("oneway").is_some_and(|n| n.abs() == 1.0),
-        ramp: tags.text("ramp") == "1" || tags.number("ramp") == Some(1.0),
     }
 }
 
-/// What a way of the transportation layer is to ORQWA, from its `class`, `subclass` and
-/// `bicycle` access. `None` for railways, ferries and ways for pedestrians only: footways and
-/// mapped sidewalks, pedestrian zones, steps, platforms and paths closed to bikes. Those carry
-/// no ride and do not belong among the streets drawn; footways open to bikes stay as paths.
 /// Whether a transportation feature is a railway drawn in the world: main lines, narrow gauge,
 /// funiculars and light rail; trams run in the streets, subways underground.
 fn drawn_railway(class: &str, subclass: &str) -> bool {
@@ -551,7 +556,11 @@ fn drawn_railway(class: &str, subclass: &str) -> bool {
     }
 }
 
-fn road_class(class: &str, subclass: &str, bicycle: &str) -> Option<RoadClass> {
+/// What a way of the transportation layer is to ORQWA, from its `class`, `subclass` and
+/// `bicycle` access. `None` for railways, ferries and ways for pedestrians only: footways and
+/// mapped sidewalks, pedestrian zones, steps, platforms and paths closed to bikes. Those carry
+/// no ride and do not belong among the streets drawn; footways open to bikes stay as paths.
+pub(crate) fn road_class(class: &str, subclass: &str, bicycle: &str) -> Option<RoadClass> {
     let bikes = matches!(bicycle, "yes" | "designated" | "permissive");
     match (class, subclass) {
         ("motorway" | "trunk" | "primary" | "secondary", _) => Some(RoadClass::Major),

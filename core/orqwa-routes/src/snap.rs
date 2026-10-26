@@ -67,6 +67,11 @@ const ROUNDABOUT_PIECES: usize = 8;
 /// A point matched at most this far back round a roundabout from the last is GPS wander, not
 /// a lap of it.
 const WANDER_M: f64 = 5.0;
+/// A point of the line this close to a roundabout's road is on it (metres).
+const ON_RING_M: f64 = 0.5;
+/// A point matched this close to a roundabout's road, on a road leading off it, is at it
+/// (metres).
+const AT_RING_M: f64 = 3.0;
 
 /// Points of the finished line are at most this far apart...
 const STEP_M: f64 = 5.0;
@@ -179,6 +184,7 @@ pub(crate) fn to_roads(track: &[RawPoint], roads: &[Road]) -> Snapped {
     let network = Network::new(lines, roads);
     let matches = network.choose(&positions);
     let kept = network.on_the_map(&matches, &positions);
+    let kept = network.once_round(&kept, &matches);
     let mut used: Vec<usize> = matches.iter().flatten().map(|m| m.road).collect();
 
     let mut nodes: Vec<Node> = Vec::with_capacity(track.len() * 2);
@@ -290,6 +296,10 @@ struct Network<'a> {
     joins: HashMap<Vertex, Vec<Vertex>>,
     /// Whether each road goes round a roundabout, one way: as drawn.
     roundabout: Vec<bool>,
+    /// The roundabouts, each as its roads.
+    rings: Vec<Vec<usize>>,
+    /// The roundabout each road goes round, if any (in `rings`).
+    ring_of: Vec<Option<usize>>,
     /// The longest way once round a roundabout.
     longest_lap: f64,
 }
@@ -336,27 +346,121 @@ impl<'a> Network<'a> {
                 }
             }
         }
-        let mut roundabout = vec![false; lines.len()];
-        let mut longest_lap = 0.0_f64;
+        // Rings the map detail tells, drawn the way traffic goes (ADR 0033); elsewhere those
+        // their shape tells.
+        let mut roundabout: Vec<bool> = roads.iter().map(|road| road.details.roundabout).collect();
+        let mut rings = mapped_rings(&lines, &roundabout, &mut joins);
         for ring in roundabouts(&lines, roads, &joins) {
-            longest_lap = longest_lap.max(ring.iter().map(|&r| path_length(&lines[r])).sum());
+            // A ring the map detail tells is one already.
+            if ring.iter().all(|&road| roundabout[road]) {
+                continue;
+            }
             if let &[road] = ring.as_slice() {
                 let last = lines[road].len() - 1;
                 joins.entry((road, last)).or_default().push((road, 0));
                 joins.entry((road, 0)).or_default().push((road, last));
             }
-            for road in ring {
+            for &road in &ring {
                 roundabout[road] = true;
             }
+            rings.push(ring);
         }
+        let mut ring_of = vec![None; lines.len()];
+        for (ring, roads) in rings.iter().enumerate() {
+            for &road in roads {
+                ring_of[road] = Some(ring);
+            }
+        }
+        let longest_lap = rings
+            .iter()
+            .map(|ring| ring.iter().map(|&road| path_length(&lines[road])).sum())
+            .fold(0.0, f64::max);
         Self {
             lines,
             roads,
             index,
             joins,
             roundabout,
+            rings,
+            ring_of,
             longest_lap,
         }
+    }
+
+    /// The `kept` points, but for a run of them matched on one roundabout that would take the
+    /// line round it more than once between the points before and after the run: such points
+    /// lie behind where the line came onto the ring, as where a file runs beside it rather
+    /// than round it. Without them the line leaves the ring the first time it passes its way
+    /// out; a turn back at a roundabout, once round less a little, stays as matched.
+    fn once_round(&self, kept: &[usize], matches: &[Option<Match>]) -> Vec<usize> {
+        // On the ring, or at it on a road leading off it: a point put on the end of a side
+        // street is as much at the roundabout as one on its ring.
+        let ring_at = |i: usize| {
+            let m = matches[i]?;
+            self.ring_of[m.road]
+                .or_else(|| (0..self.rings.len()).find(|&ring| self.at_ring(ring, m.at, AT_RING_M)))
+        };
+        let mut once = Vec::with_capacity(kept.len());
+        let mut k = 0;
+        while k < kept.len() {
+            let Some(ring) = ring_at(kept[k]) else {
+                once.push(kept[k]);
+                k += 1;
+                continue;
+            };
+            let start = k;
+            while k < kept.len() && ring_at(kept[k]) == Some(ring) {
+                k += 1;
+            }
+            let run = &kept[start..k];
+            let lap: f64 = self.rings[ring]
+                .iter()
+                .map(|&road| path_length(&self.lines[road]))
+                .sum();
+            let round = match (start.checked_sub(1), kept.get(k)) {
+                (Some(before), Some(&after)) => {
+                    let through: Vec<usize> = std::iter::once(kept[before])
+                        .chain(run.iter().copied())
+                        .chain(std::iter::once(after))
+                        .collect();
+                    self.round(ring, &through, matches)
+                }
+                _ => 0.0,
+            };
+            if round <= lap + WANDER_M {
+                once.extend_from_slice(run);
+            }
+        }
+        once
+    }
+
+    /// Whether `p` lies within `reach` of `ring`'s roads.
+    fn at_ring(&self, ring: usize, p: (f64, f64), reach: f64) -> bool {
+        self.rings[ring].iter().any(|&road| {
+            self.lines[road]
+                .windows(2)
+                .any(|s| distance(project(p, s[0], s[1]).0, p) <= reach)
+        })
+    }
+
+    /// How far the line from point to point `through` goes round `ring`.
+    fn round(&self, ring: usize, through: &[usize], matches: &[Option<Match>]) -> f64 {
+        let on_ring = |p: (f64, f64)| self.at_ring(ring, p, ON_RING_M);
+        let mut round = 0.0;
+        for pair in through.windows(2) {
+            let (Some(from), Some(to)) = (matches[pair[0]], matches[pair[1]]) else {
+                continue;
+            };
+            let Some((path, _)) = self.way(from, to) else {
+                continue;
+            };
+            round += path
+                .windows(2)
+                .filter(|s| on_ring(s[0]) && on_ring(s[1]))
+                .map(|s| distance(s[0], s[1]))
+                .sum::<f64>();
+        }
+        round
     }
 
     /// The closest point of every road within reach of `point`.
@@ -835,6 +939,50 @@ fn length_via(from: (f64, f64), through: &[(f64, f64)], to: (f64, f64)) -> f64 {
         }
         _ => distance(from, to),
     }
+}
+
+/// The rings of the `mapped` roads (those the map detail tells go round a roundabout), each as
+/// its pieces joined end to start; a ring of one closed way gets the join of its last vertex to
+/// its first.
+fn mapped_rings(
+    lines: &[Vec<(f64, f64)>],
+    mapped: &[bool],
+    joins: &mut HashMap<Vertex, Vec<Vertex>>,
+) -> Vec<Vec<usize>> {
+    let ends = |road: usize| (0, lines[road].len() - 1);
+    let mut rings = Vec::new();
+    let mut seen = vec![false; lines.len()];
+    for first in (0..lines.len()).filter(|&road| mapped[road] && lines[road].len() >= 2) {
+        if seen[first] {
+            continue;
+        }
+        let (start, end) = ends(first);
+        if distance(lines[first][start], lines[first][end]) <= JOIN_M {
+            joins.entry((first, end)).or_default().push((first, start));
+            joins.entry((first, start)).or_default().push((first, end));
+        }
+        // The ring's pieces: those joined to it at their ends, as far as they go.
+        let mut ring = vec![first];
+        seen[first] = true;
+        let mut at = 0;
+        while at < ring.len() {
+            let road = ring[at];
+            let (start, end) = ends(road);
+            for vertex in [start, end] {
+                for &(other, other_vertex) in joins.get(&(road, vertex)).into_iter().flatten() {
+                    let (other_start, other_end) = ends(other);
+                    let at_end = other_vertex == other_start || other_vertex == other_end;
+                    if mapped[other] && !seen[other] && at_end {
+                        seen[other] = true;
+                        ring.push(other);
+                    }
+                }
+            }
+            at += 1;
+        }
+        rings.push(ring);
+    }
+    rings
 }
 
 /// The roundabouts among the roads (see `ROUNDABOUT_RADIUS`), each as its roads in the order
@@ -1676,8 +1824,14 @@ mod tests {
     /// How far the line goes round the origin within 20 m of it, in degrees, counter-clockwise
     /// positive.
     fn round_the_middle(line: &[(f64, f64)]) -> f64 {
+        round_within(line, 20.0)
+    }
+
+    /// How far the line goes round the origin within `within` metres of it, in degrees,
+    /// counter-clockwise positive.
+    fn round_within(line: &[(f64, f64)], within: f64) -> f64 {
         line.windows(2)
-            .filter(|w| w.iter().all(|p| p.0.hypot(p.1) < 20.0))
+            .filter(|w| w.iter().all(|p| p.0.hypot(p.1) < within))
             .map(|w| {
                 let turn = w[1].1.atan2(w[1].0) - w[0].1.atan2(w[0].0);
                 (turn + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU)
@@ -1701,6 +1855,80 @@ mod tests {
                 "across the island: {x}, {y}"
             );
         }
+    }
+
+    /// A ring too long to be round, 60 m by 24 m as squashed and turbo roundabouts are, drawn
+    /// counter-clockwise from the east as one closed way, with streets to the south and the
+    /// west; marked as a roundabout if `mapped` by the map detail.
+    fn oval(mapped: bool) -> Vec<Road> {
+        let ring: Vec<(f64, f64)> = (0..=36)
+            .map(|i| {
+                let angle = (f64::from(i) * 10.0).to_radians();
+                (30.0 * angle.cos(), 12.0 * angle.sin())
+            })
+            .collect();
+        let mut ring = road(&ring);
+        ring.details.roundabout = mapped;
+        vec![
+            ring,
+            road(&[(0.0, -12.0), (0.0, -150.0)]),
+            road(&[(-30.0, 0.0), (-150.0, 0.0)]),
+        ]
+    }
+
+    #[test]
+    fn a_ring_the_map_detail_marks_is_ridden_the_way_traffic_goes_whatever_its_shape() {
+        // R143: its shape tells nothing of a ring this long; the map detail does. Turning left
+        // is three quarters of the way round, counter-clockwise.
+        let marked = xy(&to_roads(&left_at_the_roundabout(), &oval(true)).track);
+        let round = round_within(&marked, 32.0);
+        assert!((250.0..290.0).contains(&round), "{round}° round");
+        // Without the detail, as before: the quarter the file suggests.
+        let unmarked = xy(&to_roads(&left_at_the_roundabout(), &oval(false)).track);
+        let round = round_within(&unmarked, 32.0);
+        assert!((-110.0..-70.0).contains(&round), "{round}° round");
+    }
+
+    #[test]
+    fn a_point_beside_the_ring_past_the_way_out_is_no_reason_to_go_round_again() {
+        // R145: from the south out to the east is a quarter of the way round. A point of the
+        // file 3 m beside the ring beyond the east street, as where a file runs along a path
+        // beside it or rests there, would take the line on round and once more to get out.
+        let track: Vec<RawPoint> = [
+            (0.0, -140.0),
+            (0.0, -60.0),
+            (12.7, 12.7),
+            (60.0, 0.0),
+            (140.0, 0.0),
+        ]
+        .into_iter()
+        .map(point2)
+        .collect();
+        let line = xy(&to_roads(&track, &roundabout(false, 1, &COMPASS)).track);
+
+        let round = round_the_middle(&line);
+        assert!((70.0..110.0).contains(&round), "{round}° round");
+    }
+
+    #[test]
+    fn a_turn_back_at_a_roundabout_goes_round_it_once() {
+        // R145: once round and back the way it came, as a planner draws turning back there.
+        let track: Vec<RawPoint> = [
+            (0.0, -140.0),
+            (0.0, -60.0),
+            (15.0, 0.0),
+            (0.0, 15.0),
+            (-15.0, 0.0),
+            (0.0, -60.0),
+            (0.0, -140.0),
+        ]
+        .into_iter()
+        .map(point2)
+        .collect();
+        let line = xy(&to_roads(&track, &roundabout(false, 1, &COMPASS)).track);
+
+        let round = round_the_middle(&line);
+        assert!((330.0..390.0).contains(&round), "{round}° round");
     }
 
     #[test]

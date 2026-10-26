@@ -83,7 +83,7 @@ pub struct Imported {
 }
 
 /// Reads a GPX file and imports it with [`import_gpx`], named after the file if the track has
-/// no name.
+/// no name, with the map detail of the regions ready in the cache (ADR 0033).
 ///
 /// # Errors
 /// A readable message if the file cannot be read or imported.
@@ -101,16 +101,29 @@ pub async fn import_route(
     let fallback = path
         .file_stem()
         .map_or_else(|| "Route".to_owned(), |s| s.to_string_lossy().into_owned());
-    import_gpx(xml, &fallback, (cache_dir, offline), false, used, progress)
-        .await
-        .map_err(|e| Failure::new(Kind::ImportFile, e).arg(path.display()))
+    let map_detail: Vec<String> = orqwa_osm::detail::installed(&cache_dir.join("osm"))
+        .into_iter()
+        .map(|region| region.extract)
+        .collect();
+    import_gpx(
+        xml,
+        &fallback,
+        (cache_dir, offline),
+        (false, &map_detail),
+        used,
+        progress,
+    )
+    .await
+    .map_err(|e| Failure::new(Kind::ImportFile, e).arg(path.display()))
 }
 
 /// Imports a GPX track: fetches map data along it (bridges and tunnels shape the elevation
 /// profile) and corrects elevations with the terrain model. Downloads are cached under
 /// `cache_dir` and every cached file used is recorded in `used`; `offline` uses the caches
 /// only. Without a `video`, the route is ridden in 3D and loses its turns in place
-/// ([`Route::without_turns_in_place`]); a video keeps the track it was recorded along.
+/// ([`Route::without_turns_in_place`]); a video keeps the track it was recorded along. The
+/// roads take the roundabouts of the `map_detail` extracts (ADR 0033) before the route is
+/// matched to them, and their surfaces after; the cells read are recorded too.
 ///
 /// # Errors
 /// A readable message if the track cannot be imported.
@@ -118,7 +131,7 @@ pub async fn import_gpx(
     xml: String,
     fallback_name: &str,
     (cache_dir, offline): (&Path, bool),
-    video: bool,
+    (video, map_detail): (bool, &[String]),
     used: &UsedFiles,
     progress: Progress<'_>,
 ) -> Result<Imported, Failure> {
@@ -126,11 +139,13 @@ pub async fn import_gpx(
         orqwa_routes::track_points(&xml).map_err(|e| Failure::new(Kind::PrepareCourse, e))?;
     progress(LoadStage::Route, 1, 1);
 
-    let mut osm = Osm::new(cache_dir.join("osm")).recording(used.clone());
+    let mut osm = Osm::new(cache_dir.join("osm"))
+        .recording(used.clone())
+        .with_detail(map_detail.to_vec());
     if offline {
         osm = osm.offline();
     }
-    let map = osm
+    let mut map = osm
         .around(&track, orqwa_world::CORRIDOR, &mut |done, total| {
             progress(LoadStage::Map, done, total);
         })
@@ -145,6 +160,8 @@ pub async fn import_gpx(
     if offline {
         terrain = terrain.offline();
     }
+    // Round a roundabout the detail maps the way traffic goes, wherever the tiles draw it.
+    map.apply_roundabouts();
     let mut counting = Counting {
         inner: &mut terrain,
         done: 0,
@@ -157,6 +174,7 @@ pub async fn import_gpx(
     if !video {
         route = route.without_turns_in_place();
     }
+    map.apply_surfaces();
     progress(LoadStage::Elevation, track.len(), track.len());
     let name = route
         .name()
@@ -303,7 +321,7 @@ mod tests {
             gpx.into(),
             "Traffic",
             (&cache, true),
-            false,
+            (false, &[]),
             &used,
             &mut |_, _, _| {},
         )

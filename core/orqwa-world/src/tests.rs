@@ -310,6 +310,7 @@ async fn road_profiles_render_fixture() {
                     surface,
                     ramp,
                     oneway: kind == RoadKind::Motorway,
+                    roundabout: false,
                 },
                 line: vec![at(east, -20.0), at(east, 1020.0)],
                 structure: None,

@@ -644,6 +644,16 @@ physically based materials and light, restyled group by group.
     geometry and roadside placement follow widths. Shallow branches retain their joining
     segments and nearby parallel paths keep their visible surface. Existing course tiles only,
     no added downloads or ride-start requests. Generator 10 / stored format 3.
+  - [x] Map detail from region downloads ([ADR 0033](adr/0033-map-detail.md)): riders who
+    opt in download Geofabrik regions; the surfaces the tiles cannot tell (cobbles, paving,
+    concrete, dirt, grass) and the roundabouts come from them, for courses prepared afterwards
+    - [x] Own `.osm.pbf` reader and extractor; `orqwa-cli detail` measures a region
+    - [x] Surfaces in prepared courses, carried in their course files
+    - [x] Settings → Courses: the setting, the regions downloaded to update or delete (R142)
+    - [x] Roundabouts ridden the way traffic goes where the detail maps them (R143), once
+      round per visit, leaving at the first pass of the way out (R145, generator 35)
+    - [x] Courses in the library take a region's detail once opened, their kept worlds built
+      again (R144)
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)
