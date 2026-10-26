@@ -42,13 +42,6 @@ done <<EOF_BUILT
 $built
 EOF_BUILT
 
-# Every ORQWA released before the versioned names installs an update only from the installer
-# under its plain name, and Torqa 0.5.0 only under its old one (ADR 0026): the installers go up
-# under those names too, until riders have moved past them.
-cp dist/ORQWA-windows-x86_64.msi dist/Torqa-windows-x86_64.msi
-set -- "$@" dist/ORQWA-windows-x86_64.msi dist/ORQWA-android-arm64.apk \
-    dist/Torqa-windows-x86_64.msi
-
 if draft="$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)"; then
     if [ "$draft" = false ]; then
         echo "Release $RELEASE_TAG is already published; keeping its assets."

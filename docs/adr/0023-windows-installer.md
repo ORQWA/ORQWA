@@ -91,3 +91,13 @@ Options considered:
   name only where that is missing. Every ORQWA before this change knows only the plain name, so
   releases also carry the installers under it (and Torqa 0.5.0's old name, ADR 0026) until riders
   have moved past those versions.
+
+## Amendment 2026-10-26: only versioned names (R147)
+
+- **Releases.** From 0.5.4 on, each file goes up only under its versioned name. 0.5.3 is the last
+  release with the plain-named installers (`ORQWA-windows-x86_64.msi`,
+  `ORQWA-android-arm64.apk`) and `Torqa-windows-x86_64.msi`.
+- **Updates.** The updater takes only the installer named with the release's version: every
+  release since 0.5.2 carries it, and ORQWA asks only for the latest. Torqa 0.5.0 and ORQWA 0.5.1
+  no longer find an installer they know, so their update check opens the release page, as on
+  macOS and Linux. The installer downloaded there still updates them in place.

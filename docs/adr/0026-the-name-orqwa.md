@@ -34,8 +34,8 @@ The app is **ORQWA**, orca, torque and watt (R102):
   released under the old one.
 - **Windows.** The installer keeps Torqa's UpgradeCode, so it replaces Torqa's installation,
   folder and Start-menu entry; CI installs 0.5.0 and upgrades it. 0.5.0 installs an update only
-  from `Torqa-windows-x86_64.msi`, so releases carry the installer under that name too until
-  riders have moved past 0.5.0.
+  from `Torqa-windows-x86_64.msi`, so releases carried the installer under that name too until
+  0.5.3; later ones offer 0.5.0 the release page (ADR 0023 amendment 2026-10-26).
 - **Kept as they are.** The course file extension `.tqc`: riders' libraries and the files they
   share use it, and a later course format can rename it while still reading `.tqc`. The
   Android release key's alias `torqa`, which is part of the key.
@@ -52,4 +52,4 @@ The app is **ORQWA**, orca, torque and watt (R102):
 - A Torqa started again after the move finds no data and starts afresh in a new folder.
 - Links from before the rename work through GitHub's redirects, as long as nobody takes the old
   names.
-- Releases upload one more file until the transition asset is dropped (PLAN).
+- Releases uploaded one more file until 0.5.3.

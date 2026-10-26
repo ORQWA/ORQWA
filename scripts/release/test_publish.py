@@ -21,12 +21,6 @@ ASSETS = (
     "orqwa-cli-linux-arm64.tar.gz",
     "ORQWA-android-arm64.apk",
 )
-# What updaters of releases before the versioned names download (#322, ADR 0026).
-PLAIN_INSTALLERS = (
-    "ORQWA-windows-x86_64.msi",
-    "ORQWA-android-arm64.apk",
-    "Torqa-windows-x86_64.msi",
-)
 
 
 def versioned(name, version="0.1.0"):
@@ -92,8 +86,7 @@ if args[1] == "view":
         self.assertIn("--draft", calls[1])
         self.assertEqual(
             calls[2][3:-1],
-            [f"dist/{versioned(name)}" for name in ASSETS]
-            + [f"dist/{name}" for name in PLAIN_INSTALLERS],
+            [f"dist/{versioned(name)}" for name in ASSETS],
         )
         self.assertEqual(calls[2][-1], "--clobber")
         self.assertEqual(calls[3][-1], "--draft=false")
@@ -113,17 +106,11 @@ if args[1] == "view":
             self.assertIn(f"dist/{name}", uploads)
             self.assertEqual((self.root / "dist" / name).read_bytes(), b"archive")
 
-    def test_earlier_updaters_still_find_their_installers(self):
+    def test_no_download_goes_up_without_its_version(self):
+        # Plain and Torqa names were dropped after 0.5.3 (ADR 0023, R147).
         self.assertEqual(self.publish().returncode, 0)
-        for name in PLAIN_INSTALLERS:
-            self.assertIn(f"dist/{name}", self.calls()[2])
-
-    def test_torqa_0_5_0_finds_the_installer_under_its_old_name(self):
-        (self.root / "dist" / "ORQWA-windows-x86_64.msi").write_bytes(b"installer")
-        self.assertEqual(self.publish().returncode, 0)
-        old = self.root / "dist" / "Torqa-windows-x86_64.msi"
-        self.assertEqual(old.read_bytes(), b"installer")
-        self.assertIn("dist/Torqa-windows-x86_64.msi", self.calls()[2])
+        for upload in self.calls()[2][3:-1]:
+            self.assertIn("-0.1.0-", upload)
 
     def test_each_missing_or_empty_archive_blocks_all_github_changes(self):
         for name in ASSETS:
