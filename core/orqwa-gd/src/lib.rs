@@ -3046,7 +3046,7 @@ impl OrqwaApp {
     }
 
     /// How far the land around the loaded route lies from it, for the ground's distant canopy
-    /// (R145): `{image, origin, size, step, dense}`. `image` holds one distance per cell in its
+    /// (R146): `{image, origin, size, step, dense}`. `image` holds one distance per cell in its
     /// red channel (R8, in `step`s of metres, 255 for that far or farther), laid over the land
     /// from `origin` (Godot x and z of its north-west corner) across `size` (metres along x and
     /// z); `dense` is how far from the route woods keep all their trees. Empty without a route.

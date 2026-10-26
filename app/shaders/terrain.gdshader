@@ -48,7 +48,7 @@ uniform float gravel_tile = 1.5;
 uniform float rock_tile = 7.0;
 // Beyond dense_forest metres from the route the generator thins the woods out (R103), and the
 // lighter presets draw fewer trees (R108), so the floor between them would show as a pale
-// green (R145). There forest ground is the canopy seen from above: wherever the woods are
+// green (R146). There forest ground is the canopy seen from above: wherever the woods are
 // thinned, whichever way the camera looks at them (a free camera may hover above them), and
 // from canopy_from to canopy_full metres from the camera on, out to the horizon.
 uniform float canopy_tile = 32.0;

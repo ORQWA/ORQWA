@@ -1,5 +1,5 @@
 //! How far the land around the route lies from it, on a coarse grid, for the ground's shader
-//! (R145): woods the generator thins out, beyond [`DENSE_FOREST`] from the route, are drawn as
+//! (R146): woods the generator thins out, beyond [`DENSE_FOREST`] from the route, are drawn as
 //! a closed canopy wherever the camera is, a free camera above them included. Worked out from
 //! the route when a world is drawn, so kept worlds need nothing new.
 

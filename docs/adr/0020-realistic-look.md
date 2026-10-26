@@ -217,20 +217,28 @@ so locked-border LODs cannot simplify them; cheaper distant streets need a diffe
 approach. Neither generator nor stored format changes; kept worlds draw the same.
 See [the measurements](../benchmarks/city-courses.md#distant-ground).
 
-### Distant forest canopy (2026-10-25, R145)
+### Distant forest canopy (2026-10-25, R146)
 
 Trees thin out beyond 300 m from the route (R103) and the lighter presets draw only a share
 of them (R108), so distant woods showed as scattered trees on pale floor, hills as savanna.
-Over 150 m up to where the woods thin out, 300 m from the route (60–150 m at an eighth of
-the trees, nearer the fewer are drawn), `terrain.gdshader` turns forest ground into a canopy
-seen from above: the baked `canopy` texture (round crowns of conifers and broadleaves meeting
-in shade, 32 m tiles) in place of the floor, covering steep wooded slopes up to cliffs. It
-first reached full cover only at 650 m: riding along a valley, its slopes in between showed
-the thinned trees on pale floor. The camera stays on the route, so complete cover by 300 m
-leaves no thinned wood showing its floor. Measured per pixel, it has no
-chunk seams, reaches the horizon land, and leaves nearby woods to their drawn trees; kept
-worlds get it at once. Light tracks and paths now end 1 km away on every preset: they drew
-bright lines across that canopy. It costs no measurable frame time.
+`terrain.gdshader` turns forest ground into a canopy seen from above: the baked `canopy`
+texture (round crowns of conifers and broadleaves meeting in shade, 32 m tiles) in place of
+the floor, covering steep wooded slopes up to cliffs. It covers two kinds of woods:
+
+- **Those the generator thinned**, beyond 300 m from the route (`orqwa_world::DENSE_FOREST`),
+  wherever the camera is. `orqwa_world::route_distances` lays the route's distance over the
+  land on a coarse grid (16 m cells, at most 2048 a side), worked out from the route when a
+  world is drawn; the shader blends the crowns in over the last 60 m before the belt's edge.
+- **Those seen beyond the drawn trees**: over 150 m, complete 300 m from the camera, nearer
+  the fewer trees are drawn (by 150 m at an eighth of them).
+
+The camera rule came first, complete at 650 m: riding along a valley, its slopes between
+showed the thinned trees on pale floor. Complete by 300 m, it still failed for a free camera
+hovering beside the route, above thinned woods: nearest to it they showed their floor. Hence
+the route rule. Measured per pixel, the canopy has no chunk seams, reaches the horizon land,
+and leaves nearby woods to their drawn trees; kept worlds get it at once, as the distances
+come from the route, not the stored world. Light tracks and paths now end 1 km away on every
+preset: they drew bright lines across that canopy. It costs no measurable frame time.
 
 Canopy shells, geometry rising from the wood outlines for volume and ridgeline silhouettes,
 are the next step; they change the generator and stored format. A prototype lifting forest

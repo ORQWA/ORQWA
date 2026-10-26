@@ -35,7 +35,7 @@ static func set_tree_density(material: ShaderMaterial, density: float) -> void:
 	material.set_shader_parameter("canopy_full", full)
 
 
-## Tells the ground where the woods are thinned (R145): `distances` as
+## Tells the ground where the woods are thinned (R146): `distances` as
 ## `OrqwaApp.route_distances()` gives them, empty without a route.
 static func set_route_distances(material: ShaderMaterial, distances: Dictionary) -> void:
 	if distances.is_empty():
