@@ -807,6 +807,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   once, course videos out of the gallery
   - [x] the folder, the move and the wiki
   - [ ] tried on the Tab S7: the move, and rides and courses synced both ways with a computer
+  - [x] synced course videos on Android 16: **Allow videos** asks for Photos and videos (R149)
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
