@@ -41,6 +41,14 @@ func _run() -> void:
 	var locale: String = OS.get_environment("SCREENSHOT_LOCALE")
 	if not locale.is_empty():
 		TranslationServer.set_locale(locale)
+	if OS.get_environment("SCREENSHOT_GRAPHICS_ONLY") == "1":
+		var settings: SettingsDialog = start.get("_settings")
+		settings.open()
+		await create_timer(0.5).timeout
+		root.get_texture().get_image().save_png(out_dir.path_join("settings-graphics.png"))
+		print("saved settings-graphics")
+		quit(0)
+		return
 	if OS.get_environment("SCREENSHOT_SETTINGS_ONLY") == "1":
 		await _settings_screens(start, out_dir)
 		quit(0)

@@ -4,6 +4,27 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: de\n"
 
+msgid "Benchmark graphics"
+msgstr "Grafik testen"
+
+msgid "Graphics benchmark"
+msgstr "Grafiktest"
+
+msgid "Find a preset for smooth 60 fps. Takes about 30 seconds and resets details to Auto."
+msgstr "Findet eine Qualitätsstufe für flüssige 60 fps. Dauert etwa 30 Sekunden und setzt Details auf Auto."
+
+msgid "Testing %s… Keep this window in front."
+msgstr "%s wird getestet… Dieses Fenster im Vordergrund lassen."
+
+msgid "Benchmark cancelled. Your settings have been kept."
+msgstr "Grafiktest abgebrochen. Deine Einstellungen bleiben erhalten."
+
+msgid "Applied %s (%d fps). Details are Auto. Applies from the next ride."
+msgstr "%s eingestellt (%d fps). Details stehen auf Auto. Gilt ab der nächsten Fahrt."
+
+msgid "Even Low was below 60 fps. Try a smaller window."
+msgstr "Auch Niedrig lag unter 60 fps. Versuche ein kleineres Fenster."
+
 msgid "%d W  ·  %.1f W/kg"
 msgstr "%d W  ·  %.1f W/kg"
 

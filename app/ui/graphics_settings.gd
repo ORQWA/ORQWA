@@ -7,6 +7,8 @@ extends VBoxContainer
 ## How detailed the 3D world is drawn on this computer (R43).
 var _quality: OptionButton = OptionButton.new()
 var _quality_note: Label = Label.new()
+var _benchmark_button: Button = Button.new()
+var _benchmark_note: Label = Label.new()
 ## Full screen or a window (#218), as F11 switches it too.
 var _fullscreen: CheckBox = CheckBox.new()
 ## The details (R90): option name → its choice, "auto" first.
@@ -45,6 +47,9 @@ func _init() -> void:
 	_quality.custom_minimum_size = Vector2(240, 0)
 	_quality.item_selected.connect(_on_quality_selected)
 	row.add_child(_quality)
+	_benchmark_button.text = tr("Benchmark graphics")
+	_benchmark_button.pressed.connect(_benchmark)
+	row.add_child(_benchmark_button)
 	add_child(row)
 	_quality_note.add_theme_color_override("font_color", UiTheme.MUTED)
 	_quality_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -52,6 +57,11 @@ func _init() -> void:
 	# word, and the dialog grows that tall.
 	_quality_note.custom_minimum_size = Vector2(600, 0)
 	add_child(_quality_note)
+	_show_benchmark_help()
+	_benchmark_note.add_theme_color_override("font_color", UiTheme.MUTED)
+	_benchmark_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_benchmark_note.custom_minimum_size = Vector2(600, 0)
+	add_child(_benchmark_note)
 	var screen_row: HBoxContainer = HBoxContainer.new()
 	screen_row.add_theme_constant_override("separation", 16)
 	var screen_caption: Label = Label.new()
@@ -80,11 +90,44 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	_benchmark_button.disabled = DisplayServer.get_name() == "headless"
 	# F11 or the system may switch it while the settings are open.
 	_app_window().size_changed.connect(
 		func() -> void: _fullscreen.set_pressed_no_signal(FullScreen.is_on(_app_window()))
 	)
 	_fullscreen.set_pressed_no_signal(FullScreen.is_on(_app_window()))
+
+
+func _benchmark() -> void:
+	var preview: GraphicsBenchmark = GraphicsBenchmark.new()
+	get_tree().root.add_child(preview)
+	preview.finished.connect(_benchmark_finished)
+	if not preview.start():
+		preview.queue_free()
+
+
+func _show_benchmark_help() -> void:
+	_benchmark_note.text = tr(
+		"Find a preset for smooth 60 fps. Takes about 30 seconds and resets details to Auto."
+	)
+
+
+func _benchmark_finished(result: Dictionary) -> void:
+	if result.is_empty():
+		_benchmark_note.text = tr("Benchmark cancelled. Your settings have been kept.")
+		return
+	var quality: String = result["quality"]
+	if not _orqwa.apply_graphics_benchmark(quality):
+		return
+	bind(_orqwa)
+	var fps: float = result["fps"]
+	_benchmark_note.text = (
+		tr("Applied %s (%d fps). Details are Auto. Applies from the next ride.")
+		% [tr(quality.capitalize()), roundi(fps)]
+	)
+	var meets_target: bool = result["meets_target"]
+	if not meets_target:
+		_benchmark_note.text += " " + tr("Even Low was below 60 fps. Try a smaller window.")
 
 
 func _notification(what: int) -> void:
@@ -101,6 +144,7 @@ func _on_quality_selected(index: int) -> void:
 	var key: String = _quality.get_item_metadata(index)
 	_orqwa.set_graphics_quality(key)
 	_show_quality_note()
+	_show_benchmark_help()
 
 
 func _show_quality_note() -> void:
@@ -190,6 +234,7 @@ func _value_name(option: String, value: String, values: Dictionary[String, Strin
 func _on_detail_selected(index: int, option: String) -> void:
 	var value: String = _details[option].get_item_metadata(index)
 	_orqwa.set_graphics_option(option, value)
+	_show_benchmark_help()
 
 
 func _reset_details() -> void:

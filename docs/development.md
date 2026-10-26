@@ -32,6 +32,7 @@ does the same.
 | Build the GDExtension into `app/bin/` | `scripts/build-gdext.sh [debug\|release]` |
 | Render screenshots of the start page, a ride, the summary and the analysis (software Vulkan, with 16 weeks of made-up rides) into `screenshots/` | `scripts/screenshots.sh` |
 | Render only the English/German error-details views, without preparing a route | `SCREENSHOT_ERRORS_ONLY=1 scripts/screenshots.sh` |
+| Render only Graphics settings, without preparing a route or kept world | `SCREENSHOT_GRAPHICS_ONLY=1 scripts/screenshots.sh` |
 | Render the screenshots in another window size, e.g. the smallest the layouts are made for (R94) | `SCREENSHOT_SIZE=1024x640 scripts/screenshots.sh` |
 | Render the standard views of the 3D world (before and after a visual change) into `screenshots/views/` | `scripts/render-views.sh` |
 | Count what a course's world draws at chosen places (draw calls, primitives), with each kind of geometry, effect or panel taken away in turn; frame times need a Mac ([Measuring frame rate](#measuring-frame-rate)) | `scripts/perf/software.sh` |
@@ -407,6 +408,15 @@ reviews. Phone-remote browser screenshots require a separate browser capture; th
 do not replace them.
 
 ## Measuring frame rate
+
+The rider's **Benchmark graphics** setting (R150, [ADR 0034](adr/0034-graphics-benchmark.md))
+calibrates presets against a bounded offline workload. It does not replace the course-specific
+measurements below. Its integration test runs headless with the checks; to also exercise
+preview rendering and cancellation, run in the container:
+`xvfb-run -a godot --path app --rendering-driver vulkan --resolution 1024x640 -s res://tests/benchmark_smoke.gd`.
+`BENCHMARK_SCREENSHOT` saves a review image before cancellation. Do not run this alongside checks.
+With `BENCHMARK_COMPLETE=1`, it also runs all four presets to completion and checks the saved
+recommendation and restored rendering settings; software FPS still says nothing about a GPU.
 
 Frame rate needs a real GPU: software Vulkan in the container draws the same draw calls and
 primitives, but its timings say nothing about a GPU. `app/tools/measure_frames.gd` measures a
