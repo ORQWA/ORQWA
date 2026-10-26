@@ -9,6 +9,7 @@ var _quality: OptionButton = OptionButton.new()
 var _quality_note: Label = Label.new()
 ## Full screen or a window (#218), as F11 switches it too.
 var _fullscreen: CheckBox = CheckBox.new()
+var _fullscreen_on: bool = false
 ## The details (R90): option name → its choice, "auto" first.
 var _details: Dictionary[String, OptionButton] = {}
 var _details_grid: GridContainer = GridContainer.new()
@@ -80,11 +81,16 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	# F11 or the system may switch it while the settings are open.
-	_app_window().size_changed.connect(
-		func() -> void: _fullscreen.set_pressed_no_signal(FullScreen.is_on(_app_window()))
-	)
-	_fullscreen.set_pressed_no_signal(FullScreen.is_on(_app_window()))
+	_fullscreen_on = FullScreen.is_on(_app_window())
+	_fullscreen.set_pressed_no_signal(_fullscreen_on)
+
+
+func _process(_delta: float) -> void:
+	# The ride bar, keyboard or system can change the mode without resizing the window.
+	var on: bool = FullScreen.is_on(_app_window())
+	if on != _fullscreen_on:
+		_fullscreen_on = on
+		_fullscreen.set_pressed_no_signal(on)
 
 
 func _notification(what: int) -> void:

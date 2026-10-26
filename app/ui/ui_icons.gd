@@ -16,6 +16,8 @@ const PATHS: Dictionary[String, String] = {
 		+ '<rect x="12" y="9" width="7" height="7" rx="1.5" fill="COLOR" stroke="none"/>'
 	),
 	"flag": '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+	"fullscreen": '<path d="M9 3H3v6M15 3h6v6M21 15v6h-6M9 21H3v-6"/>',
+	"windowed": '<path d="M3 9h6V3M15 3v6h6M21 15h-6v6M9 21v-6H3"/>',
 	# The chevron is cut out of the disc, so whatever lies behind shows through in any colour.
 	"back":
 	(
