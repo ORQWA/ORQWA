@@ -542,6 +542,7 @@ mod tests {
                     profile: Vec::new(),
                     video: None,
                     countries: None,
+                    map_detail: Vec::new(),
                 },
             },
             estimated: None,

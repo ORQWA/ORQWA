@@ -451,6 +451,11 @@ physically based materials and light, restyled group by group.
 - [x] Authored tree LODs (R43, R108): retain nearby detail and forest population, simplify
   distant canopies and their shadows, with screen-size selection and bounded spatial batches;
   verify native FPS and Low's rendering cost without changing kept worlds.
+- [ ] Distant woods read as dense forest (R146, [measurements](benchmarks/distant-forest.md)):
+  - [x] Forest ground turns into a baked canopy of crowns with distance, nearer the fewer trees
+    are drawn, out to the horizon; tracks and paths end at 1 km
+  - [ ] Canopy shells from the wood outlines for volume and ridgeline silhouettes, rising with
+    distance; ways through woods hidden under them rather than ended by distance
 - [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
   its own value, kept per computer
@@ -652,6 +657,16 @@ physically based materials and light, restyled group by group.
     conflicts: the ridden road's carriageway, verge, tunnel cover and portal ground stay as
     without surrounding ways, other ways yield and follow the ground they are left, earthworks
     fade out within their reach and end at an intervening way. Generator 36 / stored format 3.
+  - [x] Map detail from region downloads ([ADR 0033](adr/0033-map-detail.md)): riders who
+    opt in download Geofabrik regions; the surfaces the tiles cannot tell (cobbles, paving,
+    concrete, dirt, grass) and the roundabouts come from them, for courses prepared afterwards
+    - [x] Own `.osm.pbf` reader and extractor; `orqwa-cli detail` measures a region
+    - [x] Surfaces in prepared courses, carried in their course files
+    - [x] Settings → Courses: the setting, the regions downloaded to update or delete (R142)
+    - [x] Roundabouts ridden the way traffic goes where the detail maps them (R143), once
+      round per visit, leaving at the first pass of the way out (R145, generator 35)
+    - [x] Courses in the library take a region's detail once opened, their kept worlds built
+      again (R144)
   - [x] Vegetation: spruces of drooping needle sprays, broadleaf trees with limbs and crowns
     of leaf-cluster cards (`art/vegetation/foliage.py`), lit through and fluttering; barked
     trunks; rounded rocks with a new rock texture (no paving cells)

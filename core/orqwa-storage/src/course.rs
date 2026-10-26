@@ -99,6 +99,10 @@ pub struct Manifest {
     /// the map data leaves out).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub countries: Option<Vec<CourseCountry>>,
+    /// The map detail extracts it was prepared with (ADR 0033), whose cells it carries among
+    /// its data; opening it reads those again, and none for a course prepared without.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub map_detail: Vec<String>,
 }
 
 /// A country a course passes (#230).
@@ -345,14 +349,18 @@ pub fn unpack(path: &Path, data_root: &Path) -> Result<Unpacked, CourseError> {
 /// # Errors
 /// [`CourseError::NewerFormat`] for files from a newer ORQWA, or an I/O, zip or manifest error.
 pub fn rewrite_manifest(path: &Path, manifest: &Manifest) -> Result<(), CourseError> {
-    rewrite(path, &[MANIFEST], |out| {
-        out.start_file(
-            MANIFEST,
-            SimpleFileOptions::default().compression_method(CompressionMethod::Deflated),
-        )?;
-        serde_json::to_writer_pretty(out, manifest)?;
-        Ok(())
-    })
+    rewrite(
+        path,
+        |name| name == MANIFEST,
+        |out| {
+            out.start_file(
+                MANIFEST,
+                SimpleFileOptions::default().compression_method(CompressionMethod::Deflated),
+            )?;
+            serde_json::to_writer_pretty(out, manifest)?;
+            Ok(())
+        },
+    )
 }
 
 /// The course's map picture, if it has one: the PNG the app drew when it was prepared (#192),
@@ -403,27 +411,69 @@ pub fn fingerprint(path: &Path) -> Result<String, CourseError> {
     Ok(format!("{:016x}", hasher.finish()))
 }
 
+/// Puts `manifest` into the course's file, and the `files` under `data_root`'s directory
+/// `under` (e.g. `osm/detail-v1`) in place of those it carried there; the rest stays as it was.
+/// Its fingerprint changes with them, so a world kept of it is built again.
+///
+/// # Errors
+/// If the course cannot be read or written, or a file lies outside `data_root`.
+pub fn replace_data(
+    path: &Path,
+    manifest: &Manifest,
+    (data_root, under): (&Path, &str),
+    files: &[PathBuf],
+) -> Result<(), CourseError> {
+    let prefix = format!("{DATA}{}/", under.trim_end_matches('/'));
+    rewrite(
+        path,
+        |name| name == MANIFEST || name.starts_with(&prefix),
+        |out| {
+            let deflated =
+                SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+            out.start_file(MANIFEST, deflated)?;
+            serde_json::to_writer_pretty(&mut *out, manifest)?;
+            for file in files {
+                let relative = file
+                    .strip_prefix(data_root)
+                    .map_err(|_| CourseError::OutsideRoot(file.clone(), data_root.to_owned()))?;
+                let name = relative
+                    .components()
+                    .map(|c| c.as_os_str().to_string_lossy())
+                    .collect::<Vec<_>>()
+                    .join("/");
+                out.start_file(format!("{DATA}{name}"), deflated)?;
+                io::copy(&mut BufReader::new(File::open(file)?), out)?;
+            }
+            Ok(())
+        },
+    )
+}
+
 /// Puts the course's map picture `png` into its file, in place of an earlier one (#192).
 ///
 /// # Errors
 /// If the course cannot be read or written.
 pub fn set_preview(path: &Path, png: &[u8]) -> Result<(), CourseError> {
-    rewrite(path, &[PREVIEW, CORRIDOR_PREVIEW], |out| {
-        // A PNG is compressed already.
-        out.start_file(
-            PREVIEW,
-            SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
-        )?;
-        out.write_all(png)?;
-        Ok(())
-    })
+    rewrite(
+        path,
+        |name| [PREVIEW, CORRIDOR_PREVIEW].contains(&name),
+        |out| {
+            // A PNG is compressed already.
+            out.start_file(
+                PREVIEW,
+                SimpleFileOptions::default().compression_method(CompressionMethod::Stored),
+            )?;
+            out.write_all(png)?;
+            Ok(())
+        },
+    )
 }
 
 /// Writes the course again with the entries `replaced` left out, what `write` writes added, and
 /// everything else copied as it is; the file appears whole or not at all.
 fn rewrite(
     path: &Path,
-    replaced: &[&str],
+    replaced: impl Fn(&str) -> bool,
     write: impl FnOnce(&mut ZipWriter<BufWriter<File>>) -> Result<(), CourseError>,
 ) -> Result<(), CourseError> {
     let mut zip = ZipArchive::new(BufReader::new(File::open(path)?))?;
@@ -434,7 +484,7 @@ fn rewrite(
         write(&mut out)?;
         for index in 0..zip.len() {
             let entry = zip.by_index_raw(index)?;
-            if !replaced.contains(&entry.name()?.as_ref()) {
+            if !replaced(entry.name()?.as_ref()) {
                 out.raw_copy_file(entry)?;
             }
         }
@@ -490,6 +540,7 @@ mod tests {
             profile: vec![[0.0, 500.0], [12_345.0, 620.0]],
             video: None,
             countries: None,
+            map_detail: Vec::new(),
         }
     }
 
@@ -611,11 +662,15 @@ mod tests {
         let path = dir.join("lake.tqc");
         write(&path, &manifest(), "<gpx/>", &dir, &[]).unwrap();
         assert!(preview_outdated(&path));
-        rewrite(&path, &[], |out| {
-            out.start_file(CORRIDOR_PREVIEW, SimpleFileOptions::default())?;
-            out.write_all(b"PNG corridor")?;
-            Ok(())
-        })
+        rewrite(
+            &path,
+            |_| false,
+            |out| {
+                out.start_file(CORRIDOR_PREVIEW, SimpleFileOptions::default())?;
+                out.write_all(b"PNG corridor")?;
+                Ok(())
+            },
+        )
         .unwrap();
 
         assert_eq!(preview(&path).as_deref(), Some(&b"PNG corridor"[..]));
@@ -719,6 +774,48 @@ mod tests {
             ..reference
         };
         assert_eq!(other_size.locate(&dir.join("ride.tqc")), None);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn data_under_one_directory_is_replaced_and_the_rest_kept() {
+        let dir = temp_dir("replace-data");
+        let tile = dir.join("osm/tiles/14/1/2.pbf");
+        let old = dir.join("osm/detail-v1/bern-2026-10-24/12/0/0.json");
+        let new = dir.join("osm/detail-v1/bern-2026-11-20/12/0/0.json");
+        for (file, content) in [(&tile, "tile"), (&old, "old"), (&new, "new")] {
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, content).unwrap();
+        }
+        let course = dir.join("course.tqc");
+        write(&course, &manifest(), "<gpx/>", &dir, &[tile.clone(), old]).unwrap();
+        let before = fingerprint(&course).unwrap();
+        let updated = Manifest {
+            map_detail: vec!["bern-2026-11-20".to_owned()],
+            ..manifest()
+        };
+
+        replace_data(&course, &updated, (&dir, "osm/detail-v1"), &[new]).unwrap();
+
+        assert_eq!(read_manifest(&course).unwrap(), updated);
+        assert_ne!(fingerprint(&course).unwrap(), before);
+        let unpacked = dir.join("unpacked");
+        unpack(&course, &unpacked).unwrap();
+        let read = |p: &str| std::fs::read_to_string(unpacked.join(p)).ok();
+        assert_eq!(
+            read("osm/tiles/14/1/2.pbf").as_deref(),
+            Some("tile"),
+            "the rest stays"
+        );
+        assert_eq!(
+            read("osm/detail-v1/bern-2026-11-20/12/0/0.json").as_deref(),
+            Some("new")
+        );
+        assert_eq!(
+            read("osm/detail-v1/bern-2026-10-24/12/0/0.json"),
+            None,
+            "the old goes"
+        );
         std::fs::remove_dir_all(dir).unwrap();
     }
 

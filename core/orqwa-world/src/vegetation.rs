@@ -26,7 +26,7 @@ const FOREST_SPACING: f64 = 4.0;
 /// Distant woodland still needs enough crowns to read as forest against the horizon.
 const FAR_SPACING: f64 = 10.0;
 /// Within this distance of the road trees use the near spacing, and other plants grow at all.
-const NEAR_DISTANCE: f64 = 300.0;
+pub(crate) const NEAR_DISTANCE: f64 = 300.0;
 /// Bushes and ferns grow under the trees within this distance of the road.
 const UNDERSTOREY_DISTANCE: f64 = 60.0;
 /// Ferns share a patch decision across this much woodland floor, rather than isolated dots.

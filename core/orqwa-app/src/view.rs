@@ -46,6 +46,19 @@ pub fn track(route: &Route, max_points: usize) -> Vec<(f64, f64)> {
     pick(route, max_points, |p| projection.project(p.lat, p.lon))
 }
 
+/// How far the land around the route lies from it (R146), from every point of the route in the
+/// world's projection.
+#[must_use]
+pub fn route_distances(route: &Route) -> orqwa_world::RouteDistances {
+    let projection = LocalProjection::for_route(route);
+    let points: Vec<(f64, f64)> = route
+        .points()
+        .iter()
+        .map(|p| projection.project(p.lat, p.lon))
+        .collect();
+    orqwa_world::route_distances(&points)
+}
+
 fn pick<T>(
     route: &Route,
     max_points: usize,

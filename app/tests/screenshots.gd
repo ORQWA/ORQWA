@@ -314,6 +314,8 @@ func _settings_screens(start: StartPage, out_dir: String) -> void:
 	var orqwa: OrqwaApp = _main.get_node("Orqwa")
 	var kept: bool = orqwa.keeps_worlds()
 	await _keep_a_world(orqwa)
+	var detail: bool = orqwa.map_detail()
+	await _detail_on(orqwa)
 	var settings: SettingsDialog = start.get("_settings")
 	var settings_button: Button = start.get("_settings_button")
 	settings_button.pressed.emit()
@@ -336,6 +338,15 @@ func _settings_screens(start: StartPage, out_dir: String) -> void:
 	settings.hide()
 	# As this computer had it: turned off, the worlds kept for the picture go.
 	orqwa.set_keeps_worlds(kept)
+	orqwa.set_map_detail(detail)
+
+
+## Map detail on, for the Courses tab to list the regions in the cache (ADR 0033): a download
+## put there for the picture is prepared first.
+func _detail_on(orqwa: OrqwaApp) -> void:
+	orqwa.set_map_detail(true)
+	if orqwa.map_detail_busy():
+		await orqwa.map_detail_changed
 
 
 ## A course's world kept, for the Courses tab to list (R136): the loaded course's, or else

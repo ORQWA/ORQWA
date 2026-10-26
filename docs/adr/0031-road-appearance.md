@@ -162,3 +162,16 @@ one; otherwise unknown stretches keep right until the border inputs are availabl
 Only avatar coordinates change. The original centre-line route still drives recording,
 physics, distance, video synchronization and the minimap. Geometry and its stored contract
 are unchanged, so generator 10 / format 3 remain valid and no world regeneration is needed.
+
+## Amendment — surfaces from map detail (2026-10-25, ADR 0033)
+
+The tiles still tell only paved and unpaved. Where a course was prepared with a region's map
+detail ([ADR 0033](0033-map-detail.md)), each road takes the surface of the mapped way along
+it: the same kind of road, within 4 m, aligned (cosine at least 0.9), at most of three points
+along each segment, and only a surface the tile's paved or unpaved agrees with — a paved
+sidewalk beside an asphalt street, or a dirt surface on a paved road, changes nothing. A
+road is split at its own points where the surface changes; pieces under 5 m join their
+neighbour, so junctions leave no slivers. The detail is applied after the route is matched,
+which still reads the roads as the tiles have them. The rule above stands: the detail comes
+from the cache and the course file, never from a download on preparation, opening, ride start
+or regeneration. Courses without detail come out as before, so the generator stays.

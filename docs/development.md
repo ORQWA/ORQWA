@@ -42,6 +42,7 @@ does the same.
 | Regenerate the boot splash PNG after a logo change | `scripts/render-splash.sh` |
 | Refresh the translation template after text changes | `python3 scripts/i18n/extract.py` |
 | Refresh the crates' licence notices the About tab shows, after changing dependencies ([ADR 0018](adr/0018-about-and-notices.md)) | `scripts/notices.sh` |
+| Make the map detail of an OpenStreetMap region download and measure it ([ADR 0033](adr/0033-map-detail.md)) | `cargo run --release --manifest-path core/Cargo.toml -p orqwa-cli -- detail <region>-latest.osm.pbf <out>` |
 | Run the CLI with the fake trainer | `cargo run --manifest-path core/Cargo.toml -p orqwa-cli -- ride --fake` |
 
 The 3D models are Blender scripts in `art/` (see [art/README.md](../art/README.md) for them and a
@@ -55,6 +56,17 @@ regenerate them; one that kept worlds could no longer be read or drawn with rais
 (`ORQWA_WRITE_STORED_WORLD=1 cargo test -p orqwa-world stored`). With **Keep courses ready to
 ride** on, a library course rides the world kept before your change: turn it off while working
 on the generator. Renders and screenshots prepare GPX routes, which always build.
+
+Map detail ([ADR 0033](adr/0033-map-detail.md)) changes no generator: the surfaces come with
+a course's inputs, so a course prepared with them has its own fingerprint and one without
+comes out as before. To try it in the container, put a region's download at
+`~/.cache/orqwa/osm/geofabrik/<id>.osm.pbf`, run
+`orqwa-cli detail ~/.cache/orqwa/osm/geofabrik/<id>.osm.pbf ~/.cache/orqwa/osm/detail-v1 --region <id>`
+and write its record `~/.cache/orqwa/osm/geofabrik/<id>.json`
+(`{"id": "<id>", "name": "…", "extract": "<id>-<date the command printed>"}`); GPX routes
+prepared afterwards use it. With a region ready, `ORQWA_COURSE=<course.tqc> cargo test -p
+orqwa-app -- --ignored --nocapture roundabouts_of_a_course` tells how far a course is ridden
+against the traffic round each ring the detail maps (R143).
 
 Urban surfaces and benches (R105–R106, [ADR 0027](adr/0027-urban-surfaces.md)) use generator 7
 and stored world format 2: chunks include an `urban` mesh and its material codes. The format-2
@@ -116,6 +128,15 @@ stored format remains 3.
 Generator 34 keeps sidewalk segment intersections inside each cut polygon's finite bounds.
 Nearly collinear remnants with degenerate end edges cannot act as infinite bands, connect
 walks across gaps or hide distant exposed edges. The 12 m minimum and stored format 3 remain.
+
+Generator 35 goes round a roundabout once per visit (R145). A run of a file's points matched
+on a ring, or at it on a street leading off it (within 3 m), is left out where going through
+them would take the line more than a lap and 5 m round between the points before and after
+the run (`Network::once_round` in `orqwa-routes/src/snap.rs`): they lie beside the ring past
+the way out, as where a file follows a path beside it or rests there. The line then leaves
+the ring the first time it passes its way out. A turn back at a roundabout, once round, stays.
+Rings the map detail marks (R143) and those R126 finds by their shape are treated alike, so
+courses without detail can come out differently too. Stored format 3 remains.
 
 River surfaces (R118, [ADR 0030](adr/0030-river-levels.md)) use generator 8 with the same
 stored format 2. `water_levels.rs` samples waterway centre lines before chunk generation;
@@ -355,6 +376,10 @@ The automatic-finish, manual-finish and discard flows are checked by `summary_sm
 For a graphics/settings change, capture only the settings with
 `SCREENSHOT_SETTINGS_ONLY=1 scripts/screenshots.sh` in the container; this avoids building
 a course or populating sample rides. `SCREENSHOT_LOCALE=de` selects German for the same run.
+The Courses tab turns map detail on for its picture and lists the regions in the container's
+cache: copy a region's download to `~/.cache/orqwa/osm/geofabrik/<id>.osm.pbf` first (e.g.
+Switzerland's), and it is prepared before the capture; the setting is restored afterwards,
+which deletes the region if map detail was off.
 
 ```sh
 scripts/dev.sh sh -c 'XDG_DATA_HOME=$PWD/screenshots/refresh-data SCREENSHOT_DIR=$PWD/screenshots/refresh/app timeout 240 xvfb-run -a godot --path app --resolution 1600x900 -s res://tools/capture_details.gd'

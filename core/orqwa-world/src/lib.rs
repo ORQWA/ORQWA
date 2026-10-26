@@ -25,6 +25,7 @@ mod railways;
 mod riding;
 mod road;
 mod roundabouts;
+mod route_distances;
 pub mod stored;
 mod streets;
 mod structures;
@@ -47,6 +48,7 @@ pub use minimap::{FlatMap, MapFeature, minimap};
 pub use props::{Label, Props};
 pub use riding::RoadWidths;
 use road::RoadIndex;
+pub use route_distances::{DENSE_FOREST, DISTANCE_STEP, RouteDistances, route_distances};
 pub use vegetation::Trees;
 
 /// What worlds look like. Raise it whenever a change makes the same course come out
