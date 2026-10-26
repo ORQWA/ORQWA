@@ -32,7 +32,8 @@ import org.godotengine.godot.plugin.UsedByGodot;
 /**
  * Readies ORQWA on Android (ADR 0024). Godot creates its plugins before it opens its
  * extensions, on the app's main thread: loading ORQWA's library here runs its JNI_OnLoad with
- * the app's class loader, the one moment btleplug can find its Java classes. Then it hands the
+ * the app's class loader, the one moment btleplug can find its Java classes, and names the
+ * folder for ORQWA's data, which sync apps reach (R148). Then it hands the
  * app's context to HTTPS's certificate checks and asks for Bluetooth, which Android grants only
  * at run time. It also installs ORQWA's updates (R99): the APK the core downloaded, handed to
  * Android's installer.
@@ -47,10 +48,26 @@ public class OrqwaAndroid extends GodotPlugin {
     public OrqwaAndroid(Godot godot) {
         super(godot);
         System.loadLibrary("orqwa_gd");
+        initStorage(sharedFolder(godot.getContext()));
     }
 
     /** Readies HTTPS's certificate checks through Android (rustls-platform-verifier). */
     private static native void initTls(Context context);
+
+    /** Names ORQWA's folder in shared storage to the core, before Godot opens it (R148). */
+    private static native void initStorage(String folder);
+
+    /**
+     * ORQWA's own folder in shared storage, `Android/media/org.orqwa.bike`, which Android
+     * creates here; null where shared storage is not ready. It is the one folder of ORQWA's that
+     * sync apps allowed all files reach (ORQWA needs no permission for it); the newer MediaStore
+     * holds media only, not rides and courses.
+     */
+    @SuppressWarnings("deprecation")
+    private static String sharedFolder(Context context) {
+        File[] folders = context.getExternalMediaDirs();
+        return folders.length > 0 && folders[0] != null ? folders[0].getAbsolutePath() : null;
+    }
 
     @Override
     public String getPluginName() {

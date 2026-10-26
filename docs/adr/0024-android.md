@@ -180,3 +180,35 @@ many. So ORQWA installs its updates on Android as on Windows (ADR 0023):
   release builds update from releases; a CI or debug build is refused and says so.
 - **Removal.** The two permissions and the plugin's installer go with the plugin; the core's
   Android installer name and `can_install` go with the other `target_os = "android"` code.
+
+## Amendment 2026-10-26: data that sync apps reach (R148)
+
+Riders sync the data folder between computers (R30, ADR 0002), but on Android it lay in the app's
+private `files` folder, which no other app may enter since Android 11. Of the folders Android
+gives an app, only `Android/media/<app>` is shared storage: the app needs no permission for it,
+and an app allowed **all files** (`MANAGE_EXTERNAL_STORAGE`, as Syncthing and FolderSync ask
+for) reaches it too. `Android/data/<app>` stays closed even to those. Nextcloud's own Android
+app does not keep a folder in two-way sync, and its Play build may not have all files; FolderSync
+syncs with a Nextcloud server instead.
+
+- **Where.** The plugin's constructor names `getExternalMediaDirs()`'s first folder to the core
+  (`initStorage`), before Godot opens the extension; the data lives in `ORQWA` inside it. Android
+  deprecated that call for MediaStore, which holds media only, not rides, courses and settings;
+  it still creates and returns the folder. Where shared storage is not ready, the data stays in
+  the private folder.
+- **Moving.** Shared storage is another file system, so the private data is copied into
+  `ORQWA.moving` beside it, renamed to `ORQWA` and only then removed: `ORQWA` never holds half the
+  data, and a move cut short is made again from the start. One that fails, for want of room
+  for a second copy, leaves the private folder in use. An `ORQWA` a sync app filled before the
+  first start wins, and the private folder is left as it is, like Torqa's (R102).
+- **The gallery.** Shared storage is scanned for media, so course videos would show among the
+  rider's photos. A `.nomedia` beside `ORQWA`, not in it, keeps them out without syncing an
+  Android file to the computers.
+- **Not moved.** The cache stays private: the kept worlds, this tablet's own settings and the
+  history's index, which drops the old paths and reads the moved files once. Picked files are
+  still copied through Godot's own folder.
+- **Uninstalling** deletes `Android/media/<app>` as it did the private folder. A copy synced
+  elsewhere survives, unless the sync app passes the deletion on; the wiki says to stop syncing
+  first.
+- **Removal.** `initStorage` and the plugin's call go with the plugin and the
+  `target_os = "android"` code; `paths::android_shared_data_dir` with its move goes with them.

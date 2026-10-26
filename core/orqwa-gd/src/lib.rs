@@ -178,7 +178,7 @@ impl INode for OrqwaApp {
         } else {
             // Set once per process; a second node keeps the first one's.
             let _ = tracing::subscriber::set_global_default(log::StderrLog);
-            App::new(paths::data_dir(), paths::cache_dir())
+            App::new(data_dir(), paths::cache_dir())
                 .inspect(|app| {
                     if let Err(error) = app.add_sample_course(SAMPLE_COURSE_FILE, SAMPLE_COURSE) {
                         tracing::warn!(%error, "cannot add the sample course");
@@ -4315,6 +4315,44 @@ pub extern "system" fn JNI_OnLoad(
         Err(error) => orqwa_devices::android::log(&format!("Bluetooth not ready: {error}")),
     }
     orqwa_devices::android::sys::JNI_VERSION_1_6
+}
+
+/// ORQWA's data directory: on Android in shared storage once the APK's plugin has named it
+/// (R148, ADR 0024), which it does before Godot opens this extension.
+fn data_dir() -> PathBuf {
+    #[cfg(target_os = "android")]
+    if let Some(shared) = ANDROID_SHARED.get() {
+        return paths::android_shared_data_dir(shared);
+    }
+    paths::data_dir()
+}
+
+/// ORQWA's own folder in Android's shared storage, from the APK's plugin.
+#[cfg(target_os = "android")]
+static ANDROID_SHARED: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// Called once by the APK's plugin with ORQWA's own folder in shared storage
+/// (`Android/media/<app>`, R148), or null where Android has no shared storage ready.
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_org_orqwa_android_OrqwaAndroid_initStorage<'caller>(
+    mut env: orqwa_devices::android::jni::EnvUnowned<'caller>,
+    _class: orqwa_devices::android::jni::objects::JClass<'caller>,
+    folder: orqwa_devices::android::jni::objects::JString<'caller>,
+) {
+    use orqwa_devices::android::jni::Outcome;
+    let outcome = env.with_env(|env| folder.try_to_string(env)).into_outcome();
+    orqwa_devices::android::log(&match outcome {
+        Outcome::Ok(folder) => {
+            let message = format!("shared storage: {folder}");
+            let _ = ANDROID_SHARED.set(PathBuf::from(folder));
+            message
+        }
+        Outcome::Err(error) => format!("no shared storage, data stays private: {error}"),
+        Outcome::Panic(_) => {
+            "no shared storage, data stays private: reading it panicked".to_owned()
+        }
+    });
 }
 
 /// Called once by the APK's plugin with the app's context (ADR 0024): HTTPS checks certificates

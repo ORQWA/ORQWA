@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The platform's per-user data directory for ORQWA (rides, routes, settings), with Torqa's
-/// moved there on the first start after the rename (R102).
+/// moved there on the first start after the rename (R102). On Android the app's private one,
+/// for when shared storage is missing ([`android_shared_data_dir`]).
 #[must_use]
 pub fn data_dir() -> PathBuf {
     if cfg!(target_os = "android") {
@@ -76,6 +77,75 @@ fn android_dirs(app_cache: &std::path::Path) -> (PathBuf, PathBuf) {
     (app.join("files").join("orqwa"), app_cache.join("orqwa"))
 }
 
+/// ORQWA's data directory on Android in `shared`, the app's own folder in shared storage
+/// (`Android/media/<app>`, R148, ADR 0024) that the APK's plugin names: no app reaches the
+/// private `files` folder, but sync apps allowed all files reach this one. What the private
+/// folder held is moved there once; while that fails, the private folder stays in use.
+#[must_use]
+pub fn android_shared_data_dir(shared: &Path) -> PathBuf {
+    into_shared(&android_dirs(&std::env::temp_dir()).0, shared)
+}
+
+/// The data directory `ORQWA` in `shared`, with `private` moved into it when only `private`
+/// holds data. A sync app may have filled `ORQWA` first: then it wins, and `private` is left as
+/// it is, as Torqa's folder is when ORQWA's exists (R102).
+fn into_shared(private: &Path, shared: &Path) -> PathBuf {
+    let data = shared.join("ORQWA");
+    // Beside the data, not in it: a computer syncing the data has no gallery to hide videos from.
+    let hidden = std::fs::create_dir_all(shared).and_then(|()| {
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(shared.join(".nomedia"))
+            .map(drop)
+    });
+    if let Err(error) = hidden {
+        tracing::warn!(%error, "course videos may show in the gallery");
+    }
+    if data.exists() || !private.exists() {
+        return data;
+    }
+    // Shared storage is another file system, so this is a copy: made aside and renamed into
+    // place, so that `ORQWA` never holds half the data, and one cut short is made again.
+    let moving = shared.join("ORQWA.moving");
+    let moved = std::fs::remove_dir_all(&moving)
+        .or_else(|error| match error.kind() {
+            std::io::ErrorKind::NotFound => Ok(()),
+            _ => Err(error),
+        })
+        .and_then(|()| copy_tree(private, &moving))
+        .and_then(|()| std::fs::rename(&moving, &data));
+    match moved {
+        Ok(()) => {
+            tracing::info!(to = %data.display(), "moved the data to shared storage");
+            if let Err(error) = std::fs::remove_dir_all(private) {
+                tracing::warn!(%error, folder = %private.display(), "cannot remove the moved data");
+            }
+            data
+        }
+        Err(error) => {
+            let _ = std::fs::remove_dir_all(&moving);
+            tracing::warn!(%error, "cannot move the data to shared storage; it stays private");
+            private.to_path_buf()
+        }
+    }
+}
+
+/// Copies the folder `from` with everything in it to `to`.
+fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_tree(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), target)?;
+        }
+    }
+    Ok(())
+}
+
 /// `orqwa-YYYYMMDD-HHMMSS.fit` in UTC.
 #[must_use]
 pub fn activity_file_name(start: SystemTime) -> PathBuf {
@@ -123,6 +193,94 @@ mod tests {
         assert_eq!(
             cache,
             PathBuf::from("/data/user/0/org.orqwa.bike/cache/orqwa")
+        );
+    }
+
+    /// A private data folder as an earlier ORQWA left it on Android, with a ride and a course.
+    fn private_data(base: &Path) -> PathBuf {
+        let private = base.join("files/orqwa");
+        std::fs::create_dir_all(private.join("profiles/rider/rides")).unwrap();
+        std::fs::create_dir_all(private.join("courses")).unwrap();
+        std::fs::write(private.join("profiles/rider/rides/a.fit"), b"ride").unwrap();
+        std::fs::write(private.join("courses/Lake.tqc"), b"course").unwrap();
+        private
+    }
+
+    #[test]
+    fn on_android_the_data_moves_where_sync_apps_reach_it() {
+        let base = scratch("shared-move");
+        let private = private_data(&base);
+        let shared = base.join("media/org.orqwa.bike");
+
+        let data = into_shared(&private, &shared);
+
+        assert_eq!(data, shared.join("ORQWA"));
+        assert_eq!(
+            std::fs::read(data.join("profiles/rider/rides/a.fit")).unwrap(),
+            b"ride"
+        );
+        assert_eq!(
+            std::fs::read(data.join("courses/Lake.tqc")).unwrap(),
+            b"course"
+        );
+        assert!(!private.exists(), "the data is moved, not left twice");
+        assert!(!shared.join("ORQWA.moving").exists());
+    }
+
+    #[test]
+    fn data_a_sync_app_brought_first_wins_and_the_private_data_stays_untouched() {
+        let base = scratch("shared-synced");
+        let private = private_data(&base);
+        let shared = base.join("media/org.orqwa.bike");
+        std::fs::create_dir_all(shared.join("ORQWA/profiles/synced")).unwrap();
+
+        assert_eq!(into_shared(&private, &shared), shared.join("ORQWA"));
+        assert!(!shared.join("ORQWA/profiles/rider").exists());
+        assert!(private.join("profiles/rider/rides/a.fit").exists());
+    }
+
+    #[test]
+    fn a_move_cut_short_is_made_again_whole() {
+        let base = scratch("shared-again");
+        let private = private_data(&base);
+        let shared = base.join("media/org.orqwa.bike");
+        std::fs::create_dir_all(shared.join("ORQWA.moving/profiles")).unwrap();
+        std::fs::write(shared.join("ORQWA.moving/half.fit"), b"ha").unwrap();
+
+        let data = into_shared(&private, &shared);
+
+        assert!(data.join("profiles/rider/rides/a.fit").exists());
+        assert!(data.join("courses/Lake.tqc").exists());
+        assert!(!data.join("half.fit").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn data_that_cannot_move_stays_private_and_nothing_half_copied_shows_in_shared_storage() {
+        let base = scratch("shared-stuck");
+        let private = private_data(&base);
+        // A file that cannot be copied stops the move.
+        std::os::unix::fs::symlink(base.join("gone"), private.join("courses/gone.mp4")).unwrap();
+        let shared = base.join("media/org.orqwa.bike");
+
+        assert_eq!(into_shared(&private, &shared), private);
+        assert!(private.join("profiles/rider/rides/a.fit").exists());
+        assert!(!shared.join("ORQWA").exists());
+        assert!(!shared.join("ORQWA.moving").exists());
+    }
+
+    #[test]
+    fn a_new_tablet_starts_in_shared_storage_with_videos_kept_out_of_the_gallery() {
+        let base = scratch("shared-new");
+        let shared = base.join("media/org.orqwa.bike");
+
+        let data = into_shared(&base.join("files/orqwa"), &shared);
+
+        assert_eq!(data, shared.join("ORQWA"));
+        assert!(shared.join(".nomedia").is_file());
+        assert!(
+            !data.join(".nomedia").exists(),
+            "computers syncing the data get no Android file"
         );
     }
 
