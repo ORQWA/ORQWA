@@ -582,9 +582,8 @@ native macOS, Windows and both Linux builds, and the Android build. After all su
 `release` job verifies every nonempty app/CLI archive (the Android APK among them), creates a
 draft with generated release notes, uploads the archives and publishes it. Each archive goes up
 with the release's version in its name (`ORQWA-0.5.2-windows-x86_64.msi`,
-`orqwa-cli-0.5.2-linux-arm64.tar.gz`; #322); the builds and CI artifacts keep plain names. The
-Windows installer and the APK also go up under their plain names, which every ORQWA before the
-versioned names looks for when it updates itself. Only that job has
+`orqwa-cli-0.5.2-linux-arm64.tar.gz`; #322), and only under that name; the builds and CI
+artifacts keep plain names. Only that job has
 `contents: write`, using the automatic `GITHUB_TOKEN`.
 
 The APK of a tag is signed with ORQWA's release key, from the repository secrets

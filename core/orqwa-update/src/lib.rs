@@ -11,21 +11,19 @@ use tokio::io::AsyncWriteExt;
 /// GitHub's latest published release of ORQWA; drafts and pre-releases are never "latest".
 pub const LATEST_RELEASE: &str = "https://api.github.com/repos/ORQWA/ORQWA/releases/latest";
 
-/// The plain release asset name: the APK on Android, the MSI elsewhere (run only on Windows).
-/// Releases also carry it with their version in the name ([`installer_name`]); earlier
-/// ORQWA versions know only this plain name.
-pub const INSTALLER: &str = if cfg!(target_os = "android") {
-    "ORQWA-android-arm64.apk"
+/// The installer's platform in release asset names: the APK on Android, the MSI elsewhere (run
+/// only on Windows).
+const PLATFORM: &str = if cfg!(target_os = "android") {
+    "android-arm64.apk"
 } else {
-    "ORQWA-windows-x86_64.msi"
+    "windows-x86_64.msi"
 };
 
 /// The installer's release name, e.g. `ORQWA-0.5.2-windows-x86_64.msi` or
 /// `ORQWA-0.5.2-android-arm64.apk` (#322).
 #[must_use]
 pub fn installer_name(version: Version) -> String {
-    let platform = INSTALLER.strip_prefix("ORQWA-").unwrap_or(INSTALLER);
-    format!("ORQWA-{version}-{platform}")
+    format!("ORQWA-{version}-{PLATFORM}")
 }
 
 /// Something went wrong looking for, downloading or installing an update.
@@ -84,7 +82,7 @@ pub struct Release {
     pub version: Version,
     /// The release's page, with its notes.
     pub page: String,
-    /// This system's installer ([`INSTALLER`]), when the release carries one.
+    /// This system's installer ([`installer_name`]), when the release carries one.
     pub installer: Option<Installer>,
 }
 
@@ -151,12 +149,11 @@ pub fn parse_release(json: &str) -> Result<Release, UpdateError> {
     let tag = value["tag_name"].as_str().unwrap_or_default();
     let version = Version::parse(tag)
         .ok_or_else(|| UpdateError::Unexpected(format!("tag {tag:?} is no version")))?;
-    // The versioned name first: the plain one is published only while earlier versions need it.
-    let versioned = installer_name(version);
+    let name = installer_name(version);
     let installer = value["assets"].as_array().and_then(|assets| {
-        [versioned.as_str(), INSTALLER]
+        assets
             .iter()
-            .find_map(|name| assets.iter().find(|asset| asset["name"] == *name))
+            .find(|asset| asset["name"] == name.as_str())
             .and_then(|asset| {
                 Some(Installer {
                     url: asset["browser_download_url"].as_str()?.to_owned(),
@@ -225,10 +222,10 @@ pub const fn can_install() -> bool {
     cfg!(any(windows, target_os = "android"))
 }
 
-/// The name a downloaded installer of `version` is saved as, ending as [`INSTALLER`] does.
+/// The name a downloaded installer of `version` is saved as, ending as its release name does.
 #[must_use]
 pub fn download_name(version: Version) -> String {
-    let extension = INSTALLER.rsplit('.').next().unwrap_or_default();
+    let extension = PLATFORM.rsplit('.').next().unwrap_or_default();
     format!("ORQWA-{version}.{extension}")
 }
 
@@ -340,8 +337,12 @@ mod tests {
         let json = release_json(
             "v0.5.0",
             &[
-                asset("ORQWA-windows-x86_64.zip", "https://x/zip", 1),
-                asset(INSTALLER, "https://x/msi", 130_000_000),
+                asset("ORQWA-0.5.0-windows-x86_64.zip", "https://x/zip", 1),
+                asset(
+                    &installer_name(Version::parse("0.5.0").unwrap()),
+                    "https://x/msi",
+                    130_000_000,
+                ),
             ]
             .join(","),
         );
@@ -360,7 +361,7 @@ mod tests {
     }
 
     #[test]
-    fn the_installer_named_with_its_version_is_taken_first() {
+    fn the_installer_named_with_the_release_version_is_taken() {
         let platform = if cfg!(target_os = "android") {
             "android-arm64.apk"
         } else {
@@ -369,39 +370,24 @@ mod tests {
         let both = release_json(
             "v0.5.2",
             &[
-                asset(INSTALLER, "https://x/plain", 1),
+                asset(&format!("ORQWA-0.5.1-{platform}"), "https://x/old", 1),
                 asset(&format!("ORQWA-0.5.2-{platform}"), "https://x/versioned", 2),
             ]
             .join(","),
-        );
-        let versioned_only = release_json(
-            "v0.5.2",
-            &asset(&format!("ORQWA-0.5.2-{platform}"), "https://x/versioned", 2),
         );
         let another_version = release_json(
             "v0.5.2",
             &asset(&format!("ORQWA-0.5.1-{platform}"), "https://x/old", 3),
         );
 
-        for json in [both, versioned_only] {
-            let installer = parse_release(&json).unwrap().installer.unwrap();
-            assert_eq!(installer.url, "https://x/versioned");
-        }
+        let installer = parse_release(&both).unwrap().installer.unwrap();
+        assert_eq!(installer.url, "https://x/versioned");
         assert_eq!(parse_release(&another_version).unwrap().installer, None);
     }
 
     #[test]
     fn each_system_takes_its_own_installer() {
-        let plain = release_json(
-            "v0.5.1",
-            &[
-                asset("ORQWA-android-arm64.apk", "https://x/apk", 160_000_000),
-                asset("ORQWA-windows-x86_64.msi", "https://x/msi", 220_000_000),
-            ]
-            .join(","),
-        );
-
-        let versioned = release_json(
+        let json = release_json(
             "v0.5.1",
             &[
                 asset(
@@ -423,10 +409,8 @@ mod tests {
         } else {
             ("https://x/msi", "ORQWA-0.5.1.msi")
         };
-        for json in [plain, versioned] {
-            let installer = parse_release(&json).unwrap().installer.unwrap();
-            assert_eq!(installer.url, url);
-        }
+        let installer = parse_release(&json).unwrap().installer.unwrap();
+        assert_eq!(installer.url, url);
         assert_eq!(download_name(Version::parse("0.5.1").unwrap()), name);
     }
 
@@ -456,7 +440,7 @@ mod tests {
 
     #[tokio::test]
     async fn the_latest_release_comes_from_github() {
-        let json = release_json("v0.5.0", &asset(INSTALLER, "https://x/msi", 3));
+        let json = release_json("v0.5.0", "");
         let site = serve(vec![("200 OK", json.into_bytes())]).await;
 
         let release = latest_release(&site).await.unwrap();

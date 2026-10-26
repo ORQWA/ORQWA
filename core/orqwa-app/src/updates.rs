@@ -211,7 +211,7 @@ mod tests {
     fn release(tag: &str) -> (&'static str, String) {
         let json = format!(
             r#"{{"tag_name":"{tag}","html_url":"https://example.org/{tag}","assets":[{{"name":"{}","size":4,"browser_download_url":"https://example.org/msi"}}]}}"#,
-            orqwa_update::INSTALLER
+            orqwa_update::installer_name(orqwa_update::Version::parse(tag).unwrap())
         );
         ("200 OK", json)
     }
