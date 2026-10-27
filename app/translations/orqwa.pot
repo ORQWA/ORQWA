@@ -3027,6 +3027,10 @@ msgstr ""
 msgid "Wind sound"
 msgstr ""
 
+#: core/orqwa-domain/src/season.rs
+msgid "Winter"
+msgstr ""
+
 #: app/scenes/history_screen.gd core/orqwa-app/src/hud.rs
 msgid "Work"
 msgstr ""

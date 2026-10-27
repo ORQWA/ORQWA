@@ -6,6 +6,8 @@ remote's [silent clip](#the-remotes-clip-remote). The scripts are the source; wh
 
 Seasonal presentation reuses these models, including their authored tree LODs; Summer is
 the green baseline. See [seasons](../docs/seasons.md) for the rendering contract and review.
+[Winter materials](../docs/seasons-winter.md) reuse vegetation and rock geometry for
+slope-dependent snow and dormant broadleaf foliage.
 
 ## Running Blender
 

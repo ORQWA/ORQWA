@@ -2461,3 +2461,6 @@ msgstr "Jahreszeit"
 
 msgid "Summer"
 msgstr "Sommer"
+
+msgid "Winter"
+msgstr "Winter"

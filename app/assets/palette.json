@@ -65,6 +65,10 @@
     "palms": ["#5a7a34", "#66843a", "#52722f", "#6f8a3c"],
     "tropical": ["#4f7a2e", "#5b8636", "#46702a", "#62883a"]
   },
+  "winter": {
+    "snow": "#e6edf1",
+    "dormant": "#76604a"
+  },
   "buildings": {
     "walls": ["#e9e4d8", "#e6d6bc", "#dcc6a6", "#c9b49c", "#efe9df", "#d8d4c6"],
     "light_walls": ["#ece8de", "#e4dfd3", "#e9e2d4", "#dfd9cd"],

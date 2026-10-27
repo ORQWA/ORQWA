@@ -70,6 +70,8 @@ func _run() -> void:
 		Vector3(1.4, ALTITUDE + 0.7, 15.4), Vector3(0, ALTITUDE + 0.4, 12.5)
 	)
 	await _save(out.path_join(season.to_lower() + "-flowers.png"))
+	if season == "Winter":
+		await _roof(world, camera, out)
 	quit()
 
 
@@ -115,3 +117,21 @@ func _ground(world: RideWorld) -> void:
 	ground.mesh = tool.commit()
 	ground.material_override = world.get("_terrain_material")
 	world.add_child(ground)
+
+
+func _roof(world: RideWorld, camera: Camera3D, out: String) -> void:
+	var house: MultiMesh = MultiMesh.new()
+	house.transform_format = MultiMesh.TRANSFORM_3D
+	house.use_colors = true
+	house.use_custom_data = true
+	house.mesh = BuildingModels.mesh("chalet_2_m")
+	house.instance_count = 1
+	house.set_instance_transform(0, Transform3D(Basis.IDENTITY, Vector3(0, ALTITUDE, 12)))
+	house.set_instance_color(0, Palette.colors("buildings.light_walls")[0])
+	house.set_instance_custom_data(0, Palette.colors("buildings.tiles")[0])
+	var node: MultiMeshInstance3D = MultiMeshInstance3D.new()
+	node.multimesh = house
+	world.add_child(node)
+	camera.fov = 55.0
+	camera.look_at_from_position(Vector3(14, ALTITUDE + 12, 26), Vector3(0, ALTITUDE + 3, 12))
+	await _save(out.path_join("winter-roof.png"))

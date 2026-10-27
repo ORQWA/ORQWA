@@ -16,6 +16,10 @@ func apply_options(
 	var previous: String = season
 	world.apply_conditions(time, weather)
 	apply(selected, orqwa, terrain)
+	var climate: Dictionary = {"snow_line": 2400.0, "deciduous_from": -10000.0}
+	if orqwa != null:
+		climate = orqwa.season_climate(season)
+	WinterMaterials.apply(world, season == "Winter", climate)
 	if previous != season:
 		world.call("_restart_chunks")
 	world.set_camera(camera)

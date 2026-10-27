@@ -29,6 +29,9 @@ func _run() -> void:
 		_check(selected == season, "hidden season retains selection")
 	options.free()
 	_small_plants()
+
+
+	_winter()
 	if not _failed:
 		print("SEASONS SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -59,3 +62,21 @@ func _small_plants() -> void:
 			_check(flowers.is_empty(), "autumn has no meadow flowers")
 		elif season == "Spring":
 			_check(flowers == original, "spring restores all meadow flowers")
+
+
+func _winter() -> void:
+	var world: RideWorld = (load("res://scenes/world.tscn") as PackedScene).instantiate()
+	root.add_child(world)
+	world.apply_options({"season": "Winter", "weather": "Clear", "time": "Midday", "camera": 0})
+	var needles: ShaderMaterial = VegetationModels.material("needles")
+	var strength: float = needles.get_shader_parameter("winter_strength")
+	_check(strength == 1.0, "winter reaches existing evergreen materials")
+	var broadleaf: bool = needles.get_shader_parameter("winter_broadleaf")
+	_check(not broadleaf, "winter keeps evergreen needles dense")
+	world.apply_options({"season": "Summer", "weather": "Rain", "time": "Evening", "camera": 0})
+	strength = needles.get_shader_parameter("winter_strength")
+	_check(strength == 0.0, "summer clears accumulated snow")
+	var terrain: ShaderMaterial = world.get("_terrain_material")
+	var snow_line: float = terrain.get_shader_parameter("snow_line")
+	_check(snow_line == 2400.0, "summer restores the high snow line")
+	world.free()

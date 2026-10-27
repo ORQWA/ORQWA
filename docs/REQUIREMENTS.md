@@ -285,6 +285,7 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 |---|---|
 | R154 | Extends R48 (2026-10-27, #350): 3D ride options offer **Season** beside **Weather** and **Time of day**, before and during a ride. **Summer** is the default, with green foliage and meadows. The choice is remembered on this computer, independent of the calendar, time and weather, and hidden for video-only rides and workouts without a course. Kept courses can change season without rebuilding their worlds. |
 | R158 | Refines R154 (2026-10-27, #350): Summer is predominantly grass, keeping only a stable 10% of the course's existing meadow flower clumps. All other flower positions become full grass tufts, preserving coverage, transforms and the complete kept world for other seasons. |
+| R157 | Extends R154 (2026-10-27, #350): selectable **Winter** lowers the snow line according to absolute route latitude, keeping tropical and subtropical lowlands free of snow. Snow covers sufficiently level ground and upward-facing vegetation and rocks above it; steep faces and submerged ground stay exposed, and the ridden road stays clear. Temperate broadleaves become sparse and dormant, needles stay evergreen, covered grass and flower heads disappear, and Summer restores the original materials without regenerating kept worlds. |
 
 ## Test hardware available
 
