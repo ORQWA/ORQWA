@@ -12,6 +12,7 @@ extends SceneTree
 const VIEWS: Dictionary[String, Array] = {
 	"village-chase": ["gurtenstrasse", 150.0, 0, "Midday", "Clear"],
 	"climb-chase": ["gurtenstrasse", 1840.0, 0, "Midday", "Clear"],
+	"winter-road-close": ["gurtenstrasse", 1840.0, 0, "Midday", "Clear", Vector3(2.0, 1.0, 6.0)],
 	"hairpin-drone": ["gurtenstrasse", 1240.0, 2, "Midday", "Clear"],
 	"hairpin-chase": ["gurtenstrasse", 1290.0, 0, "Midday", "Clear"],
 	"village-evening": ["gurtenstrasse", 150.0, 0, "Evening", "Clear"],
@@ -45,6 +46,7 @@ const VIEWS: Dictionary[String, Array] = {
 	"oberalp-bridge-under": ["oberalp", 4568.0, 1, "Midday", "Clear"],
 	"oberalp-bridge-side": ["oberalp", 4576.0, 0, "Midday", "Clear", Vector3(-16.0, 7.0, 18.0)],
 	"oberalp-hairpins-drone": ["oberalp", 6100.0, 2, "Midday", "Clear"],
+	"winter-mountain-close": ["oberalp", 6100.0, 0, "Midday", "Clear", Vector3(2.0, 1.2, 6.0)],
 	"oberalp-lake-drone": ["oberalp", 10900.0, 2, "Midday", "Clear"],
 	"oberalp-portal-drone": ["oberalp", 11600.0, 2, "Midday", "Clear"],
 	"oberalp-village-chase": ["oberalp", 24000.0, 0, "Midday", "Clear"],

@@ -244,3 +244,13 @@ Canopy shells, geometry rising from the wood outlines for volume and ridgeline s
 are the next step; they change the generator and stored format. A prototype lifting forest
 ground showed the look but also flat slabs, chunk seams where it switched, and nearby forest
 covered when it started too near. See [the measurements](../benchmarks/distant-forest.md).
+
+### Selected winter snow depth (2026-10-27, R161)
+
+Winter's road-edge snow needs a silhouette, so its rounded banks are disposable geometry
+derived from the retained wearing surface and shoulders. Their height follows the same
+latitude snow line as the materials, with deeper banks higher above it. Joining-street
+openings and structures are excluded. Spatial batches keep long courses bounded on screen.
+The street material adds broken cover and paired tyre grooves; runtime UV2 derived from
+route tags excludes tunnel interiors. Neither overlay changes course inputs, generated or
+stored meshes, collision, or resistance, so generator and stored-format versions stay put.

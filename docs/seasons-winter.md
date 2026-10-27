@@ -8,9 +8,18 @@ use the same selected winter. The Summer line remains 2,400 m outside the tropic
 The ground retains its slope and submerged-bed exclusions. Shared winter uniforms put
 snow on upward-facing foliage, rocks and building roofs, leave needles dense, and thin and brown
 temperate broadleaves. Tropical lowlands remain evergreen. Grass under snow and flower
-heads are hidden. Roads remain rideable and clear; resistance and physics are unchanged.
-Grass verges and grassy track centres share the snow treatment while their carriageways
-and wheel tracks stay clear, avoiding green strips around the snowy ground.
+heads are hidden. Resistance and physics are unchanged. Street snow is broken by paired
+tyre grooves in each traffic lane, with more continuous cover higher above the snow line.
+Grass verges and grassy track centres meet the snowy ground. Tunnel interiors stay clear.
+
+Raised, rounded banks follow the retained ridden-road edges outside the carriageway.
+Their settled depth starts around 10 cm, increases by 20 cm per kilometre above the snow
+line and caps at 70 cm, fading in across the same 120 m climate transition as surface snow.
+Their feet follow the drawn shoulder; joining streets, bridges and tunnels remain open.
+Runtime batches occupy 480 m cells and disappear beyond 850 m. These disposable overlays
+and the tunnel-exposure UV2 are derived from existing geometry and route tags; they add no
+stored fields and require no course regeneration. Snowbanks are a scenery approximation,
+not measured snow depth or a change to tyre resistance.
 
 Review the Gurten at road height and above, plus the Oberalp pass, and compare Summer
 from identical cameras. Include a tropical lowland fixture in the core climate tests.

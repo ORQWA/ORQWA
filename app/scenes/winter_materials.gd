@@ -24,6 +24,8 @@ static func apply(world: RideWorld, active: bool, climate: Dictionary) -> void:
 		material.set_shader_parameter("winter_leaf_color", Palette.color("winter.dormant"))
 		material.set_shader_parameter("winter_deciduous_from", climate["deciduous_from"])
 	var leaves: ShaderMaterial = VegetationModels.material("leaves")
+	var ridden: ShaderMaterial = world.get("_road_material")
+	ridden.set_shader_parameter("winter_exposure_mask", true)
 	leaves.set_shader_parameter("winter_broadleaf", true)
 	VegetationModels.material("needles").set_shader_parameter("winter_broadleaf", false)
 	var terrain: ShaderMaterial = world.get("_terrain_material")

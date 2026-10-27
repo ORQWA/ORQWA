@@ -20,6 +20,7 @@ func apply_options(
 	if orqwa != null:
 		climate = orqwa.season_climate(season)
 	WinterMaterials.apply(world, season == "Winter", climate)
+	WinterSnowbanks.apply(world, orqwa, season == "Winter")
 	if previous != season:
 		world.call("_restart_chunks")
 	world.set_camera(camera)

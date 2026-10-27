@@ -34,6 +34,7 @@ uniform float asphalt_tile = 2.5;
 uniform float gravel_tile = 1.5;
 // 0 dry, 1 soaked: darker asphalt with a sheen.
 uniform float wetness : hint_range(0.0, 1.0) = 0.0;
+uniform bool winter_exposure_mask = false;
 
 #include "res://shaders/puddles.gdshaderinc"
 
@@ -140,8 +141,20 @@ void fragment() {
 		vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), 0.8);
 	albedo = mix(albedo, texture(grass_albedo, grass_uv).rgb * vec3(0.34, 0.44, 0.27), verge);
 	normal = normalize(mix(normal, grass_bent, verge));
-	// Ploughed carriageways stay clear; their grass verges meet the snowy ground.
-	float snow = winter_cover(world_position, world_normal) * verge;
+	// Settled street snow, worn into paired wheel grooves in each traffic lane.
+	float lane_width = road_width / lanes;
+	float lane_x = mod(across, lane_width) - lane_width * 0.5;
+	float wander = sin(along * 0.09) * 0.045 + sin(along * 0.027) * 0.07;
+	float axle_half = min(0.72, lane_width * 0.26);
+	float tyre = abs(abs(lane_x + wander) - axle_half);
+	float groove = 1.0 - smoothstep(0.09, 0.18 + fwidth(across), tyre);
+	float settled = clamp((world_position.y - winter_snow_line) / 1800.0, 0.0, 1.0);
+	float patches = ground_noise(vec2(across * 2.7, along * 0.21));
+	float street_snow = smoothstep(0.22 - settled * 0.18, 0.78 - settled * 0.28, patches);
+	street_snow = mix(street_snow, 0.96, smoothstep(lane_width * 0.32, lane_width * 0.49, abs(lane_x)));
+	street_snow *= 1.0 - groove * 0.95;
+	float snow = winter_cover(world_position, world_normal) * mix(street_snow, 1.0, verge);
+	snow *= winter_exposure_mask ? UV2.x : 1.0;
 	albedo = mix(albedo, winter_snow_color.rgb, snow);
 	normal = normalize(mix(normal, world_normal, snow * 0.7));
 	roughness = mix(roughness, 0.8, snow);
