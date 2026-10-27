@@ -1516,6 +1516,52 @@ impl OrqwaApp {
             .collect()
     }
 
+    /// Available season names for the 3D ride options (#350).
+    #[func]
+    fn seasons() -> PackedStringArray {
+        orqwa_domain::season::Season::ALL
+            .iter()
+            .map(|s| GString::from(s.name()))
+            .collect()
+    }
+
+    /// The remembered season, with summer as the default.
+    #[func]
+    fn season(&self) -> GString {
+        GString::from(
+            self.app
+                .as_ref()
+                .map(App::season)
+                .unwrap_or_default()
+                .name(),
+        )
+    }
+
+    /// Material limits in metres for this route: snow altitude and evergreen lowlands.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot calls pass strings by value
+    fn season_climate(&self, name: GString) -> VarDictionary {
+        let season = orqwa_domain::season::Season::from_name(&name.to_string()).unwrap_or_default();
+        let latitude = self
+            .app
+            .as_ref()
+            .and_then(App::route)
+            .and_then(|route| route.points().first())
+            .map_or(45.0, |point| point.lat);
+        let climate = orqwa_world::season_climate(latitude, season);
+        vdict! { "snow_line" => climate.snow_line, "deciduous_from" => climate.deciduous_from }
+    }
+
+    /// Remembers a season; rejects unknown names without changing the saved setting.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot calls pass strings by value
+    fn set_season(&mut self, name: GString) -> bool {
+        let Some(season) = orqwa_domain::season::Season::from_name(&name.to_string()) else {
+            return false;
+        };
+        self.command(|app| app.set_season(season))
+    }
+
     /// The graphics preset chosen on this computer.
     #[func]
     fn graphics_quality(&self) -> GString {

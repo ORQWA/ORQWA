@@ -8,6 +8,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use orqwa_domain::season::Season;
 use serde::{Deserialize, Serialize};
 
 use crate::profiles::{GraphicsQuality, ProfileError, write_atomically};
@@ -19,6 +20,8 @@ pub const FILE: &str = "computer.toml";
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 struct ComputerFile {
+    /// Last season selected in the ride options (#350).
+    season: String,
     /// How detailed the 3D world is drawn on this computer (R43).
     graphics_quality: Option<GraphicsQuality>,
     /// Whether the app fills the screen (#218).
@@ -70,6 +73,43 @@ pub const GRAPHICS_OPTIONS: &[(&str, &[&str])] = &[
 
 /// The value of a graphics option that follows the preset.
 pub const AUTO: &str = "auto";
+
+/// Last selected ride season; summer for settings saved before seasons existed.
+#[must_use]
+pub fn season(file: &Path) -> Season {
+    Season::from_name(&read(file).season).unwrap_or_default()
+}
+
+/// Remembers the ride season without changing the other computer settings.
+///
+/// # Errors
+/// On file system errors.
+pub fn set_season(file: &Path, season: Season) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    season.name().clone_into(&mut computer.season);
+    save(file, &computer)
+}
+
+#[cfg(test)]
+mod season_tests {
+    use super::*;
+
+    #[test]
+    fn seasons_survive_reload_without_resetting_graphics_or_future_settings() {
+        let file = std::env::temp_dir().join(format!("orqwa-season-{}.toml", std::process::id()));
+        std::fs::write(&file, "graphics_quality = 'high'\nseason = 'Future'\n").unwrap();
+        assert_eq!(season(&file), Season::Summer);
+        assert_eq!(graphics_quality(&file), GraphicsQuality::High);
+        for chosen in Season::ALL {
+            set_season(&file, *chosen).unwrap();
+            assert_eq!(season(&file), *chosen);
+            assert_eq!(graphics_quality(&file), GraphicsQuality::High);
+            set_fullscreen(&file, true).unwrap();
+            assert_eq!(season(&file), *chosen);
+        }
+        std::fs::remove_file(file).unwrap();
+    }
+}
 
 /// The graphics options set on this computer (R90), by name; options following the preset
 /// are missing. Values no longer known (from another version) are left out.

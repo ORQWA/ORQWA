@@ -2407,6 +2407,10 @@ msgstr ""
 msgid "Searching…"
 msgstr ""
 
+#: app/ui/ride_options.gd
+msgid "Season"
+msgstr ""
+
 #: app/ui/ui_theme.gd
 msgid "Sep"
 msgstr ""
@@ -2545,6 +2549,10 @@ msgstr ""
 
 #: app/ui/workout_options.gd app/ui/workout_panel.gd
 msgid "Structured workout"
+msgstr ""
+
+#: core/orqwa-domain/src/season.rs
+msgid "Summer"
 msgstr ""
 
 #: app/ui/ui_theme.gd

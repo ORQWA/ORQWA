@@ -2071,6 +2071,21 @@ impl App {
         computer::graphics_quality(&self.computer)
     }
 
+    /// Last season chosen for a 3D ride, summer until the rider chooses one (#350).
+    #[must_use]
+    pub fn season(&self) -> orqwa_domain::season::Season {
+        computer::season(&self.computer)
+    }
+
+    /// Remembers the season chosen beside time of day and weather.
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if the choice cannot be saved.
+    pub fn set_season(&mut self, season: orqwa_domain::season::Season) -> Result<(), AppError> {
+        computer::set_season(&self.computer, season)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+    }
+
     /// Chooses how detailed the 3D world is drawn on this computer (R43); another computer
     /// sharing the data keeps its own choice (R78).
     ///
