@@ -112,28 +112,18 @@ func _on_keep_toggled(on: bool) -> void:
 func _translate() -> void:
 	_keep.text = tr("Keep courses ready to ride")
 	var note: String = (
-		tr(
-			"Each course's 3D world is kept on this computer once built: the next ride starts at once."
-		)
-		+ " "
-		+ tr("A world takes about 10 MB per kilometre of route.")
-		+ " "
-		+ tr(
-			"After an update that changes how worlds look, a course's page offers to regenerate it."
-		)
+		tr("Keep worlds on this computer for instant repeat rides (about 10 MB/km).")
+		+ "\n\n"
+		+ tr("If an update changes a world's look, regenerate it from the course page.")
 	)
 	_note.text = note
 	_detail.text = tr("Download map detail")
 	_detail_note.text = (
-		tr("Courses you prepare get real road surfaces, such as cobbles, where you add a region.")
-		+ " "
-		+ tr("Regions come from Geofabrik; a country takes half a gigabyte to five.")
-		+ " "
-		+ tr("Nothing is downloaded unless you add it.")
-		+ " "
-		+ tr("The map detail used is saved in the course's .tqc file.")
-		+ " "
-		+ tr("Shared or synced courses need no Geofabrik download on another device.")
+		tr("Add Geofabrik regions for detailed road surfaces (0.5–5 GB per country).")
+		+ "\n\n"
+		+ tr(
+			"Share or sync the .tqc file to ride offline on another device, with map detail included."
+		)
 	)
 	_stop.tooltip_text = tr("Stop")
 	_confirm_off.title = tr("Turn map detail off?")

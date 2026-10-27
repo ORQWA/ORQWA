@@ -191,10 +191,6 @@ msgstr ""
 msgid "A short chime as a card tells of a climb topped, a milestone or a record."
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "A world takes about 10 MB per kilometre of route."
-msgstr ""
-
 #: core/orqwa-upload/src/intervals.rs
 msgid "API key"
 msgstr ""
@@ -235,6 +231,10 @@ msgstr ""
 msgid "Add"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Add Geofabrik regions for detailed road surfaces (0.5–5 GB per country)."
+msgstr ""
+
 #: app/ui/workout_options.gd
 msgid "Add a ZWO, ERG, MRC or FIT workout file"
 msgstr ""
@@ -261,10 +261,6 @@ msgstr ""
 
 #: app/scenes/workouts_tab.gd
 msgid "Added to your workouts."
-msgstr ""
-
-#: app/ui/course_settings.gd
-msgid "After an update that changes how worlds look, a course's page offers to regenerate it."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -859,10 +855,6 @@ msgstr ""
 msgid "Courses"
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "Courses you prepare get real road surfaces, such as cobbles, where you add a region."
-msgstr ""
-
 #: app/scenes/profile_tab.gd
 msgid "Custom"
 msgstr ""
@@ -1041,10 +1033,6 @@ msgstr ""
 
 #: app/ui/workout_editor.gd
 msgid "Duration"
-msgstr ""
-
-#: app/ui/course_settings.gd
-msgid "Each course's 3D world is kept on this computer once built: the next ride starts at once."
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -1423,6 +1411,10 @@ msgstr ""
 msgid "If Advanced Protection is on, turn it off in Android's settings."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "If an update changes a world's look, regenerate it from the course page."
+msgstr ""
+
 #: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Imperial (mi, lb)"
 msgstr ""
@@ -1501,6 +1493,10 @@ msgstr ""
 
 #: app/scenes/remote_dialog.gd
 msgid "Keep this screen on while you ride: turn off its auto-lock."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Keep worlds on this computer for instant repeat rides (about 10 MB/km)."
 msgstr ""
 
 #: app/ui/course_settings.gd
@@ -1845,10 +1841,6 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "Nothing in your library matches this search and these filters."
-msgstr ""
-
-#: app/ui/course_settings.gd
-msgid "Nothing is downloaded unless you add it."
 msgstr ""
 
 #: app/scenes/workouts_tab.gd
@@ -2199,10 +2191,6 @@ msgstr ""
 msgid "Regions"
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "Regions come from Geofabrik; a country takes half a gigabyte to five."
-msgstr ""
-
 #: app/scenes/remote_dialog.gd core/orqwa-remote/src/lib.rs
 msgid "Remote"
 msgstr ""
@@ -2424,7 +2412,7 @@ msgid "Share of the road gradient you feel on the trainer"
 msgstr ""
 
 #: app/ui/course_settings.gd
-msgid "Shared or synced courses need no Geofabrik download on another device."
+msgid "Share or sync the .tqc file to ride offline on another device, with map detail included."
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -2629,10 +2617,6 @@ msgstr ""
 
 #: app/scenes/devices_tab.gd
 msgid "The devices used last connect by themselves. Search beside a row to find one of that kind."
-msgstr ""
-
-#: app/ui/course_settings.gd
-msgid "The map detail used is saved in the course's .tqc file."
 msgstr ""
 
 #: app/scenes/profile_tab.gd core/orqwa-app/src/failure.rs

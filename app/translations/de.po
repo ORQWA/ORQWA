@@ -142,8 +142,8 @@ msgstr "Ein virtueller Fahrer auf der Strecke: deine Bestzeit, ein Tempomacher o
 msgid "A recorded activity…"
 msgstr "Eine aufgezeichnete Fahrt …"
 
-msgid "A world takes about 10 MB per kilometre of route."
-msgstr "Eine Welt belegt etwa 10 MB pro Kilometer Route."
+msgid "Keep worlds on this computer for instant repeat rides (about 10 MB/km)."
+msgstr "Behalte Welten auf diesem Computer, damit erneute Fahrten sofort starten (ca. 10 MB/km)."
 
 msgid "API key"
 msgstr "API-Schlüssel"
@@ -187,8 +187,8 @@ msgstr "Video hinzufügen …"
 msgid "Added to your workouts."
 msgstr "Zu deinen Trainings hinzugefügt."
 
-msgid "After an update that changes how worlds look, a course's page offers to regenerate it."
-msgstr "Ändert ein Update das Aussehen der Welten, bietet die Seite einer Route an, ihre Welt neu zu erstellen."
+msgid "If an update changes a world's look, regenerate it from the course page."
+msgstr "Wenn ein Update das Aussehen einer Welt ändert, erstelle sie auf der Routenseite neu."
 
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"
@@ -678,9 +678,6 @@ msgstr "Drohne"
 
 msgid "Duration"
 msgstr "Dauer"
-
-msgid "Each course's 3D world is kept on this computer once built: the next ride starts at once."
-msgstr "Die 3D-Welt jeder Route bleibt nach dem Erstellen auf diesem Computer: Die nächste Fahrt startet sofort."
 
 msgid "Easy for 10 minutes"
 msgstr "10 Minuten locker"
@@ -2396,8 +2393,8 @@ msgstr "Die Regionen zum Herunterladen konnten nicht geladen werden."
 msgid "Could not prepare the map detail of %s."
 msgstr "Die Kartendetails von %s konnten nicht vorbereitet werden."
 
-msgid "Courses you prepare get real road surfaces, such as cobbles, where you add a region."
-msgstr "Routen, die du vorbereitest, erhalten echte Strassenbeläge wie Kopfsteinpflaster, wo du eine Region hinzufügst."
+msgid "Add Geofabrik regions for detailed road surfaces (0.5–5 GB per country)."
+msgstr "Füge Geofabrik-Regionen für detaillierte Strassenbeläge hinzu (0,5–5 GB pro Land)."
 
 msgid "Delete region"
 msgstr "Region löschen"
@@ -2420,9 +2417,6 @@ msgstr "Lade die Regionen …"
 msgid "Not ready"
 msgstr "Nicht bereit"
 
-msgid "Nothing is downloaded unless you add it."
-msgstr "Heruntergeladen wird nur, was du hinzufügst."
-
 msgid "Preparing %s…"
 msgstr "Bereite %s vor …"
 
@@ -2432,14 +2426,8 @@ msgstr "Lese %s …"
 msgid "Regions"
 msgstr "Regionen"
 
-msgid "Regions come from Geofabrik; a country takes half a gigabyte to five."
-msgstr "Die Regionen kommen von Geofabrik; ein Land braucht ein halbes bis fünf Gigabyte."
-
-msgid "The map detail used is saved in the course's .tqc file."
-msgstr "Die verwendeten Kartendetails werden in der .tqc-Datei der Route gespeichert."
-
-msgid "Shared or synced courses need no Geofabrik download on another device."
-msgstr "Für geteilte oder synchronisierte Routen musst du auf einem anderen Gerät nichts von Geofabrik herunterladen."
+msgid "Share or sync the .tqc file to ride offline on another device, with map detail included."
+msgstr "Teile oder synchronisiere die .tqc-Datei, um mit den enthaltenen Kartendetails auf einem anderen Gerät offline zu fahren."
 
 msgid "Stop"
 msgstr "Stopp"

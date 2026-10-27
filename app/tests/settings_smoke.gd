@@ -407,7 +407,7 @@ func _map_detail(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	_check(not detail.button_pressed, "no map detail until asked")
 	_check(detail.text == "Download map detail", "the switch: %s" % detail.text)
 	_check(note.text.contains("Geofabrik"), "telling where it comes from: %s" % note.text)
-	_check(note.text.contains("half a gigabyte"), "and the room it takes: %s" % note.text)
+	_check(note.text.contains("0.5–5 GB"), "and the room it takes: %s" % note.text)
 	_check(not regions.visible, "no regions to list")
 	detail.button_pressed = true
 	_check(orqwa.map_detail(), "on for this computer")
