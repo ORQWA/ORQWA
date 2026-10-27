@@ -97,3 +97,14 @@ takes the screen's DPI over 160, Android's dp, which follows the rider's display
 setting. Godot's `screen_get_scale` would round that to a step and cap it at 800 × 600. On a
 phone in landscape, about 900 × 410 dp, the smallest window of 1024 × 640 units still makes
 the interface draw at about two thirds of Android's size; tablets get the full size.
+
+## Amendment 2026-10-27: the course page while building
+
+The course's ride-options panel scrolls independently of its map, figures and climbs, with
+Ride fixed below the scrolling content. The preparation log can grow without increasing the
+page's minimum height and pushing Ride or the climbs below a tablet's screen. Both columns
+remain bounded by the page's height during and after a build; the 1024 × 640 layout check
+includes a long climb list and build log in English and German (R53, R94).
+
+[Review capture at 1024 × 640](../images/issues/android-course-overflow.png), with both columns
+scrolled to their last entries while Ride remains visible.

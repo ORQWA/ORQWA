@@ -187,7 +187,10 @@ func _init() -> void:
 
 	var panel: PanelContainer = PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var panel_content: VBoxContainer = VBoxContainer.new()
+	panel_content.add_theme_constant_override("separation", 14)
 	var right: VBoxContainer = VBoxContainer.new()
+	right.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 14)
 	right.add_child(UiTheme.caption(tr("Ride options")))
 	_options.changed.connect(_on_options_changed)
@@ -232,8 +235,12 @@ func _init() -> void:
 	_ride_button.add_theme_stylebox_override("normal", UiTheme.accent_button())
 	_ride_button.pressed.connect(_on_ride_pressed)
 	_ride_button.add_to_group(RemoteNavigation.FIRST)
-	right.add_child(_ride_button)
-	panel.add_child(right)
+	# The build log grows while preparing a world; Ride keeps its place on a short screen.
+	var right_scroll: ScrollContainer = UiTheme.scrolling(right)
+	right_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel_content.add_child(right_scroll)
+	panel_content.add_child(_ride_button)
+	panel.add_child(panel_content)
 	add_child(panel)
 
 	_confirm_delete.title = tr("Delete course?")
