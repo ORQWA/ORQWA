@@ -576,6 +576,8 @@ The Rust ambient mixer, its CC0 texture sources, regeneration command and a WAV 
 preview are documented in [the audio README](../core/orqwa-app/audio/README.md) and
 [ADR 0029](adr/0029-ride-audio.md). Run the preview and asset preparation in the devcontainer.
 The live mixer needs no audio downloads or additional dependency.
+The `--rain` preview switches Clear → Rain → Clear at a standstill, isolating the rainfall
+and its weather transitions from bicycle sound; Wind volume controls rain too (R153).
 
 ### Publishing a release
 

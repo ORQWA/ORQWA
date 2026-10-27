@@ -3012,11 +3012,11 @@ msgid "Whole route"
 msgstr ""
 
 #: app/ui/ride_options.gd
-msgid "Wind sound"
+msgid "Wind and rain volume; 0 mutes them"
 msgstr ""
 
 #: app/ui/ride_options.gd
-msgid "Wind volume; 0 mutes it"
+msgid "Wind sound"
 msgstr ""
 
 #: app/scenes/history_screen.gd core/orqwa-app/src/hud.rs

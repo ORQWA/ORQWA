@@ -1,5 +1,6 @@
 //! Continuous riding sound (R114): recorded textures with non-repeating grains, turbulent
-//! airflow, independent pedal / freewheel rates, and recorded chain transfers (R116–R117).
+//! airflow, independent pedal / freewheel rates, recorded chain transfers (R116–R117),
+//! and rainfall matching the weather preset (R153).
 
 use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 
@@ -11,6 +12,7 @@ const RATE_F32: f32 = 48_000.0;
 const TEXTURE_STEP: f32 = 24_000.0 / RATE_F32;
 const DT: f32 = 1.0 / RATE_F32;
 const WIND: &[u8] = include_bytes!("../audio/wind.pcm");
+const RAIN: &[u8] = include_bytes!("../audio/rain.pcm");
 const CHAIN: &[u8] = include_bytes!("../audio/chain.pcm");
 const FREEWHEEL: &[u8] = include_bytes!("../audio/freewheel.pcm");
 const SHIFT: &[u8] = include_bytes!("../audio/shift.pcm");
@@ -30,7 +32,7 @@ pub enum Weather {
     Cloudy,
     /// Nearly still air.
     Hazy,
-    /// Blustery air.
+    /// Blustery air with continuous rainfall.
     Rain,
 }
 
@@ -48,7 +50,7 @@ impl Weather {
 /// The two independently adjustable ride sounds, in percent (zero mutes that layer).
 #[derive(Clone, Copy, Debug)]
 pub struct Settings {
-    /// Wind around the rider and through vegetation.
+    /// Wind around the rider and through vegetation, plus rain in rainy weather.
     pub wind: f64,
     /// Chain movement and coasting freewheel.
     pub bike: f64,
@@ -108,6 +110,7 @@ fn finite(value: f64, max: f64) -> f64 {
 pub struct Sound {
     random: Random,
     wind: Texture,
+    rain: Texture,
     chain: Texture,
     freewheel: Texture,
     motion: [f32; 3],
@@ -120,6 +123,7 @@ pub struct Sound {
     coasting: f32,
     crank: f32,
     breeze: f32,
+    rainfall: f32,
     shifts: [Option<ShiftVoice>; 4],
     next_shift: usize,
 }
@@ -133,6 +137,7 @@ impl Sound {
             wind: Texture::new(WIND, 3.7, &mut random),
             chain: Texture::new(CHAIN, 0.19, &mut random),
             freewheel: Texture::new(FREEWHEEL, 0.13, &mut random),
+            rain: Texture::new(RAIN, 2.9, &mut random),
             random,
             motion: [0.0; 3],
             volume: [0.0; 2],
@@ -144,6 +149,7 @@ impl Sound {
             coasting: 0.0,
             crank: 0.0,
             breeze: Weather::Clear.breeze(),
+            rainfall: 0.0,
             shifts: [None; 4],
             next_shift: 0,
         }
@@ -183,6 +189,11 @@ impl Sound {
             finite(settings.bike, 100.0) as f32 * 0.01,
         ];
         let pedaling = if targets[1] > 3.0 { 1.0 } else { 0.0 };
+        let rainfall = if matches!(settings.weather, Weather::Rain) {
+            1.0
+        } else {
+            0.0
+        };
         let coasting = if targets[0] > 0.15 && targets[1] <= 3.0 {
             1.0
         } else {
@@ -205,6 +216,7 @@ impl Sound {
             self.gust_left -= 1;
             approach(&mut self.gust, self.gust_target, DT / 0.65);
             approach(&mut self.breeze, settings.weather.breeze(), DT / 0.8);
+            approach(&mut self.rainfall, rainfall, DT / 0.35);
             let [speed, cadence, power] = self.motion;
             // Speed raises pressure and high-frequency energy, not the wind recording's pitch.
             let airspeed = speed + self.breeze * self.gust;
@@ -212,6 +224,8 @@ impl Sound {
             let brightness = (700.0 + airspeed * 130.0).min(6_000.0);
             let cutoff = brightness / (brightness + RATE_F32 / std::f32::consts::TAU);
             let rustle = self.wind.next(1.0, &mut self.random);
+            // Rain keeps its natural pitch and remains audible when the rider stops pedaling.
+            let rain = self.rain.next(1.0, &mut self.random) * self.rainfall * 0.45;
             let chain = self
                 .chain
                 .next((cadence / 90.0).clamp(0.35, 2.5), &mut self.random);
@@ -250,7 +264,8 @@ impl Sound {
                 let wind = flow * pressure * self.gust * 0.35
                     + rustle * (0.06 + self.breeze * 0.025 + pressure * 0.16);
                 // Conservative headroom even in a fast descent; keep the chain close and centred.
-                *sample = (wind * self.volume[0] + bike * self.volume[1]).clamp(-0.95, 0.95);
+                *sample =
+                    ((wind + rain) * self.volume[0] + bike * self.volume[1]).clamp(-0.95, 0.95);
             }
             out.push(stereo);
         }
@@ -547,6 +562,71 @@ mod tests {
     }
 
     #[test]
+    fn rain_follows_weather_at_rest_and_fades_out_when_the_weather_changes() {
+        for weather in [
+            Weather::Clear,
+            Weather::Cloudy,
+            Weather::Hazy,
+            Weather::Rain,
+        ] {
+            let mut sound = Sound::new(377);
+            let mut without_rain = Sound::new(377);
+            // Silence only the recording to measure rainfall separately from the weather's wind.
+            without_rain.rain.pcm = &[];
+            let settings = Settings {
+                wind: 100.0,
+                bike: 0.0,
+                weather,
+            };
+            let mut rainfall = |settings| {
+                let heard = sound.render(RATE as usize, Motion::default(), settings);
+                let background = without_rain.render(RATE as usize, Motion::default(), settings);
+                heard
+                    .iter()
+                    .zip(background)
+                    .map(|(heard, background)| [heard[0] - background[0], heard[1] - background[1]])
+                    .collect::<Vec<_>>()
+            };
+            // Warm the output volume before changing weather, as during a live ride.
+            let _ = rainfall(Settings {
+                weather: Weather::Clear,
+                ..settings
+            });
+            let first = rainfall(settings);
+            let steady = rainfall(settings);
+            if matches!(weather, Weather::Rain) {
+                assert!(
+                    energy(&steady) > 0.001,
+                    "rain must be audible at a standstill"
+                );
+                assert!(first[0][0].abs() < 0.000_01, "rain starts with a fade");
+                assert_ne!(first, steady, "rain must not repeat a buffer");
+                let dry = Settings {
+                    weather: Weather::Clear,
+                    ..settings
+                };
+                let _ = rainfall(dry);
+                let _ = rainfall(dry);
+                assert!(
+                    energy(&rainfall(dry)) < 0.000_000_1,
+                    "leaving Rain fades it out"
+                );
+            } else {
+                assert!(energy(&steady) < f32::EPSILON, "dry presets have no rain");
+            }
+        }
+        let muted = Settings {
+            wind: 0.0,
+            bike: 100.0,
+            weather: Weather::Rain,
+        };
+        assert!(
+            energy(&settled(Motion::default(), muted)) < f32::EPSILON,
+            "Wind volume mutes rain independently of Bicycle volume"
+        );
+    }
+
+    #[test]
     fn wind_pressure_rises_with_speed_without_replaying_a_loop() {
         let settings = Settings {
             bike: 0.0,
@@ -634,8 +714,17 @@ mod tests {
 
     #[test]
     fn buffer_boundaries_keep_the_stream_continuous_and_restart_fades_in() {
+        for weather in [Weather::Clear, Weather::Rain] {
+            check_buffer_boundaries_and_restart(weather);
+        }
+    }
+
+    fn check_buffer_boundaries_and_restart(weather: Weather) {
         let motion = moving(10.0, 90.0);
-        let settings = Settings::default();
+        let settings = Settings {
+            weather,
+            ..Settings::default()
+        };
         let mut whole = Sound::new(259);
         let expected = whole.render(4_096, motion, settings);
         let mut split = Sound::new(259);
