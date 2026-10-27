@@ -20,6 +20,7 @@ varying vec3 tint;
 varying vec3 winter_position;
 varying vec3 winter_normal;
 varying float winter_dormancy;
+varying float flowering;
 
 vec3 to_linear(vec3 srgb) {
 	return mix(srgb / 12.92, pow((srgb + 0.055) / 1.055, vec3(2.4)), step(0.04045, srgb));
@@ -37,7 +38,8 @@ void vertex() {
 	VERTEX += NORMAL * flutter * 0.2 * wind_strength;
 	tint = to_linear(COLOR.rgb);
 	float height = (MODEL_MATRIX * vec4(VERTEX, 1.0)).y;
-	tint = mix(tint, spring_colour(place), spring_amount(place, height) * 0.9);
+	flowering = spring_amount(place, height);
+	tint = mix(tint, spring_colour(place), flowering);
 	winter_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	winter_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 	winter_dormancy = winter_broadleaf ? winter_strength
@@ -47,6 +49,9 @@ void vertex() {
 
 void fragment() {
 	vec4 texel = texture(albedo_texture, UV);
+	if (flowering > 0.0) {
+		texel = mix(texel, texture(spring_blossom_texture, UV), flowering);
+	}
 	ALBEDO = texel.rgb * tint;
 	float snow = winter_cover(winter_position, winter_normal);
 	ALBEDO = mix(ALBEDO, winter_snow_color.rgb, snow * 0.9);

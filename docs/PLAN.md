@@ -476,7 +476,8 @@ physically based materials and light, restyled group by group.
 - [x] Summer season baseline (#350, R154): a remembered Season selector beside Weather and
   Time of day, available before and during 3D rides; green foliage and meadows by default.
 - [x] Spring flowers and blossom (#350, R155): open five-petal meadow flowers and pink/white
-  blossom among green broadleaves, including their LODs and distant mixed canopy.
+  blossom among green broadleaves, including their LODs and distant mixed canopy. Flowering
+  crowns use petal-shaped twig-cluster cards rather than recoloured leaves (R160).
 - [x] Summer meadows are predominantly grass, retaining only a sparse 10% of the existing
   flower clumps (R158), with the other positions filled by full grass tufts.
 - [ ] Autumn red and orange broadleaf foliage (#350).

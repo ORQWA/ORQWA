@@ -107,7 +107,14 @@ func _spring() -> void:
 	var needles: ShaderMaterial = VegetationModels.material("needles")
 	var strength: float = needles.get_shader_parameter("spring_strength")
 	_check(strength == 0.0, "spring preserves evergreen needles")
+	var leaves: ShaderMaterial = VegetationModels.material("leaves")
+	var atlas: Texture2D = leaves.get_shader_parameter("spring_blossom_texture")
+	_check(
+		atlas != null and atlas.get_width() == 1024, "spring binds the petal-shaped blossom atlas"
+	)
 	world.apply_options({"season": "Summer", "weather": "Clear", "time": "Midday", "camera": 0})
 	bloom = plants.get_shader_parameter("spring_bloom")
 	_check(bloom == 0.0, "summer restores smaller flower heads")
+	strength = leaves.get_shader_parameter("spring_strength")
+	_check(strength == 0.0, "summer restores leaf silhouettes on flowering trees")
 	world.free()

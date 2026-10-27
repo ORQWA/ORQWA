@@ -203,8 +203,12 @@ and colour (`plants.ferns`) and places them in patches under mapped woods within
 road. They share the existing undergrowth budget and use the short small-plant draw distance
 (R104), with the same exclusions as other undergrowth.
 
-`foliage.py` draws the two foliage cards, `leaves_albedo.webp` and `needles_albedo.webp`, in
-grey on transparent ground into `app/assets/textures/` (the app tints them per plant).
+`foliage.py` draws leaf, needle and five-petal blossom cards (`leaves_albedo.webp`,
+`needles_albedo.webp`, `blossoms_albedo.png`) on transparent ground into
+`app/assets/textures/`. The app tints them per plant; Spring's selected broadleaf crowns
+use the blossom atlas, including authored LODs. `--blossoms-only` rebuilds that atlas alone.
+The small blossom alpha mask stays lossless PNG because the emulated Blender WebP encoder
+introduced line artifacts; Godot still imports it into the same mipmapped VRAM format.
 
 ```sh
 scripts/art.sh blender --background --factory-startup --python art/vegetation/foliage.py

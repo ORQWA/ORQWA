@@ -6,7 +6,11 @@ mesh uses 10 triangles per head (30 per clump); grass density, placement and exc
 Summer retains smaller flower heads and the original flower palette.
 
 Stable tree-position seeds select about a third of broadleaf crowns for pink and white
-blossom among the green. This is a seasonal visual treatment of the existing broadleaf
+blossom among the green. Flowering crowns sample a dedicated transparent five-petal blossom
+atlas, with twig clusters and warm stamen centres, in place of the leaf silhouettes. The
+1024 px lossless PNG is reproducibly drawn by `art/vegetation/foliage.py --blossoms-only`,
+VRAM compressed with mipmaps on import, and tinted pink or white by the seasonal palette.
+Summer restores the original leaf atlas. This is a seasonal visual treatment of the existing broadleaf
 models, not a claim of mapped cherry species. Needles stay green; Rust's climate ceiling
 keeps tropical lowlands evergreen. All authored LODs share the same materials, and the
 distant canopy has light blossom patches without replacing its relief.

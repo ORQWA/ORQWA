@@ -66,6 +66,10 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
   `compress/normal_map=1` for normal maps (Godot writes other defaults on first import: fix
   them, then re-import).
 - Keep recipes neutral in hue where the app tints per instance (walls, roofs, leaves).
+- Spring's `foliage.py --blossoms-only` draws `blossoms_albedo.png`: transparent five-petal
+  twig clusters on the existing leaf-card UVs. Keep this small mask lossless PNG (the
+  emulated WebP encoder introduced line artifacts), with VRAM compression and mipmaps on
+  import. Review petal silhouettes close up and the selected crowns on Low too.
 - Where a recipe does not look real, a CC0 scan may replace it (ADR 0020): keep the original
   under `art/sources/<name>/` with `SOURCE.md`, convert it to the same names and formats in a
   script, and credit it in `docs/CREDITS.md`.
