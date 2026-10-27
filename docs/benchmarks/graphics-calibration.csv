@@ -1,0 +1,17 @@
+configuration,preset,width,height,fps,p95_ms
+original,low,5444,3420,71.2053,14.409
+original,medium,5444,3420,43.0564,23.695
+original,high,5444,3420,32.3379,31.494
+original,ultra,5444,3420,29.7730,34.639
+background_disabled,low,5444,3420,95.8892,10.754
+background_disabled,medium,5444,3420,51.5968,19.873
+background_disabled,high,5444,3420,36.5444,28.102
+background_disabled,ultra,5444,3420,33.7259,30.974
+corrected,low,2722,1710,262.1847,4.094
+corrected,medium,2722,1710,161.0315,6.689
+corrected,high,2722,1710,93.9312,11.045
+corrected,ultra,2722,1710,81.4724,13.022
+live_counter_repeat,low,2722,1710,259.8859,4.147
+live_counter_repeat,medium,2722,1710,161.1506,6.597
+live_counter_repeat,high,2722,1710,92.9404,11.166
+live_counter_repeat,ultra,2722,1710,80.4312,13.283

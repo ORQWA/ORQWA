@@ -34,6 +34,7 @@ use orqwa_session::estimate;
 use orqwa_session::workout::{EffortTest, HeartRateHold, RampTest, Workout};
 use orqwa_world::MapFeature;
 
+mod graphics;
 mod log;
 
 struct OrqwaExtension;
@@ -1534,6 +1535,16 @@ impl OrqwaApp {
             return false;
         };
         self.command(|app| app.set_graphics_quality(quality))
+    }
+
+    /// Saves the completed benchmark's preset and returns all details to Auto together.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot calls pass strings by value
+    fn apply_graphics_benchmark(&mut self, name: GString) -> bool {
+        let Some(quality) = orqwa_app::GraphicsQuality::from_name(&name.to_string()) else {
+            return false;
+        };
+        self.command(|app| app.apply_graphics_benchmark(quality))
     }
 
     /// The graphics options a rider may set apart from the preset (R90): option name → the
@@ -3124,58 +3135,7 @@ impl OrqwaApp {
         let Some(chunk) = chunk else {
             return VarDictionary::new();
         };
-        let [x, y, z] = chunk.center;
-        let mut plants = VarDictionary::new();
-        for (name, buffer) in chunk.trees.models_for_density(tree_density) {
-            if !buffer.is_empty() {
-                plants.set(name, &PackedFloat32Array::from(buffer.as_ref()));
-            }
-        }
-        let mut props = VarDictionary::new();
-        for (name, buffer) in &chunk.props.models {
-            props.set(name.as_str(), &PackedFloat32Array::from(buffer.as_slice()));
-        }
-        let labels: VarArray = chunk
-            .props
-            .labels
-            .iter()
-            .map(|label| {
-                vdict! {
-                    "text" => &GString::from(label.text.as_str()),
-                    "transform" => &PackedFloat32Array::from(label.transform.as_slice()),
-                }
-                .to_variant()
-            })
-            .collect();
-        let grass = PackedFloat32Array::from(chunk.trees.grass.as_slice());
-        let flowers = PackedFloat32Array::from(chunk.trees.flowers.as_slice());
-        let modelled: VarArray = chunk
-            .modelled
-            .iter()
-            .map(|cell| {
-                let mut models = VarDictionary::new();
-                for (name, buffer) in &cell.models {
-                    models.set(name.as_str(), &PackedFloat32Array::from(buffer.as_slice()));
-                }
-                vdict! { "models" => &models, "shells" => &mesh_arrays(&cell.shells) }.to_variant()
-            })
-            .collect();
-        vdict! {
-            "center" => Vector3::new(x, y, z),
-            "terrain" => &mesh_arrays(&chunk.mesh),
-            "buildings" => &mesh_arrays(&chunk.buildings),
-            "modelled" => &modelled,
-            "streets" => &mesh_arrays(&chunk.streets),
-            "tracks" => &mesh_arrays(&chunk.tracks),
-            "urban" => &mesh_arrays(&chunk.urban),
-            "water" => &mesh_arrays(&chunk.water),
-            "plants" => &plants,
-            "props" => &props,
-            "labels" => &labels,
-            "wires" => &mesh_arrays(&chunk.props.wires),
-            "grass" => &grass,
-            "flowers" => &flowers,
-        }
+        graphics::chunk_arrays(chunk, tree_density)
     }
 
     /// Bridges and tunnels as mesh arrays (vertex-coloured), in route coordinates.

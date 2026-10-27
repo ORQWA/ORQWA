@@ -207,7 +207,12 @@ const CLOUD_DRIFT: Vector2 = Vector2(0.004, 0.0015)
 const FREE_CAMERA: String = "Free"
 # i18n-end
 
+## The renderer's shared atlas is global, even for an isolated preview (R151).
+static var shadow_atlas_size: int = 4096
+
 var _orqwa: OrqwaApp
+## A calibration scene owns no rider data and never replaces the loaded course (R151).
+var _benchmark: OrqwaGraphicsBenchmark
 var _chunk_count: int = 0
 var _next_chunk: int = 0
 var _camera_mode: CameraMode = CameraMode.CHASE
@@ -230,12 +235,12 @@ var _free_speed: float = 1.0
 var _motion: RiderMotion = RiderMotion.new()
 var _ghost_lean: float = 0.0
 var _placed: bool = false
-var _avatar: RiderAvatar = RiderAvatar.new()
-var _ghost: RiderAvatar = RiderAvatar.new()
+var _avatar: RiderAvatar
+var _ghost: RiderAvatar
 var _ghost_distance: float = 0.0
 ## The land beyond the corridor: ground and lakes.
-var _horizon_ground: MeshInstance3D = MeshInstance3D.new()
-var _horizon_water: MeshInstance3D = MeshInstance3D.new()
+var _horizon_ground: MeshInstance3D
+var _horizon_water: MeshInstance3D
 
 var _terrain_material: ShaderMaterial = ShaderMaterial.new()
 var _road_material: ShaderMaterial = ShaderMaterial.new()
@@ -254,7 +259,7 @@ var _street_material: ShaderMaterial = ShaderMaterial.new()
 var _track_material: ShaderMaterial = ShaderMaterial.new()
 var _rail_material: ShaderMaterial = ShaderMaterial.new()
 ## The railways near the route, on their own lines like the road (#85).
-var _railways: MeshInstance3D = MeshInstance3D.new()
+var _railways: MeshInstance3D
 var _ground_lods: GroundLods = GroundLods.new()
 
 @onready var _terrain: Node3D = $Terrain
@@ -381,6 +386,7 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	_apply_options_over_preset(options)
 	var shadow_atlas: int = _quality["shadow_atlas"]
 	RenderingServer.directional_shadow_atlas_set_size(shadow_atlas, true)
+	shadow_atlas_size = shadow_atlas
 	_sun.directional_shadow_max_distance = _quality["shadow_distance"]
 	var splits: int = _quality["shadow_splits"]
 	_sun.directional_shadow_mode = (
@@ -485,6 +491,12 @@ func reset_view() -> void:
 
 
 func _ready() -> void:
+	# Inherited scenes replace scripts before ready; create owned nodes only once.
+	_avatar = RiderAvatar.new()
+	_ghost = RiderAvatar.new()
+	_horizon_ground = MeshInstance3D.new()
+	_horizon_water = MeshInstance3D.new()
+	_railways = MeshInstance3D.new()
 	# Shared surface textures keep street and terrain materials consistent (ADR 0020).
 	TerrainMaterial.configure(_terrain_material, TEXTURES)
 	for road_material: ShaderMaterial in [_road_material, _street_material, _track_material]:
@@ -610,7 +622,11 @@ func _build_some_chunks() -> void:
 	var built: int = 0
 	while _next_chunk < _chunk_count and built < CHUNKS_PER_FRAME:
 		var density: float = _quality["tree_density"]
-		var chunk: Dictionary = _orqwa.world_chunk_with_tree_density(_next_chunk, density)
+		var chunk: Dictionary = (
+			_benchmark.chunk(density)
+			if _benchmark != null
+			else _orqwa.world_chunk_with_tree_density(_next_chunk, density)
+		)
 		# Another course was opened meanwhile: its world replaces this one when ready.
 		if chunk.is_empty():
 			_chunk_count = 0

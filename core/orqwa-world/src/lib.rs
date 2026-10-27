@@ -6,6 +6,7 @@
 //! Triangles wind clockwise seen from their front, Godot's front-face order.
 
 mod appearance;
+mod benchmark;
 mod buildings;
 mod chains;
 mod channels;
@@ -42,6 +43,7 @@ use orqwa_osm::{LandCover, MapData, RoadClass};
 use orqwa_routes::{ElevationModel, LocalProjection, Route, Surface};
 use tracing::{info, warn};
 
+pub use benchmark::benchmark;
 pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
 pub use minimap::{FlatMap, MapFeature, minimap};
