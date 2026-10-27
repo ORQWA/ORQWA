@@ -809,7 +809,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   - [x] the overlay (R55) as picture-in-picture: the ride's HUD in a small window over other
     apps, scaled to it, the world not drawn behind it. Music control says it is not supported;
     the update check offers the release page (until E)
-  - [x] touch: Godot turns taps into clicks, enough to ride
+  - [x] touch: taps activate controls on release; swipes over cards, history entries, buttons
+    and panels scroll every page and dialog without activating the control beneath (#381)
 - [x] D — a release-signed APK as a release asset (tags only, the key from the repository
   secrets; version code from ORQWA's version), the wiki (installing, permissions, updates,
   picture-in-picture); the internet list is unchanged

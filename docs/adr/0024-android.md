@@ -226,3 +226,18 @@ them or holds the permission to read them. Every sync app's videos are refused a
   answer opens the course again. "Allow all" is needed: `.nomedia` keeps these videos out of
   Android's picker for selected media.
 - A lower `targetSdk` would avoid the rule without asking, but holds back every other update.
+
+## Amendment 2026-10-27: swiping over page controls (#381)
+
+Scrollable pages and dialogs use `TouchScroll`, installed by `UiTheme.scroll_down_only`,
+to let their controls pass pointer events to Godot's `ScrollContainer` on touch screens.
+It covers controls added later, including history entries and refreshed settings, and leaves
+nested scroll areas, scroll bars and popup windows to handle their own input. Buttons,
+including menus, act on release so the container's scroll-start notification can cancel
+their pending press. Course cards follow the same rule instead of opening on finger-down.
+Text fields retain their editing gestures; desktop controls retain their usual input policy.
+
+Godot still owns the drag threshold and inertia. `touch_smoke.gd` sends touch presses, drags
+and releases through the viewport and checks scrolling without activation over course cards,
+history-style buttons, checkboxes, menus and panels, followed by ordinary taps, mouse clicks,
+keyboard acceptance and text editing. No Rust, Android plugin or network change is needed.

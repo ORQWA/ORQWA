@@ -342,6 +342,7 @@ static func scrolling(content: Control) -> ScrollContainer:
 static func scroll_down_only(scroll: ScrollContainer) -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_RESERVE
+	scroll.add_child(TouchScroll.new(), false, Node.INTERNAL_MODE_BACK)
 
 
 static func _box(color: Color, radius: int, horizontal: int, vertical: int) -> StyleBoxFlat:
