@@ -79,7 +79,7 @@ msgstr ""
 msgid "%s does not follow this route."
 msgstr ""
 
-#: app/ui/graphics_settings.gd
+#: app/ui/graphics_benchmark.gd app/ui/graphics_settings.gd
 msgid "%s fps"
 msgstr ""
 
@@ -2597,6 +2597,10 @@ msgstr ""
 
 #: app/ui/workout_options.gd
 msgid "Test"
+msgstr ""
+
+#: app/ui/graphics_settings.gd
+msgid "Tested at %d × %d pixels."
 msgstr ""
 
 #: app/ui/graphics_benchmark.gd

@@ -1,4 +1,4 @@
-//! A small, deterministic offline graphics workload (R150). Uses the ride's mesh and
+//! A small, deterministic offline graphics workload (R151). Uses the ride's mesh and
 //! instance contracts, models and materials, without importing a course or fetching data.
 
 // Fixture grid coordinates are small, non-negative where converted to palette indices.

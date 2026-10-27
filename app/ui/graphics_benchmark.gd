@@ -1,6 +1,6 @@
 class_name GraphicsBenchmark
 extends Window
-## An isolated, full-resolution preview, timed only after uploads finish (R150).
+## An isolated, full-resolution preview, timed only after uploads finish (R151).
 
 signal finished(result: Dictionary)
 
@@ -10,10 +10,13 @@ var _viewport: SubViewport = SubViewport.new()
 var _world: BenchmarkWorld
 var _run: OrqwaGraphicsBenchmark
 var _status: Label = Label.new()
+var _fps: Label = Label.new()
+var _fps_updated: int = 0
 var _active: bool = false
 var _saved_fps: int
 var _saved_vsync: DisplayServer.VSyncMode
 var _saved_atlas: int
+var _saved_disable_3d: bool
 var _started: int
 var _last: int = 0
 var _elapsed: float = 0.0
@@ -43,7 +46,12 @@ func _ready() -> void:
 	bar.add_theme_constant_override("separation", 16)
 	content.add_child(bar)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bar.add_child(_status)
+	_fps.text = tr("%s fps") % "—"
+	_fps.custom_minimum_size = Vector2(110, 0)
+	_fps.add_theme_font_size_override("font_size", 24)
+	bar.add_child(_fps)
 	var stop: Button = Button.new()
 	stop.text = tr("Cancel")
 	stop.pressed.connect(cancel)
@@ -58,7 +66,9 @@ func start() -> bool:
 	_saved_fps = Engine.max_fps
 	_saved_vsync = DisplayServer.window_get_vsync_mode()
 	_saved_atlas = RideWorld.shadow_atlas_size
-	_viewport.size = get_tree().root.get_texture().get_size()
+	_saved_disable_3d = get_tree().root.disable_3d
+	# Window textures report UI stretch too; the physical window size is the render target.
+	_viewport.size = get_tree().root.size
 	_run = OrqwaGraphicsBenchmark.new()
 	_world = (load("res://scenes/benchmark_world.tscn") as PackedScene).instantiate()
 	# Scene resources otherwise share the ride's environment, including its sky.
@@ -67,6 +77,8 @@ func start() -> bool:
 	_viewport.add_child(_world)
 	_world.show_benchmark(_run)
 	_active = true
+	# The hidden ride's camera and post-processing otherwise add a second 3D workload.
+	get_tree().root.disable_3d = true
 	_started = Time.get_ticks_msec()
 	_select_preset()
 	RenderingServer.frame_post_draw.connect(_drawn)
@@ -77,7 +89,11 @@ func start() -> bool:
 
 
 func _process(_delta: float) -> void:
-	if Time.get_ticks_msec() - _started > TIMEOUT_MS:
+	var now: int = Time.get_ticks_msec()
+	if now - _fps_updated >= 250:
+		_fps.text = tr("%s fps") % roundi(Engine.get_frames_per_second())
+		_fps_updated = now
+	if now - _started > TIMEOUT_MS:
 		cancel()
 
 
@@ -128,6 +144,8 @@ func _drawn() -> void:
 	if result.is_empty():
 		_select_preset()
 	else:
+		result["width"] = _viewport.size.x
+		result["height"] = _viewport.size.y
 		_finish.call_deferred(result)
 
 
@@ -157,4 +175,5 @@ func _restore() -> void:
 	DisplayServer.window_set_vsync_mode(_saved_vsync)
 	RenderingServer.directional_shadow_atlas_set_size(_saved_atlas, true)
 	RideWorld.shadow_atlas_size = _saved_atlas
+	get_tree().root.disable_3d = _saved_disable_3d
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED

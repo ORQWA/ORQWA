@@ -409,7 +409,7 @@ do not replace them.
 
 ## Measuring frame rate
 
-The rider's **Benchmark graphics** setting (R150, [ADR 0034](adr/0034-graphics-benchmark.md))
+The rider's **Benchmark graphics** setting (R151, [ADR 0034](adr/0034-graphics-benchmark.md))
 calibrates presets against a bounded offline workload. It does not replace the course-specific
 measurements below. Its integration test runs headless with the checks; to also exercise
 preview rendering and cancellation, run in the container:

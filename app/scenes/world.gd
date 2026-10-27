@@ -207,11 +207,11 @@ const CLOUD_DRIFT: Vector2 = Vector2(0.004, 0.0015)
 const FREE_CAMERA: String = "Free"
 # i18n-end
 
-## The renderer's shared atlas is global, even for an isolated preview (R150).
+## The renderer's shared atlas is global, even for an isolated preview (R151).
 static var shadow_atlas_size: int = 4096
 
 var _orqwa: OrqwaApp
-## A calibration scene owns no rider data and never replaces the loaded course (R150).
+## A calibration scene owns no rider data and never replaces the loaded course (R151).
 var _benchmark: OrqwaGraphicsBenchmark
 var _chunk_count: int = 0
 var _next_chunk: int = 0

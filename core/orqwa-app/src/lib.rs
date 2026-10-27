@@ -2084,7 +2084,7 @@ impl App {
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 
-    /// Applies a completed graphics benchmark and returns every detail to Auto (R150).
+    /// Applies a completed graphics benchmark and returns every detail to Auto (R151).
     ///
     /// # Errors
     /// [`AppError::Reported`] if the settings cannot be saved together.

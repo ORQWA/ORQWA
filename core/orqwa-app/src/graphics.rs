@@ -1,4 +1,4 @@
-//! Graphics calibration from rendered frames (R150, #353). The front end draws the same
+//! Graphics calibration from rendered frames (R151, #353). The front end draws the same
 //! offline scene at each preset; this policy excludes warm-up and chooses for smooth 60 fps.
 
 use std::time::Duration;

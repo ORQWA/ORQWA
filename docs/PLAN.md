@@ -442,10 +442,14 @@ physically based materials and light, restyled group by group.
   equator below 1,200 m
 - [x] Quality presets Low–Ultra in settings, frame-time budget per preset (60 fps; a lower
   preset is suggested when a ride stays below)
-- [x] **Benchmark graphics** in Settings → Graphics (R150, #353): offline calibration with
+- [x] **Benchmark graphics** in Settings → Graphics (R151, #353): offline calibration with
   the ride's rendering path, all four presets at the current resolution, shader warm-up and
   the 95th-percentile 60 fps budget; saves the best preset with details on Auto. Cancellation
   keeps settings; temporary frame caps and V-Sync are restored (ADR 0034).
+  - [x] Native Retina calibration: use physical window pixels, suspend the hidden ride's
+    3D and restore Settings without competing exclusive dialogs; show FPS and tested size.
+    [M5 Pro measurements](benchmarks/graphics-calibration.md): Ultra at 81.5 fps instead of
+    Low, with the same target. The preview shows live FPS beside each preset.
 - [x] Trees follow graphics quality (R108): Low/Medium/High/Ultra upload about
   12.5/25/50/100 % of the trees and draw them to 600/1,200/2,200/3,240 m. Stable subsets
   keep existing trees as quality rises; View distance overrides their range. Kept worlds

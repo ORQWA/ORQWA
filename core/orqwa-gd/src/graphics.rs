@@ -1,4 +1,4 @@
-//! Frame samples and the offline calibration scene across the rendering boundary (R150).
+//! Frame samples and the offline calibration scene across the rendering boundary (R151).
 
 use godot::classes::{IRefCounted, RefCounted};
 use godot::prelude::*;
@@ -39,7 +39,16 @@ impl OrqwaGraphicsBenchmark {
     /// Wall time between rendered frames, in seconds; true when the preset changes.
     #[func]
     fn frame(&mut self, seconds: f64) -> bool {
-        self.run.frame(seconds)
+        let changed = self.run.frame(seconds);
+        if changed && let Some(sample) = self.run.measurements().last() {
+            godot_print!(
+                "Graphics benchmark {}: {:.1} fps, p95 {:.2} ms",
+                sample.quality.name(),
+                sample.fps,
+                sample.p95.as_secs_f64() * 1000.0,
+            );
+        }
+        changed
     }
 
     /// Complete recommendation, empty while unfinished.

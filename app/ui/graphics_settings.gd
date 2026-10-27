@@ -99,14 +99,28 @@ func _ready() -> void:
 
 
 func _benchmark() -> void:
+	# Only one exclusive child can own the main window; restore Settings after the preview.
+	var settings: Window = get_window()
+	var reopen: bool = settings.visible
+	settings.hide()
 	var preview: GraphicsBenchmark = GraphicsBenchmark.new()
 	get_tree().root.add_child(preview)
-	preview.finished.connect(_benchmark_finished)
+	preview.finished.connect(
+		func(result: Dictionary) -> void:
+			# Let the exclusive preview leave the tree before another window takes focus.
+			await get_tree().process_frame
+			if reopen:
+				settings.show()
+			_benchmark_finished(result)
+	)
 	if not preview.start():
+		if reopen:
+			settings.show()
 		preview.queue_free()
 
 
 func _show_benchmark_help() -> void:
+	_benchmark_note.add_theme_color_override("font_color", UiTheme.MUTED)
 	_benchmark_note.text = tr(
 		"Find a preset for smooth 60 fps. Takes about 30 seconds and resets details to Auto."
 	)
@@ -121,10 +135,15 @@ func _benchmark_finished(result: Dictionary) -> void:
 		return
 	bind(_orqwa)
 	var fps: float = result["fps"]
+	_benchmark_note.remove_theme_color_override("font_color")
 	_benchmark_note.text = (
 		tr("Applied %s (%d fps). Details are Auto. Applies from the next ride.")
 		% [tr(quality.capitalize()), roundi(fps)]
 	)
+	if result.has("width") and result.has("height"):
+		var width: int = result["width"]
+		var height: int = result["height"]
+		_benchmark_note.text += " " + tr("Tested at %d × %d pixels.") % [width, height]
 	var meets_target: bool = result["meets_target"]
 	if not meets_target:
 		_benchmark_note.text += " " + tr("Even Low was below 60 fps. Try a smaller window.")

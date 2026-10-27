@@ -25,6 +25,9 @@ msgstr "%s eingestellt (%d fps). Details stehen auf Auto. Gilt ab der nächsten 
 msgid "Even Low was below 60 fps. Try a smaller window."
 msgstr "Auch Niedrig lag unter 60 fps. Versuche ein kleineres Fenster."
 
+msgid "Tested at %d × %d pixels."
+msgstr "Getestet mit %d × %d Pixeln."
+
 msgid "%d W  ·  %.1f W/kg"
 msgstr "%d W  ·  %.1f W/kg"
 

@@ -5,7 +5,7 @@
 
 ## Context
 
-Choosing a graphics preset by hand requires trial rides (#353, R150). Device names cannot
+Choosing a graphics preset by hand requires trial rides (#353, R151). Device names cannot
 reliably predict performance across GPUs, rendering backends, screen resolutions and power
 modes. A calibration must work before a rider imports a course, without network requests,
 and preserve their course, devices, ride history and settings on cancellation.
@@ -48,3 +48,23 @@ atomic settings updates. The Godot smoke test covers the binding, application an
 settings, and can exercise the actual preview under software Vulkan. Software-renderer FPS
 is not evidence for native GPU performance; native runs remain the way to check calibration
 on macOS, Windows, Linux and Android hardware.
+
+## Amendment 2026-10-27 — Physical pixels and an isolated preview
+
+On an M5 Pro, the 2722 × 1710 pixel window reported a 5444 × 3420 texture size at a UI
+scale of 2. Godot's window texture metadata includes its stretch transform
+([upstream issue](https://github.com/godotengine/godot/issues/110922)); reading the actual
+framebuffer image confirmed 2722 × 1710. Calibration had therefore drawn four times the
+pixels a ride would draw. The preview now takes the physical `Window.size`, independent of
+the interface scale, and reports those dimensions with its result.
+
+The main viewport's 3D is suspended while the separate preview runs. A hidden ride still
+owns its camera and post-processing, which otherwise add a second 3D workload even though
+its geometry is hidden. Its original `disable_3d` value is restored alongside the other
+rendering settings. Settings is hidden before the exclusive preview opens, then shown with
+the result (or cancellation): two exclusive children of the root window conflicted on macOS.
+The rendered regression opens Settings first and exercises a non-unit interface scale.
+The preview shows rolling live FPS; completion shows measured FPS and physical dimensions,
+and each preset's mean FPS and p95 are logged for diagnosis. The native
+[M5 Pro comparison](../benchmarks/graphics-calibration.md) selected Ultra at 81.5 fps after
+these fixes, with the selection budget unchanged.

@@ -134,7 +134,7 @@ pub fn set_graphics_quality(file: &Path, quality: GraphicsQuality) -> Result<(),
 }
 
 /// Saves the calibrated preset and resets its details together, so the next ride draws
-/// exactly what the benchmark measured (R150).
+/// exactly what the benchmark measured (R151).
 ///
 /// # Errors
 /// On file system errors; the previous settings are kept if the atomic write fails.
