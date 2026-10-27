@@ -9,7 +9,9 @@ the green baseline. See [seasons](../docs/seasons.md) for the rendering contract
 [Winter materials](../docs/seasons-winter.md) reuse vegetation and rock geometry for
 slope-dependent snow and dormant broadleaf foliage. Disposable road-edge banks derive from
 the kept road mesh, deepen with elevation and leave junctions and structures open; street
-snow and paired tyre grooves share the climate treatment. No additional texture is needed.
+snow and paired tyre grooves share the climate treatment. Natural-ground blankets and
+boulder caps gain depth with altitude too; a derived clearance mask protects ways and paving.
+Greater snow load increases inclined-surface coverage. No additional source texture is needed.
 
 ## Running Blender
 

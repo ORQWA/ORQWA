@@ -6,6 +6,7 @@ var _road_id: int = 0
 
 
 static func apply(world: RideWorld, orqwa: OrqwaApp, active: bool) -> void:
+	WinterGround.apply(world, orqwa, active)
 	var banks: WinterSnowbanks = world.get_node_or_null("WinterSnowbanks") as WinterSnowbanks
 	if banks == null:
 		banks = WinterSnowbanks.new()

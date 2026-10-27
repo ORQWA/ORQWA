@@ -3123,6 +3123,32 @@ impl OrqwaApp {
             .collect()
     }
 
+    /// Conservative road/paving clearance for the raised winter ground blanket.
+    #[func]
+    fn winter_ground_mask(&self) -> VarDictionary {
+        let Some(world) = self.app.as_ref().and_then(App::world) else {
+            return VarDictionary::new();
+        };
+        let mask = orqwa_world::snow_ground_mask(world);
+        let (Ok(width), Ok(height)) = (i32::try_from(mask.columns), i32::try_from(mask.rows))
+        else {
+            return VarDictionary::new();
+        };
+        if width == 0 || height == 0 {
+            return VarDictionary::new();
+        }
+        let pixels = PackedByteArray::from(mask.pixels);
+        let Some(image) = Image::create_from_data(width, height, false, ImageFormat::R8, &pixels)
+        else {
+            return VarDictionary::new();
+        };
+        vdict! {
+            "image" => &image,
+            "origin" => Vector2::new(mask.origin[0], mask.origin[1]),
+            "size" => vector2(f64::from(width) * f64::from(mask.cell), f64::from(height) * f64::from(mask.cell)),
+        }
+    }
+
     /// How far the land around the loaded route lies from it, for the ground's distant canopy
     /// (R146): `{image, origin, size, step, dense}`. `image` holds one distance per cell in its
     /// red channel (R8, in `step`s of metres, 255 for that far or farther), laid over the land

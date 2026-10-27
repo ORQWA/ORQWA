@@ -26,6 +26,9 @@ distant canopy and returning to Summer. Seasonal materials must work on kept wor
 For Winter, `winter-road-close` (Gurten) and `winter-mountain-close` (Oberalp) show bank
 height and paired street tyre tracks at different elevations; include
 `oberalp-tunnel-chase` for exposure. Review the same road overview on Low too.
+For general snow depth, run the material fixture at `ALTITUDE=700` and `ALTITUDE=2100`:
+`winter-blanket.png` includes a one-metre stake with 10 cm bands beside the snow-covered
+boulders. Higher ground must bury more bands, while real-route streets remain visible.
 
 For road hierarchy and paving (R119), generate the offline comparison meshes with
 `cargo test --manifest-path core/Cargo.toml -p orqwa-world road_profiles_render_fixture -- --ignored`,

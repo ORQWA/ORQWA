@@ -28,6 +28,7 @@ mod road;
 mod roundabouts;
 mod route_distances;
 mod seasonal_snow;
+mod snow_ground;
 pub mod stored;
 mod streets;
 mod structures;
@@ -54,6 +55,7 @@ pub use riding::RoadWidths;
 use road::RoadIndex;
 pub use route_distances::{DENSE_FOREST, DISTANCE_STEP, RouteDistances, route_distances};
 pub use seasonal_snow::{Snowbank, road_snow_exposure, snow_depth, snowbanks};
+pub use snow_ground::{SnowGroundMask, snow_ground_mask};
 pub use vegetation::Trees;
 
 /// What worlds look like. Raise it whenever a change makes the same course come out

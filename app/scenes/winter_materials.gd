@@ -6,6 +6,8 @@ extends RefCounted
 ## Applies or clears winter using the same climate-derived snow line as the ground.
 static func apply(world: RideWorld, active: bool, climate: Dictionary) -> void:
 	var materials: Array[ShaderMaterial] = []
+	var terrain: ShaderMaterial = world.get("_terrain_material")
+	materials.append(terrain)
 	for name: String in VegetationModels.LOOKS:
 		materials.append(VegetationModels.material(name))
 	var plants: ShaderMaterial = world.get("_plant_material")
@@ -28,7 +30,6 @@ static func apply(world: RideWorld, active: bool, climate: Dictionary) -> void:
 	ridden.set_shader_parameter("winter_exposure_mask", true)
 	leaves.set_shader_parameter("winter_broadleaf", true)
 	VegetationModels.material("needles").set_shader_parameter("winter_broadleaf", false)
-	var terrain: ShaderMaterial = world.get("_terrain_material")
 	terrain.set_shader_parameter(
 		"snow_color", Palette.color("winter.snow" if active else "ground.snow")
 	)

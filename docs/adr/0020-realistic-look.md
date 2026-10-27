@@ -254,3 +254,10 @@ openings and structures are excluded. Spatial batches keep long courses bounded 
 The street material adds broken cover and paired tyre grooves; runtime UV2 derived from
 route tags excludes tunnel interiors. Neither overlay changes course inputs, generated or
 stored meshes, collision, or resistance, so generator and stored-format versions stay put.
+
+The same depth profile displaces natural ground and boulder caps, with greater load on
+inclined surfaces at higher elevations (R163). A bounded clearance image of the retained
+road, railway, street, track and urban-paving triangles conservatively excludes their
+surroundings from the raised blanket. World-space sampling keeps chunks and horizon land
+consistent, while the original road and collision datum stay intact. The image and shader
+displacements are disposable presentation data; kept-world contracts remain unchanged.

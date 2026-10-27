@@ -39,6 +39,10 @@ void vertex() {
 	model_normal = NORMAL;
 	winter_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	winter_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
+	if (kind == 3 && winter_strength > 0.0) {
+		float depth = winter_depth(winter_position) * winter_cover(winter_position, winter_normal);
+		VERTEX += (inverse(MODEL_MATRIX) * vec4(0.0, depth, 0.0, 0.0)).xyz;
+	}
 	// Each plant sways out of step with its neighbours: the phase follows where it stands.
 	vec2 place = MODEL_MATRIX[3].xz;
 	float phase = place.x * 0.13 + place.y * 0.07;

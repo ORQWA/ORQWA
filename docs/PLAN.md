@@ -482,6 +482,8 @@ physically based materials and light, restyled group by group.
 - [x] Winter snow where the route's climate and elevation allow it (#350, R157), on ground,
   foliage and rocks; dormant broadleaves and small plants. Raised roadside banks deepen
   with altitude, street snow has paired tyre tracks, and tunnels remain clear (R161).
+  Natural-ground blankets and boulder caps gain actual depth with altitude too, with
+  greater surface coverage and retained-road/paving clearance (R163).
 - [x] Graphics details below the preset (R90): shadows, ambient occlusion, reflections, bloom,
   view distance, grass, anti-aliasing, render scale, frame rate limit and V-Sync, each Auto or
   its own value, kept per computer
