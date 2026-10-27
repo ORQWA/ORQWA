@@ -30,7 +30,6 @@ func _run() -> void:
 	options.free()
 	_small_plants()
 
-
 	_winter()
 	if not _failed:
 		print("SEASONS SMOKE TEST PASSED")
