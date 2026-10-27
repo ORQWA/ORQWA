@@ -349,7 +349,7 @@ func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	courses.refresh()
 	_check(not keep.button_pressed, "worlds are not kept until asked")
 	_check(keep.text == "Keep courses ready to ride", "the switch: %s" % keep.text)
-	_check(note.text.contains("10 MB per kilometre"), "telling the room they take: %s" % note.text)
+	_check(note.text.contains("10 MB/km"), "telling the room they take: %s" % note.text)
 	_check(not worlds.visible, "no kept worlds to list")
 	keep.button_pressed = true
 	_check(orqwa.keeps_worlds(), "kept on this computer")
