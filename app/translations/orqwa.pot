@@ -187,6 +187,10 @@ msgstr ""
 msgid "A recorded activity…"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "A saved world uses about 10 MB per kilometre."
+msgstr ""
+
 #: app/ui/sound_settings.gd
 msgid "A short chime as a card tells of a climb topped, a milestone or a record."
 msgstr ""
@@ -232,7 +236,7 @@ msgid "Add"
 msgstr ""
 
 #: app/ui/course_settings.gd
-msgid "Add Geofabrik regions for detailed road surfaces (0.5–5 GB per country)."
+msgid "Add Geofabrik regions for more detailed 3D worlds."
 msgstr ""
 
 #: app/ui/workout_options.gd
@@ -255,12 +259,20 @@ msgstr ""
 msgid "Add points where the footage stops or changes speed."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "Add the Geofabrik regions you ride in (about 0.5–5 GB per country)."
+msgstr ""
+
 #: app/scenes/course_edit_dialog.gd
 msgid "Add video…"
 msgstr ""
 
 #: app/scenes/workouts_tab.gd
 msgid "Added to your workouts."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "After an update changes its look, choose Regenerate world on the course page."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -996,10 +1008,6 @@ msgid "Download it from its release page."
 msgstr ""
 
 #: app/ui/course_settings.gd
-msgid "Download map detail"
-msgstr ""
-
-#: app/ui/course_settings.gd
 msgid "Downloading %s: %s of %s"
 msgstr ""
 
@@ -1013,6 +1021,10 @@ msgstr ""
 
 #: core/orqwa-app/src/import.rs
 msgid "Downloading the course map"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Downloads start only when you add a region."
 msgstr ""
 
 #: app/scenes/overlay_hud.gd
@@ -1037,6 +1049,10 @@ msgstr ""
 
 #: app/scenes/button_dialog.gd
 msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Each rendered 3D world stays on this computer once built; the next ride starts right away."
 msgstr ""
 
 #: core/orqwa-session/src/workout.rs
@@ -1411,10 +1427,6 @@ msgstr ""
 msgid "If Advanced Protection is on, turn it off in Android's settings."
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "If an update changes a world's look, regenerate it from the course page."
-msgstr ""
-
 #: app/scenes/profile_tab.gd app/ui/profile_form.gd
 msgid "Imperial (mi, lb)"
 msgstr ""
@@ -1483,20 +1495,16 @@ msgstr ""
 msgid "Keep both"
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "Keep courses ready to ride"
-msgstr ""
-
 #: app/scenes/remote_dialog.gd
 msgid "Keep its screen on while you ride."
 msgstr ""
 
-#: app/scenes/remote_dialog.gd
-msgid "Keep this screen on while you ride: turn off its auto-lock."
+#: app/ui/course_settings.gd
+msgid "Keep rendered worlds on this computer for instant startup of a 3D ride."
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "Keep worlds on this computer for instant repeat rides (about 10 MB/km)."
+#: app/scenes/remote_dialog.gd
+msgid "Keep this screen on while you ride: turn off its auto-lock."
 msgstr ""
 
 #: app/ui/course_settings.gd
@@ -1945,6 +1953,10 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "Open a GPX route, video or ORQWA course"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Open a course after downloading a region to save its detail in the .tqc file."
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
@@ -2412,7 +2424,7 @@ msgid "Share of the road gradient you feel on the trainer"
 msgstr ""
 
 #: app/ui/course_settings.gd
-msgid "Share or sync the .tqc file to ride offline on another device, with map detail included."
+msgid "Share or sync the course to ride offline on another device without downloading the region again."
 msgstr ""
 
 #: app/scenes/button_dialog.gd

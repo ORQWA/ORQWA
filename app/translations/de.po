@@ -142,9 +142,6 @@ msgstr "Ein virtueller Fahrer auf der Strecke: deine Bestzeit, ein Tempomacher o
 msgid "A recorded activity…"
 msgstr "Eine aufgezeichnete Fahrt …"
 
-msgid "Keep worlds on this computer for instant repeat rides (about 10 MB/km)."
-msgstr "Behalte Welten auf diesem Computer, damit erneute Fahrten sofort starten (ca. 10 MB/km)."
-
 msgid "API key"
 msgstr "API-Schlüssel"
 
@@ -175,6 +172,12 @@ msgstr "Hinzufügen"
 msgid "Add a ZWO, ERG, MRC or FIT workout file"
 msgstr "Eine Trainingsdatei im Format ZWO, ERG, MRC oder FIT hinzufügen"
 
+msgid "Add the Geofabrik regions you ride in (about 0.5–5 GB per country)."
+msgstr "Füge die Geofabrik-Regionen hinzu, in denen du fährst (etwa 0,5–5 GB pro Land)."
+
+msgid "Add Geofabrik regions for more detailed 3D worlds."
+msgstr "Füge Geofabrik-Regionen für detailreichere 3D-Welten hinzu."
+
 msgid "Add point"
 msgstr "Synchronisationspunkt hinzufügen"
 
@@ -187,8 +190,23 @@ msgstr "Video hinzufügen …"
 msgid "Added to your workouts."
 msgstr "Zu deinen Trainings hinzugefügt."
 
-msgid "If an update changes a world's look, regenerate it from the course page."
-msgstr "Wenn ein Update das Aussehen einer Welt ändert, erstelle sie auf der Routenseite neu."
+msgid "After an update changes its look, choose Regenerate world on the course page."
+msgstr "Wird das Aussehen nach einem Update anders, wähle auf der Routenseite \"Welt neu erstellen\"."
+
+msgid "A saved world uses about 10 MB per kilometre."
+msgstr "Eine gespeicherte Welt belegt etwa 10 MB pro Kilometer."
+
+msgid "Each rendered 3D world stays on this computer once built; the next ride starts right away."
+msgstr "Einmal erstellte 3D-Welten bleiben auf diesem Computer. Die nächste Fahrt auf derselben Route startet sofort."
+
+msgid "Downloads start only when you add a region."
+msgstr "Downloads starten erst, wenn du eine Region hinzufügst."
+
+msgid "Open a course after downloading a region to save its detail in the .tqc file."
+msgstr "Öffne eine Route nach dem Download einer Region, damit ihre .tqc-Datei die Kartendetails speichert."
+
+msgid "Share or sync the course to ride offline on another device without downloading the region again."
+msgstr "Teile oder synchronisiere die Route, um auf einem anderen Gerät offline zu fahren, ohne die Region erneut herunterzuladen."
 
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"
@@ -964,8 +982,8 @@ msgstr "Jun."
 msgid "Keep both"
 msgstr "Beide behalten"
 
-msgid "Keep courses ready to ride"
-msgstr "Routen fahrbereit behalten"
+msgid "Keep rendered worlds on this computer for instant startup of a 3D ride."
+msgstr "Gerenderte Welten auf diesem Computer behalten, damit 3D-Fahrten sofort starten."
 
 msgid "Language"
 msgstr "Sprache"
@@ -2393,9 +2411,6 @@ msgstr "Die Regionen zum Herunterladen konnten nicht geladen werden."
 msgid "Could not prepare the map detail of %s."
 msgstr "Die Kartendetails von %s konnten nicht vorbereitet werden."
 
-msgid "Add Geofabrik regions for detailed road surfaces (0.5–5 GB per country)."
-msgstr "Füge Geofabrik-Regionen für detaillierte Strassenbeläge hinzu (0,5–5 GB pro Land)."
-
 msgid "Delete region"
 msgstr "Region löschen"
 
@@ -2404,9 +2419,6 @@ msgstr "Herunterladen"
 
 msgid "Download again"
 msgstr "Erneut herunterladen"
-
-msgid "Download map detail"
-msgstr "Kartendetails herunterladen"
 
 msgid "Downloading %s: %s of %s"
 msgstr "Lade %s herunter: %s von %s"
@@ -2425,9 +2437,6 @@ msgstr "Lese %s …"
 
 msgid "Regions"
 msgstr "Regionen"
-
-msgid "Share or sync the .tqc file to ride offline on another device, with map detail included."
-msgstr "Teile oder synchronisiere die .tqc-Datei, um mit den enthaltenen Kartendetails auf einem anderen Gerät offline zu fahren."
 
 msgid "Stop"
 msgstr "Stopp"

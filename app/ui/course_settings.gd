@@ -7,12 +7,12 @@ extends VBoxContainer
 
 ## Keeping the courses' worlds, on this computer.
 var _keep: CheckBox = CheckBox.new()
-var _note: Label = Label.new()
+var _keep_info: Button
 ## The kept worlds by course name: the room each takes and a bin to delete it, and the total.
 var _worlds: VBoxContainer = VBoxContainer.new()
 ## Downloading regions' map detail, on this computer.
 var _detail: CheckBox = CheckBox.new()
-var _detail_note: Label = Label.new()
+var _detail_info: Button
 ## The regions downloaded: the room each takes, a button to download it again and a bin.
 var _regions: VBoxContainer = VBoxContainer.new()
 ## The download or preparation under way, and a button to stop it.
@@ -30,21 +30,24 @@ var _orqwa: OrqwaApp
 func _init() -> void:
 	add_theme_constant_override("separation", 16)
 	_keep.toggled.connect(_on_keep_toggled)
-	add_child(_keep)
-	_note.add_theme_color_override("font_color", UiTheme.MUTED)
-	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# A width to wrap at before the dialog lays it out, as on the Graphics tab.
-	_note.custom_minimum_size = Vector2(600, 0)
-	add_child(_note)
+	_keep.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var keep_row: HBoxContainer = HBoxContainer.new()
+	keep_row.add_theme_constant_override("separation", 6)
+	keep_row.add_child(_keep)
+	_keep_info = _info_button()
+	keep_row.add_child(_keep_info)
+	add_child(keep_row)
 	_worlds.add_theme_constant_override("separation", 8)
 	add_child(_worlds)
 	add_child(HSeparator.new())
 	_detail.toggled.connect(_on_detail_toggled)
-	add_child(_detail)
-	_detail_note.add_theme_color_override("font_color", UiTheme.MUTED)
-	_detail_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_note.custom_minimum_size = Vector2(600, 0)
-	add_child(_detail_note)
+	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var detail_row: HBoxContainer = HBoxContainer.new()
+	detail_row.add_theme_constant_override("separation", 6)
+	detail_row.add_child(_detail)
+	_detail_info = _info_button()
+	detail_row.add_child(_detail_info)
+	add_child(detail_row)
 	_regions.add_theme_constant_override("separation", 8)
 	add_child(_regions)
 	_working.add_theme_constant_override("separation", 12)
@@ -110,24 +113,43 @@ func _on_keep_toggled(on: bool) -> void:
 
 
 func _translate() -> void:
-	_keep.text = tr("Keep courses ready to ride")
-	var note: String = (
-		tr("Keep worlds on this computer for instant repeat rides (about 10 MB/km).")
-		+ "\n\n"
-		+ tr("If an update changes a world's look, regenerate it from the course page.")
+	_keep.text = tr("Keep rendered worlds on this computer for instant startup of a 3D ride.")
+	_keep_info.tooltip_text = tr(
+		"Each rendered 3D world stays on this computer once built; the next ride starts right away."
 	)
-	_note.text = note
-	_detail.text = tr("Download map detail")
-	_detail_note.text = (
-		tr("Add Geofabrik regions for detailed road surfaces (0.5–5 GB per country).")
-		+ "\n\n"
-		+ tr(
-			"Share or sync the .tqc file to ride offline on another device, with map detail included."
-		)
+	_keep_info.tooltip_text += " " + tr("A saved world uses about 10 MB per kilometre.")
+	_keep_info.tooltip_text += " " + tr(
+		"After an update changes its look, choose Regenerate world on the course page."
+	)
+	_detail.text = tr("Add Geofabrik regions for more detailed 3D worlds.")
+	_detail_info.tooltip_text = tr(
+		"Add the Geofabrik regions you ride in (about 0.5–5 GB per country)."
+	)
+	_detail_info.tooltip_text += " " + tr("Downloads start only when you add a region.")
+	_detail_info.tooltip_text += " " + tr(
+		"Open a course after downloading a region to save its detail in the .tqc file."
+	)
+	_detail_info.tooltip_text += " " + tr(
+		"Share or sync the course to ride offline on another device without downloading the region again."
 	)
 	_stop.tooltip_text = tr("Stop")
 	_confirm_off.title = tr("Turn map detail off?")
 	_confirm_off.ok_button_text = tr("Delete")
+
+
+func _info_button() -> Button:
+	var button: Button = Button.new()
+	button.icon = UiIcons.texture("info")
+	button.custom_minimum_size = Vector2(38, 38)
+	button.focus_mode = Control.FOCUS_ALL
+	button.mouse_default_cursor_shape = Control.CURSOR_HELP
+	button.add_theme_color_override("icon_normal_color", UiTheme.MUTED)
+	button.add_theme_color_override("icon_hover_color", UiTheme.TEXT)
+	button.add_theme_color_override("icon_focus_color", UiTheme.TEXT)
+	button.add_theme_stylebox_override("normal", UiTheme.icon_button(Color.TRANSPARENT))
+	button.add_theme_stylebox_override("hover", UiTheme.icon_button(Color(1, 1, 1, 0.08)))
+	button.add_theme_stylebox_override("pressed", UiTheme.icon_button(Color(1, 1, 1, 0.13)))
+	return button
 
 
 func _show_worlds() -> void:

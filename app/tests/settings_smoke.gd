@@ -343,13 +343,17 @@ func _sound(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var courses: CourseSettings = dialog.get("_courses")
 	var keep: CheckBox = courses.get("_keep")
-	var note: Label = courses.get("_note")
+	var info: Button = courses.get("_keep_info")
 	var worlds: VBoxContainer = courses.get("_worlds")
 	orqwa.set_keeps_worlds(false)
 	courses.refresh()
 	_check(not keep.button_pressed, "worlds are not kept until asked")
-	_check(keep.text == "Keep courses ready to ride", "the switch: %s" % keep.text)
-	_check(note.text.contains("10 MB/km"), "telling the room they take: %s" % note.text)
+	_check(
+		keep.text == "Keep rendered worlds on this computer for instant startup of a 3D ride.",
+		"the switch: %s" % keep.text
+	)
+	_check(info.icon == UiIcons.texture("info"), "an info button beside the setting")
+	_check(info.tooltip_text.contains("10 MB per kilometre"), "the storage use in its tooltip")
 	_check(not worlds.visible, "no kept worlds to list")
 	keep.button_pressed = true
 	_check(orqwa.keeps_worlds(), "kept on this computer")
@@ -363,8 +367,6 @@ func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 ## Each kept world by the names of its courses, the room it takes and a bin to delete it
 ## (R136), and the room they take together in a row of its own, not the note.
 func _kept_worlds(courses: CourseSettings, worlds: VBoxContainer) -> void:
-	var note: Label = courses.get("_note")
-	_check(not note.text.contains("kept worlds take"), "no room told in the note: %s" % note.text)
 	courses.call("_list", [], 0)
 	_check(_shows(worlds, "None yet."), "none kept yet")
 	_check(not _shows(worlds, "Total"), "no total of nothing")
@@ -399,15 +401,21 @@ func _kept_worlds(courses: CourseSettings, worlds: VBoxContainer) -> void:
 func _map_detail(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	var courses: CourseSettings = dialog.get("_courses")
 	var detail: CheckBox = courses.get("_detail")
-	var note: Label = courses.get("_detail_note")
+	var info: Button = courses.get("_detail_info")
 	var regions: VBoxContainer = courses.get("_regions")
 	var was_on: bool = orqwa.map_detail()
 	orqwa.set_map_detail(false)
 	courses.refresh()
 	_check(not detail.button_pressed, "no map detail until asked")
-	_check(detail.text == "Download map detail", "the switch: %s" % detail.text)
-	_check(note.text.contains("Geofabrik"), "telling where it comes from: %s" % note.text)
-	_check(note.text.contains("0.5–5 GB"), "and the room it takes: %s" % note.text)
+	_check(
+		detail.text == "Add Geofabrik regions for more detailed 3D worlds.",
+		"the switch: %s" % detail.text
+	)
+	_check(info.icon == UiIcons.texture("info"), "an info button beside the setting")
+	_check(info.tooltip_text.contains("Geofabrik"), "the source in its tooltip")
+	_check(info.tooltip_text.contains("0.5–5 GB"), "the room it takes in the tooltip")
+	_check(info.tooltip_text.contains(".tqc"), "the course file carries the detail")
+	_check(info.tooltip_text.contains("ride offline"), "the shared course works offline")
 	_check(not regions.visible, "no regions to list")
 	detail.button_pressed = true
 	_check(orqwa.map_detail(), "on for this computer")
