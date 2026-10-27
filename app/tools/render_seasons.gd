@@ -76,6 +76,11 @@ func _run() -> void:
 	if season == "Winter":
 		await _roof(world, camera, out)
 		await _blanket(world, camera, out)
+	if season == "Spring":
+		_model(world, "broadleaf_round", Vector3(0, _altitude, 0), Palette.colors("plants.broadleaves")[0])
+		camera.fov = 55.0
+		camera.look_at_from_position(Vector3(1, _altitude + 3, 10), Vector3(0, _altitude + 3, 0))
+		await _save(out.path_join("spring-blossom.png"))
 	quit()
 
 

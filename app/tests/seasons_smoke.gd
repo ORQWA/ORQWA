@@ -31,6 +31,7 @@ func _run() -> void:
 	_small_plants()
 
 	_winter()
+	_spring()
 	if not _failed:
 		print("SEASONS SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -90,4 +91,23 @@ func _winter() -> void:
 	_check(strength == 0.0, "summer restores the original ground height")
 	var snow_line: float = terrain.get_shader_parameter("snow_line")
 	_check(snow_line == 2400.0, "summer restores the high snow line")
+	world.free()
+
+
+func _spring() -> void:
+	var world: RideWorld = (load("res://scenes/world.tscn") as PackedScene).instantiate()
+	root.add_child(world)
+	world.apply_options({"season": "Spring", "weather": "Rain", "time": "Evening", "camera": 0})
+	var plants: ShaderMaterial = world.get("_plant_material")
+	var bloom: float = plants.get_shader_parameter("spring_bloom")
+	_check(
+		bloom == 1.0,
+		"spring opens existing flower clumps (bloom %s, available %s)" % [bloom, OrqwaApp.seasons()]
+	)
+	var needles: ShaderMaterial = VegetationModels.material("needles")
+	var strength: float = needles.get_shader_parameter("spring_strength")
+	_check(strength == 0.0, "spring preserves evergreen needles")
+	world.apply_options({"season": "Summer", "weather": "Clear", "time": "Midday", "camera": 0})
+	bloom = plants.get_shader_parameter("spring_bloom")
+	_check(bloom == 0.0, "summer restores smaller flower heads")
 	world.free()

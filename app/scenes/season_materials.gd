@@ -19,6 +19,8 @@ func apply_options(
 	var climate: Dictionary = {"snow_line": 2400.0, "deciduous_from": -10000.0}
 	if orqwa != null:
 		climate = orqwa.season_climate(season)
+	var deciduous_from: float = climate["deciduous_from"]
+	SpringMaterials.apply(world, season == "Spring", deciduous_from)
 	WinterMaterials.apply(world, season == "Winter", climate)
 	WinterSnowbanks.apply(world, orqwa, season == "Winter")
 	if previous != season:

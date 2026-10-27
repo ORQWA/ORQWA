@@ -11,6 +11,7 @@ render_mode cull_disabled;
 uniform float wind_strength : hint_range(0.0, 1.0) = 0.12;
 uniform vec2 wind_direction = vec2(1.0, 0.35);
 uniform vec4 flower_colors[4] : source_color;
+uniform float spring_bloom : hint_range(0.0, 1.0) = 0.0;
 
 varying vec3 tint;
 varying vec3 winter_position;
@@ -21,6 +22,9 @@ float hash(float n) {
 }
 
 void vertex() {
+	if (COLOR.a < 0.5) {
+		VERTEX.xz = UV2 + (VERTEX.xz - UV2) * mix(0.65, 1.4, spring_bloom);
+	}
 	// UV.y runs from the root (0) to the tip (1).
 	float bend = UV.y * UV.y;
 	vec3 world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;

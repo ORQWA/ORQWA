@@ -13,6 +13,9 @@ snow and paired tyre grooves share the climate treatment. Natural-ground blanket
 boulder caps gain depth with altitude too; a derived clearance mask protects ways and paving.
 Greater snow load increases inclined-surface coverage. No additional source texture is needed.
 
+[Spring](../docs/seasons-spring.md) adds blossom to a subset of broadleaf crowns and opens
+the procedural five-petal meadow flowers; placement and Blender exports stay the same.
+
 ## Running Blender
 
 Blender runs headless in its own container (official Linux builds exist for x86-64 only, so on

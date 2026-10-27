@@ -14,6 +14,7 @@ shader_type spatial;
 uniform sampler2D winter_ground_mask : filter_linear, repeat_disable;
 uniform vec2 winter_ground_origin = vec2(0.0);
 uniform vec2 winter_ground_size = vec2(0.0);
+#include "res://shaders/spring.gdshaderinc"
 
 uniform sampler2D grass_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D grass_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -195,6 +196,10 @@ void fragment() {
 	if (canopy > 0.001) {
 		vec3 crowns;
 		vec3 crowns_n = from_above(canopy_albedo, canopy_normal, canopy_tile, 1.0, crowns);
+		vec2 patch = floor(world_position.xz / 24.0);
+		vec3 blossom = spring_colour(patch);
+		float brightness = dot(crowns, vec3(0.2126, 0.7152, 0.0722));
+		crowns = mix(crowns, blossom * brightness * 2.0, spring_amount(patch, world_position.y) * 0.35);
 		floor_colour = mix(floor_colour, crowns, far);
 		floor_normal = normalize(mix(floor_normal, crowns_n, far));
 	}

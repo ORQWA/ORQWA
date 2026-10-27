@@ -2499,6 +2499,10 @@ msgstr ""
 msgid "Speed"
 msgstr ""
 
+#: core/orqwa-domain/src/season.rs
+msgid "Spring"
+msgstr ""
+
 #: app/ui/zones_editor.gd
 msgid "Standard zones"
 msgstr ""

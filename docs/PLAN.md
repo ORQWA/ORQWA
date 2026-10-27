@@ -475,9 +475,10 @@ physically based materials and light, restyled group by group.
     distance; ways through woods hidden under them rather than ended by distance
 - [x] Summer season baseline (#350, R154): a remembered Season selector beside Weather and
   Time of day, available before and during 3D rides; green foliage and meadows by default.
+- [x] Spring flowers and blossom (#350, R155): open five-petal meadow flowers and pink/white
+  blossom among green broadleaves, including their LODs and distant mixed canopy.
 - [x] Summer meadows are predominantly grass, retaining only a sparse 10% of the existing
   flower clumps (R158), with the other positions filled by full grass tufts.
-- [ ] Spring flowers and blossom (#350).
 - [ ] Autumn red and orange broadleaf foliage (#350).
 - [x] Winter snow where the route's climate and elevation allow it (#350, R157), on ground,
   foliage and rocks; dormant broadleaves and small plants. Raised roadside banks deepen

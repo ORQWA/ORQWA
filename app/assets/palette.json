@@ -69,6 +69,10 @@
     "snow": "#e6edf1",
     "dormant": "#76604a"
   },
+  "spring": {
+    "blossom": ["#e5c4cf", "#ebded9", "#d9a9bb", "#f0d4dc"],
+    "flowers": ["#e5c449", "#ede5d7", "#cd83a8", "#a18bc1"]
+  },
   "buildings": {
     "walls": ["#e9e4d8", "#e6d6bc", "#dcc6a6", "#c9b49c", "#efe9df", "#d8d4c6"],
     "light_walls": ["#ece8de", "#e4dfd3", "#e9e2d4", "#dfd9cd"],

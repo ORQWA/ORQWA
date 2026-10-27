@@ -4,6 +4,7 @@ render_mode cull_disabled;
 global uniform float wind_time;
 #include "res://shaders/winter.gdshaderinc"
 uniform bool winter_broadleaf = false;
+#include "res://shaders/spring.gdshaderinc"
 // Foliage cards of trees and bushes (art/vegetation, R89, ADR 0020): clusters of leaves or
 // sprays of needles cut out by their alpha, seen from both sides, tinted per plant (COLOR, sRGB,
 // chosen by the world from the palette), lit through from behind when the sun is beyond them,
@@ -35,6 +36,8 @@ void vertex() {
 	float flutter = sin(wind_time * 6.0 + dot(VERTEX, vec3(3.1, 1.7, 2.3)));
 	VERTEX += NORMAL * flutter * 0.2 * wind_strength;
 	tint = to_linear(COLOR.rgb);
+	float height = (MODEL_MATRIX * vec4(VERTEX, 1.0)).y;
+	tint = mix(tint, spring_colour(place), spring_amount(place, height) * 0.9);
 	winter_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	winter_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 	winter_dormancy = winter_broadleaf ? winter_strength

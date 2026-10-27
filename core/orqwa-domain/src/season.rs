@@ -6,13 +6,15 @@ pub enum Season {
     /// Green foliage and meadows, the original appearance.
     #[default]
     Summer,
+    /// Meadow flowers and blossom among fresh green broadleaves.
+    Spring,
     /// Dormant vegetation and snow where the route's climate allows it.
     Winter,
 }
 
 impl Season {
     /// Seasons available in the ride options, with the default first.
-    pub const ALL: &[Self] = &[Self::Summer, Self::Winter];
+    pub const ALL: &[Self] = &[Self::Summer, Self::Spring, Self::Winter];
 
     /// Stable, untranslated name used by settings and the presentation boundary.
     #[must_use]
@@ -20,6 +22,7 @@ impl Season {
         // i18n-begin
         match self {
             Self::Summer => "Summer",
+            Self::Spring => "Spring",
             Self::Winter => "Winter",
         }
         // i18n-end
@@ -30,6 +33,7 @@ impl Season {
     pub const fn flower_share(self) -> f64 {
         match self {
             Self::Summer => 0.1,
+            Self::Spring => 1.0,
             Self::Winter => 0.0,
         }
     }
