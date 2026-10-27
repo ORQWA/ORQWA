@@ -272,11 +272,7 @@ msgid "Added to your workouts."
 msgstr ""
 
 #: app/ui/course_settings.gd
-msgid "After an update changes its look, choose Regenerate world on the course page."
-msgstr ""
-
-#: app/ui/course_settings.gd
-msgid "After downloading a region, open a course to save its map detail in the .tqc file."
+msgid "After a visual update, regenerate the world from its course page."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
@@ -345,10 +341,6 @@ msgstr ""
 
 #: app/scenes/start_page.gd
 msgid "Analysis"
-msgstr ""
-
-#: app/ui/course_settings.gd
-msgid "Another computer can ride offline without downloading the Geofabrik region again."
 msgstr ""
 
 #: app/ui/graphics_settings.gd
@@ -461,6 +453,10 @@ msgstr ""
 
 #: app/scenes/course_detail.gd app/scenes/workouts_tab.gd core/orqwa-app/src/import.rs
 msgid "Building 3D world"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Built 3D worlds stay on this computer."
 msgstr ""
 
 #: app/scenes/devices_tab.gd app/scenes/history_screen.gd app/ui/ride_devices.gd app/ui/workout_editor.gd core/orqwa-app/src/hud.rs
@@ -1059,10 +1055,6 @@ msgstr ""
 msgid "Each press shifts, changes the view, controls music or the workout, or does nothing."
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "Each rendered 3D world stays on this computer once built; the next ride starts right away."
-msgstr ""
-
 #: core/orqwa-session/src/workout.rs
 msgid "Easy for 10 minutes"
 msgstr ""
@@ -1297,6 +1289,10 @@ msgstr ""
 
 #: app/scenes/overlay_hud.gd
 msgid "Full view"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Future rides start right away."
 msgstr ""
 
 #: app/scenes/courses_tab.gd
@@ -1755,6 +1751,10 @@ msgstr ""
 msgid "Next: free ride for %s"
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "No Geofabrik download is needed on the other computer."
+msgstr ""
+
 #: app/scenes/courses_tab.gd
 msgid "No country"
 msgstr ""
@@ -1965,6 +1965,10 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "Open a course first."
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Open a course to save the region's map detail in its .tqc file."
 msgstr ""
 
 #: app/scenes/account_dialog.gd
@@ -2425,6 +2429,10 @@ msgstr ""
 
 #: app/ui/ride_options.gd
 msgid "Share of the road gradient you feel on the trainer"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Share the .tqc to ride offline on another computer."
 msgstr ""
 
 #: app/scenes/button_dialog.gd

@@ -420,6 +420,7 @@ func _map_detail(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 		"the detail is inside the shared file"
 	)
 	_check(info.tooltip_text.contains("ride offline"), "the shared course works offline")
+	_check(info.tooltip_text.count("\n") >= 5, "long guidance wraps into a compact tooltip")
 	_check(not regions.visible, "no regions to list")
 	detail.button_pressed = true
 	_check(orqwa.map_detail(), "on for this computer")

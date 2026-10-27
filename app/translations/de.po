@@ -190,26 +190,32 @@ msgstr "Video hinzufügen …"
 msgid "Added to your workouts."
 msgstr "Zu deinen Trainings hinzugefügt."
 
-msgid "After an update changes its look, choose Regenerate world on the course page."
-msgstr "Wird das Aussehen nach einem Update anders, wähle auf der Routenseite \"Welt neu erstellen\"."
+msgid "After a visual update, regenerate the world from its course page."
+msgstr "Erstelle die Welt nach einem visuellen Update auf ihrer Routenseite neu."
 
 msgid "A saved world uses about 10 MB per kilometre."
 msgstr "Eine gespeicherte Welt belegt etwa 10 MB pro Kilometer."
 
-msgid "Each rendered 3D world stays on this computer once built; the next ride starts right away."
-msgstr "Einmal erstellte 3D-Welten bleiben auf diesem Computer. Die nächste Fahrt auf derselben Route startet sofort."
+msgid "Built 3D worlds stay on this computer."
+msgstr "Erstellte 3D-Welten bleiben auf diesem Computer."
+
+msgid "Future rides start right away."
+msgstr "Künftige Fahrten starten sofort."
 
 msgid "Downloads start only when you add a region."
 msgstr "Downloads starten erst, wenn du eine Region hinzufügst."
 
-msgid "After downloading a region, open a course to save its map detail in the .tqc file."
-msgstr "Öffne nach dem Download einer Region eine Route, damit ihre .tqc-Datei die Kartendetails speichert."
+msgid "Open a course to save the region's map detail in its .tqc file."
+msgstr "Öffne eine Route, um die Kartendetails der Region in ihrer .tqc-Datei zu speichern."
 
 msgid "The .tqc file includes this map detail."
 msgstr "Die .tqc-Datei enthält diese Kartendetails."
 
-msgid "Another computer can ride offline without downloading the Geofabrik region again."
-msgstr "Auf einem anderen Computer kannst du offline fahren, ohne die Geofabrik-Region erneut herunterzuladen."
+msgid "Share the .tqc to ride offline on another computer."
+msgstr "Teile die .tqc-Datei, um auf einem anderen Computer offline zu fahren."
+
+msgid "No Geofabrik download is needed on the other computer."
+msgstr "Auf dem anderen Computer ist kein Geofabrik-Download nötig."
 
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"

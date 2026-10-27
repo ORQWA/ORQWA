@@ -114,26 +114,28 @@ func _on_keep_toggled(on: bool) -> void:
 
 func _translate() -> void:
 	_keep.text = tr("Keep rendered worlds on this computer for instant startup of a 3D ride.")
-	_keep_info.tooltip_text = tr(
-		"Each rendered 3D world stays on this computer once built; the next ride starts right away."
-	)
-	_keep_info.tooltip_text += " " + tr("A saved world uses about 10 MB per kilometre.")
-	_keep_info.tooltip_text += " " + tr(
-		"After an update changes its look, choose Regenerate world on the course page."
+	_keep_info.tooltip_text = tr("Built 3D worlds stay on this computer.")
+	_keep_info.tooltip_text += "\n" + tr("Future rides start right away.")
+	_keep_info.tooltip_text += "\n" + tr("A saved world uses about 10 MB per kilometre.")
+	_keep_info.tooltip_text += "\n" + tr(
+		"After a visual update, regenerate the world from its course page."
 	)
 	_detail.text = tr("Add Geofabrik regions for more detailed 3D worlds.")
 	_detail_info.tooltip_text = tr(
 		"Add the Geofabrik regions you ride in (about 0.5–5 GB per country)."
 	)
-	_detail_info.tooltip_text += " " + tr("Downloads start only when you add a region.")
-	_detail_info.tooltip_text += " " + tr(
-		"After downloading a region, open a course to save its map detail in the .tqc file."
+	_detail_info.tooltip_text += "\n" + tr("Downloads start only when you add a region.")
+	_detail_info.tooltip_text += "\n" + tr(
+		"Open a course to save the region's map detail in its .tqc file."
 	)
-	_detail_info.tooltip_text += " " + tr(
+	_detail_info.tooltip_text += "\n" + tr(
 		"The .tqc file includes this map detail."
 	)
-	_detail_info.tooltip_text += " " + tr(
-		"Another computer can ride offline without downloading the Geofabrik region again."
+	_detail_info.tooltip_text += "\n" + tr(
+		"Share the .tqc to ride offline on another computer."
+	)
+	_detail_info.tooltip_text += "\n" + tr(
+		"No Geofabrik download is needed on the other computer."
 	)
 	_stop.tooltip_text = tr("Stop")
 	_confirm_off.title = tr("Turn map detail off?")
