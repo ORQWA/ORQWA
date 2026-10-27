@@ -15,3 +15,8 @@ Render fixed route views with `SEASON=Summer scripts/render-views.sh` in the dev
 The same cameras and quality preset allow seasonal comparisons. Check road height and
 overviews, distant woods and Low as well as Medium/Ultra. Native GPU frame time remains
 the performance evidence; software Vulkan checks appearance and shader compilation.
+
+`scripts/render-seasons.sh` renders the real materials on a fixed set of trees and flowers
+at 700 m, without preparing a course. Set `SEASON` and `OUT_DIR` inside the container.
+Pair these close comparisons with [Summer on the Gurten](images/seasons/summer-climb.jpg),
+the [hairpin](images/seasons/summer-hairpin.jpg) and [Low](images/seasons/summer-low.jpg).

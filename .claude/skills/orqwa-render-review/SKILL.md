@@ -18,6 +18,12 @@ shots, run them in the background, and read the PNGs with the Read tool. Output 
 
 ## Ready-made
 
+For seasons (#350), `SEASON=Summer scripts/render-seasons.sh` in the dev container draws
+the real materials on fixed trees and meadow flowers at 700 m without course preparation.
+Review its tree and flower close-ups, then pair with identical route views (`SEASON` also
+works in `scripts/render-views.sh`). Check evergreen needles, tropical lowlands, Low's
+distant canopy and returning to Summer. Seasonal materials must work on kept worlds.
+
 For road hierarchy and paving (R119), generate the offline comparison meshes with
 `cargo test --manifest-path core/Cargo.toml -p orqwa-world road_profiles_render_fixture -- --ignored`,
 then render `app/tools/render_roads.gd` with `OUT` set to an absolute PNG path. It shares
