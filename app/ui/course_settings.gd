@@ -5,14 +5,25 @@ extends VBoxContainer
 ## takes, to delete (R136), and the room they take together; and the regions whose map detail
 ## it downloads for the courses prepared afterwards (ADR 0033), to update or delete.
 
+const KEEP_INFO_TOOLTIP: String = (
+	"ORQWA keeps each rendered world on this computer after it is built, so rides on that "
+	+ "course start right away. A saved world uses about 10 MB per kilometre. If an update "
+	+ "changes how the world looks, regenerate it from the course page."
+)
+const DETAIL_INFO_TOOLTIP: String = (
+	"Want more detailed 3D worlds? Download the regions you ride in, then "
+	+ "open a course to save that map detail in its .tqc file. Share the file, "
+	+ "and the other rider can use the detail offline without downloading the region."
+)
+
 ## Keeping the courses' worlds, on this computer.
 var _keep: CheckBox = CheckBox.new()
-var _note: Label = Label.new()
+var _keep_info: Button
 ## The kept worlds by course name: the room each takes and a bin to delete it, and the total.
 var _worlds: VBoxContainer = VBoxContainer.new()
 ## Downloading regions' map detail, on this computer.
 var _detail: CheckBox = CheckBox.new()
-var _detail_note: Label = Label.new()
+var _detail_info: Button
 ## The regions downloaded: the room each takes, a button to download it again and a bin.
 var _regions: VBoxContainer = VBoxContainer.new()
 ## The download or preparation under way, and a button to stop it.
@@ -30,21 +41,24 @@ var _orqwa: OrqwaApp
 func _init() -> void:
 	add_theme_constant_override("separation", 16)
 	_keep.toggled.connect(_on_keep_toggled)
-	add_child(_keep)
-	_note.add_theme_color_override("font_color", UiTheme.MUTED)
-	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# A width to wrap at before the dialog lays it out, as on the Graphics tab.
-	_note.custom_minimum_size = Vector2(600, 0)
-	add_child(_note)
+	_keep.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var keep_row: HBoxContainer = HBoxContainer.new()
+	keep_row.add_theme_constant_override("separation", 6)
+	keep_row.add_child(_keep)
+	_keep_info = _info_button()
+	keep_row.add_child(_keep_info)
+	add_child(keep_row)
 	_worlds.add_theme_constant_override("separation", 8)
 	add_child(_worlds)
 	add_child(HSeparator.new())
 	_detail.toggled.connect(_on_detail_toggled)
-	add_child(_detail)
-	_detail_note.add_theme_color_override("font_color", UiTheme.MUTED)
-	_detail_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_note.custom_minimum_size = Vector2(600, 0)
-	add_child(_detail_note)
+	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var detail_row: HBoxContainer = HBoxContainer.new()
+	detail_row.add_theme_constant_override("separation", 6)
+	detail_row.add_child(_detail)
+	_detail_info = _info_button()
+	detail_row.add_child(_detail_info)
+	add_child(detail_row)
 	_regions.add_theme_constant_override("separation", 8)
 	add_child(_regions)
 	_working.add_theme_constant_override("separation", 12)
@@ -110,30 +124,45 @@ func _on_keep_toggled(on: bool) -> void:
 
 
 func _translate() -> void:
-	_keep.text = tr("Keep courses ready to ride")
-	var note: String = (
-		tr(
-			"Each course's 3D world is kept on this computer once built: the next ride starts at once."
-		)
-		+ " "
-		+ tr("A world takes about 10 MB per kilometre of route.")
-		+ " "
-		+ tr(
-			"After an update that changes how worlds look, a course's page offers to regenerate it."
-		)
-	)
-	_note.text = note
-	_detail.text = tr("Download map detail")
-	_detail_note.text = (
-		tr("Courses you prepare get real road surfaces, such as cobbles, where you add a region.")
-		+ " "
-		+ tr("Regions come from Geofabrik; a country takes half a gigabyte to five.")
-		+ " "
-		+ tr("Nothing is downloaded unless you add it.")
-	)
+	_keep.text = tr("Keep rendered worlds on this computer for instant startup of a 3D ride.")
+	_keep_info.tooltip_text = _wrap_tooltip(tr(KEEP_INFO_TOOLTIP), 54)
+	_detail.text = tr("Add Geofabrik regions for more detailed 3D worlds.")
+	_detail_info.tooltip_text = _wrap_tooltip(tr(DETAIL_INFO_TOOLTIP), 54)
 	_stop.tooltip_text = tr("Stop")
 	_confirm_off.title = tr("Turn map detail off?")
 	_confirm_off.ok_button_text = tr("Delete")
+
+
+func _info_button() -> Button:
+	var button: Button = Button.new()
+	button.icon = UiIcons.texture("info")
+	button.custom_minimum_size = Vector2(38, 38)
+	button.focus_mode = Control.FOCUS_ALL
+	button.mouse_default_cursor_shape = Control.CURSOR_HELP
+	button.add_theme_color_override("icon_normal_color", UiTheme.MUTED)
+	button.add_theme_color_override("icon_hover_color", UiTheme.TEXT)
+	button.add_theme_color_override("icon_focus_color", UiTheme.TEXT)
+	button.add_theme_stylebox_override("normal", UiTheme.icon_button(Color.TRANSPARENT))
+	button.add_theme_stylebox_override("hover", UiTheme.icon_button(Color(1, 1, 1, 0.08)))
+	button.add_theme_stylebox_override("pressed", UiTheme.icon_button(Color(1, 1, 1, 0.13)))
+	return button
+
+
+## Wraps translated tooltip copy to keep the standard tooltip within the settings window.
+func _wrap_tooltip(copy: String, max_characters: int) -> String:
+	var lines: PackedStringArray = []
+	var line: String = ""
+	for word: String in copy.split(" "):
+		if not line.is_empty() and line.length() + word.length() + 1 > max_characters:
+			lines.append(line)
+			line = word
+		elif line.is_empty():
+			line = word
+		else:
+			line += " " + word
+	if not line.is_empty():
+		lines.append(line)
+	return "\n".join(lines)
 
 
 func _show_worlds() -> void:

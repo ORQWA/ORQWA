@@ -142,9 +142,6 @@ msgstr "Ein virtueller Fahrer auf der Strecke: deine Bestzeit, ein Tempomacher o
 msgid "A recorded activity…"
 msgstr "Eine aufgezeichnete Fahrt …"
 
-msgid "A world takes about 10 MB per kilometre of route."
-msgstr "Eine Welt belegt etwa 10 MB pro Kilometer Route."
-
 msgid "API key"
 msgstr "API-Schlüssel"
 
@@ -175,6 +172,9 @@ msgstr "Hinzufügen"
 msgid "Add a ZWO, ERG, MRC or FIT workout file"
 msgstr "Eine Trainingsdatei im Format ZWO, ERG, MRC oder FIT hinzufügen"
 
+msgid "Add Geofabrik regions for more detailed 3D worlds."
+msgstr "Füge Geofabrik-Regionen für detailreichere 3D-Welten hinzu."
+
 msgid "Add point"
 msgstr "Synchronisationspunkt hinzufügen"
 
@@ -187,8 +187,11 @@ msgstr "Video hinzufügen …"
 msgid "Added to your workouts."
 msgstr "Zu deinen Trainings hinzugefügt."
 
-msgid "After an update that changes how worlds look, a course's page offers to regenerate it."
-msgstr "Ändert ein Update das Aussehen der Welten, bietet die Seite einer Route an, ihre Welt neu zu erstellen."
+msgid "ORQWA keeps each rendered world on this computer after it is built, so rides on that course start right away. A saved world uses about 10 MB per kilometre. If an update changes how the world looks, regenerate it from the course page."
+msgstr "ORQWA behält jede gerenderte Welt nach dem Erstellen auf diesem Computer, damit Fahrten auf dieser Route sofort starten. Eine gespeicherte Welt belegt etwa 10 MB pro Kilometer. Ändert ein Update das Aussehen, erstelle die Welt auf ihrer Routenseite neu."
+
+msgid "Want more detailed 3D worlds? Download the regions you ride in, then open a course to save that map detail in its .tqc file. Share the file, and the other rider can use the detail offline without downloading the region."
+msgstr "Möchtest du detailreichere 3D-Welten? Lade die Regionen herunter, in denen du fährst, und öffne dann eine Route, um die Kartendetails in ihrer .tqc-Datei zu speichern. Teile die Datei, damit andere offline mit diesen Details fahren können, ohne die Region erneut herunterzuladen."
 
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"
@@ -679,9 +682,6 @@ msgstr "Drohne"
 msgid "Duration"
 msgstr "Dauer"
 
-msgid "Each course's 3D world is kept on this computer once built: the next ride starts at once."
-msgstr "Die 3D-Welt jeder Route bleibt nach dem Erstellen auf diesem Computer: Die nächste Fahrt startet sofort."
-
 msgid "Easy for 10 minutes"
 msgstr "10 Minuten locker"
 
@@ -967,8 +967,8 @@ msgstr "Jun."
 msgid "Keep both"
 msgstr "Beide behalten"
 
-msgid "Keep courses ready to ride"
-msgstr "Routen fahrbereit behalten"
+msgid "Keep rendered worlds on this computer for instant startup of a 3D ride."
+msgstr "Gerenderte Welten auf diesem Computer behalten, damit 3D-Fahrten sofort starten."
 
 msgid "Language"
 msgstr "Sprache"
@@ -2396,9 +2396,6 @@ msgstr "Die Regionen zum Herunterladen konnten nicht geladen werden."
 msgid "Could not prepare the map detail of %s."
 msgstr "Die Kartendetails von %s konnten nicht vorbereitet werden."
 
-msgid "Courses you prepare get real road surfaces, such as cobbles, where you add a region."
-msgstr "Routen, die du vorbereitest, erhalten echte Strassenbeläge wie Kopfsteinpflaster, wo du eine Region hinzufügst."
-
 msgid "Delete region"
 msgstr "Region löschen"
 
@@ -2407,9 +2404,6 @@ msgstr "Herunterladen"
 
 msgid "Download again"
 msgstr "Erneut herunterladen"
-
-msgid "Download map detail"
-msgstr "Kartendetails herunterladen"
 
 msgid "Downloading %s: %s of %s"
 msgstr "Lade %s herunter: %s von %s"
@@ -2420,9 +2414,6 @@ msgstr "Lade die Regionen …"
 msgid "Not ready"
 msgstr "Nicht bereit"
 
-msgid "Nothing is downloaded unless you add it."
-msgstr "Heruntergeladen wird nur, was du hinzufügst."
-
 msgid "Preparing %s…"
 msgstr "Bereite %s vor …"
 
@@ -2431,9 +2422,6 @@ msgstr "Lese %s …"
 
 msgid "Regions"
 msgstr "Regionen"
-
-msgid "Regions come from Geofabrik; a country takes half a gigabyte to five."
-msgstr "Die Regionen kommen von Geofabrik; ein Land braucht ein halbes bis fünf Gigabyte."
 
 msgid "Stop"
 msgstr "Stopp"
