@@ -9,6 +9,8 @@ The ground retains its slope and submerged-bed exclusions. Shared winter uniform
 snow on upward-facing foliage, rocks and building roofs, leave needles dense, and thin and brown
 temperate broadleaves. Tropical lowlands remain evergreen. Grass under snow and flower
 heads are hidden. Roads remain rideable and clear; resistance and physics are unchanged.
+Grass verges and grassy track centres share the snow treatment while their carriageways
+and wheel tracks stay clear, avoiding green strips around the snowy ground.
 
 Review the Gurten at road height and above, plus the Oberalp pass, and compare Summer
 from identical cameras. Include a tropical lowland fixture in the core climate tests.

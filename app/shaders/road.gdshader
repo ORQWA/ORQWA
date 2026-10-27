@@ -9,6 +9,7 @@ render_mode cull_disabled;
 // road (beyond, the skirts), UV.y is the distance along the route in metres.
 
 #include "res://shaders/ground.gdshaderinc"
+#include "res://shaders/winter.gdshaderinc"
 #include "res://shaders/bridge_surface.gdshaderinc"
 
 uniform sampler2D asphalt_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -139,6 +140,11 @@ void fragment() {
 		vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0), 0.8);
 	albedo = mix(albedo, texture(grass_albedo, grass_uv).rgb * vec3(0.34, 0.44, 0.27), verge);
 	normal = normalize(mix(normal, grass_bent, verge));
+	// Ploughed carriageways stay clear; their grass verges meet the snowy ground.
+	float snow = winter_cover(world_position, world_normal) * verge;
+	albedo = mix(albedo, winter_snow_color.rgb, snow);
+	normal = normalize(mix(normal, world_normal, snow * 0.7));
+	roughness = mix(roughness, 0.8, snow);
 	roughness = mix(roughness, 0.92, verge);
 
 	// Rain darkens and smooths the asphalt, gravel less.
