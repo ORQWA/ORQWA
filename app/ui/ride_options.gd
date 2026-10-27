@@ -69,7 +69,7 @@ func _init() -> void:
 		slider.step = 5.0
 		slider.value = 50.0
 		slider.value_changed.connect(func(_value: float) -> void: _changed())
-	_wind_volume.tooltip_text = tr("Wind volume; 0 mutes it")
+	_wind_volume.tooltip_text = tr("Wind and rain volume; 0 mutes them")
 	_bike_volume.tooltip_text = tr("Chain, freewheel and gear shift volume; 0 mutes them")
 	for option: OptionButton in [_camera, _time, _weather]:
 		option.item_selected.connect(func(_index: int) -> void: _changed())

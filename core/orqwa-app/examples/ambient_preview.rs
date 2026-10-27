@@ -2,13 +2,17 @@
 
 use std::io::Write;
 
-use orqwa_app::ambient::{Motion, RATE, Settings, Sound};
+use orqwa_app::ambient::{Motion, RATE, Settings, Sound, Weather};
 use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 
 fn main() -> std::io::Result<()> {
     let output = std::env::args().nth(1).expect("output WAV path");
-    let shifts_only = std::env::args().nth(2).as_deref() == Some("--shifts");
-    let shifts: &[u32] = if shifts_only {
+    let mode = std::env::args().nth(2);
+    let shifts_only = mode.as_deref() == Some("--shifts");
+    let rain_only = mode.as_deref() == Some("--rain");
+    let shifts: &[u32] = if rain_only {
+        &[]
+    } else if shifts_only {
         &[2 * 50, 5 * 50, 8 * 50, 8 * 50 + 10, 12 * 50, 19 * 50]
     } else {
         &[6 * 50, 9 * 50, 12 * 50, 12 * 50 + 5]
@@ -20,7 +24,9 @@ fn main() -> std::io::Result<()> {
             sound.shift();
         }
         let time = f64::from(frame) / 50.0;
-        let (speed, cadence, power) = if shifts_only {
+        let (speed, cadence, power) = if rain_only {
+            (0.0, 0.0, 0.0)
+        } else if shifts_only {
             if time < 7.0 {
                 (7.0, 60.0, 150.0)
             } else if time < 11.0 {
@@ -52,8 +58,18 @@ fn main() -> std::io::Result<()> {
             },
             Settings {
                 wind: if shifts_only { 0.0 } else { 50.0 },
-                bike: if shifts_only { 75.0 } else { 50.0 },
-                ..Settings::default()
+                bike: if rain_only {
+                    0.0
+                } else if shifts_only {
+                    75.0
+                } else {
+                    50.0
+                },
+                weather: if rain_only && (5.0..20.0).contains(&time) {
+                    Weather::Rain
+                } else {
+                    Weather::Clear
+                },
             },
         ));
     }

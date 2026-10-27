@@ -38,8 +38,9 @@ volume sliders in the shared ride options; zero mutes a layer.
   provides stereo width. The 48 kHz output preserves high-frequency detail when a texture
   speeds up. The wind is an audible approximation, not a physical wind simulation.
 - Recorded cadence and wheel speed were not calibrated. Playback reference rates are
-  documented listening choices. Rain currently strengthens the breeze; this does not add a
-  separate rain recording or location-specific birds, traffic or water.
+  documented listening choices. Rain initially strengthened only the breeze; the R151
+  amendment below adds recorded rainfall. Location-specific birds, traffic and water remain
+  outside this mixer.
 
 ## Amendment — 2026-10-22: recorded shifting sound (R116)
 
@@ -70,3 +71,18 @@ four-voice bound and playback restart flush apply to these pending transfers too
 controls or dependencies are needed. A bicycle-only preview exercises slow and fast shifts,
 rapid changes and coasting-to-pedaling engagement; Rust tests cover those transitions and
 audible chain detail after the lever ends.
+
+## Amendment — 2026-10-27: rain matching the weather preset (R151, #377)
+
+A sixth CC0 recording supplies a 20-second rainfall texture. The mixer draws overlapping,
+randomly positioned passages at natural pitch and fades their level with the Rain preset.
+Rain is independent of speed and cadence, so it continues while stationary and coasting;
+the existing Wind volume controls both weather layers. All other presets fade rain out.
+This reuses the existing Godot stream, pause/finish/leave handling and ride eligibility.
+
+The source, licence, excerpt and checksum are documented alongside the other recordings;
+the same decoder and preparation pipeline produce the bundled PCM without new dependencies
+or runtime network calls. A weather-only listening preview exercises Clear → Rain → Clear.
+Signal tests isolate the rain layer from the weather's breeze and cover dry presets,
+stationary rainfall, transitions, muting, buffer continuity and restart fades. The Godot
+ride smoke test exercises rainy playback and its pause/resume/screen-exit boundaries.

@@ -371,17 +371,17 @@ func _workout() -> void:
 	_failure = ""
 
 
-## R114: real PCM reaches Godot; pause and hidden screens flush the playback queue.
+## R114/R151: rainy PCM reaches Godot; pause and hidden screens flush the playback queue.
 func _ambient_sound() -> void:
 	_check(_orqwa.ambient_sound_active(), "ambient sound during a 3D ride")
 	_check(OrqwaApp.ambient_sound_rate() == 48000, "ambient sample rate")
-	_orqwa.set_ambient_sound(50.0, 50.0, "Cloudy")
+	_orqwa.set_ambient_sound(50.0, 0.0, "Rain")
 	var samples: PackedVector2Array = _orqwa.ambient_sound(2400)
 	_check(samples.size() == 2400, "stereo PCM from the live ride")
 	var audible: bool = false
 	for sample: Vector2 in samples:
 		audible = audible or sample.length_squared() > 0.000001
-	_check(audible, "the moving ride is audible")
+	_check(audible, "rainy ambience is audible with bicycle sound muted")
 	var sound: RideSound = RideSound.new()
 	root.add_child(sound)
 	sound.update(_orqwa, true)

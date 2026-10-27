@@ -206,6 +206,9 @@ Built in rideable steps:
   speed-dependent airflow, chain movement following cadence and effort, a separately
   recorded coasting freewheel following road speed; independent volume sliders before and
   during a 3D course ride, paused/finished playback flushed; listening preview available.
+  - [x] Rain sound (R151, #377): bundled CC0 rainfall in the Rain preset, fading with live
+    weather changes and audible while stationary; controlled by Wind volume, with a
+    weather-only listening preview and the existing playback boundaries.
   - [x] Recorded gear changes (R116): one-shot on each accepted virtual shift through
     keyboard, BLE or remote, sharing bicycle volume; limit/no-change presses stay quiet,
     rapid shifts overlap with bounded voices and paused requests are never replayed.
