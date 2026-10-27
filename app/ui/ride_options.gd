@@ -1,9 +1,9 @@
 class_name RideOptions
 extends GridContainer
 ## The options of a ride that can be set before and changed during it (R48): camera, trainer
-## difficulty, descents, time of day and weather. The same control serves the course page and
+## difficulty, descents, time of day, weather and season. Shared by the course page and
 ## the in-ride settings, so options are set the same way in both places. On video courses
-## the video is the view, so camera, time of day and weather are hidden (R17) and the video's
+## the video is the view, so camera, time, weather and season are hidden (R17) and the video's
 ## sound can be switched instead (R26).
 
 ## The rider changed an option; read them with `options()`.
@@ -16,12 +16,14 @@ const EXTRA_WIDTH: float = 120.0
 ## than the fields being squeezed away.
 const FIELD_WIDTH: float = 180.0
 
+var _orqwa: OrqwaApp
 var _camera: OptionButton = OptionButton.new()
 var _difficulty: HSlider = HSlider.new()
 var _difficulty_label: Label = Label.new()
 var _flat_descents: CheckBox = CheckBox.new()
 var _time: OptionButton = OptionButton.new()
 var _weather: OptionButton = OptionButton.new()
+var _season: OptionButton = OptionButton.new()
 var _video_sound: CheckBox = CheckBox.new()
 var _wind_volume: HSlider = HSlider.new()
 var _bike_volume: HSlider = HSlider.new()
@@ -53,12 +55,15 @@ func _init() -> void:
 	_time.select(1)
 	for weather: String in RideWorld.WEATHERS:
 		_weather.add_item(weather)
+	for season: String in OrqwaApp.seasons():
+		_season.add_item(season)
 	# i18n-begin
 	_row("Camera", _camera, null, true)
 	_row("Trainer difficulty", _difficulty, _difficulty_label, false, false, true)
 	_row("Descents", _flat_descents, null)
 	_row("Time of day", _time, null, true)
 	_row("Weather", _weather, null, true)
+	_row("Season", _season, null, true)
 	_row("Wind sound", _wind_volume, _wind_label, true)
 	_row("Bicycle sound", _bike_volume, _bike_label, true)
 	_row("Sound", _video_sound, null, false, true)
@@ -71,7 +76,7 @@ func _init() -> void:
 		slider.value_changed.connect(func(_value: float) -> void: _changed())
 	_wind_volume.tooltip_text = tr("Wind and rain volume; 0 mutes them")
 	_bike_volume.tooltip_text = tr("Chain, freewheel and gear shift volume; 0 mutes them")
-	for option: OptionButton in [_camera, _time, _weather]:
+	for option: OptionButton in [_camera, _time, _weather, _season]:
 		option.item_selected.connect(func(_index: int) -> void: _changed())
 	_difficulty.value_changed.connect(func(_value: float) -> void: _changed())
 	_flat_descents.toggled.connect(func(_on: bool) -> void: _changed())
@@ -83,7 +88,7 @@ func _init() -> void:
 	_update_labels()
 
 
-## The current options: `{camera, difficulty, flat_descents, time, weather, video_sound}`;
+## The current options: `{camera, difficulty, flat_descents, time, weather, season, video_sound}`;
 ## `time` and `weather` are names known to `RideWorld`; `wind_volume` and `bike_volume`
 ## are independent percentages, with zero to mute.
 func options() -> Dictionary:
@@ -93,10 +98,23 @@ func options() -> Dictionary:
 		"flat_descents": _flat_descents.button_pressed,
 		"time": _time.get_item_text(_time.selected),
 		"weather": _weather.get_item_text(_weather.selected),
+		"season": _season.get_item_text(_season.selected),
 		"video_sound": _video_sound.button_pressed,
 		"wind_volume": _wind_volume.value,
 		"bike_volume": _bike_volume.value,
 	}
+
+
+## Restores this computer's selection and remembers changes made in either options panel.
+func bind(orqwa: OrqwaApp) -> void:
+	_orqwa = orqwa
+	set_season(_orqwa.season())
+
+
+## Updates the season alone when returning from another options panel, without emitting changes.
+func set_season(season: String) -> void:
+	_season.select(0)
+	_select_text(_season, season)
 
 
 ## Sets the trainer difficulty alone, without emitting `changed`: the rider's default when a
@@ -113,6 +131,7 @@ func set_options(options: Dictionary) -> void:
 	var flat_descents: bool = options.get("flat_descents", false)
 	var time: String = options.get("time", "Midday")
 	var weather: String = options.get("weather", "Clear")
+	var season: String = options.get("season", "Summer")
 	var video_sound: bool = options.get("video_sound", true)
 	var wind_volume: float = options.get("wind_volume", 50.0)
 	var bike_volume: float = options.get("bike_volume", 50.0)
@@ -121,6 +140,7 @@ func set_options(options: Dictionary) -> void:
 	_flat_descents.set_pressed_no_signal(flat_descents)
 	_select_text(_time, time)
 	_select_text(_weather, weather)
+	set_season(season)
 	_video_sound.set_pressed_no_signal(video_sound)
 	_wind_volume.set_value_no_signal(wind_volume)
 	_bike_volume.set_value_no_signal(bike_volume)
@@ -139,6 +159,10 @@ func show_option_groups(world: bool, video: bool, trainer: bool = true) -> void:
 
 
 func _changed() -> void:
+	if _orqwa != null:
+		var season: String = _season.get_item_text(_season.selected)
+		if season != _orqwa.season():
+			_orqwa.set_season(season)
 	_update_labels()
 	changed.emit()
 

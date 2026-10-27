@@ -279,6 +279,13 @@ road and land-use data, with mapped green spaces preserved.
 
 Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mode → save a FIT file.
 
+## Seasons (#350)
+
+| ID | Requirement |
+|---|---|
+| R154 | Extends R48 (2026-10-27, #350): 3D ride options offer **Season** beside **Weather** and **Time of day**, before and during a ride. **Summer** is the default, with green foliage and meadows. The choice is remembered on this computer, independent of the calendar, time and weather, and hidden for video-only rides and workouts without a course. Kept courses can change season without rebuilding their worlds. |
+| R158 | Refines R154 (2026-10-27, #350): Summer is predominantly grass, keeping only a stable 10% of the course's existing meadow flower clumps. All other flower positions become full grass tufts, preserving coverage, transforms and the complete kept world for other seasons. |
+
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero

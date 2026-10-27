@@ -149,6 +149,27 @@ pub struct Trees {
 }
 
 impl Trees {
+    /// Small plants for a seasonal presentation, preserving every planted position. A stable
+    /// subset of flower clumps stays in bloom; the others become full grass tufts. The kept
+    /// world remains complete so a later season can restore all its flowers.
+    #[must_use]
+    pub fn small_plants(&self, flower_share: f64) -> (Cow<'_, [f32]>, Cow<'_, [f32]>) {
+        if flower_share >= 1.0 || self.flowers.is_empty() {
+            return (Cow::Borrowed(&self.grass), Cow::Borrowed(&self.flowers));
+        }
+        let mut grass = self.grass.clone();
+        let mut flowers = Vec::new();
+        for plant in self.flowers.as_chunks::<12>().0 {
+            let seed = i64::from(plant[3].to_bits()) | (i64::from(plant[11].to_bits()) << 32);
+            if crate::hash(seed) < flower_share {
+                flowers.extend_from_slice(plant);
+            } else {
+                grass.extend_from_slice(plant);
+            }
+        }
+        (Cow::Owned(grass), Cow::Owned(flowers))
+    }
+
     /// Model buffers for drawing at a tree density in `[0, 1]` (R108). Smaller plants keep
     /// their population. Position-based sampling keeps the same trees as quality rises,
     /// including in worlds kept by older generators, without changing the stored world.
@@ -629,6 +650,53 @@ mod tests {
     use std::path::Path;
 
     use super::*;
+
+    #[test]
+    fn seasonal_flowers_become_grass_without_losing_or_moving_plants() {
+        let mut trees = Trees::default();
+        push_transform(&mut trees.grass, [-5.0, 700.0, 8.0], 1.0, 0.0, [0.0; 3]);
+        for index in 0..1000 {
+            push_transform(
+                &mut trees.flowers,
+                [f64::from(index), 700.0, 5.0],
+                1.0,
+                0.0,
+                [0.0; 3],
+            );
+        }
+        let original = trees.clone();
+        let (grass, flowers) = trees.small_plants(0.1);
+        assert!(
+            (60..=140).contains(&(flowers.len() / 12)),
+            "sparse summer flowers"
+        );
+        assert_eq!(
+            grass.len() + flowers.len(),
+            trees.grass.len() + trees.flowers.len()
+        );
+        for plant in trees.flowers.as_chunks::<12>().0 {
+            let count = grass
+                .as_chunks::<12>()
+                .0
+                .iter()
+                .chain(flowers.as_chunks::<12>().0)
+                .filter(|p| p.iter().zip(plant).all(|(a, b)| a.to_bits() == b.to_bits()))
+                .count();
+            assert_eq!(count, 1, "each transform is kept exactly once");
+        }
+        assert_eq!(
+            trees.small_plants(0.1),
+            (grass, flowers),
+            "selection is stable"
+        );
+        let (grass, flowers) = trees.small_plants(0.0);
+        assert!(flowers.is_empty(), "autumn has no flowers");
+        assert_eq!(grass.len(), trees.grass.len() + trees.flowers.len());
+        let (grass, flowers) = trees.small_plants(1.0);
+        assert_eq!(grass.as_ref(), trees.grass);
+        assert_eq!(flowers.as_ref(), trees.flowers);
+        assert_eq!(trees, original, "seasons do not alter the kept world");
+    }
 
     #[test]
     fn quality_thins_trees_in_stable_nested_subsets_without_changing_the_world() {

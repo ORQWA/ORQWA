@@ -57,6 +57,7 @@ var _estimated_flat_descents: bool = false
 
 func bind(orqwa: OrqwaApp) -> void:
 	_orqwa = orqwa
+	_options.bind(orqwa)
 	_orqwa.route_loaded.connect(_on_route_loaded)
 	_orqwa.loading_progress.connect(_on_loading_progress)
 	_orqwa.world_ready.connect(_on_world_ready)
@@ -65,6 +66,7 @@ func bind(orqwa: OrqwaApp) -> void:
 
 ## Shows `course` (from `OrqwaApp.courses()`), loading its route unless it is loaded already.
 func open(course: Dictionary) -> void:
+	_options.set_season(_orqwa.season())
 	_course = course
 	_path = course["path"]
 	_building = false
@@ -101,6 +103,7 @@ func open(course: Dictionary) -> void:
 
 ## After a ride on it: the rider's records may have changed.
 func refresh_records() -> void:
+	_options.set_season(_orqwa.season())
 	if not _path.is_empty() and _orqwa.loaded_course() == _path and _orqwa.has_route():
 		_show_route()
 

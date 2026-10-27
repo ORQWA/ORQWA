@@ -71,6 +71,7 @@ func _translate_ride_tab() -> void:
 ## Shows the devices of `orqwa` and reconnects them (R69), and shows its rider's profile.
 func bind(orqwa: OrqwaApp) -> void:
 	_orqwa = orqwa
+	_options.bind(orqwa)
 	_devices.bind(orqwa)
 
 

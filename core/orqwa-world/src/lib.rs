@@ -44,6 +44,7 @@ use orqwa_routes::{ElevationModel, LocalProjection, Route, Surface};
 use tracing::{info, warn};
 
 pub use benchmark::benchmark;
+pub use climate::{SeasonClimate, season_climate};
 pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
 pub use minimap::{FlatMap, MapFeature, minimap};

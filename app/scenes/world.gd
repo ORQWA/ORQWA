@@ -225,6 +225,7 @@ var _low_ground: float = 0.0
 var _rider_elevation: float = INF
 var _time_of_day: String = "Midday"
 var _weather: String = "Clear"
+var _seasons: SeasonMaterials = SeasonMaterials.new()
 ## Draw-distance factor of the current preset.
 var _distance: float = 1.0
 ## Flying freely instead of following the rider (simulated rides only).
@@ -477,11 +478,7 @@ func _apply_options_over_preset(options: Dictionary) -> void:
 
 ## Applies ride options (`RideOptions.options()`): camera, time of day and weather.
 func apply_options(options: Dictionary) -> void:
-	var time: String = options["time"]
-	var weather: String = options["weather"]
-	var camera_mode: int = options["camera"]
-	apply_conditions(time, weather)
-	set_camera(camera_mode)
+	_seasons.apply_options(self, _orqwa, _terrain_material, options)
 
 
 ## Snaps rider and camera to the start of a new ride instead of gliding there.
@@ -625,7 +622,7 @@ func _build_some_chunks() -> void:
 		var chunk: Dictionary = (
 			_benchmark.chunk(density)
 			if _benchmark != null
-			else _orqwa.world_chunk_with_tree_density(_next_chunk, density)
+			else _orqwa.world_chunk_for_season(_next_chunk, density, _seasons.season)
 		)
 		# Another course was opened meanwhile: its world replaces this one when ready.
 		if chunk.is_empty():

@@ -77,13 +77,13 @@ func _ride_settings() -> void:
 		"flat_descents": true,
 		"time": "Evening",
 		"weather": "Rain",
+		"season": "Summer",
 		"video_sound": false,
 		"wind_volume": 0.0,
 		"bike_volume": 75.0,
 	}
 	options.set_options(wanted)
 	_check(options.options() == wanted, "options round trip: %s" % options.options())
-	# Video courses: only the trainer's options are shown; the others keep their values.
 	options.show_option_groups(false, true)
 	var shown: PackedStringArray = PackedStringArray()
 	for i: int in range(0, options.get_child_count(), options.columns):

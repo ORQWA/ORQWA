@@ -9,6 +9,38 @@ const TROPICAL_LATITUDE: f64 = 27.0;
 /// Above this elevation even the tropics are temperate: highland forests, no palms.
 const TROPICAL_CEILING: f64 = 1200.0;
 
+/// Seasonal material limits derived from the course's climate, without changing its geometry.
+#[derive(Debug, Clone, Copy)]
+pub struct SeasonClimate {
+    /// Altitude in metres at which ground starts to carry snow.
+    pub snow_line: f64,
+    /// Lower limit for seasonal broadleaf changes; tropical lowlands stay evergreen.
+    pub deciduous_from: f64,
+}
+
+/// Material limits for the selected season and route latitude (degrees north or south).
+#[must_use]
+pub fn season_climate(latitude: f64, season: orqwa_domain::season::Season) -> SeasonClimate {
+    let tropical = Climate::at(latitude) == Climate::Tropical;
+    let snow_line = match season {
+        orqwa_domain::season::Season::Summer => {
+            if tropical {
+                4500.0
+            } else {
+                2400.0
+            }
+        }
+    };
+    SeasonClimate {
+        snow_line,
+        deciduous_from: if tropical {
+            TROPICAL_CEILING
+        } else {
+            -10_000.0
+        },
+    }
+}
+
 /// The climate of a ride's region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Climate {
@@ -38,6 +70,19 @@ impl Climate {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn summer_keeps_tropical_lowlands_evergreen_and_snow_high_above_them() {
+        use orqwa_domain::season::Season;
+        for latitude in [-24.0, 1.0, 26.5] {
+            let climate = season_climate(latitude, Season::Summer);
+            assert_eq!(climate.deciduous_from, TROPICAL_CEILING);
+            assert!(climate.snow_line > 4000.0);
+        }
+        let climate = season_climate(47.0, Season::Summer);
+        assert_eq!(climate.snow_line, 2400.0);
+        assert!(climate.deciduous_from < 0.0);
+    }
 
     #[test]
     fn the_subtropical_lowlands_are_tropical() {

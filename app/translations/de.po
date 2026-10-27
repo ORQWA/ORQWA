@@ -2455,3 +2455,9 @@ msgstr "Die heruntergeladenen Regionen werden gelöscht: %s."
 
 msgid "Turn map detail off?"
 msgstr "Kartendetails ausschalten?"
+
+msgid "Season"
+msgstr "Jahreszeit"
+
+msgid "Summer"
+msgstr "Sommer"

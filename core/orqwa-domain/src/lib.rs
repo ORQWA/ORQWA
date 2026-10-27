@@ -4,6 +4,7 @@ pub mod battery;
 pub mod files;
 pub mod profile;
 pub mod recording;
+pub mod season;
 pub mod shifting;
 pub mod telemetry;
 pub mod units;
