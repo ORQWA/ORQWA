@@ -26,6 +26,8 @@ core/                      Rust workspace (tokio + tracing)
   orqwa-storage/           FIT files, ride summaries, profiles and accounts, course files (.tqc)
   orqwa-upload/            uploads to training platforms (intervals.icu, Strava) behind
                            ActivityUploader, the OAuth login in the browser
+  orqwa-net/               (Phase 13) bounded group networking, invite codes, discovery,
+                           pinned QUIC connections and the lobby (ADR 0035)
   orqwa-remote/            the remote for a phone or tablet: a page on the local network,
                            a ShiftInput
                            (ADR 0019)
@@ -834,6 +836,31 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   - [ ] tried on the Tab S7: the move, and rides and courses synced both ways with a computer
   - [x] synced course videos on Android 16: **Allow videos** asks for Photos and videos (R149)
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
+
+### Phase 13 — Group rides (R159–R161, [ADR 0035](adr/0035-group-rides.md))
+
+Application-owned replacements for the unmerged #241/#243/#246/#247 stack, based on current
+main. Each step has its own PR and preserves the security limits in ADR 0035.
+
+- [x] Protocol foundation: bounded binary invite/reply payloads with ride/certificate/course
+  binding, destination policy, a connection admission budget, validated state datagrams and a
+  fixed-size, rate-limited latest-state mailbox; no socket or CLI integration in this step
+- [ ] Discovery: text codes, cryptographic STUN
+  transactions, selected-interface candidates, opt-in short-lived router mappings and
+  `orqwa-cli net-check`; usage/firewall documentation with the first network command
+- [ ] Transport: per-ride pinned QUIC, reply/credential binding and replay protection, bounded
+  handshakes before TLS, finite probing, one connection deadline, owner-drop cleanup and
+  `orqwa-cli net-ping`
+- [ ] Lobby and CLI ride: bounded membership/control events, coalesced and rate-limited
+  validated state, countdown, dropouts and `orqwa-cli ride-together` with fake trainers
+- [ ] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
+  and gaps; no remote influence on local physics, trainer commands or saved activity
+- [ ] App controls, translated errors, QR codes using existing support, settings, usage guides
+  and screenshots
+- [ ] Manual acceptance across two home networks and on native trainers; document networks
+  that cannot connect without a relay without weakening the resource or trust limits
+- **Exit:** riders behind separate routers join deliberately, ride together and continue alone
+  after dropout; tests demonstrate bounded resources and complete lifecycle cleanup
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
 "Torqa" is taken by another registered app; the project becomes ORQWA (orca, torque and watt).

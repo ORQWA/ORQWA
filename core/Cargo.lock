@@ -1637,6 +1637,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "orqwa-net"
+version = "0.5.4"
+dependencies = [
+ "orqwa-domain",
+ "thiserror",
+]
+
+[[package]]
 name = "orqwa-osm"
 version = "0.5.4"
 dependencies = [
