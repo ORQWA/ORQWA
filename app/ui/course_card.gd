@@ -15,6 +15,7 @@ const MAP_ASPECT: float = 640.0 / 1072.0
 
 var _path_card: PathCard = PathCard.new()
 var _title: Label = Label.new()
+var _press_attempt: bool = false
 
 
 func _init(course: Dictionary, imperial: bool) -> void:
@@ -176,11 +177,34 @@ static func figures(course: Dictionary, imperial: bool) -> Array[PackedStringArr
 
 func _gui_input(event: InputEvent) -> void:
 	var click: InputEventMouseButton = event as InputEventMouseButton
-	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
-		pressed.emit()
+	if click != null and click.button_index == MOUSE_BUTTON_LEFT:
+		if click.pressed:
+			_press_attempt = true
+		else:
+			var activate: bool = (
+				_press_attempt and Rect2(Vector2.ZERO, size).has_point(click.position)
+			)
+			_press_attempt = false
+			if activate and not click.canceled:
+				pressed.emit()
 	elif event.is_action_pressed(&"ui_accept"):
 		accept_event()
 		pressed.emit()
+
+
+func _notification(what: int) -> void:
+	if (
+		what
+		in [
+			NOTIFICATION_SCROLL_BEGIN,
+			NOTIFICATION_DRAG_BEGIN,
+			NOTIFICATION_FOCUS_EXIT,
+			NOTIFICATION_EXIT_TREE
+		]
+	):
+		_press_attempt = false
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and not is_visible_in_tree():
+		_press_attempt = false
 
 
 ## On the card's own edge: the gallery's scrolling would cut a ring outside it.

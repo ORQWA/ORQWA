@@ -431,6 +431,8 @@ func _course_cards() -> void:
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true
 	card.call("_gui_input", click)
+	click.pressed = false
+	card.call("_gui_input", click)
 	_check(opened[0], "a click opens the course")
 	opened[0] = false
 	_check(card.focus_mode == Control.FOCUS_ALL, "the keyboard and the remote reach a card")
