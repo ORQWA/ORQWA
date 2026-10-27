@@ -6,6 +6,7 @@ pub mod about;
 pub mod ambient;
 pub mod analysis;
 pub mod failure;
+pub mod graphics;
 use failure::{Failure, Kind};
 mod detail;
 #[cfg(test)]
@@ -2080,6 +2081,15 @@ impl App {
         quality: profiles::GraphicsQuality,
     ) -> Result<(), AppError> {
         computer::set_graphics_quality(&self.computer, quality)
+            .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
+    }
+
+    /// Applies a completed graphics benchmark and returns every detail to Auto (R151).
+    ///
+    /// # Errors
+    /// [`AppError::Reported`] if the settings cannot be saved together.
+    pub fn apply_graphics_benchmark(&mut self, quality: GraphicsQuality) -> Result<(), AppError> {
+        computer::apply_graphics_benchmark(&self.computer, quality)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveSetting, e)))
     }
 

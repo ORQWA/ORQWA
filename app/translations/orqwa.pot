@@ -79,7 +79,7 @@ msgstr ""
 msgid "%s does not follow this route."
 msgstr ""
 
-#: app/ui/graphics_settings.gd
+#: app/ui/graphics_benchmark.gd app/ui/graphics_settings.gd
 msgid "%s fps"
 msgstr ""
 
@@ -336,6 +336,10 @@ msgid "Anti-aliasing"
 msgstr ""
 
 #: app/ui/graphics_settings.gd
+msgid "Applied %s (%d fps). Details are Auto. Applies from the next ride."
+msgstr ""
+
+#: app/ui/graphics_settings.gd
 msgid "Applies from the next ride."
 msgstr ""
 
@@ -415,6 +419,14 @@ msgstr ""
 msgid "Below 60 fps: a lower graphics quality (Settings → Graphics) runs smoother."
 msgstr ""
 
+#: app/ui/graphics_settings.gd
+msgid "Benchmark cancelled. Your settings have been kept."
+msgstr ""
+
+#: app/ui/graphics_settings.gd
+msgid "Benchmark graphics"
+msgstr ""
+
 #: app/ui/moment_lines.gd
 msgid "Best {duration} power: {power}."
 msgstr ""
@@ -459,7 +471,7 @@ msgstr ""
 msgid "Camera: %s"
 msgstr ""
 
-#: app/scenes/courses_tab.gd app/ui/workout_editor.gd
+#: app/scenes/courses_tab.gd app/ui/graphics_benchmark.gd app/ui/workout_editor.gd
 msgid "Cancel"
 msgstr ""
 
@@ -1079,6 +1091,10 @@ msgstr ""
 msgid "Estimated time"
 msgstr ""
 
+#: app/ui/graphics_settings.gd
+msgid "Even Low was below 60 fps. Try a smaller window."
+msgstr ""
+
 #: app/scenes/world.gd
 msgid "Evening"
 msgstr ""
@@ -1165,6 +1181,10 @@ msgstr ""
 
 #: app/scenes/courses_tab.gd
 msgid "Filters"
+msgstr ""
+
+#: app/ui/graphics_settings.gd
+msgid "Find a preset for smooth 60 fps. Takes about 30 seconds and resets details to Auto."
 msgstr ""
 
 #: core/orqwa-session/src/workout.rs
@@ -1293,6 +1313,10 @@ msgstr ""
 
 #: app/scenes/settings_dialog.gd
 msgid "Graphics"
+msgstr ""
+
+#: app/ui/graphics_benchmark.gd
+msgid "Graphics benchmark"
 msgstr ""
 
 #: app/ui/graphics_settings.gd
@@ -2557,6 +2581,14 @@ msgstr ""
 
 #: app/ui/workout_options.gd
 msgid "Test"
+msgstr ""
+
+#: app/ui/graphics_settings.gd
+msgid "Tested at %d × %d pixels."
+msgstr ""
+
+#: app/ui/graphics_benchmark.gd
+msgid "Testing %s… Keep this window in front."
 msgstr ""
 
 #: app/ui/moment_lines.gd

@@ -1,6 +1,6 @@
 //! Continuous riding sound (R114): recorded textures with non-repeating grains, turbulent
 //! airflow, independent pedal / freewheel rates, recorded chain transfers (R116–R117),
-//! and rainfall matching the weather preset (R151).
+//! and rainfall matching the weather preset (R153).
 
 use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
 

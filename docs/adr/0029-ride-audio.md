@@ -38,7 +38,7 @@ volume sliders in the shared ride options; zero mutes a layer.
   provides stereo width. The 48 kHz output preserves high-frequency detail when a texture
   speeds up. The wind is an audible approximation, not a physical wind simulation.
 - Recorded cadence and wheel speed were not calibrated. Playback reference rates are
-  documented listening choices. Rain initially strengthened only the breeze; the R151
+  documented listening choices. Rain initially strengthened only the breeze; the R153
   amendment below adds recorded rainfall. Location-specific birds, traffic and water remain
   outside this mixer.
 
@@ -72,7 +72,7 @@ controls or dependencies are needed. A bicycle-only preview exercises slow and f
 rapid changes and coasting-to-pedaling engagement; Rust tests cover those transitions and
 audible chain detail after the lever ends.
 
-## Amendment — 2026-10-27: rain matching the weather preset (R151, #377)
+## Amendment — 2026-10-27: rain matching the weather preset (R153, #377)
 
 A sixth CC0 recording supplies a 20-second rainfall texture. The mixer draws overlapping,
 randomly positioned passages at natural pitch and fades their level with the Rain preset.

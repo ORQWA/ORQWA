@@ -133,6 +133,18 @@ pub fn set_graphics_quality(file: &Path, quality: GraphicsQuality) -> Result<(),
     save(file, &computer)
 }
 
+/// Saves the calibrated preset and resets its details together, so the next ride draws
+/// exactly what the benchmark measured (R151).
+///
+/// # Errors
+/// On file system errors; the previous settings are kept if the atomic write fails.
+pub fn apply_graphics_benchmark(file: &Path, quality: GraphicsQuality) -> Result<(), ProfileError> {
+    let mut computer = read(file);
+    computer.graphics_quality = Some(quality);
+    computer.graphics.clear();
+    save(file, &computer)
+}
+
 /// Whether the app fills the screen on this computer (#218).
 #[must_use]
 pub fn fullscreen(file: &Path) -> bool {
@@ -345,6 +357,26 @@ mod tests {
             !graphics_options(&file).contains_key("shadows"),
             "auto follows the preset"
         );
+    }
+
+    #[test]
+    fn benchmark_resets_details_and_preserves_other_computer_settings() {
+        let file = temp_file("benchmark");
+        set_graphics_quality(&file, GraphicsQuality::Ultra).unwrap();
+        set_graphics_option(&file, "shadows", "ultra").unwrap();
+        set_graphics_option(&file, "fps_limit", "30").unwrap();
+        set_graphics_option(&file, "vsync", "off").unwrap();
+        set_fullscreen(&file, true).unwrap();
+        set_keep_worlds(&file, true).unwrap();
+        set_check_updates(&file, false).unwrap();
+
+        apply_graphics_benchmark(&file, GraphicsQuality::Medium).unwrap();
+
+        assert_eq!(graphics_quality(&file), GraphicsQuality::Medium);
+        assert!(graphics_options(&file).is_empty());
+        assert!(fullscreen(&file));
+        assert!(keep_worlds(&file));
+        assert!(!check_updates(&file));
     }
 
     #[test]
