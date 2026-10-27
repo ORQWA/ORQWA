@@ -30,3 +30,6 @@ Reviewed [vegetation and rocks](images/seasons/winter-trees.jpg),
 [roof snow](images/seasons/winter-roof.jpg), the [village](images/seasons/winter-village.jpg)
 and [climb](images/seasons/winter-climb.jpg), and the same overview on
 [Medium](images/seasons/winter-hairpin.jpg) and [Low](images/seasons/winter-low.jpg).
+The [road-height banks](images/seasons/winter-road-close.jpg),
+[higher banks on the Oberalp](images/seasons/winter-mountain-close.jpg) and
+[clear tunnel interior](images/seasons/winter-tunnel.jpg) cover R161.
