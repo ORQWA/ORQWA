@@ -480,7 +480,8 @@ physically based materials and light, restyled group by group.
   crowns use petal-shaped twig-cluster cards rather than recoloured leaves (R160).
 - [x] Summer meadows are predominantly grass, retaining only a sparse 10% of the existing
   flower clumps (R158), with the other positions filled by full grass tufts.
-- [ ] Autumn red and orange broadleaf foliage (#350).
+- [x] Autumn red, orange and gold broadleaf foliage (#350, R156), with the distant mixed
+  canopy following it; conifers and tropical lowlands retain their green.
 - [x] Winter snow where the route's climate and elevation allow it (#350, R157), on ground,
   foliage and rocks; dormant broadleaves and small plants. Raised roadside banks deepen
   with altitude, street snow has paired tyre tracks, and tunnels remain clear (R161).

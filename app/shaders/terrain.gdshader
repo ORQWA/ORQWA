@@ -15,6 +15,7 @@ uniform sampler2D winter_ground_mask : filter_linear, repeat_disable;
 uniform vec2 winter_ground_origin = vec2(0.0);
 uniform vec2 winter_ground_size = vec2(0.0);
 #include "res://shaders/spring.gdshaderinc"
+#include "res://shaders/autumn.gdshaderinc"
 
 uniform sampler2D grass_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D grass_normal : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -200,6 +201,10 @@ void fragment() {
 		vec3 blossom = spring_colour(patch);
 		float brightness = dot(crowns, vec3(0.2126, 0.7152, 0.0722));
 		crowns = mix(crowns, blossom * brightness * 2.0, spring_amount(patch, world_position.y) * 0.35);
+		// Retain the texture's relief and brightness, and green among the mixed forest.
+		vec3 autumn_crown = autumn_colour(floor(world_position.xz / 24.0));
+		float autumn_light = max(dot(autumn_crown, vec3(0.2126, 0.7152, 0.0722)), 0.03);
+		crowns = mix(crowns, autumn_crown * brightness / autumn_light, autumn_amount(world_position.y) * 0.7);
 		floor_colour = mix(floor_colour, crowns, far);
 		floor_normal = normalize(mix(floor_normal, crowns_n, far));
 	}

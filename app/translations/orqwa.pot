@@ -379,6 +379,10 @@ msgstr ""
 msgid "Automatic: a cadence sensor, else the power meter, else the trainer"
 msgstr ""
 
+#: core/orqwa-domain/src/season.rs
+msgid "Autumn"
+msgstr ""
+
 #: app/ui/hud_editor.gd
 msgid "Available — drag in to add, drop here to remove"
 msgstr ""

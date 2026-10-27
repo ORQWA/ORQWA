@@ -16,6 +16,9 @@ Greater snow load increases inclined-surface coverage. No additional source text
 [Spring](../docs/seasons-spring.md) adds blossom to a subset of broadleaf crowns and opens
 the procedural five-petal meadow flowers; placement and Blender exports stay the same.
 
+The [autumn materials](../docs/seasons-autumn.md) share the palette across nearby foliage,
+authored tree LODs and distant crowns; evergreen needles keep their own colours.
+
 ## Running Blender
 
 Blender runs headless in its own container (official Linux builds exist for x86-64 only, so on

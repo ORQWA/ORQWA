@@ -35,3 +35,5 @@ func apply(selected: String, orqwa: OrqwaApp, terrain: ShaderMaterial) -> void:
 	if orqwa != null:
 		climate = orqwa.season_climate(season)
 	terrain.set_shader_parameter("snow_line", climate["snow_line"])
+	var deciduous_from: float = climate["deciduous_from"]
+	AutumnMaterials.apply(season == "Autumn", deciduous_from, terrain)

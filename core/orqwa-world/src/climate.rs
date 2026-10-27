@@ -33,7 +33,7 @@ pub fn season_climate(latitude: f64, season: orqwa_domain::season::Season) -> Se
                 (600.0 - (latitude - 40.0) * 40.0).max(0.0)
             }
         }
-        orqwa_domain::season::Season::Summer | orqwa_domain::season::Season::Spring => {
+        orqwa_domain::season::Season::Summer | orqwa_domain::season::Season::Spring | orqwa_domain::season::Season::Autumn => {
             if tropical {
                 4500.0
             } else {

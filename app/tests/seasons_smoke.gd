@@ -32,6 +32,7 @@ func _run() -> void:
 
 	_winter()
 	_spring()
+	_autumn()
 	if not _failed:
 		print("SEASONS SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -96,6 +97,22 @@ func _winter() -> void:
 	var snow_line: float = terrain.get_shader_parameter("snow_line")
 	_check(snow_line == 2400.0, "summer restores the high snow line")
 	world.free()
+
+
+func _autumn() -> void:
+	var seasons: SeasonMaterials = SeasonMaterials.new()
+	var terrain: ShaderMaterial = ShaderMaterial.new()
+	terrain.shader = load("res://shaders/terrain.gdshader")
+	seasons.apply("Autumn", null, terrain)
+	var leaves: ShaderMaterial = VegetationModels.material("leaves")
+	var strength: float = leaves.get_shader_parameter("autumn_strength")
+	_check(strength == 1.0, "autumn reaches existing broadleaf materials")
+	var needles: ShaderMaterial = VegetationModels.material("needles")
+	strength = needles.get_shader_parameter("autumn_strength")
+	_check(strength == 0.0, "evergreen needles stay green")
+	seasons.apply("Summer", null, terrain)
+	strength = leaves.get_shader_parameter("autumn_strength")
+	_check(strength == 0.0, "summer restores existing broadleaves")
 
 
 func _spring() -> void:
