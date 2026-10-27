@@ -13,8 +13,11 @@ func apply_options(
 	var weather: String = options["weather"]
 	var camera: int = options["camera"]
 	var selected: String = options.get("season", "Summer")
+	var previous: String = season
 	world.apply_conditions(time, weather)
 	apply(selected, orqwa, terrain)
+	if previous != season:
+		world.call("_restart_chunks")
 	world.set_camera(camera)
 
 

@@ -144,6 +144,8 @@ func _run() -> void:
 		world.set("_placed", false)
 		var season: String = OS.get_environment("SEASON")
 		world.apply_options({"time": time, "weather": weather, "camera": camera, "season": season})
+		while int(world.get("_next_chunk")) < int(world.get("_chunk_count")):
+			await process_frame
 		if spec.size() > 5 and spec[5] is Vector3:
 			# Place the rider at the requested distance before positioning a camera aside.
 			for frame: int in range(10):

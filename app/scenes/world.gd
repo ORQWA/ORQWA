@@ -622,7 +622,7 @@ func _build_some_chunks() -> void:
 		var chunk: Dictionary = (
 			_benchmark.chunk(density)
 			if _benchmark != null
-			else _orqwa.world_chunk_with_tree_density(_next_chunk, density)
+			else _orqwa.world_chunk_for_season(_next_chunk, density, _seasons.season)
 		)
 		# Another course was opened meanwhile: its world replaces this one when ready.
 		if chunk.is_empty():

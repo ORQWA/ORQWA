@@ -22,6 +22,14 @@ impl Season {
         // i18n-end
     }
 
+    /// Share of the course's flower clumps kept as flowers; the rest become grass.
+    #[must_use]
+    pub const fn flower_share(self) -> f64 {
+        match self {
+            Self::Summer => 0.1,
+        }
+    }
+
     /// Looks up a season without accepting an unknown setting.
     #[must_use]
     pub fn from_name(name: &str) -> Option<Self> {

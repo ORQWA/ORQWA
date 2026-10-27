@@ -80,7 +80,17 @@ impl OrqwaGraphicsBenchmark {
 
 /// The same conversion for course and calibration chunks, including quality's tree subset.
 pub(super) fn chunk_arrays(chunk: &orqwa_world::TerrainChunk, tree_density: f64) -> VarDictionary {
+    chunk_arrays_for_season(chunk, tree_density, orqwa_domain::season::Season::Summer)
+}
+
+/// Uploads a seasonal plant population without changing the stored course.
+pub(super) fn chunk_arrays_for_season(
+    chunk: &orqwa_world::TerrainChunk,
+    tree_density: f64,
+    season: orqwa_domain::season::Season,
+) -> VarDictionary {
     let [x, y, z] = chunk.center;
+    let (grass, flowers) = chunk.trees.small_plants(season.flower_share());
     let mut plants = VarDictionary::new();
     for (name, buffer) in chunk.trees.models_for_density(tree_density) {
         if !buffer.is_empty() {
@@ -127,7 +137,7 @@ pub(super) fn chunk_arrays(chunk: &orqwa_world::TerrainChunk, tree_density: f64)
         "props" => &props,
         "labels" => &labels,
         "wires" => &mesh_arrays(&chunk.props.wires),
-        "grass" => &PackedFloat32Array::from(chunk.trees.grass.as_slice()),
-        "flowers" => &PackedFloat32Array::from(chunk.trees.flowers.as_slice()),
+        "grass" => &PackedFloat32Array::from(grass.as_ref()),
+        "flowers" => &PackedFloat32Array::from(flowers.as_ref()),
     }
 }

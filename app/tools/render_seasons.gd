@@ -49,10 +49,16 @@ func _run() -> void:
 				Vector3(float(index % 4) * 0.6 - 0.9, ALTITUDE, 12.0 + float(index / 4) * 0.6)
 			)
 		)
-	var clump: MultiMeshInstance3D = MultiMeshInstance3D.new()
-	clump.multimesh = flowers
-	clump.material_override = world.get("_plant_material")
-	world.add_child(clump)
+	var small: Dictionary = OrqwaApp.small_plants_for_season(
+		PackedFloat32Array(), flowers.buffer, season
+	)
+	for kind: String in ["grass", "flowers"]:
+		var buffer: PackedFloat32Array = small[kind]
+		if not buffer.is_empty():
+			var clump: MultiMeshInstance3D = world.call(
+				"_plants", buffer, kind == "flowers", 1000.0
+			)
+			world.add_child(clump)
 	var out: String = OS.get_environment("OUT_DIR")
 	DirAccess.make_dir_recursive_absolute(out)
 	var camera: Camera3D = world.get("_camera")

@@ -3184,6 +3184,49 @@ impl OrqwaApp {
         graphics::chunk_arrays(chunk, tree_density)
     }
 
+    /// Like `world_chunk_with_tree_density`, with the selected season's grass/flower balance.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot passes strings by value
+    fn world_chunk_for_season(
+        &self,
+        index: i64,
+        tree_density: f64,
+        name: GString,
+    ) -> VarDictionary {
+        let chunk = self
+            .app
+            .as_ref()
+            .and_then(App::world)
+            .zip(usize::try_from(index).ok())
+            .and_then(|(world, index)| world.chunks.get(index));
+        let Some(chunk) = chunk else {
+            return VarDictionary::new();
+        };
+        let season = orqwa_domain::season::Season::from_name(&name.to_string()).unwrap_or_default();
+        graphics::chunk_arrays_for_season(chunk, tree_density, season)
+    }
+
+    /// Converts small-plant transform buffers with the same seasonal rule used by courses.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot passes arrays and strings by value
+    fn small_plants_for_season(
+        grass: PackedFloat32Array,
+        flowers: PackedFloat32Array,
+        name: GString,
+    ) -> VarDictionary {
+        let trees = orqwa_world::Trees {
+            grass: grass.as_slice().to_vec(),
+            flowers: flowers.as_slice().to_vec(),
+            ..Default::default()
+        };
+        let season = orqwa_domain::season::Season::from_name(&name.to_string()).unwrap_or_default();
+        let (grass, flowers) = trees.small_plants(season.flower_share());
+        vdict! {
+            "grass" => &PackedFloat32Array::from(grass.as_ref()),
+            "flowers" => &PackedFloat32Array::from(flowers.as_ref()),
+        }
+    }
+
     /// Bridges and tunnels as mesh arrays (vertex-coloured), in route coordinates.
     #[func]
     fn structures_mesh(&self) -> VarDictionary {

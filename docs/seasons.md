@@ -11,6 +11,10 @@ existing 2,400 m temperate snow line (4,500 m in the tropics). Rust also supplie
 the same course, including kept worlds: neither the generator nor stored format changes.
 Season does not change trainer resistance, ride speed or the map.
 
+Summer keeps a stable 10% of the course's existing flower clumps in bloom and replaces the
+others with full grass tufts at the same transforms. Rust filters the presentation buffers
+when uploading chunks; switching season refreshes them without changing the kept world.
+
 Render fixed route views with `SEASON=Summer scripts/render-views.sh` in the dev container.
 The same cameras and quality preset allow seasonal comparisons. Check road height and
 overviews, distant woods and Low as well as Medium/Ultra. Native GPU frame time remains
