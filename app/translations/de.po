@@ -172,9 +172,6 @@ msgstr "Hinzufügen"
 msgid "Add a ZWO, ERG, MRC or FIT workout file"
 msgstr "Eine Trainingsdatei im Format ZWO, ERG, MRC oder FIT hinzufügen"
 
-msgid "Add the Geofabrik regions you ride in (about 0.5–5 GB per country)."
-msgstr "Füge die Geofabrik-Regionen hinzu, in denen du fährst (etwa 0,5–5 GB pro Land)."
-
 msgid "Add Geofabrik regions for more detailed 3D worlds."
 msgstr "Füge Geofabrik-Regionen für detailreichere 3D-Welten hinzu."
 
@@ -190,32 +187,11 @@ msgstr "Video hinzufügen …"
 msgid "Added to your workouts."
 msgstr "Zu deinen Trainings hinzugefügt."
 
-msgid "After a visual update, regenerate the world from its course page."
-msgstr "Erstelle die Welt nach einem visuellen Update auf ihrer Routenseite neu."
+msgid "ORQWA keeps each rendered world on this computer after it is built, so rides on that course start right away. A saved world uses about 10 MB per kilometre. If an update changes how the world looks, regenerate it from the course page."
+msgstr "ORQWA behält jede gerenderte Welt nach dem Erstellen auf diesem Computer, damit Fahrten auf dieser Route sofort starten. Eine gespeicherte Welt belegt etwa 10 MB pro Kilometer. Ändert ein Update das Aussehen, erstelle die Welt auf ihrer Routenseite neu."
 
-msgid "A saved world uses about 10 MB per kilometre."
-msgstr "Eine gespeicherte Welt belegt etwa 10 MB pro Kilometer."
-
-msgid "Built 3D worlds stay on this computer."
-msgstr "Erstellte 3D-Welten bleiben auf diesem Computer."
-
-msgid "Future rides start right away."
-msgstr "Künftige Fahrten starten sofort."
-
-msgid "Downloads start only when you add a region."
-msgstr "Downloads starten erst, wenn du eine Region hinzufügst."
-
-msgid "Open a course to save the region's map detail in its .tqc file."
-msgstr "Öffne eine Route, um die Kartendetails der Region in ihrer .tqc-Datei zu speichern."
-
-msgid "The .tqc file includes this map detail."
-msgstr "Die .tqc-Datei enthält diese Kartendetails."
-
-msgid "Share the .tqc to ride offline on another computer."
-msgstr "Teile die .tqc-Datei, um auf einem anderen Computer offline zu fahren."
-
-msgid "No Geofabrik download is needed on the other computer."
-msgstr "Auf dem anderen Computer ist kein Geofabrik-Download nötig."
+msgid "Want more detailed 3D worlds? Download the regions you ride in, then open a course to save that map detail in its .tqc file. Share the file, and the other rider can use the detail offline without downloading the region."
+msgstr "Möchtest du detailreichere 3D-Welten? Lade die Regionen herunter, in denen du fährst, und öffne dann eine Route, um die Kartendetails in ihrer .tqc-Datei zu speichern. Teile die Datei, damit andere offline mit diesen Details fahren können, ohne die Region erneut herunterzuladen."
 
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"

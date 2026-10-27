@@ -5,6 +5,17 @@ extends VBoxContainer
 ## takes, to delete (R136), and the room they take together; and the regions whose map detail
 ## it downloads for the courses prepared afterwards (ADR 0033), to update or delete.
 
+const KEEP_INFO_TOOLTIP: String = (
+	"ORQWA keeps each rendered world on this computer after it is built, so rides on that "
+	+ "course start right away. A saved world uses about 10 MB per kilometre. If an update "
+	+ "changes how the world looks, regenerate it from the course page."
+)
+const DETAIL_INFO_TOOLTIP: String = (
+	"Want more detailed 3D worlds? Download the regions you ride in, then "
+	+ "open a course to save that map detail in its .tqc file. Share the file, "
+	+ "and the other rider can use the detail offline without downloading the region."
+)
+
 ## Keeping the courses' worlds, on this computer.
 var _keep: CheckBox = CheckBox.new()
 var _keep_info: Button
@@ -114,29 +125,9 @@ func _on_keep_toggled(on: bool) -> void:
 
 func _translate() -> void:
 	_keep.text = tr("Keep rendered worlds on this computer for instant startup of a 3D ride.")
-	_keep_info.tooltip_text = tr("Built 3D worlds stay on this computer.")
-	_keep_info.tooltip_text += "\n" + tr("Future rides start right away.")
-	_keep_info.tooltip_text += "\n" + tr("A saved world uses about 10 MB per kilometre.")
-	_keep_info.tooltip_text += "\n" + tr(
-		"After a visual update, regenerate the world from its course page."
-	)
+	_keep_info.tooltip_text = _wrap_tooltip(tr(KEEP_INFO_TOOLTIP), 54)
 	_detail.text = tr("Add Geofabrik regions for more detailed 3D worlds.")
-	_detail_info.tooltip_text = tr(
-		"Add the Geofabrik regions you ride in (about 0.5–5 GB per country)."
-	)
-	_detail_info.tooltip_text += "\n" + tr("Downloads start only when you add a region.")
-	_detail_info.tooltip_text += "\n" + tr(
-		"Open a course to save the region's map detail in its .tqc file."
-	)
-	_detail_info.tooltip_text += "\n" + tr(
-		"The .tqc file includes this map detail."
-	)
-	_detail_info.tooltip_text += "\n" + tr(
-		"Share the .tqc to ride offline on another computer."
-	)
-	_detail_info.tooltip_text += "\n" + tr(
-		"No Geofabrik download is needed on the other computer."
-	)
+	_detail_info.tooltip_text = _wrap_tooltip(tr(DETAIL_INFO_TOOLTIP), 54)
 	_stop.tooltip_text = tr("Stop")
 	_confirm_off.title = tr("Turn map detail off?")
 	_confirm_off.ok_button_text = tr("Delete")
@@ -155,6 +146,23 @@ func _info_button() -> Button:
 	button.add_theme_stylebox_override("hover", UiTheme.icon_button(Color(1, 1, 1, 0.08)))
 	button.add_theme_stylebox_override("pressed", UiTheme.icon_button(Color(1, 1, 1, 0.13)))
 	return button
+
+
+## Wraps translated tooltip copy to keep the standard tooltip within the settings window.
+func _wrap_tooltip(copy: String, max_characters: int) -> String:
+	var lines: PackedStringArray = []
+	var line: String = ""
+	for word: String in copy.split(" "):
+		if not line.is_empty() and line.length() + word.length() + 1 > max_characters:
+			lines.append(line)
+			line = word
+		elif line.is_empty():
+			line = word
+		else:
+			line += " " + word
+	if not line.is_empty():
+		lines.append(line)
+	return "\n".join(lines)
 
 
 func _show_worlds() -> void:

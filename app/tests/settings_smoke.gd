@@ -354,6 +354,7 @@ func _courses(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	)
 	_check(info.icon == UiIcons.texture("info"), "an info button beside the setting")
 	_check(info.tooltip_text.contains("10 MB per kilometre"), "the storage use in its tooltip")
+	_check(info.tooltip_text.contains("\n"), "the keep-worlds tooltip wraps as readable text")
 	_check(not worlds.visible, "no kept worlds to list")
 	keep.button_pressed = true
 	_check(orqwa.keeps_worlds(), "kept on this computer")
@@ -412,15 +413,20 @@ func _map_detail(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 		"the switch: %s" % detail.text
 	)
 	_check(info.icon == UiIcons.texture("info"), "an info button beside the setting")
-	_check(info.tooltip_text.contains("Geofabrik"), "the source in its tooltip")
-	_check(info.tooltip_text.contains("0.5–5 GB"), "the room it takes in the tooltip")
-	_check(info.tooltip_text.contains(".tqc"), "the course file carries the detail")
+	var tooltip_copy: String = info.tooltip_text.replace("\n", " ")
 	_check(
-		info.tooltip_text.contains(".tqc file includes this map detail"),
-		"the detail is inside the shared file"
+		tooltip_copy.begins_with("Want more detailed 3D worlds?"),
+		"the tooltip starts with its purpose"
 	)
-	_check(info.tooltip_text.contains("ride offline"), "the shared course works offline")
-	_check(info.tooltip_text.count("\n") >= 5, "long guidance wraps into a compact tooltip")
+	_check(
+		tooltip_copy.contains("save that map detail in its .tqc file"),
+		"opening adds detail to the file"
+	)
+	_check(
+		tooltip_copy.contains("use the detail offline without downloading the region"),
+		"sharing needs no second download"
+	)
+	_check(info.tooltip_text.contains("\n"), "long guidance wraps into a compact tooltip")
 	_check(not regions.visible, "no regions to list")
 	detail.button_pressed = true
 	_check(orqwa.map_detail(), "on for this computer")
