@@ -4,6 +4,10 @@
 //! before any network operation. LAN and loopback access require separate explicit choices.
 
 pub mod code;
+pub mod crypto;
+pub mod discovery;
 pub mod limits;
 pub mod policy;
 pub mod state;
+pub mod stun;
+mod text;

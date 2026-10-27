@@ -52,7 +52,8 @@ The existing Android phase, requirements and usage-wiki ADR keep their identifie
   broadcast, link-local, reserved/documentation and IPv4-mapped IPv6 destinations. Private
   addresses require LAN mode and loopback requires local-test mode. Bound and deduplicate
   candidates before scheduling attempts. Connectivity checks have a finite packet budget.
-- Router forwarding is **off by default**, independently enabled by the rider. Ask for
+- Router forwarding is deferred from the first implementation. A future optional mapping
+  feature is **off by default**, independently enabled by the rider. Ask for
   short, finite leases; renew only while the session owner is alive. Stop renewal on drop
   and attempt bounded removal on explicit close and cancellation. A router may refuse
   removal or lose its response, so the finite lease is the fallback, not a claim that every
@@ -123,17 +124,18 @@ rides remain separate manual acceptance checks; passing local tests does not pro
 
 ## Delivery status
 
-The first protocol-foundation PR adds bounded **binary** payloads, destination policy,
-connection permits and state validation/coalescing. It starts no network calls, creates no
-certificate, generates no secrets and adds no rider-facing controls. It reuses only existing
-workspace types/error support. Text encoding, cryptographic generation, discovery, transport
-and the lobby still need their implementation PRs; the security limits are acceptance criteria
-for those integrations, not a claim that an end-to-end group ride already exists.
+The protocol foundation provides bounded payloads, destination policy, connection permits and
+state validation/coalescing. Discovery adds bounded base64url text, cryptographic identifiers
+and SHA-256, selected-interface UDP sockets, strict STUN parsing (including FINGERPRINT) and
+the explicit `net-check` command. Loopback mode never contacts STUN. Transport and the lobby
+remain following steps; `net-check` alone is not an end-to-end group ride.
 
-Dependency approval is requested for quinn, rustls and base64 (already transitive on main),
-and rcgen, netdev, crab_nat and igd-next. Current stable versions checked against crates.io on
-2026-10-27 are respectively 0.11.12, 0.23.46, 0.23.1, 0.14.10, 0.47.0, 0.8.1 and 0.18.0.
-They are not added by the protocol-foundation step. Existing `fast_qr` covers future QR display.
+The owner approved the core dependency selection on 2026-10-27 after its advisory, licence
+and source checks: quinn 0.11.12, rustls 0.23.46, base64 0.23.1, rcgen 0.14.10 and netdev
+0.47.0 (current stable releases verified against crates.io). Add quinn/rcgen with transport;
+the discovery step uses base64, rustls and netdev. Router libraries crab_nat/igd-next remain
+deferred; they are not needed for STUN, public IPv6 or LAN connections. Existing `fast_qr`
+covers future QR display.
 
 Address filtering follows the conservative direct-peer policy above, using the IANA
 [IPv4](https://www.iana.org/assignments/iana-ipv4-special-registry/) and

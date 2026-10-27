@@ -3,6 +3,7 @@
 mod devices;
 mod free_ride;
 mod gear_check;
+mod network;
 mod recorded_ride;
 mod sample_rides;
 
@@ -37,6 +38,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Discover UDP addresses for group rides; ordinary rides do not run discovery.
+    NetCheck(network::NetCheckArgs),
     /// List nearby trainers, power meters, cadence and heart-rate sensors and shifters.
     Scan {
         /// Scan duration in seconds.
@@ -220,6 +223,7 @@ async fn main() -> Result<()> {
 
     match Cli::parse().command {
         Command::Scan { seconds } => scan(seconds).await,
+        Command::NetCheck(args) => network::check(&args).await,
         Command::Ride(args) => ride(*args).await,
         Command::GearCheck(args) => gear_check(&args).await,
         Command::Route(args) => route_info(&args).await,
