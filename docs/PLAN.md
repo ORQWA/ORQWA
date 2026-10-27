@@ -416,6 +416,8 @@ Built in rideable steps:
     (`ReflowGrid`, a wrapping gallery toolbar, scrolling pages) and dialogs fit the window
   - [x] Pages that scroll keep their scroll bar's room: the gallery no longer reflows without
     end at some widths, which crashed the app when macOS zoomed its window
+  - [x] The course's ride options and growing build log scroll within their panel, with Ride
+    fixed below; long climb lists stay reachable on short screens, including Android (R53, R94)
 - **Exit:** start the app, pick a course from the gallery, ride it, see the summary, land back home
 
 ### Phase 9 — Graphics (R43–R47, R89, [ADR 0009](adr/0009-asset-pipeline.md), [ADR 0011](adr/0011-stylized-look.md), [ADR 0020](adr/0020-realistic-look.md))

@@ -326,6 +326,7 @@ func _small_window(locale: String, ride: String) -> void:
 	)
 	await _settle()
 	_fits(start, room, "%s, a course's page" % locale)
+	await _course_building(start, room, locale)
 	var settings_dialog: SettingsDialog = start.get("_settings")
 	settings_dialog.open()
 	await _dialog_fits(settings_dialog, room, locale)
@@ -381,6 +382,49 @@ func _small_window(locale: String, ride: String) -> void:
 	root.add_child(settings)
 	settings.save_profile(rider_id, rider)
 	settings.free()
+
+
+## A growing build log must not push Ride or the climbs past a tablet's screen (R53, R94).
+func _course_building(start: StartPage, room: Vector2, locale: String) -> void:
+	var course: CourseDetail = start.get("_detail")
+	var records: Label = course.get("_records")
+	var climbs: PackedStringArray = PackedStringArray()
+	for i: int in range(20):
+		climbs.append("Cat 1 %.1f km at 8.0 %%" % (i + 1.0))
+	records.text = "\n".join(climbs)
+	course.call("_show_building")
+	var log: PreparationLog = course.get("_log")
+	for i: int in range(12):
+		log.step("Build step %d" % i, "tiles", 143, 412)
+	await _settle()
+	_fits(start, room, "%s, a course while building its world" % locale)
+	var ride: Button = course.get("_ride_button")
+	_check(
+		Rect2(Vector2.ZERO, room).encloses(ride.get_global_rect()),
+		"%s, Ride stays inside the screen while building" % locale
+	)
+	await _scroll_to_bottom(records, "%s, the last climb is reachable" % locale)
+	await _scroll_to_bottom(log, "%s, the latest build step is reachable" % locale)
+	log.finish()
+	await _settle()
+	_fits(start, room, "%s, a course after building its world" % locale)
+
+
+## The bottom of tall content can be brought into its scroll area's visible height.
+func _scroll_to_bottom(content: Control, what: String) -> void:
+	var ancestor: Node = content.get_parent()
+	while ancestor != null and not ancestor is ScrollContainer:
+		ancestor = ancestor.get_parent()
+	var scroll: ScrollContainer = ancestor as ScrollContainer
+	_check(scroll != null, what + ": can scroll")
+	if scroll == null:
+		return
+	scroll.scroll_vertical = ceili(scroll.get_v_scroll_bar().max_value)
+	await _settle()
+	var bottom: float = content.get_global_rect().end.y
+	var viewport: Rect2 = scroll.get_global_rect()
+	var screen_bottom: float = root.get_visible_rect().end.y
+	_check(bottom > viewport.position.y and bottom <= minf(viewport.end.y, screen_bottom), what)
 
 
 ## Whether `page` and what is in it need no more room than `room`.
