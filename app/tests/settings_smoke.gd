@@ -415,6 +415,10 @@ func _map_detail(orqwa: OrqwaApp, dialog: SettingsDialog) -> void:
 	_check(info.tooltip_text.contains("Geofabrik"), "the source in its tooltip")
 	_check(info.tooltip_text.contains("0.5–5 GB"), "the room it takes in the tooltip")
 	_check(info.tooltip_text.contains(".tqc"), "the course file carries the detail")
+	_check(
+		info.tooltip_text.contains(".tqc file includes this map detail"),
+		"the detail is inside the shared file"
+	)
 	_check(info.tooltip_text.contains("ride offline"), "the shared course works offline")
 	_check(not regions.visible, "no regions to list")
 	detail.button_pressed = true

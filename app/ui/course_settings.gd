@@ -127,10 +127,13 @@ func _translate() -> void:
 	)
 	_detail_info.tooltip_text += " " + tr("Downloads start only when you add a region.")
 	_detail_info.tooltip_text += " " + tr(
-		"Open a course after downloading a region to save its detail in the .tqc file."
+		"After downloading a region, open a course to save its map detail in the .tqc file."
 	)
 	_detail_info.tooltip_text += " " + tr(
-		"Share or sync the course to ride offline on another device without downloading the region again."
+		"The .tqc file includes this map detail."
+	)
+	_detail_info.tooltip_text += " " + tr(
+		"Another computer can ride offline without downloading the Geofabrik region again."
 	)
 	_stop.tooltip_text = tr("Stop")
 	_confirm_off.title = tr("Turn map detail off?")

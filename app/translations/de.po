@@ -202,11 +202,14 @@ msgstr "Einmal erstellte 3D-Welten bleiben auf diesem Computer. Die nächste Fah
 msgid "Downloads start only when you add a region."
 msgstr "Downloads starten erst, wenn du eine Region hinzufügst."
 
-msgid "Open a course after downloading a region to save its detail in the .tqc file."
-msgstr "Öffne eine Route nach dem Download einer Region, damit ihre .tqc-Datei die Kartendetails speichert."
+msgid "After downloading a region, open a course to save its map detail in the .tqc file."
+msgstr "Öffne nach dem Download einer Region eine Route, damit ihre .tqc-Datei die Kartendetails speichert."
 
-msgid "Share or sync the course to ride offline on another device without downloading the region again."
-msgstr "Teile oder synchronisiere die Route, um auf einem anderen Gerät offline zu fahren, ohne die Region erneut herunterzuladen."
+msgid "The .tqc file includes this map detail."
+msgstr "Die .tqc-Datei enthält diese Kartendetails."
+
+msgid "Another computer can ride offline without downloading the Geofabrik region again."
+msgstr "Auf einem anderen Computer kannst du offline fahren, ohne die Geofabrik-Region erneut herunterzuladen."
 
 msgid "Against all time"
 msgstr "Vergleich mit allen bisherigen Aktivitäten"

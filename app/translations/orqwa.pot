@@ -275,6 +275,10 @@ msgstr ""
 msgid "After an update changes its look, choose Regenerate world on the course page."
 msgstr ""
 
+#: app/ui/course_settings.gd
+msgid "After downloading a region, open a course to save its map detail in the .tqc file."
+msgstr ""
+
 #: app/scenes/analysis_tab.gd
 msgid "Against all time"
 msgstr ""
@@ -341,6 +345,10 @@ msgstr ""
 
 #: app/scenes/start_page.gd
 msgid "Analysis"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "Another computer can ride offline without downloading the Geofabrik region again."
 msgstr ""
 
 #: app/ui/graphics_settings.gd
@@ -1955,10 +1963,6 @@ msgstr ""
 msgid "Open a GPX route, video or ORQWA course"
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "Open a course after downloading a region to save its detail in the .tqc file."
-msgstr ""
-
 #: core/orqwa-app/src/failure.rs
 msgid "Open a course first."
 msgstr ""
@@ -2423,10 +2427,6 @@ msgstr ""
 msgid "Share of the road gradient you feel on the trainer"
 msgstr ""
 
-#: app/ui/course_settings.gd
-msgid "Share or sync the course to ride offline on another device without downloading the region again."
-msgstr ""
-
 #: app/scenes/button_dialog.gd
 msgid "Shift down"
 msgstr ""
@@ -2613,6 +2613,10 @@ msgstr ""
 
 #: app/ui/moment_lines.gd
 msgid "That's {rides} rides this week, keep it up!"
+msgstr ""
+
+#: app/ui/course_settings.gd
+msgid "The .tqc file includes this map detail."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd
