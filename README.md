@@ -62,7 +62,7 @@ Gestel, <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA
     <td width="50%">🚴 <b><a href="https://github.com/ORQWA/ORQWA/wiki/Devices-and-riding#devices">Smart trainers</a></b><br>
       Bluetooth FTMS and Tacx FE-C over Bluetooth (SIM, ERG, resistance), plus heart-rate straps; your devices reconnect at start and after dropouts</td>
     <td width="50%">🗺️ <b><a href="https://github.com/ORQWA/ORQWA/wiki/Courses#import-a-course">Any GPX in 3D</a></b><br>
-      A stylized world from real terrain and OpenStreetMap, with weather and time of day</td>
+      A stylized world from real terrain and OpenStreetMap, with weather and time of day. Network is only needed once on import, then it works completely offline.</td>
   </tr>
   <tr>
     <td>🎬 <b><a href="https://github.com/ORQWA/ORQWA/wiki/Video-courses">Video courses</a></b><br>
