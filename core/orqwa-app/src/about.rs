@@ -154,6 +154,7 @@ fn assets() -> String {
     text.push_str(
         "\nRide audio textures (CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/):\n\
          Wind and Leaves.wav by ecfike (https://freesound.org/people/ecfike/sounds/183496/);\n\
+         Light Rain by soundrecorder7 (https://freesound.org/people/soundrecorder7/sounds/167034/);\n\
          bicycle forward movement by dawidwmika (https://freesound.org/people/dawidwmika/sounds/380288/);\n\
          bike-wheel-free-looped.flac by yurkobb (https://freesound.org/people/yurkobb/sounds/274481/);\n\
          bike_gear_shift.wav by ChemiCatz (https://freesound.org/people/ChemiCatz/sounds/267910/);\n\

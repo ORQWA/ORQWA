@@ -2231,8 +2231,8 @@ msgstr "Windgeräusche"
 msgid "Bicycle sound"
 msgstr "Fahrradgeräusche"
 
-msgid "Wind volume; 0 mutes it"
-msgstr "Lautstärke des Windes; 0 schaltet ihn stumm"
+msgid "Wind and rain volume; 0 mutes them"
+msgstr "Lautstärke von Wind und Regen; 0 schaltet sie stumm"
 
 msgid "Chain, freewheel and gear shift volume; 0 mutes them"
 msgstr "Lautstärke von Kette, Freilauf und Gangwechseln; 0 schaltet sie stumm"

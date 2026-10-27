@@ -11,6 +11,7 @@ fn main() {
     std::fs::create_dir_all(&destination).unwrap();
     for (name, recording, from_ms, duration_ms) in [
         ("wind", "wind", 12_000_u32, 36_000_u32),
+        ("rain", "rain", 2_000, 20_000),
         ("chain", "bike", 8_000, 16_000),
         ("freewheel", "freewheel", 0, 2_000),
         ("shift", "shift", 80, 300),
