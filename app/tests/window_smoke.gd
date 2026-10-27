@@ -14,20 +14,21 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _fullscreen()
-	await _fixed_scale()
-	await _reflow_grid()
-	await _gallery_settles()
-	var ride: String = await _record_ride()
-	for locale: String in ["en", "de"]:
-		await _small_window(locale, ride)
+	if not "--fullscreen-only" in OS.get_cmdline_user_args():
+		await _fixed_scale()
+		await _reflow_grid()
+		await _gallery_settles()
+		var ride: String = await _record_ride()
+		for locale: String in ["en", "de"]:
+			await _small_window(locale, ride)
 	TranslationServer.set_locale("en")
 	if not _failed:
 		print("WINDOW SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
 
 
-## Full screen (#218): F11 and the check box in the settings switch it, and the choice is kept
-## for the next start; the overlay stays a window of its own.
+## Full screen (#218, #376): the keys, settings and ride bar switch the app's window and keep
+## the choice for the next start; the overlay stays a window of its own.
 func _fullscreen() -> void:
 	var main: Control = (load(MAIN_SCENE) as PackedScene).instantiate()
 	root.add_child(main)
@@ -61,14 +62,73 @@ func _fullscreen() -> void:
 	(main.get_node("StartPage") as Control).hide()
 	ride.begin({"workout": {"kind": "zone", "zone": 3}, "on_course": false})
 	ride.show()
+	await _ride_fullscreen(main, ride, box, headless)
+	var before_overlay: bool = not headless
+	FullScreen.set_on(window, orqwa, before_overlay)
+	await _settle()
 	ride.overlay_requested.emit(true)
 	for i: int in range(3):
 		await process_frame
+	var bar: RideBar = ride.get("_bar")
+	_check(not bar.is_visible_in_tree(), "the ride controls stay out of the overlay")
+	_check(headless or not FullScreen.is_on(window), "the overlay is a small window")
 	_press(KEY_F11)
-	_check(not orqwa.fullscreen(), "the overlay does not fill the screen")
+	_check(orqwa.fullscreen() == before_overlay, "the overlay keeps the full-screen preference")
 	ride.overlay_requested.emit(false)
-	await process_frame
+	_check(headless or FullScreen.is_on(window), "leaving the overlay restores full screen")
+	await _settle()
+	FullScreen.set_on(window, orqwa, false)
 	main.free()
+
+
+## The ride bar switches the app's window in both directions, follows the other controls and
+## still works after being folded. Run on a display as well: headless has no window mode.
+func _ride_fullscreen(main: Control, ride: RideScreen, box: CheckBox, headless: bool) -> void:
+	var orqwa: OrqwaApp = main.get_node("Orqwa")
+	var bar: RideBar = ride.get("_bar")
+	var button: Button = bar.get("_fullscreen")
+	FullScreen.set_on(root, orqwa, false)
+	await _settle()
+	_check(button.is_visible_in_tree(), "full screen is available during a workout")
+	_check(button.tooltip_text == "Full screen (F11)", "the bar offers full screen")
+	var expand: Texture2D = button.icon
+	button.pressed.emit()
+	await _settle()
+	_check(orqwa.fullscreen(), "the ride button keeps the computer's full-screen choice")
+	if not headless:
+		_check(FullScreen.is_on(root), "the ride button fills the app's window")
+		_check(
+			button.icon != expand and button.tooltip_text == "Exit full screen (F11)",
+			"full screen offers a different icon and a way back to a window"
+		)
+		var start: StartPage = main.get_node("StartPage")
+		var settings: SettingsDialog = start.get("_settings")
+		settings.open()
+		await _settle()
+		_check(box.button_pressed, "opening graphics follows the ride button")
+		settings.hide()
+		button.pressed.emit()
+		await _settle()
+		_check(not FullScreen.is_on(root) and not orqwa.fullscreen(), "the ride button exits")
+		bar.folded = true
+		_press(KEY_F11)
+		await _settle()
+		bar.folded = false
+		_check(button.icon != expand, "unfolded controls follow F11")
+		_press(KEY_ENTER, true)
+		await _settle()
+		_check(button.icon == expand, "the ride icon follows Alt+Enter")
+		settings.open()
+		await _settle()
+		box.button_pressed = true
+		await _settle()
+		_check(button.icon != expand, "the ride icon follows the graphics setting")
+		settings.hide()
+		root.mode = Window.MODE_WINDOWED
+		await _settle()
+		_check(button.icon == expand, "the ride icon follows the system's window controls")
+	FullScreen.set_on(root, orqwa, false)
+	await _settle()
 
 
 ## The interface keeps the size the system gives it on the screen, whatever the window's (R94):

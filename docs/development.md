@@ -46,6 +46,12 @@ does the same.
 | Make the map detail of an OpenStreetMap region download and measure it ([ADR 0033](adr/0033-map-detail.md)) | `cargo run --release --manifest-path core/Cargo.toml -p orqwa-cli -- detail <region>-latest.osm.pbf <out>` |
 | Run the CLI with the fake trainer | `cargo run --manifest-path core/Cargo.toml -p orqwa-cli -- ride --fake` |
 
+For window-mode changes, also run the window smoke test on a virtual display in the container:
+`timeout 60 xvfb-run -a godot --path app --audio-driver Dummy -s res://tests/window_smoke.gd -- --fullscreen-only`.
+The headless display has no window mode. The display run checks entering and leaving full
+screen from the ride bar, synchronization with the keyboard, graphics setting and system
+window controls, and restoring full screen after the overlay (#376, R150).
+
 The 3D models are Blender scripts in `art/` (see [art/README.md](../art/README.md) for them and a
 gallery of every model); Blender runs in its own container on the host:
 `scripts/art.sh blender --background --factory-startup --python art/<group>/build.py`.

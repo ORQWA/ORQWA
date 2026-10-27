@@ -1,7 +1,7 @@
 class_name RideBar
 extends PanelContainer
 ## The ride view's controls in one slim bar at the bottom left (#189): icon buttons with
-## tooltips for the settings, the overlay and pausing, and the simulation's
+## tooltips for the settings, the overlay, full screen and pausing, and the simulation's
 ## speeds when the ride is simulated. A chevron folds the bar away to its corner and back;
 ## the keys work either way.
 
@@ -9,6 +9,8 @@ extends PanelContainer
 signal settings_requested
 ## The overlay was asked for (O).
 signal overlay_requested
+## Full screen or a window was asked for (F11, #376).
+signal fullscreen_requested
 ## The ride should pause, or go on (P).
 signal pause_requested
 ## The way back was asked for after a ride recorded nothing.
@@ -33,6 +35,8 @@ var _fold: Button = Button.new()
 var _tools: HBoxContainer = HBoxContainer.new()
 var _settings: Button = Button.new()
 var _overlay: Button = Button.new()
+var _fullscreen: Button = Button.new()
+var _fullscreen_on: bool = false
 var _pause: Button = Button.new()
 var _back: Button = Button.new()
 var _simulation: HBoxContainer = HBoxContainer.new()
@@ -41,6 +45,8 @@ var _speed_buttons: Array[Button] = []
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# No parent container shrinks this corner-anchored panel when controls disappear.
+	minimum_size_changed.connect(_fit_controls)
 	add_theme_stylebox_override("panel", UiTheme.bar())
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
@@ -60,6 +66,9 @@ func _init() -> void:
 	)
 	_overlay.pressed.connect(overlay_requested.emit)
 	_tools.add_child(_overlay)
+	_icon_button(_fullscreen, "fullscreen", tr("Full screen (F11)"))
+	_fullscreen.pressed.connect(fullscreen_requested.emit)
+	_tools.add_child(_fullscreen)
 	_icon_button(_pause, "pause", tr("Pause the ride: the clock and the trainer wait (P)"))
 	_pause.pressed.connect(pause_requested.emit)
 	_tools.add_child(_pause)
@@ -91,6 +100,28 @@ func _init() -> void:
 	_simulation.hide()
 	_tools.add_child(_simulation)
 	folded = false
+
+
+func _ready() -> void:
+	_show_fullscreen()
+
+
+func _process(_delta: float) -> void:
+	# A mode change need not resize the window, e.g. when it already fills the screen.
+	if FullScreen.is_on(get_window()) != _fullscreen_on:
+		_show_fullscreen()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		_show_fullscreen()
+
+
+func _show_fullscreen() -> void:
+	var on: bool = FullScreen.is_on(get_window())
+	_fullscreen_on = on
+	_fullscreen.icon = UiIcons.texture("windowed" if on else "fullscreen", ICON)
+	_fullscreen.tooltip_text = tr("Exit full screen (F11)") if on else tr("Full screen (F11)")
 
 
 ## Shows the simulation's speeds, or hides them.
@@ -125,6 +156,12 @@ func show_settings(shown: bool) -> void:
 ## Shows the way back when a ride recorded nothing and has no summary.
 func show_back(shown: bool) -> void:
 	_back.visible = shown
+
+
+func _fit_controls() -> void:
+	var bottom: float = position.y + size.y
+	reset_size()
+	position.y = bottom - size.y
 
 
 func _toggle_fold() -> void:

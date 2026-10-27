@@ -74,6 +74,7 @@ func _ready() -> void:
 	# Saving emits from the core: read its history only after that call has returned.
 	_ride.summary_requested.connect(_show_quick_summary, CONNECT_DEFERRED)
 	_ride.overlay_requested.connect(_set_overlay)
+	_ride.fullscreen_requested.connect(_toggle_fullscreen)
 	_ride.overlay_zoom_requested.connect(_overlay.zoom)
 	get_window().size_changed.connect(_on_window_resized)
 	_summary.closed.connect(_back_home)
@@ -206,10 +207,14 @@ func _shortcut_input(event: InputEvent) -> void:
 		return
 	if key.keycode != KEY_F11 and not (key.keycode == KEY_ENTER and key.alt_pressed):
 		return
-	# The overlay is a small window of its own; leaving it brings full screen back.
-	if not _overlay.active:
-		FullScreen.set_on(get_window(), _orqwa, not FullScreen.is_on(get_window()))
+	_toggle_fullscreen()
 	get_viewport().set_input_as_handled()
+
+
+func _toggle_fullscreen() -> void:
+	# The overlay is a small window of its own; leaving it brings full screen back.
+	if not _overlay.active and not _picture_in_picture:
+		FullScreen.set_on(get_window(), _orqwa, not FullScreen.is_on(get_window()))
 
 
 func _notification(what: int) -> void:
