@@ -845,9 +845,10 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
 - [x] Protocol foundation: bounded binary invite/reply payloads with ride/certificate/course
   binding, destination policy, a connection admission budget, validated state datagrams and a
   fixed-size, rate-limited latest-state mailbox; no socket or CLI integration in this step
-- [ ] Discovery: text codes, cryptographic STUN
-  transactions, selected-interface candidates, opt-in short-lived router mappings and
+- [x] Discovery: bounded text codes, cryptographic STUN transactions, selected-interface candidates and
   `orqwa-cli net-check`; usage/firewall documentation with the first network command
+- [ ] Optional router mappings, deferred: separately reviewed library selection, opt-in
+  short-lived leases and bounded cleanup; no mappings are created by the initial network stack
 - [ ] Transport: per-ride pinned QUIC, reply/credential binding and replay protection, bounded
   handshakes before TLS, finite probing, one connection deadline, owner-drop cleanup and
   `orqwa-cli net-ping`

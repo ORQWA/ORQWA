@@ -12,6 +12,7 @@ publish = false
 [workspace.dependencies]
 orqwa-app = { path = "orqwa-app" }
 orqwa-domain = { path = "orqwa-domain" }
+orqwa-net = { path = "orqwa-net" }
 orqwa-osm = { path = "orqwa-osm" }
 orqwa-devices = { path = "orqwa-devices" }
 orqwa-physics = { path = "orqwa-physics" }
@@ -26,6 +27,7 @@ orqwa-video = { path = "orqwa-video" }
 orqwa-workouts = { path = "orqwa-workouts" }
 orqwa-world = { path = "orqwa-world" }
 anyhow = "1.0.104"
+base64 = "0.23.1"
 btleplug = "0.13.5"
 clap = { version = "4.6.7", features = ["derive"] }
 # FFmpeg's libraries come prebuilt by scripts/build-ffmpeg.sh (a pinned release, verified),
@@ -40,6 +42,7 @@ futures = "0.3.34"
 geo-types = "0.7.20"
 image-webp = "0.2.4"
 mvt-reader = "2.5.0"
+netdev = "0.47.0"
 png = "0.18.1"
 # Protocol Buffers for OpenStreetMap's PBF files; already in use under mvt-reader.
 prost = "0.14.4"
@@ -48,6 +51,7 @@ quick-xml = "0.42.0"
 # orqwa-video turns it on for x86_64, whose assembly the package has (ADR 0010).
 rav1d = { version = "1.1.0", default-features = false, features = ["bitdepth_8", "bitdepth_16"] }
 reqwest = "0.13.5"
+rustls = { version = "0.23.46", default-features = false, features = ["aws_lc_rs", "std"] }
 # SQLite compiled in: no system library to find on any platform (ADR 0002, R79).
 rusqlite = { version = "0.40.2", features = ["bundled"] }
 rustyfit = "0.10.3"

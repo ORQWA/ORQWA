@@ -157,7 +157,7 @@ pub struct Invite {
 
 /// A 256-bit bearer credential. Its bytes are intentionally absent from Debug output.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct AdmissionSecret([u8; 32]);
+pub struct AdmissionSecret(pub(crate) [u8; 32]);
 
 impl fmt::Debug for AdmissionSecret {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
