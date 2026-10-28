@@ -275,6 +275,14 @@ road and land-use data, with mapped green spaces preserved.
 |---|---|
 | R115 | Refines R89 (2026-10-22): **boulders and cliffs read as natural rock at riding and overview distances**: asymmetric boulders with weathered broken faces, irregular intersecting fractures and broad mineral variation on exposed rock, without repeating masonry courses. Fine grain fades with distance while larger face variation remains legible. Existing kept worlds receive the material and model improvements without regeneration. |
 
+## Riding together
+
+| ID | Requirement |
+|---|---|
+| R159 | Extends R27 (2026-10-27, replaces unmerged #241/#247): **group rides** for up to eight riders including the host, each on their own trainer on the same locally held course, with a common countdown. Each keeps their own physics and settings; no drafting or late joining. The others are shown beside ghosts, on the map and profile and in a gaps panel in the later app integration. Each saves only their own activity; others' heart rate stays private. The first implementation is a developer CLI. |
+| R160 | Extends R2 and R3 (2026-10-27, replaces unmerged #243/#246): group rides connect **directly without an ORQWA server or relay**, using invite/reply codes passed through an authenticated private channel chosen by the riders. Connections are encrypted, the invite pins the host's certificate, replies bind admission to the particular ride and course, and only joiners explicitly admitted by the host get in. Codes disclose their names, course metadata and advertised addresses; replies contain a secret and must be kept private. Public STUN discovery can be switched off, LAN addresses require an explicit mode, and router port forwarding is independently off until requested. Ordinary rides do not start group networking. |
+| R161 | Extends R159 and R160 (2026-10-27): connecting succeeds or **fails within one minute**, including discovery and admission, with what may help and no promise that every network can connect without a relay. Connection attempts, pending admissions, messages and state queues have fixed budgets; a peer flooding or sending invalid data cannot create unbounded work or memory. State is at most 5 Hz with only the latest per rider retained, physical values and timestamps are validated, and imported codes cannot silently probe local/special addresses. Leaving, cancelling or dropping a session closes its listeners and stops its tasks and router renewal; finite leases bound a mapping the router cannot remove. Losing a rider or the host never stops the local ride. See ADR 0035. |
+
 ## MVP definition
 
 Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mode → save a FIT file.

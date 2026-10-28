@@ -1,0 +1,152 @@
+# ADR 0035 — Group rides with bounded peer-to-peer networking
+
+- Status: proposed
+- Date: 2026-10-27
+- Replaces the unmerged proposals #241, #243, #246 and #247
+
+## Context
+
+R27 leaves multiplayer for later. Riders want to ride the same course from different homes,
+without running a service, creating accounts or paying for a relay (R2, R3). The earlier
+networking PRs were never merged. They predate the ORQWA rename and reuse requirement, ADR
+and phase numbers now assigned to other features. Their security review found unbounded
+connection and event resources, unchecked destinations and numbers, incomplete deadlines,
+and detached listeners and router-renewal tasks.
+
+## Decision
+
+Implement the replacement as `orqwa-net`, in separate, reviewable steps on application-owned
+branches based on current main. Requirements R159–R161 and Phase 13 identify this work.
+The initial usable networking delivery is a developer CLI; app/session integration remains a separate step.
+The existing Android phase, requirements and usage-wiki ADR keep their identifiers.
+
+### Trust and privacy
+
+- Riders exchange a host's invite and each joiner's reply through an authenticated, private
+  channel they choose. Replacing an invite replaces the identity it authenticates; TLS cannot
+  establish who sent a code. Replies contain bearer credentials and must not be published.
+- The invite contains the host's per-ride certificate fingerprint, a fresh ride identifier,
+  course name/hash and bounded address candidates. Each reply binds its fresh admission
+  credential to that ride and certificate. A reply for another ride is refused before probing.
+  Credentials are generated with a cryptographic random source and redacted from Debug/logs.
+- Joining pins the complete host certificate fingerprint and verifies the TLS handshake
+  signature. Admission credentials are sent only after that verification. Authentication
+  messages also bind the ride and course. A used, expired or revoked credential cannot admit
+  another connection. No early application data or cross-ride resumption is required.
+- The host assigns the sender of forwarded state from the authenticated connection. Remote
+  state never changes a rider's trainer commands, physics, heart rate or saved activity.
+- Codes reveal names, course metadata and the advertised addresses to recipients and the
+  service used to exchange them. The host sees its joiners' addresses; it does not forward
+  those addresses or their admission credentials to other riders.
+
+### Network policy
+
+- No networking starts merely because the app opens. A developer explicitly runs a network
+  command. Ordinary rides remain offline. Public STUN discovery has a separate switch;
+  turning it off does not enable or disable router forwarding.
+- Advertise addresses of a selected interface, using the default interface when none is
+  selected. Do not enumerate every VPN/container/interface address into an invite. LAN
+  candidates require explicit LAN mode; loopback is a separate, explicit local-test mode.
+- Validate every imported candidate before any probe or QUIC connection. Public labels do
+  not override address policy. Reject zero/privileged ports, unspecified, multicast,
+  broadcast, link-local, reserved/documentation and IPv4-mapped IPv6 destinations. Private
+  addresses require LAN mode and loopback requires local-test mode. Bound and deduplicate
+  candidates before scheduling attempts. Connectivity checks have a finite packet budget.
+- Router forwarding is **off by default**, independently enabled by the rider. Ask for
+  short, finite leases; renew only while the session owner is alive. Stop renewal on drop
+  and attempt bounded removal on explicit close and cancellation. A router may refuse
+  removal or lose its response, so the finite lease is the fallback, not a claim that every
+  mapping disappeared immediately. Select/release competing mappings without an indefinite
+  cleanup wait. Do not use a private or special-use external address as a public candidate.
+- STUN uses cryptographically random 96-bit transaction identifiers, source/transaction
+  matching, strict bounded parsing and retransmission within the common deadline. Discovery
+  is not peer authentication. Two matching observations are evidence about those mappings,
+  not proof that every destination will be reachable. No relay means some networks cannot
+  connect; failure explains uncertainty rather than claiming a particular NAT was proved.
+
+### Resource and lifecycle limits
+
+- One absolute deadline, at most 60 seconds, includes discovery, punching, TLS, credential
+  exchange and lobby admission. Every read, write, retry and router operation is bounded by
+  the remaining time. Cancelling an operation tears down its owned resources.
+- Limit concurrent transport connections and pending handshakes **before** spawning work or
+  doing TLS. Apply a global handshake rate budget and a bounded per-source pending limit.
+  Exhaustion rejects work without adding another task or growing a source-address table.
+  QUIC stream counts, stream windows and datagram buffers are small explicit limits.
+  The protocol foundation allows 16 total pending/established connections, at most eight from
+  one source address, an initial handshake burst of 16 and sustained replenishment of four
+  attempts per second. Permits are held until their connections are dropped.
+- Up to eight riders including the host. Pending replies, admission events, commands and
+  control messages have fixed capacities. Full queues fail/close the affected peer; they do
+  not allocate indefinitely or stall the trainer loop. No peer-supplied input creates an
+  unbounded channel or task list.
+- State is disposable: retain at most one latest state per rider, at most 5 Hz per peer,
+  and coalesce before fan-out. Limit incoming work before queueing it, including duplicate
+  or malformed traffic. Sustained offenders disconnect. Reliable joined/left/start events
+  remain separate and bounded. A slow rider cannot backlog everyone else's state.
+- Validate finite physical values, sensible ranges and timestamps against the session before
+  accepting/forwarding them. Names are bounded UTF-8 without control characters. Validate
+  counts, rider identifiers and message direction/state as well as frame lengths.
+  The state format bounds a session to 48 hours, distance to 10,000 km, speed to 150 m/s,
+  power to 5,000 W and cadence to 300 rpm. A timestamp may lead local elapsed time by at
+  most two seconds. The ingress budget allows a jitter burst of ten packets followed by
+  five per second; malformed and duplicate packets also consume it. A reused rider slot
+  has a new local generation so an old connection cannot submit for or remove its successor.
+- Dropping the public host/joiner/lobby owner closes its endpoints and cancels all owned
+  tasks. Explicit async close also waits for bounded cleanup. Background tasks must not keep
+  the service or router lease alive after the owner disappears. No strong ownership cycle
+  may depend on receiving a future network event to end.
+
+### Rider behavior and scope
+
+- A star around the host, up to eight riders. Each has the same course locally, matched by
+  its route hash; course distribution remains file-based. No new content download service.
+- A shared countdown, no late admission after it starts, no drafting. Each rider keeps their
+  own difficulty and physics. Losing the host or another rider does not end the local ride.
+- Exchange distance, speed, power and cadence; heart rate stays private. Others eventually
+  appear beside the existing ghosts, on the map/profile and in a gaps panel. That app/UI work
+  is not part of the initial CLI networking steps.
+- Reuse existing QR support if needed later. New dependencies require approval and current
+  stable releases; preserve main's patched dependency graph. Do not restore an old lockfile.
+- Add CLI instructions and the wiki's internet/firewall entries with the command that first
+  makes those calls. Design and security internals stay in this repository, not the usage wiki.
+
+## Validation
+
+Tests assert the intended security properties: bounded decoder allocation, destination-policy
+bypasses (including mapped IPv6), wrong pins/ride/course credentials, replay and expiry,
+connection admission before limits, one end-to-end deadline, drop/cancellation cleanup,
+slow peers, state floods and invalid numbers/timestamps. Use loopback-only stand-ins and fake
+trainers; no tests flood public hosts or depend on public STUN availability. Simulated router
+leases must expire and stop renewing after drop. Two real home networks and native trainer
+rides remain separate manual acceptance checks; passing local tests does not prove them.
+
+## Delivery status
+
+The first protocol-foundation PR adds bounded **binary** payloads, destination policy,
+connection permits and state validation/coalescing. It starts no network calls, creates no
+certificate, generates no secrets and adds no rider-facing controls. It reuses only existing
+workspace types/error support. Text encoding, cryptographic generation, discovery, transport
+and the lobby still need their implementation PRs; the security limits are acceptance criteria
+for those integrations, not a claim that an end-to-end group ride already exists.
+
+Dependency approval is requested for quinn, rustls and base64 (already transitive on main),
+and rcgen, netdev, crab_nat and igd-next. Current stable versions checked against crates.io on
+2026-10-27 are respectively 0.11.12, 0.23.46, 0.23.1, 0.14.10, 0.47.0, 0.8.1 and 0.18.0.
+They are not added by the protocol-foundation step. Existing `fast_qr` covers future QR display.
+
+Address filtering follows the conservative direct-peer policy above, using the IANA
+[IPv4](https://www.iana.org/assignments/iana-ipv4-special-registry/) and
+[IPv6](https://www.iana.org/assignments/iana-ipv6-special-registry/) special-purpose registries.
+It deliberately excludes translation/tunnelling aliases and special assignments even where
+some are globally routed; those are not required direct interface candidates in this version.
+The transport integration must use both [Incoming admission controls](https://docs.rs/quinn/0.11.12/quinn/struct.Incoming.html)
+and explicit [QUIC buffer/stream limits](https://docs.rs/quinn/0.11.12/quinn/struct.TransportConfig.html).
+
+## Consequences
+
+Code exchange exposes peer addresses and relies on the chosen channel's confidentiality and
+authenticity. There is no service operator to run, but no guaranteed relay fallback either.
+Opt-in LAN candidates and router mapping can require one extra choice on restrictive networks.
+The host still carries everyone's state; strict budgets trade some join retries/disconnections
+for keeping memory, CPU and the local ride independent of a peer's behavior.
