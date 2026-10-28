@@ -134,7 +134,30 @@ permit first. QUIC has explicit stream, flow-control, datagram and handshake-buf
 Both the application's tasks and Quinn's runtime drivers have owners; cancellation permits
 at most 100 ms to flush close packets, then aborts remaining drivers. The driver registry
 itself is capped at 128. Used/expired reply tombstones are retained within a sixteen-record
-host-lifetime budget. The lobby and trainer ride remain following steps.
+host-lifetime budget.
+
+The lobby now assigns up to eight roster slots, validates printable names and finite 20–300 kg
+rider-plus-bike masses, and forwards no peer addresses or credentials. Reliable controls are
+length-prefixed and limited to 1,024 bytes; a partial frame has two seconds to finish. Application
+controls have 32 entries, peer control queues 16 and host commands eight. Overflow closes the
+affected peer or lobby. The host counts down once and seals pending admissions. Joiners estimate
+the common start from the remaining countdown minus half their measured RTT; this is approximate
+clock alignment, not a synchronized clock service. There are no late joins or slot reuse after
+the countdown. Before it, state-mailbox generations protect reused slots from stale connections.
+
+State passes through the fixed eight-slot mailbox before 5 Hz fan-out. Both local updates and
+outbound snapshots use watch channels that replace a single value. Incoming datagrams charge
+budgets before parsing; malformed values, forged senders, future timestamps and sustained floods
+close the offender. A joiner also bounds total forwarded traffic and control-message count.
+Fractional refill time is preserved so legitimate 5 Hz jitter does not consume the allowance.
+Candidate attempts are staggered to avoid spending multiple TLS permits when one path works.
+
+`ride-together` prepares the local GPX and devices before opening the join window, checks the
+hash of the exact GPX bytes, and shows remote gaps. Countdown and remote display state cannot
+call local physics/trainer/recording APIs. Each process records only its own activity and keeps
+riding after network loss. Two loopback CLI processes with fake trainers have exercised the
+countdown, gaps, independent FIT saves and continued recording after host exit. App rendering,
+native trainers and real home-network acceptance remain outstanding.
 
 The owner approved the core dependency selection on 2026-10-27 after its advisory, licence
 and source checks: quinn 0.11.12, rustls 0.23.46, base64 0.23.1, rcgen 0.14.10 and netdev

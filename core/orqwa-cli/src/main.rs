@@ -6,6 +6,7 @@ mod gear_check;
 mod net_ping;
 mod network;
 mod recorded_ride;
+mod ride_together;
 mod sample_rides;
 
 use std::path::{Path, PathBuf};
@@ -43,6 +44,8 @@ enum Command {
     NetCheck(network::NetCheckArgs),
     /// Test a direct encrypted connection by privately exchanging invite and reply codes.
     NetPing(net_ping::NetPingArgs),
+    /// Ride the same local GPX with up to seven others, keeping your own physics and FIT.
+    RideTogether(Box<ride_together::RideTogetherArgs>),
     /// List nearby trainers, power meters, cadence and heart-rate sensors and shifters.
     Scan {
         /// Scan duration in seconds.
@@ -228,6 +231,7 @@ async fn main() -> Result<()> {
         Command::Scan { seconds } => scan(seconds).await,
         Command::NetCheck(args) => network::check(&args).await,
         Command::NetPing(args) => net_ping::run(args).await,
+        Command::RideTogether(args) => ride_together::run(&args).await,
         Command::Ride(args) => ride(*args).await,
         Command::GearCheck(args) => gear_check(&args).await,
         Command::Route(args) => route_info(&args).await,

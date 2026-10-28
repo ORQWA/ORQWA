@@ -421,6 +421,17 @@ impl Host {
         &self.shared.invite
     }
 
+    /// Stops all pending replies and probes when the lobby countdown begins.
+    /// Future pasted replies must be refused by the lobby owner.
+    pub fn seal(&mut self) {
+        for admission in self.shared.admissions().values_mut() {
+            if admission.state == AdmissionState::Pending {
+                admission.state = AdmissionState::Expired;
+                admission.stop.store(true, Ordering::Relaxed);
+            }
+        }
+    }
+
     /// Explicitly admits one reply, validating its binding and policy before any probes.
     /// Consumed and expired records remain bounded tombstones for this host lifetime.
     ///
@@ -718,15 +729,28 @@ impl Joiner {
         };
         let end = (Instant::now() + self.retry).min(self.deadline);
         let mut attempts = JoinSet::new();
-        for candidate in &self.invite.candidates {
+        let stagger = (self.retry
+            / u32::try_from(self.invite.candidates.len() + 1).expect("bounded candidates"))
+        .min(Duration::from_millis(250));
+        for (index, candidate) in self.invite.candidates.iter().enumerate() {
             let Some(endpoint) = local.endpoint(candidate.addr()) else {
                 continue;
             };
-            if let Ok(connecting) =
-                endpoint.connect_with(self.client.clone(), candidate.addr(), tls::SERVER_NAME)
-            {
-                attempts.spawn(until(end, connecting));
-            }
+            let endpoint = endpoint.clone();
+            let client = self.client.clone();
+            let address = candidate.addr();
+            let delay = stagger * u32::try_from(index).expect("bounded candidates");
+            attempts.spawn(async move {
+                // Give a working path time to win before spending another TLS/rate permit.
+                sleep_until(Instant::now() + delay).await;
+                if Instant::now() >= end {
+                    return Err(LinkError::Timeout);
+                }
+                let connecting = endpoint
+                    .connect_with(client, address, tls::SERVER_NAME)
+                    .map_err(|_| LinkError::Lost)?;
+                until(end, connecting).await
+            });
         }
         while let Some(result) = attempts.join_next().await {
             if let Ok(Ok(connection)) = result {

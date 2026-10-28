@@ -65,7 +65,11 @@ impl ConnectionBudget {
         .unwrap_or(HANDSHAKE_BURST);
         if added > 0 {
             state.tokens = state.tokens.saturating_add(added).min(HANDSHAKE_BURST);
-            state.refilled = now;
+            let remainder =
+                now.saturating_duration_since(state.refilled).as_nanos() % REFILL.as_nanos();
+            #[allow(clippy::cast_possible_truncation)] // remainder is below 250 million ns
+            let remainder = Duration::from_nanos(remainder as u64);
+            state.refilled = now.checked_sub(remainder).unwrap_or(now);
         }
         if state.tokens == 0 {
             return None;
