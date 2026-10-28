@@ -2120,7 +2120,7 @@ impl OrqwaApp {
     fn group_voice_devices(&mut self) -> bool {
         self.command(|app| app.group_voice_devices())
     }
-    /// Selects native devices for the next muted voice activation.
+    /// Selects native devices, reconnecting active voice with the microphone muted.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // Godot binding parameters are passed by value
     fn group_voice_choose(&mut self, input: GString, output: GString) -> bool {

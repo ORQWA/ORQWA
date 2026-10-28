@@ -2057,6 +2057,7 @@ msgstr "V-Sync"
 
 msgid "View distance"
 msgstr "Sichtweite"
+
 msgid "A phone or tablet on the same Wi-Fi shifts and controls the ride"
 msgstr "Ein Smartphone oder Tablet im selben WLAN schaltet und steuert die Fahrt"
 
@@ -2462,38 +2463,8 @@ msgstr "Jahreszeit"
 msgid "Summer"
 msgstr "Sommer"
 
-msgid "Group rides"
+msgid "Group Rides"
 msgstr "Gruppenfahrten"
-
-msgid "Allow local network peers"
-msgstr "Teilnehmer im lokalen Netzwerk zulassen"
-
-msgid "Use public address discovery (STUN)"
-msgstr "Öffentliche Adressermittlung verwenden (STUN)"
-
-msgid "Paste an invite code to join"
-msgstr "Zum Beitreten einen Einladungscode einfügen"
-
-msgid "Create lobby"
-msgstr "Lobby erstellen"
-
-msgid "Join lobby"
-msgstr "Lobby beitreten"
-
-msgid "Exchange codes privately. Codes reveal connection addresses; replies contain admission secrets."
-msgstr "Codes nur privat austauschen. Sie enthalten Verbindungsadressen; Antwortcodes enthalten geheime Zugangsdaten."
-
-msgid "Copy private code"
-msgstr "Privaten Code kopieren"
-
-msgid "Host: paste a joiner's reply code"
-msgstr "Gastgeber: Antwortcode eines Teilnehmers einfügen"
-
-msgid "Admit rider"
-msgstr "Teilnehmer zulassen"
-
-msgid "Select activity"
-msgstr "Aktivität auswählen"
 
 msgid "Ready"
 msgstr "Bereit"
@@ -2507,50 +2478,17 @@ msgstr "Download wiederholen"
 msgid "Leave group"
 msgstr "Gruppe verlassen"
 
-msgid "Voice chat (headphones)"
-msgstr "Sprachchat (mit Kopfhörern)"
-
 msgid "Microphone"
 msgstr "Mikrofon"
 
-msgid "Deafen"
-msgstr "Ton und Mikrofon aus"
-
 msgid "Voice volume"
 msgstr "Sprachlautstärke"
-
-msgid "Refresh audio devices"
-msgstr "Audiogeräte aktualisieren"
 
 msgid "Default microphone"
 msgstr "Standardmikrofon"
 
 msgid "Default speakers"
 msgstr "Standardlautsprecher"
-
-msgid "No course — workout only"
-msgstr "Keine Strecke – nur Training"
-
-msgid "No workout — course ride"
-msgstr "Kein Training – Streckenfahrt"
-
-msgid "Create a lobby or join friends with a private code."
-msgstr "Eine Lobby erstellen oder mit einem privaten Code Freunden beitreten."
-
-msgid "Connecting — send your reply to the host within one minute."
-msgstr "Verbindung wird hergestellt – den Antwortcode innerhalb einer Minute an den Gastgeber senden."
-
-msgid "Waiting for the host to select an activity."
-msgstr "Warten, bis der Gastgeber eine Aktivität auswählt."
-
-msgid "Downloading or checking the selected activity…"
-msgstr "Ausgewählte Aktivität wird heruntergeladen oder geprüft…"
-
-msgid "Preparing the course on this computer…"
-msgstr "Strecke wird auf diesem Computer vorbereitet…"
-
-msgid "Activity prepared. Connect your trainer, then mark yourself ready."
-msgstr "Aktivität vorbereitet. Trainer verbinden und dann auf Bereit klicken."
 
 msgid "Starting in %s seconds…"
 msgstr "Start in %s Sekunden…"
@@ -2561,30 +2499,260 @@ msgstr "Gruppenfahrt läuft"
 msgid "Group connection ended. Your local ride continues."
 msgstr "Gruppenverbindung beendet. Deine lokale Fahrt läuft weiter."
 
-msgid "Could not connect. Leave the lobby and exchange fresh codes to retry."
-msgstr "Verbindung nicht möglich. Zum erneuten Versuch die Lobby verlassen und neue Codes austauschen."
-
-msgid "Current file: %.1f / %.1f MiB"
-msgstr "Aktuelle Datei: %.1f / %.1f MiB"
-
-msgid "Group ride action failed:"
-msgstr "Aktion für die Gruppenfahrt fehlgeschlagen:"
-
 msgid "%s ft"
 msgstr "%s ft"
 
 msgid "%s m"
 msgstr "%s m"
 
-msgid "Mute locally"
-msgstr "Hier stummschalten"
-
-msgid "Remove"
-msgstr "Entfernen"
-
 msgid "Could not complete the group ride action."
 msgstr "Die Aktion für die Gruppenfahrt konnte nicht abgeschlossen werden."
 
+msgid "%.1f / %.1f MiB"
+msgstr "%.1f / %.1f MiB"
 
-msgid "Choose a course or workout to share with the group."
-msgstr "Wähle eine Strecke oder ein Training für die Gruppe aus."
+msgid "%s · power based on your FTP"
+msgstr "%s · Leistung anhand deiner FTP"
+
+msgid "1. Send your invitation privately.\n2. Add each friend's join request here."
+msgstr "1. Sende deine Einladung privat.\n2. Füge hier die Beitrittsanfragen deiner Freunde hinzu."
+
+msgid "Add a friend"
+msgstr "Freund hinzufügen"
+
+msgid "Add a friend…"
+msgstr "Freund hinzufügen…"
+
+msgid "Add friend"
+msgstr "Freund hinzufügen"
+
+msgid "All set? Let your friends know you're ready."
+msgstr "Alles parat? Sag deinen Freunden, dass du bereit bist."
+
+msgid "Allow friends on my local network"
+msgstr "Freunde in meinem lokalen Netzwerk zulassen"
+
+msgid "Ask the organizer for an invitation, then paste it here to join their ride."
+msgstr "Lass dir eine Einladung schicken und füge sie hier ein, um mitzufahren."
+
+msgid "Audio settings"
+msgstr "Audioeinstellungen"
+
+msgid "Audio settings…"
+msgstr "Audioeinstellungen…"
+
+msgid "Automatic discovery contacts public STUN services."
+msgstr "Die automatische Erkennung kontaktiert öffentliche STUN-Dienste."
+
+msgid "Cancel joining"
+msgstr "Beitritt abbrechen"
+
+msgid "Changing devices reconnects voice chat with your microphone off."
+msgstr "Ein Gerätewechsel verbindet den Sprachchat neu. Dein Mikrofon ist danach aus."
+
+msgid "Choose a course, a workout, or both. Everyone gets a copy automatically."
+msgstr "Wähle eine Strecke, ein Training oder beides. Alle erhalten automatisch eine Kopie."
+
+msgid "Choose an activity to get started."
+msgstr "Wähle zuerst eine Aktivität."
+
+msgid "Choose the ride and invite your friends. You decide when everyone starts."
+msgstr "Wähle die Fahrt und lade deine Freunde ein. Du bestimmst, wann ihr startet."
+
+msgid "Choose who starts the ride. You'll be riding together in a few steps."
+msgstr "Wähle, wer die Fahrt organisiert. In wenigen Schritten fahrt ihr gemeinsam los."
+
+msgid "Chosen by the organizer. Your copy downloads automatically."
+msgstr "Für eure Gruppe gewählt. Deine Kopie wird automatisch heruntergeladen."
+
+msgid "Connect your trainer, then tell the group you're ready."
+msgstr "Verbinde deinen Trainer und sag der Gruppe, dass du bereit bist."
+
+msgid "Connect your trainer…"
+msgstr "Trainer verbinden…"
+
+msgid "Connecting to your friends…"
+msgstr "Verbindung zu deinen Freunden wird hergestellt…"
+
+msgid "Connection settings"
+msgstr "Verbindungseinstellungen"
+
+msgid "Connection settings…"
+msgstr "Verbindungseinstellungen…"
+
+msgid "Copied · send it to the organizer"
+msgstr "Kopiert · an die organisierende Person senden"
+
+msgid "Copy invitation"
+msgstr "Einladung kopieren"
+
+msgid "Copy join request"
+msgstr "Beitrittsanfrage kopieren"
+
+msgid "Copy your request and send it privately to the organizer. They'll let you in."
+msgstr "Kopiere deine Anfrage und sende sie privat an die Person, die die Fahrt organisiert. Sie lässt dich rein."
+
+msgid "Could not connect. Leave the group and ask for a fresh invitation."
+msgstr "Keine Verbindung möglich. Verlasse die Gruppe und lass dir eine neue Einladung schicken."
+
+msgid "Course"
+msgstr "Strecke"
+
+msgid "Create a ride"
+msgstr "Fahrt erstellen"
+
+msgid "Creating your ride…"
+msgstr "Deine Fahrt wird erstellt…"
+
+msgid "Details…"
+msgstr "Details…"
+
+msgid "Everyone is ready. Start when you like!"
+msgstr "Alle sind bereit. Du kannst starten!"
+
+msgid "Find my internet address automatically"
+msgstr "Meine Internetadresse automatisch ermitteln"
+
+msgid "Free ride · no workout"
+msgstr "Freie Fahrt · ohne Training"
+
+msgid "Getting ready"
+msgstr "Macht sich bereit"
+
+msgid "Getting your activity from the organizer…"
+msgstr "Eure Aktivität wird heruntergeladen…"
+
+msgid "Getting your ride ready…"
+msgstr "Deine Fahrt wird vorbereitet…"
+
+msgid "Group ride details"
+msgstr "Details zur Gruppenfahrt"
+
+msgid "I'm ready"
+msgstr "Ich bin bereit"
+
+msgid "Invitation copied. Send it privately to your friends."
+msgstr "Einladung kopiert. Sende sie privat an deine Freunde."
+
+msgid "Invite friends"
+msgstr "Freunde einladen"
+
+msgid "Invite your friends, then choose what to ride."
+msgstr "Lade deine Freunde ein und wähle eure Fahrt."
+
+msgid "Join a ride"
+msgstr "Bei einer Fahrt mitmachen"
+
+msgid "Join a ride…"
+msgstr "Bei einer Fahrt mitmachen…"
+
+msgid "Join ride"
+msgstr "Mitfahren"
+
+msgid "Join voice chat"
+msgstr "Am Sprachchat teilnehmen"
+
+msgid "Joining friends?"
+msgstr "Bei Freunden mitfahren?"
+
+msgid "Keep this page open. Requests expire after one minute; if needed, ask for a fresh invitation."
+msgstr "Lass diese Seite offen. Anfragen laufen nach einer Minute ab. Lass dir bei Bedarf eine neue Einladung schicken."
+
+msgid "Microphone on"
+msgstr "Mikrofon an"
+
+msgid "Mute"
+msgstr "Stummschalten"
+
+msgid "Mute all sound"
+msgstr "Gesamten Ton stummschalten"
+
+msgid "Mute this rider for me"
+msgstr "Diese Person für mich stummschalten"
+
+msgid "No course · workout only"
+msgstr "Ohne Strecke · nur Training"
+
+msgid "On the same home network, both riders must allow local connections."
+msgstr "Im selben Heimnetzwerk müssen beide lokale Verbindungen zulassen."
+
+msgid "Paste invitation here"
+msgstr "Einladung hier einfügen"
+
+msgid "Paste join request here"
+msgstr "Beitrittsanfrage hier einfügen"
+
+msgid "Paste the invitation your organizer sent you."
+msgstr "Füge die Einladung ein, die du für die Fahrt erhalten hast."
+
+msgid "Paste the join request your friend sent back. Only add people you invited."
+msgstr "Füge die Beitrittsanfrage ein, die dein Freund zurückgeschickt hat. Füge nur eingeladene Personen hinzu."
+
+msgid "Preparing your ride…"
+msgstr "Deine Fahrt wird vorbereitet…"
+
+msgid "Ready ✓ · click to undo"
+msgstr "Bereit ✓ · zum Zurücknehmen klicken"
+
+msgid "Remove from group"
+msgstr "Aus der Gruppe entfernen"
+
+msgid "Ride with friends"
+msgstr "Mit Freunden fahren"
+
+msgid "Send your join request"
+msgstr "Sende deine Beitrittsanfrage"
+
+msgid "Shared with everyone"
+msgstr "Mit allen geteilt"
+
+msgid "Something went wrong. Try again or check the details."
+msgstr "Etwas ist schiefgelaufen. Versuch es erneut oder schau in die Details."
+
+msgid "Speakers"
+msgstr "Lautsprecher"
+
+msgid "Start a group ride"
+msgstr "Eine Gruppenfahrt starten"
+
+msgid "That didn't work. Paste the entire invitation or request, or ask for a fresh one."
+msgstr "Das hat nicht geklappt. Füge die ganze Einladung oder Anfrage ein oder lass dir eine neue schicken."
+
+msgid "The defaults work for friends on different home networks. Change these only if needed."
+msgstr "Die Voreinstellungen sind für Freunde in verschiedenen Heimnetzwerken gedacht. Ändere sie nur bei Bedarf."
+
+msgid "Use headphones. Your microphone starts off."
+msgstr "Nutze Kopfhörer. Dein Mikrofon ist anfangs aus."
+
+msgid "Use this activity"
+msgstr "Diese Aktivität verwenden"
+
+msgid "Voice chat"
+msgstr "Sprachchat"
+
+msgid "Volume"
+msgstr "Lautstärke"
+
+msgid "Waiting for the organizer to choose an activity."
+msgstr "Warte, bis eine Aktivität für euch gewählt wurde."
+
+msgid "What are we riding?"
+msgstr "Was fahren wir?"
+
+msgid "You"
+msgstr "Du"
+
+msgid "You're in! The organizer is choosing your ride."
+msgstr "Du bist dabei! Eure Fahrt wird ausgewählt."
+
+msgid "You're ready. The organizer will start the ride."
+msgstr "Du bist bereit. Die Fahrt wird gleich gestartet."
+
+msgid "You're ready. Waiting for the rest of the group."
+msgstr "Du bist bereit. Warte auf den Rest der Gruppe."
+
+msgid "Your group"
+msgstr "Deine Gruppe"
+
+msgid "Your ride is ready. Let's get everyone to the start."
+msgstr "Deine Fahrt ist vorbereitet. Macht euch bereit für den Start."

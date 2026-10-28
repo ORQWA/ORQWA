@@ -104,7 +104,7 @@ remain available separately after notifications disappear.
 The [usage wiki](https://github.com/ORQWA/ORQWA/wiki) covers riding and every feature. Start
 with [Getting started](https://github.com/ORQWA/ORQWA/wiki/Getting-started); testers can ride a
 trainer without the app with the [command-line tool](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool).
-The **[Group rides](https://github.com/ORQWA/ORQWA/wiki/Group-rides)** tab creates or joins
+The **[Group Rides](https://github.com/ORQWA/ORQWA/wiki/Group-rides)** tab creates or joins
 private eight-rider lobbies. The host selects a 3D course or structured workout, participants
 receive it directly, and everyone starts together once ready. Optional voice starts microphone-muted
 and records no audio. The [CLI workflow](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool#ride-with-others)

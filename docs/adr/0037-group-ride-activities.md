@@ -161,3 +161,20 @@ after start, late ride admission and planned handover stay unchecked in the road
 current actor still seals admission at countdown and host loss ends networking/voice.
 Native microphone permissions, audio device/hotplug acceptance and cross-home-network
 connectivity remain manual checks; local integration tests do not claim those results.
+
+### Rider-facing setup refinement — 2026-10-28
+
+The tab starts with two actions: create a ride or join one. Invitation exchange is guided
+with copy/paste dialogs; connection policy and audio devices live in separate settings.
+Course and workout choices preview immediately using the existing map, elevation and power
+charts, and require explicit confirmation before sharing. Readiness names the rider's next
+action, including trainer connection. These are presentation changes over the existing
+admission and transfer protocol.
+
+Audio device selection remains available during voice. The app synchronously disables
+transmission and advances its activation generation before queueing the switch. The owner
+cancels pending startup, reconnects opted-in voice and retains playback gain, deafen and
+per-speaker mutes. The microphone always requires fresh explicit consent after reconnection.
+Selected device IDs and playback gain in the snapshot keep lobby and in-ride controls consistent.
+Device enumeration has its own single-job budget, independent of pending voice startup, so
+opening audio settings cannot consume or suppress the rider's voice activation request.

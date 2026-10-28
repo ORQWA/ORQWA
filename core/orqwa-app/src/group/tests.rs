@@ -180,3 +180,48 @@ fn voice_off_closes_the_transmission_gate_synchronously_without_opening_audio_de
     host.group_leave();
     assert_eq!(port.transmitting(), None);
 }
+
+#[test]
+fn changing_devices_mutes_immediately_and_supersedes_an_older_queued_unmute() {
+    let from = Directory::new();
+    let to = Directory::new();
+    let mut host = from.app();
+    let mut idle = to.app();
+    host.group_open(None, options()).unwrap();
+    wait(&mut host, &mut idle, |h, _| {
+        h.group().phase == Phase::Waiting
+    });
+    let controls = host.group.as_ref().unwrap().voice_controls.clone();
+    let stale = controls.generation.load(Ordering::Acquire);
+    let port = controls.port.lock().unwrap().clone().unwrap();
+    host.group_voice_volume(0.4).unwrap();
+    port.enable(true);
+    port.microphone(true).unwrap();
+    assert!(port.transmitting().is_some());
+    host.group_voice_choose("headset-input".into(), "headset-output".into())
+        .unwrap();
+    assert_eq!(
+        port.transmitting(),
+        None,
+        "device changes mute synchronously"
+    );
+    assert!(controls.generation.load(Ordering::Acquire) > stale);
+    host.group_command(Command::Voice(stale, true, true, false, 0.6))
+        .unwrap();
+    // An independent processed command provides an actor barrier without opening hardware.
+    host.group_command(Command::Failure("device-switch barrier".into()))
+        .unwrap();
+    wait(&mut host, &mut idle, |h, _| {
+        h.group().error == "device-switch barrier"
+    });
+    assert_eq!(
+        port.transmitting(),
+        None,
+        "stale unmute cannot reopen capture"
+    );
+    assert!(!host.group().voice_pending);
+    assert_eq!(host.group().input_device, "headset-input");
+    assert_eq!(host.group().output_device, "headset-output");
+    assert!((host.group().voice_volume - 0.4).abs() < f32::EPSILON);
+    host.group_leave();
+}
