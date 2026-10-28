@@ -19,6 +19,14 @@ workspace's existing Tokio and domain types. The STUN codec is original code bas
 published test-vector data in [RFC 5769](https://www.rfc-editor.org/rfc/rfc5769.html).
 No third-party STUN implementation code is copied.
 
+Group voice uses [CPAL](https://github.com/RustAudio/cpal) 0.18.2 (Apache-2.0) for native
+capture/playback and [opusic-c](https://github.com/DoumanAsh/opusic-c) 1.6.1 (BSD-3-Clause),
+through opusic-sys 0.7.6, for bundled [Opus](https://opus-codec.org/) 1.6.1 speech (BSD-3-Clause).
+Opus's copyright and redistribution conditions are preserved in
+`core/orqwa-voice/notices/opus.txt`. CLI archives carry `VOICE-LICENSES.txt`, generated from
+the complete CLI dependency graph plus that bundled-C notice by `scripts/notices.sh`.
+No speech recording or third-party voice service is used.
+
 ## Models
 
 The fractured boulders and shared cliff/boulder weathering shader (R115) are own work

@@ -28,6 +28,8 @@ core/                      Rust workspace (tokio + tracing)
                            ActivityUploader, the OAuth login in the browser
   orqwa-net/               (Phase 13) bounded group networking, invite codes, discovery,
                            pinned QUIC connections and the lobby (ADR 0035)
+  orqwa-voice/             local microphone/playback behind VoiceAudio, bounded Opus speech
+                           and mixing for group rides (ADR 0036)
   orqwa-remote/            the remote for a phone or tablet: a page on the local network,
                            a ShiftInput
                            (ADR 0019)
@@ -810,6 +812,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   the core's log in Android's log; picked files copied from `content://` addresses
 - [x] B — an `android` CI job beside the others, building the APK on every pull request (its
   own image cached in GHCR like the dev image); on releases only with D
+- [x] Align native compiler/bindgen, plugin and APK minimum on Android 10 (API 29), including
+  the AAudio library required by group voice
 - [x] C — fitting Android, tried on the Tab S7 on 2026-10-20:
   - [x] profiles, rides and courses in the app's `files` folder, not the cache Android may clear
   - [x] saving to places picked in Android's save dialog (ride export), as opening already does
@@ -837,7 +841,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   - [x] synced course videos on Android 16: **Allow videos** asks for Photos and videos (R149)
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
-### Phase 13 — Group rides (R159–R161, [ADR 0035](adr/0035-group-rides.md))
+### Phase 13 — Group rides (R159–R163, [ADR 0035](adr/0035-group-rides.md))
 
 Application-owned replacements for the unmerged #241/#243/#246/#247 stack, based on current
 main. Each step has its own PR and preserves the security limits in ADR 0035.
@@ -854,10 +858,14 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
   `orqwa-cli net-ping`
 - [x] Lobby and CLI ride: bounded membership/control events, coalesced and rate-limited
   validated state, countdown, dropouts and `orqwa-cli ride-together` with fake trainers
+- [x] CLI voice (R162–R163, [ADR 0036](adr/0036-group-voice.md)): opt-in, microphone muted
+  initially, bounded Opus over existing encrypted host links, device selection, mute/deafen,
+  per-speaker mute, volume and hardware-free conversation/security tests
 - [ ] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
   and gaps; no remote influence on local physics, trainer commands or saved activity
 - [ ] App controls, translated errors, QR codes using existing support, settings, usage guides
   and screenshots
+- [ ] Native microphone/headphone and audio-device permission/hotplug acceptance on supported desktops
 - [ ] Manual acceptance across two home networks and on native trainers; document networks
   that cannot connect without a relay without weakening the resource or trust limits
 - **Exit:** riders behind separate routers join deliberately, ride together and continue alone

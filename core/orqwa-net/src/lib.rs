@@ -15,4 +15,5 @@ pub mod state;
 pub mod stun;
 mod text;
 mod tls;
+pub mod voice;
 mod wire;

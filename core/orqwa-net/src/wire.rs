@@ -18,6 +18,8 @@ pub(crate) enum Message {
     Joined(RiderId, Rider),
     Left(RiderId),
     Start(u32),
+    VoiceEnabled(bool),
+    VoiceRoster([u64; MAX_RIDERS]),
 }
 
 pub(crate) async fn write(send: &mut SendStream, message: &Message) -> Result<(), LobbyError> {
@@ -67,7 +69,7 @@ fn rider(bytes: &mut Vec<u8>, rider: &Rider) -> Result<(), LobbyError> {
 }
 
 fn encode(message: &Message) -> Result<Vec<u8>, LobbyError> {
-    let mut bytes = vec![1];
+    let mut bytes = vec![crate::code::VERSION];
     match message {
         Message::Hello(route, who) => {
             bytes.push(1);
@@ -96,6 +98,13 @@ fn encode(message: &Message) -> Result<Vec<u8>, LobbyError> {
         Message::Start(millis) => {
             bytes.push(5);
             bytes.extend_from_slice(&millis.to_be_bytes());
+        }
+        Message::VoiceEnabled(enabled) => bytes.extend_from_slice(&[6, u8::from(*enabled)]),
+        Message::VoiceRoster(epochs) => {
+            bytes.push(7);
+            for epoch in epochs {
+                bytes.extend_from_slice(&epoch.to_be_bytes());
+            }
         }
     }
     if bytes.len() > MAX_FRAME {
@@ -140,7 +149,7 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
         return Err(LobbyError::Protocol);
     }
     let mut reader = Reader(bytes);
-    if reader.byte()? != 1 {
+    if reader.byte()? != crate::code::VERSION {
         return Err(LobbyError::Protocol);
     }
     let message = match reader.byte()? {
@@ -172,6 +181,18 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
                 return Err(LobbyError::Protocol);
             }
             Message::Start(millis)
+        }
+        6 => Message::VoiceEnabled(match reader.byte()? {
+            0 => false,
+            1 => true,
+            _ => return Err(LobbyError::Protocol),
+        }),
+        7 => {
+            let mut epochs = [0; MAX_RIDERS];
+            for epoch in &mut epochs {
+                *epoch = u64::from_be_bytes(reader.take()?);
+            }
+            Message::VoiceRoster(epochs)
         }
         _ => return Err(LobbyError::Protocol),
     };
@@ -215,6 +236,6 @@ mod tests {
         duplicate[18] = 0;
         assert!(decode(&duplicate).is_err());
         assert!(decode(&vec![0; MAX_FRAME + 1]).is_err());
-        assert!(decode(&[1, 5, 0, 1, 0, 0]).is_err());
+        assert!(decode(&[crate::code::VERSION, 5, 0, 1, 0, 0]).is_err());
     }
 }

@@ -292,6 +292,15 @@ impl Connection {
             .send_datagram(bytes.to_vec().into())
             .map_err(|_| LinkError::Lost)
     }
+
+    // Reserve most datagram capacity for ride state. At most eight ordinary 79-byte
+    // voice packets can wait, allowing one simultaneous frame per remote speaker.
+    pub(crate) fn send_voice(&self, bytes: &[u8]) -> Result<(), LinkError> {
+        if self.0.quic.datagram_send_buffer_space() < 4096 - 640 + bytes.len() {
+            return Ok(());
+        }
+        self.send_datagram(bytes)
+    }
     /// Receives a datagram; protocol code must validate it before queueing or forwarding.
     ///
     /// # Errors

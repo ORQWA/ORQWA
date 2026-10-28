@@ -17,6 +17,11 @@ scripts/android.sh scripts/build-android.sh      # → dist/ORQWA-android-arm64.
 The project in `app/` is never changed: `scripts/build-android.sh` copies it to a build folder in
 the container first.
 
+The Rust extension, Android plugin and APK export target the documented Android 10 minimum
+(API 29). Group voice links Android's AAudio library, which is absent from the API 24 native
+target. The image's FFmpeg libraries can still be built against API 24 and linked into this
+newer target; no SDK or NDK update is needed for this alignment.
+
 ## Installing on a tablet
 
 With wireless debugging paired (`adb pair`, then `adb connect <address>`):

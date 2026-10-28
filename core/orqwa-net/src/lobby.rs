@@ -14,6 +14,7 @@ use crate::link::{Connection, Host, HostEvent, Joiner, LinkError};
 use crate::state::{
     MAX_RIDERS, Membership, RiderId, RiderState, STATE_EVERY, StateError, StateInbox,
 };
+use crate::voice::{self, VoiceHandle, VoiceOwner, VoicePort};
 use crate::wire::{self, Message};
 
 const CONTROL_CAPACITY: usize = 32;
@@ -181,6 +182,7 @@ pub struct HostLobby {
     state: watch::Sender<Option<RiderState>>,
     events: Events,
     tasks: JoinSet<()>,
+    voice: Option<VoicePort>,
 }
 impl HostLobby {
     /// Starts a lobby from an already-open transport. Metadata is validated before spawning.
@@ -197,20 +199,26 @@ impl HostLobby {
         let (control, controls) = mpsc::channel(CONTROL_CAPACITY);
         let (states, updates) = watch::channel([None; MAX_RIDERS]);
         let (state, local) = watch::channel(None);
+        let (voice, owner, _changes) = voice::channel(RiderId::HOST);
         let mut tasks = JoinSet::new();
-        tasks.spawn(host_actor(host, me, receive, control, states, local));
+        tasks.spawn(host_actor(host, me, receive, control, states, local, owner));
         Ok(Self {
             invite,
             commands,
             state,
             events: events(RiderId::HOST, controls, updates),
             tasks,
+            voice: Some(voice),
         })
     }
     /// The private-channel invite for this host lifetime.
     #[must_use]
     pub fn invite(&self) -> &Invite {
         &self.invite
+    }
+    /// Takes the local voice port once. It is disabled and microphone-muted initially.
+    pub fn take_voice(&mut self) -> Option<VoicePort> {
+        self.voice.take()
     }
     /// Explicitly admits a reply before the countdown.
     ///
@@ -263,6 +271,7 @@ pub struct JoinerLobby {
     state: watch::Sender<Option<RiderState>>,
     events: Events,
     tasks: JoinSet<()>,
+    voice: Option<VoicePort>,
 }
 impl JoinerLobby {
     /// Connects, describes the rider and validates the welcome within the original deadline.
@@ -300,21 +309,30 @@ impl JoinerLobby {
         }
         let (states, updates) = watch::channel([None; MAX_RIDERS]);
         let (state, local) = watch::channel(None);
+        let (voice, owner, changes) = voice::channel(me);
         let mut tasks = JoinSet::new();
         tasks.spawn(async move {
-            let _ = client_actor(connection, me, roster, send, recv, control, states, local).await;
+            let _ = client_actor(
+                connection, me, roster, send, recv, control, states, local, owner, changes,
+            )
+            .await;
         });
         Ok(Self {
             me,
             state,
             events: events(me, controls, updates),
             tasks,
+            voice: Some(voice),
         })
     }
     /// This connection's host-assigned number.
     #[must_use]
     pub const fn me(&self) -> RiderId {
         self.me
+    }
+    /// Takes the local, disabled voice port once, without opening audio hardware.
+    pub fn take_voice(&mut self) -> Option<VoicePort> {
+        self.voice.take()
     }
     /// Replaces one latest local state, published at most five times per second.
     ///
@@ -401,6 +419,7 @@ async fn hello(
     Ok((connection, send, recv, rider))
 }
 
+#[allow(clippy::too_many_arguments)] // actor channels and the lifetime guard that invalidates audio ports
 async fn host_actor(
     mut host: Host,
     me: Rider,
@@ -408,10 +427,21 @@ async fn host_actor(
     controls: mpsc::Sender<LobbyEvent>,
     states: watch::Sender<States>,
     mut local: watch::Receiver<Option<RiderState>>,
+    voice: VoiceOwner,
 ) {
-    let _ = host_loop(&mut host, me, &mut commands, &controls, &states, &mut local).await;
+    let _ = host_loop(
+        &mut host,
+        me,
+        &mut commands,
+        &controls,
+        &states,
+        &mut local,
+        &voice.0,
+    )
+    .await;
 }
 
+#[allow(clippy::too_many_arguments)] // bounded actor channels and independent voice mailbox
 async fn host_loop(
     host: &mut Host,
     me: Rider,
@@ -419,6 +449,7 @@ async fn host_loop(
     controls: &mpsc::Sender<LobbyEvent>,
     states: &watch::Sender<States>,
     local: &mut watch::Receiver<Option<RiderState>>,
+    voice: &VoiceHandle,
 ) -> Result<(), LobbyError> {
     let shared = Arc::new(Mutex::new(Mailbox {
         inbox: StateInbox::new(Instant::now().into_std()),
@@ -427,6 +458,7 @@ async fn host_loop(
     let member = lock(&shared)
         .inbox
         .join(RiderId::HOST, Instant::now().into_std())?;
+    voice.join(member, None);
     let mut roster: Roster = std::array::from_fn(|_| None);
     roster[0] = Some(me);
     let mut peers: [Option<Peer>; MAX_RIDERS] = std::array::from_fn(|_| None);
@@ -467,19 +499,25 @@ async fn host_loop(
                     let Some(slot) = roster.iter().position(Option::is_none) else { connection.close(); continue; };
                     let id = rider_id(slot);
                     let member = lock(&shared).inbox.join(id, Instant::now().into_std())?;
+                    voice.join(member,Some(connection.clone()));
                     broadcast(&peers, &Message::Joined(id, rider.clone()));
+                    broadcast(&peers, &Message::VoiceRoster(voice.epochs()));
                     event(controls, LobbyEvent::Joined { id, rider: rider.clone() })?;
                     roster[slot] = Some(rider);
                     let (control, receive) = mpsc::channel(16);
                     peers[slot] = Some(Peer { connection: connection.clone(), member, control });
                     let shared = shared.clone(); let welcome = Message::Welcome(id, roster.clone()); let updates = states.subscribe();
-                    tasks.spawn(async move { let _ = serve_peer(&connection, send, recv, welcome, member, shared, receive, updates).await; connection.close(); Done::Left(member) });
+                    let voice = voice.clone();
+                    let epochs = voice.epochs();
+                    tasks.spawn(async move { let _ = serve_peer(&connection, send, recv, welcome, member, shared, receive, updates, voice, epochs).await; connection.close(); Done::Left(member) });
                 }
                 Some(Ok(Done::Left(member))) => {
                     let slot = usize::from(member.rider().value());
                     if peers[slot].as_ref().is_some_and(|p| p.member == member) {
+                        voice.leave(member);
                         peers[slot] = None; roster[slot] = None; lock(&shared).inbox.remove(member);
                         broadcast(&peers, &Message::Left(member.rider()));
+                        broadcast(&peers, &Message::VoiceRoster(voice.epochs()));
                         event(controls, LobbyEvent::Left { id: member.rider() })?;
                     }
                 }
@@ -509,6 +547,8 @@ async fn serve_peer(
     shared: Shared,
     mut controls: mpsc::Receiver<Control>,
     mut states: watch::Receiver<States>,
+    voice: VoiceHandle,
+    epochs: [u64; MAX_RIDERS],
 ) -> Result<(), LobbyError> {
     timeout_at(
         connection.admission_deadline(),
@@ -516,7 +556,28 @@ async fn serve_peer(
     )
     .await
     .map_err(|_| LinkError::Timeout)??;
-    let mut unexpected = [0];
+    timeout_at(
+        connection.admission_deadline(),
+        wire::write(&mut send, &Message::VoiceRoster(epochs)),
+    )
+    .await
+    .map_err(|_| LinkError::Timeout)??;
+    let mut readers = JoinSet::new();
+    let receiver_voice = voice.clone();
+    readers.spawn(async move {
+        let mut budget = voice::IncomingBudget::controls();
+        loop {
+            let Message::VoiceEnabled(enabled) = wire::read(&mut recv).await? else {
+                return Err(LobbyError::Protocol);
+            };
+            budget.charge().map_err(|_| LobbyError::Protocol)?;
+            receiver_voice
+                .consent(member, enabled)
+                .map_err(|_| LobbyError::Protocol)?;
+        }
+        #[allow(unreachable_code)]
+        Ok::<(), LobbyError>(())
+    });
     loop {
         tokio::select! {
             control = controls.recv() => {
@@ -536,11 +597,15 @@ async fn serve_peer(
             },
             bytes = connection.read_datagram() => {
                 let bytes = bytes?;
+                if bytes.first() == Some(&voice::TAG) {
+                    voice.ingest(member,&bytes).map_err(|_| LobbyError::Protocol)?;
+                    continue;
+                }
                 let mut mailbox = lock(&shared);
                 let elapsed = elapsed(mailbox.start).ok_or(LobbyError::Protocol)?;
                 mailbox.inbox.ingest(member, &bytes, elapsed, Instant::now().into_std())?;
             },
-            _ = recv.read(&mut unexpected) => return Err(LobbyError::Protocol),
+            _ = readers.join_next() => return Err(LobbyError::Protocol),
             _ = connection.accept_bi() => return Err(LobbyError::Protocol),
         }
     }
@@ -551,12 +616,15 @@ async fn client_actor(
     connection: Connection,
     me: RiderId,
     mut roster: Roster,
-    _send: SendStream,
+    mut send: SendStream,
     mut recv: RecvStream,
     controls: mpsc::Sender<LobbyEvent>,
     states: watch::Sender<States>,
     mut local: watch::Receiver<Option<RiderState>>,
+    voice: VoiceOwner,
+    mut voice_changes: watch::Receiver<bool>,
 ) -> Result<(), LobbyError> {
+    voice.0.uplink(connection.clone());
     let mut readers = JoinSet::new();
     let (messages, mut incoming) = mpsc::channel(16);
     readers.spawn(async move {
@@ -572,6 +640,7 @@ async fn client_actor(
     for (id, rider) in roster.iter().enumerate() {
         if rider.is_some() && rider_id(id) != me {
             members[id] = Some(inbox.join(rider_id(id), Instant::now().into_std())?);
+            voice.0.join(members[id].ok_or(LobbyError::Protocol)?, None);
         }
     }
     let mut start = None;
@@ -580,18 +649,27 @@ async fn client_actor(
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // A host may forward eight independent 5 Hz streams. Charge even unknown/stale packets.
     let mut packets = 80_u8;
+    let mut voice_packets = voice::IncomingBudget::new();
+    let mut voice_control_open = true;
     let mut refill = Instant::now();
     loop {
         tokio::select! {
+            changed = voice_changes.changed(), if voice_control_open => {
+                let enabled = if changed.is_ok() { *voice_changes.borrow_and_update() } else { voice_control_open = false; false };
+                timeout(WRITE_WAIT,wire::write(&mut send,&Message::VoiceEnabled(enabled))).await.map_err(|_| LobbyError::Lost)??;
+            },
             message = incoming.recv() => {
                 count = count.checked_add(1).filter(|n| *n <= 64).ok_or(LobbyError::Protocol)?;
                 match message.ok_or(LobbyError::Lost)? {
+                    Message::VoiceRoster(epochs) => voice.0.install_epochs(epochs).map_err(|_| LobbyError::Protocol)?,
                     Message::Joined(id, rider) if start.is_none() && roster[usize::from(id.value())].is_none() && id != me => {
                         let index = usize::from(id.value()); members[index] = Some(inbox.join(id, Instant::now().into_std())?);
+                        voice.0.join(members[index].ok_or(LobbyError::Protocol)?,None);
                         roster[index] = Some(rider.clone()); event(&controls, LobbyEvent::Joined { id, rider })?;
                     }
                     Message::Left(id) if id != RiderId::HOST && id != me => {
                         let index = usize::from(id.value()); let member = members[index].take().ok_or(LobbyError::Protocol)?;
+                        voice.0.leave(member);
                         inbox.remove(member); roster[index] = None; event(&controls, LobbyEvent::Left { id })?;
                     }
                     Message::Start(millis) if start.is_none() => {
@@ -603,6 +681,15 @@ async fn client_actor(
             },
             bytes = connection.read_datagram() => {
                 let bytes = bytes?;
+                if bytes.first() == Some(&voice::TAG) {
+                    voice_packets.charge().map_err(|_| LobbyError::Protocol)?;
+                    let id = RiderId::new(*bytes.get(2).ok_or(LobbyError::Protocol)?)?;
+                    if id == me { return Err(LobbyError::Protocol); }
+                    if let Some(member) = members[usize::from(id.value())] {
+                        voice.0.ingest(member,&bytes).map_err(|_| LobbyError::Protocol)?;
+                    }
+                    continue;
+                }
                 let added = u8::try_from((Instant::now() - refill).as_millis()/25).unwrap_or(80);
                 if added > 0 {
                     packets = packets.saturating_add(added).min(80);
@@ -979,5 +1066,31 @@ mod tests {
         .await
         .unwrap();
         host.close().await;
+    }
+
+    #[tokio::test]
+    async fn voice_sender_forgery_packet_floods_and_control_floods_close_only_the_offending_peer() {
+        for attack in 0..3 {
+            let mut host = host().await;
+            let (connection, mut send, _recv, id) = raw_join(&host).await;
+            if attack == 2 {
+                for _ in 0..12 {
+                    let _ = wire::write(&mut send, &Message::VoiceEnabled(true)).await;
+                }
+            } else {
+                let source = if attack == 0 { RiderId::HOST } else { id };
+                let frame = voice::VoiceFrame::new(source, 1, 0, &[1]).unwrap();
+                let (bytes, len) = frame.datagram();
+                for _ in 0..if attack == 1 { 20 } else { 1 } {
+                    let _ = connection.send_datagram(&bytes[..len]);
+                }
+            }
+            timeout(Duration::from_secs(1), connection.closed())
+                .await
+                .unwrap();
+            host_event(&mut host, |event| matches!(event, LobbyEvent::Left { .. })).await;
+            assert!(!host.tasks.is_empty());
+            host.close().await;
+        }
     }
 }
