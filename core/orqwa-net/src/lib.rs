@@ -3,7 +3,9 @@
 //! Pasted codes are untrusted input. Destination policy is checked when decoding and again
 //! before any network operation. LAN and loopback access require separate explicit choices.
 
+pub mod activity;
 pub mod code;
+pub mod content;
 pub mod crypto;
 pub mod discovery;
 pub mod limits;
@@ -17,3 +19,4 @@ mod text;
 mod tls;
 pub mod voice;
 mod wire;
+pub mod workout;
