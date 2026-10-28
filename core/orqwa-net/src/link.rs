@@ -1,0 +1,1065 @@
+//! Pinned QUIC, one-use admission, finite probing and owner-controlled endpoint lifetimes.
+
+use std::collections::HashMap;
+use std::future::Future;
+use std::net::{SocketAddr, UdpSocket as StdSocket};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
+
+use quinn::{Endpoint, EndpointConfig, RecvStream, SendStream, VarInt};
+use tokio::sync::mpsc;
+use tokio::task::JoinSet;
+use tokio::time::{Instant, sleep_until, timeout_at};
+
+use crate::code::{AdmissionSecret, CodeError, Invite, Reply, RideId, RouteHash, valid_name};
+use crate::crypto::RandomError;
+use crate::discovery::{self, GatherError, GatherOptions};
+use crate::limits::{ConnectionBudget, ConnectionPermit, MAX_CONNECTIONS};
+use crate::tls::{self, Pinned};
+
+/// One absolute connection deadline, including discovery, TLS and admission.
+pub const PUNCH_WINDOW: Duration = Duration::from_secs(60);
+/// All accepted reply records, including tombstones, are bounded for one host lifetime.
+pub const MAX_ADMISSIONS: usize = 16;
+const AUTH_WAIT: Duration = Duration::from_secs(3);
+const ATTEMPT: Duration = Duration::from_secs(5);
+const PROBE_EVERY: Duration = Duration::from_millis(500);
+const PROBE_LIMIT: usize = 100;
+const PROBE: &[u8] = &[0, b'o', b'q'];
+const AUTH_LEN: usize = 113;
+const ACK_OK: u8 = 1;
+const ACK_WAIT: u8 = 2;
+const ACK_REPLAY: u8 = 3;
+const ACK_INVALID: u8 = 4;
+const ACK_EXPIRED: u8 = 5;
+
+/// Explicit network choices and the shared connection window.
+#[derive(Clone, Debug)]
+pub struct ConnectOptions {
+    /// Which interface, discovery services and address permissions may be used.
+    pub gather: GatherOptions,
+    /// At most one minute, starting before discovery. Shorter windows are useful for tests.
+    pub window: Duration,
+}
+
+impl Default for ConnectOptions {
+    fn default() -> Self {
+        Self {
+            gather: GatherOptions::default(),
+            window: PUNCH_WINDOW,
+        }
+    }
+}
+
+/// A connection failure. Peer-provided close strings are never copied into diagnostics.
+#[derive(Debug, thiserror::Error)]
+pub enum LinkError {
+    /// Discovery could not open an appropriate socket.
+    #[error(transparent)]
+    Discovery(#[from] GatherError),
+    /// An invalid or forbidden invite/reply.
+    #[error(transparent)]
+    Code(#[from] CodeError),
+    /// Secure entropy was unavailable.
+    #[error(transparent)]
+    Random(#[from] RandomError),
+    /// No validated destination can be advertised.
+    #[error(
+        "No reachable addresses. Enable STUN, choose a public IPv6 interface, or explicitly use LAN/local-test mode."
+    )]
+    NoCandidates,
+    /// A zero or over-one-minute connection window.
+    #[error("The connection window must be greater than zero and at most one minute.")]
+    Options,
+    /// The complete connection/admission window elapsed.
+    #[error(
+        "The direct UDP connection did not finish in time. Check the codes, UDP firewall, IPv6 or LAN mode; some networks cannot connect without a relay."
+    )]
+    Timeout,
+    /// None of the answering candidates proved possession of the invite's host key.
+    #[error("The responding computer did not present the host certificate from the invite.")]
+    WrongHost,
+    /// A credential has already been consumed, expired or revoked.
+    #[error("This reply has already been used or expired. Create a fresh reply.")]
+    Replay,
+    /// The bounded admission table is full; a fresh host lifetime is needed.
+    #[error(
+        "This invite has reached its reply-attempt limit. Start a new lobby for a fresh invite."
+    )]
+    Full,
+    /// The authenticated peer went away or spoke an invalid protocol.
+    #[error("The connection to the peer ended or used an invalid protocol.")]
+    Lost,
+    /// Local TLS configuration/certificate generation failed; contains only local diagnostics.
+    #[error("Encryption could not be configured: {0}")]
+    Encryption(String),
+    /// A local socket could not be handed to the transport.
+    #[error("The UDP transport could not be opened.")]
+    Socket,
+}
+
+fn deadline(options: &ConnectOptions) -> Result<Instant, LinkError> {
+    if options.window.is_zero() || options.window > PUNCH_WINDOW {
+        return Err(LinkError::Options);
+    }
+    Ok(Instant::now() + options.window)
+}
+
+async fn until<T, E>(
+    deadline: Instant,
+    future: impl Future<Output = Result<T, E>>,
+) -> Result<T, LinkError> {
+    timeout_at(deadline, future)
+        .await
+        .map_err(|_| LinkError::Timeout)?
+        .map_err(|_| LinkError::Lost)
+}
+
+struct Path {
+    endpoint: Endpoint,
+    prober: StdSocket,
+}
+impl Drop for Path {
+    fn drop(&mut self) {
+        self.endpoint.close(VarInt::from_u32(0), b"closed");
+    }
+}
+struct Local {
+    runtime: Arc<crate::runtime::OwnedRuntime>,
+    paths: Vec<Path>,
+    candidates: Vec<crate::code::Candidate>,
+    nat: crate::code::NatObservation,
+}
+
+impl Local {
+    async fn open(
+        options: &GatherOptions,
+        deadline: Instant,
+        server: Option<&quinn::ServerConfig>,
+    ) -> Result<Self, LinkError> {
+        let sockets = discovery::bind(options, deadline).await?;
+        let mut local = Self {
+            runtime: Arc::default(),
+            paths: Vec::with_capacity(2),
+            candidates: Vec::new(),
+            nat: crate::code::NatObservation::None,
+        };
+        for path in sockets {
+            let socket = path.socket.into_std().map_err(|_| LinkError::Socket)?;
+            let prober = socket.try_clone().map_err(|_| LinkError::Socket)?;
+            let endpoint = Endpoint::new(
+                EndpointConfig::default(),
+                server.cloned(),
+                socket,
+                local.runtime.clone(),
+            )
+            .map_err(|_| LinkError::Socket)?;
+            if local.nat == crate::code::NatObservation::None {
+                local.nat = path.nat;
+            }
+            local.candidates.extend(path.candidates);
+            local.paths.push(Path { endpoint, prober });
+        }
+        if local.candidates.is_empty() {
+            return Err(LinkError::NoCandidates);
+        }
+        Ok(local)
+    }
+
+    fn endpoint(&self, address: SocketAddr) -> Option<&Endpoint> {
+        self.paths
+            .iter()
+            .find(|path| {
+                path.endpoint
+                    .local_addr()
+                    .is_ok_and(|a| a.is_ipv4() == address.is_ipv4())
+            })
+            .map(|path| &path.endpoint)
+    }
+
+    fn probers(&self) -> Vec<StdSocket> {
+        self.paths
+            .iter()
+            .filter_map(|p| p.prober.try_clone().ok())
+            .collect()
+    }
+    fn close(&self) {
+        for path in &self.paths {
+            path.endpoint.close(VarInt::from_u32(0), b"closed");
+        }
+    }
+}
+
+impl Drop for Local {
+    fn drop(&mut self) {
+        self.close();
+        self.runtime.shutdown();
+    }
+}
+
+async fn probe(
+    probers: Vec<StdSocket>,
+    targets: Vec<SocketAddr>,
+    deadline: Instant,
+    stop: Arc<AtomicBool>,
+) {
+    let mut packets = 0;
+    while Instant::now() < deadline && !stop.load(Ordering::Relaxed) && packets < PROBE_LIMIT {
+        for target in &targets {
+            if Instant::now() >= deadline || packets >= PROBE_LIMIT || stop.load(Ordering::Relaxed)
+            {
+                return;
+            }
+            if let Some(socket) = probers.iter().find(|p| {
+                p.local_addr()
+                    .is_ok_and(|a| a.is_ipv4() == target.is_ipv4())
+            }) {
+                let _ = socket.send_to(PROBE, target);
+                packets += 1;
+            }
+        }
+        sleep_until((Instant::now() + PROBE_EVERY).min(deadline)).await;
+    }
+}
+
+struct LiveConnection {
+    quic: quinn::Connection,
+    deadline: Instant,
+    _permit: Option<ConnectionPermit>,
+    _owner: Option<Local>,
+}
+
+impl Drop for LiveConnection {
+    fn drop(&mut self) {
+        self.quic.close(VarInt::from_u32(0), b"closed");
+    }
+}
+
+/// An admitted connection. Clones share one lifetime guard; its last drop closes the connection.
+/// At the joiner it also owns the endpoint; at the host its permit reserves global capacity.
+#[derive(Clone)]
+pub struct Connection(Arc<LiveConnection>);
+
+impl std::fmt::Debug for Connection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Connection")
+            .field("peer", &self.peer_address())
+            .finish_non_exhaustive()
+    }
+}
+
+impl Connection {
+    /// Peer address for local diagnostics; not forwarded to other riders.
+    #[must_use]
+    pub fn peer_address(&self) -> SocketAddr {
+        self.0.quic.remote_address()
+    }
+    /// Remaining admission deadline; the lobby must also finish within it.
+    #[must_use]
+    pub fn admission_deadline(&self) -> Instant {
+        self.0.deadline
+    }
+    /// Transport round trip estimate for the common countdown.
+    #[must_use]
+    pub fn rtt(&self) -> Duration {
+        self.0.quic.rtt()
+    }
+    /// Opens a reliable stream; the caller applies the admission/message deadline.
+    ///
+    /// # Errors
+    /// Returns [`LinkError::Lost`] if the connection ended.
+    pub async fn open_bi(&self) -> Result<(SendStream, RecvStream), LinkError> {
+        self.0.quic.open_bi().await.map_err(|_| LinkError::Lost)
+    }
+    /// Accepts a reliable stream; the caller applies the admission/message deadline.
+    ///
+    /// # Errors
+    /// Returns [`LinkError::Lost`] if the connection ended.
+    pub async fn accept_bi(&self) -> Result<(SendStream, RecvStream), LinkError> {
+        self.0.quic.accept_bi().await.map_err(|_| LinkError::Lost)
+    }
+    /// Sends a small disposable packet, bounded independently of the caller.
+    ///
+    /// # Errors
+    /// Returns [`LinkError::Lost`] if too large, disconnected or unavailable.
+    pub fn send_datagram(&self, bytes: &[u8]) -> Result<(), LinkError> {
+        if bytes.len() > 1024 {
+            return Err(LinkError::Lost);
+        }
+        self.0
+            .quic
+            .send_datagram(bytes.to_vec().into())
+            .map_err(|_| LinkError::Lost)
+    }
+    /// Receives a datagram; protocol code must validate it before queueing or forwarding.
+    ///
+    /// # Errors
+    /// Returns [`LinkError::Lost`] when disconnected. Transport buffers are fixed and small.
+    pub async fn read_datagram(&self) -> Result<Vec<u8>, LinkError> {
+        self.0
+            .quic
+            .read_datagram()
+            .await
+            .map(|b| b.to_vec())
+            .map_err(|_| LinkError::Lost)
+    }
+    /// Waits for disconnection, without exposing peer-controlled close strings.
+    pub async fn closed(&self) {
+        let _ = self.0.quic.closed().await;
+    }
+    /// Closes the connection immediately; queued state is disposable.
+    pub fn close(&self) {
+        self.0.quic.close(VarInt::from_u32(0), b"closed");
+    }
+}
+
+/// Link events have a bounded queue. Capacity exhaustion closes an unconsumed connection.
+#[derive(Debug)]
+pub enum HostEvent {
+    /// A client proved an explicitly admitted, one-use credential.
+    Joined(Connection),
+    /// A pending reply expired; a new reply is needed rather than extending its lifetime.
+    Expired,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AdmissionState {
+    Pending,
+    Used,
+    Expired,
+}
+struct Admission {
+    expires: Instant,
+    state: AdmissionState,
+    stop: Arc<AtomicBool>,
+}
+struct Shared {
+    admissions: Mutex<HashMap<AdmissionSecret, Admission>>,
+    budget: ConnectionBudget,
+    events: mpsc::Sender<HostEvent>,
+    invite: Invite,
+}
+
+impl Shared {
+    fn admissions(&self) -> MutexGuard<'_, HashMap<AdmissionSecret, Admission>> {
+        self.admissions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+    fn pending(&self) -> bool {
+        let now = Instant::now();
+        self.admissions()
+            .values()
+            .any(|a| a.state == AdmissionState::Pending && a.expires > now)
+    }
+}
+
+/// Host owner. Dropping it closes every endpoint and aborts all accept/probe tasks.
+pub struct Host {
+    local: Local,
+    shared: Arc<Shared>,
+    events: mpsc::Receiver<HostEvent>,
+    tasks: JoinSet<()>,
+    options: ConnectOptions,
+}
+
+impl Host {
+    /// Creates this ride's certificate and sockets. Nothing is accepted before a reply is taken.
+    ///
+    /// # Errors
+    /// Returns [`LinkError`] for invalid names, discovery, entropy or encryption failures.
+    pub async fn open(
+        host: &str,
+        course: &str,
+        route: RouteHash,
+        options: &ConnectOptions,
+    ) -> Result<Self, LinkError> {
+        let end = deadline(options)?;
+        if !valid_name(host) || !valid_name(course) {
+            return Err(CodeError::Invalid.into());
+        }
+        let (server, fingerprint) = tls::server()?;
+        let ride = RideId::generate()?;
+        let local = Local::open(&options.gather, end, Some(&server)).await?;
+        if Instant::now() >= end {
+            return Err(LinkError::Timeout);
+        }
+        let invite = Invite {
+            ride,
+            fingerprint,
+            route,
+            host: host.to_owned(),
+            course: course.to_owned(),
+            candidates: local.candidates.clone(),
+            nat: local.nat,
+        };
+        invite.encode(options.gather.policy)?;
+        let (send, events) = mpsc::channel(MAX_CONNECTIONS);
+        let shared = Arc::new(Shared {
+            admissions: Mutex::new(HashMap::with_capacity(MAX_ADMISSIONS)),
+            budget: ConnectionBudget::new(Instant::now().into_std()),
+            events: send,
+            invite,
+        });
+        let mut tasks = JoinSet::new();
+        for path in &local.paths {
+            tasks.spawn(accept_all(path.endpoint.clone(), shared.clone()));
+        }
+        Ok(Self {
+            local,
+            shared,
+            events,
+            tasks,
+            options: options.clone(),
+        })
+    }
+
+    /// The per-ride invite. It contains public identity data, not an admission credential.
+    #[must_use]
+    pub fn invite(&self) -> &Invite {
+        &self.shared.invite
+    }
+
+    /// Explicitly admits one reply, validating its binding and policy before any probes.
+    /// Consumed and expired records remain bounded tombstones for this host lifetime.
+    ///
+    /// # Errors
+    /// Returns [`LinkError`] for a wrong ride, forbidden destination, reused or excess reply.
+    pub fn admit(&mut self, reply: &Reply) -> Result<(), LinkError> {
+        reply.matches(self.invite())?;
+        reply.encode(self.options.gather.policy)?;
+        let expires = Instant::now() + self.options.window;
+        let stop = Arc::new(AtomicBool::new(false));
+        {
+            let mut admissions = self.shared.admissions();
+            if admissions.contains_key(&reply.secret) {
+                return Err(LinkError::Replay);
+            }
+            if admissions.len() >= MAX_ADMISSIONS {
+                return Err(LinkError::Full);
+            }
+            admissions.insert(
+                reply.secret.clone(),
+                Admission {
+                    expires,
+                    state: AdmissionState::Pending,
+                    stop: stop.clone(),
+                },
+            );
+        }
+        self.tasks.spawn(probe(
+            self.local.probers(),
+            reply.candidates.iter().map(|c| c.addr()).collect(),
+            expires,
+            stop,
+        ));
+        let shared = self.shared.clone();
+        let secret = reply.secret.clone();
+        self.tasks.spawn(async move {
+            sleep_until(expires).await;
+            let timed_out = {
+                let mut admissions = shared.admissions();
+                if let Some(entry) = admissions.get_mut(&secret)
+                    && entry.state == AdmissionState::Pending
+                {
+                    entry.state = AdmissionState::Expired;
+                    entry.stop.store(true, Ordering::Relaxed);
+                    true
+                } else {
+                    false
+                }
+            };
+            if timed_out {
+                let _ = shared.events.try_send(HostEvent::Expired);
+            }
+        });
+        Ok(())
+    }
+
+    /// Revokes a pending reply without removing its replay-prevention tombstone.
+    pub fn revoke(&mut self, reply: &Reply) {
+        if let Some(entry) = self.shared.admissions().get_mut(&reply.secret) {
+            entry.state = AdmissionState::Expired;
+            entry.stop.store(true, Ordering::Relaxed);
+        }
+    }
+
+    /// The next admitted connection or expiry. Completed owned jobs are reaped as events arrive.
+    pub async fn next(&mut self) -> Option<HostEvent> {
+        loop {
+            tokio::select! {event=self.events.recv()=>return event,Some(_)=self.tasks.join_next()=>{}}
+        }
+    }
+
+    /// Closes endpoints immediately and waits a bounded time for task/transport cleanup.
+    pub async fn close(mut self) {
+        self.local.close();
+        self.tasks.abort_all();
+        let end = Instant::now() + Duration::from_secs(1);
+        while matches!(timeout_at(end, self.tasks.join_next()).await, Ok(Some(_))) {}
+        for path in &self.local.paths {
+            let _ = timeout_at(end, path.endpoint.wait_idle()).await;
+        }
+    }
+}
+
+impl Drop for Host {
+    fn drop(&mut self) {
+        self.local.close();
+        self.tasks.abort_all();
+        for entry in self.shared.admissions().values() {
+            entry.stop.store(true, Ordering::Relaxed);
+        }
+    }
+}
+
+async fn accept_all(endpoint: Endpoint, shared: Arc<Shared>) {
+    let mut jobs = JoinSet::new();
+    loop {
+        tokio::select! {
+            incoming=endpoint.accept()=>{
+                let Some(incoming)=incoming else {return;};
+                if jobs.len()>=MAX_CONNECTIONS||!shared.pending() {incoming.refuse();continue;}
+                // Reserve global/per-source/rate capacity before accepting TLS or spawning work.
+                let Some(permit)=shared.budget.try_acquire(incoming.remote_address().ip(),Instant::now().into_std()) else {incoming.refuse();continue;};
+                if !incoming.remote_address_validated() {let _=incoming.retry();continue;}
+                jobs.spawn(welcome(incoming,shared.clone(),permit));
+            }
+            Some(_)=jobs.join_next()=>{}
+        }
+    }
+}
+
+fn auth_message(invite: &Invite, secret: &AdmissionSecret) -> [u8; AUTH_LEN] {
+    let mut bytes = [0; AUTH_LEN];
+    bytes[0] = 1;
+    bytes[1..17].copy_from_slice(&invite.ride.0);
+    bytes[17..49].copy_from_slice(&invite.fingerprint.0);
+    bytes[49..81].copy_from_slice(&invite.route.0);
+    bytes[81..].copy_from_slice(&secret.0);
+    bytes
+}
+
+fn take_credential(shared: &Shared, bytes: &[u8]) -> (u8, Option<Instant>) {
+    if bytes.len() != AUTH_LEN
+        || bytes[0] != 1
+        || bytes[1..17] != shared.invite.ride.0
+        || bytes[17..49] != shared.invite.fingerprint.0
+        || bytes[49..81] != shared.invite.route.0
+    {
+        return (ACK_INVALID, None);
+    }
+    let Ok(secret) =
+        AdmissionSecret::from_random_bytes(bytes[81..].try_into().expect("checked frame length"))
+    else {
+        return (ACK_INVALID, None);
+    };
+    let mut admissions = shared.admissions();
+    let Some(entry) = admissions.get_mut(&secret) else {
+        return (ACK_WAIT, None);
+    };
+    if entry.state == AdmissionState::Used {
+        return (ACK_REPLAY, None);
+    }
+    if entry.state == AdmissionState::Expired || Instant::now() >= entry.expires {
+        entry.state = AdmissionState::Expired;
+        entry.stop.store(true, Ordering::Relaxed);
+        return (ACK_EXPIRED, None);
+    }
+    entry.state = AdmissionState::Used;
+    entry.stop.store(true, Ordering::Relaxed);
+    (ACK_OK, Some(entry.expires))
+}
+
+async fn welcome(incoming: quinn::Incoming, shared: Arc<Shared>, permit: ConnectionPermit) {
+    let end = Instant::now() + AUTH_WAIT;
+    let Ok(quic) = until(end, async { incoming.await }).await else {
+        return;
+    };
+    let result = async {
+        let (mut send, mut recv) = until(end, quic.accept_bi()).await?;
+        let bytes = until(end, recv.read_to_end(AUTH_LEN)).await?;
+        let (ack, expires) = take_credential(&shared, &bytes);
+        until(end, send.write_all(&[ack])).await?;
+        send.finish().map_err(|_| LinkError::Lost)?;
+        if ack != ACK_OK {
+            let _ = timeout_at(end, send.stopped()).await;
+            return Err(LinkError::Replay);
+        }
+        Ok(expires.expect("an accepted credential has an expiry"))
+    }
+    .await;
+    match result {
+        Ok(expires) => {
+            let connection = Connection(Arc::new(LiveConnection {
+                quic,
+                deadline: expires.min(end),
+                _permit: Some(permit),
+                _owner: None,
+            }));
+            // A full/closed queue drops the wrapper, which closes this connection and permit.
+            let _ = shared.events.try_send(HostEvent::Joined(connection));
+        }
+        Err(_) => {
+            quic.close(VarInt::from_u32(1), b"admission failed");
+        }
+    }
+}
+
+/// Joiner owner before connecting. Its consuming connect future owns all sockets and tasks:
+/// cancelling it closes everything. Successful connections take ownership of its endpoint.
+pub struct Joiner {
+    local: Option<Local>,
+    invite: Invite,
+    reply: Reply,
+    deadline: Instant,
+    retry: Duration,
+    client: quinn::ClientConfig,
+    pinned: Arc<Pinned>,
+    tasks: JoinSet<()>,
+}
+
+impl Joiner {
+    /// Validates the expected route and destination policy before discovery or probing.
+    ///
+    /// # Errors
+    /// Returns [`LinkError`] for a mismatched course, forbidden invite, timeout or setup error.
+    pub async fn open(
+        invite: Invite,
+        route: RouteHash,
+        options: &ConnectOptions,
+    ) -> Result<Self, LinkError> {
+        let end = deadline(options)?;
+        if invite.route != route {
+            return Err(CodeError::WrongRide.into());
+        }
+        invite.encode(options.gather.policy)?;
+        let secret = AdmissionSecret::generate()?;
+        let (client, pinned) = tls::client(invite.fingerprint)?;
+        let local = Local::open(&options.gather, end, None).await?;
+        let reply = Reply {
+            ride: invite.ride,
+            fingerprint: invite.fingerprint,
+            route,
+            secret,
+            candidates: local.candidates.clone(),
+            nat: local.nat,
+        };
+        reply.encode(options.gather.policy)?;
+        let mut tasks = JoinSet::new();
+        tasks.spawn(probe(
+            local.probers(),
+            invite.candidates.iter().map(|c| c.addr()).collect(),
+            end,
+            Arc::new(AtomicBool::new(false)),
+        ));
+        Ok(Self {
+            local: Some(local),
+            invite,
+            reply,
+            deadline: end,
+            retry: ATTEMPT.min(options.window / 4),
+            client,
+            pinned,
+            tasks,
+        })
+    }
+
+    /// A one-use reply; pass it privately to the host before the original deadline.
+    #[must_use]
+    pub fn reply(&self) -> &Reply {
+        &self.reply
+    }
+
+    /// Connects and proves the credential only after certificate pin and signature checks.
+    /// This consumes the owner, so cancellation/failure automatically tears down the sockets.
+    ///
+    /// # Errors
+    /// Returns [`LinkError`] for expiry, wrong host, replay or transport failure.
+    pub async fn connect(mut self) -> Result<Connection, LinkError> {
+        loop {
+            let round = Instant::now();
+            if round >= self.deadline {
+                return Err(if self.pinned.mismatched() {
+                    LinkError::WrongHost
+                } else {
+                    LinkError::Timeout
+                });
+            }
+            if let Some(quic) = self.reach().await? {
+                let result = self.authenticate(&quic).await;
+                match result {
+                    Ok(true) => {
+                        self.tasks.abort_all();
+                        return Ok(Connection(Arc::new(LiveConnection {
+                            quic,
+                            deadline: self.deadline,
+                            _permit: None,
+                            _owner: self.local.take(),
+                        })));
+                    }
+                    Ok(false) => {
+                        quic.close(VarInt::from_u32(0), b"waiting for reply");
+                    }
+                    Err(error) => {
+                        quic.close(VarInt::from_u32(1), b"admission failed");
+                        return Err(error);
+                    }
+                }
+            }
+            sleep_until((round + self.retry).min(self.deadline)).await;
+        }
+    }
+
+    async fn reach(&self) -> Result<Option<quinn::Connection>, LinkError> {
+        let Some(local) = &self.local else {
+            return Err(LinkError::Lost);
+        };
+        let end = (Instant::now() + self.retry).min(self.deadline);
+        let mut attempts = JoinSet::new();
+        for candidate in &self.invite.candidates {
+            let Some(endpoint) = local.endpoint(candidate.addr()) else {
+                continue;
+            };
+            if let Ok(connecting) =
+                endpoint.connect_with(self.client.clone(), candidate.addr(), tls::SERVER_NAME)
+            {
+                attempts.spawn(until(end, connecting));
+            }
+        }
+        while let Some(result) = attempts.join_next().await {
+            if let Ok(Ok(connection)) = result {
+                return Ok(Some(connection));
+            }
+        }
+        Ok(None)
+    }
+
+    async fn authenticate(&self, connection: &quinn::Connection) -> Result<bool, LinkError> {
+        let (mut send, mut recv) = until(self.deadline, connection.open_bi()).await?;
+        until(
+            self.deadline,
+            send.write_all(&auth_message(&self.invite, &self.reply.secret)),
+        )
+        .await?;
+        send.finish().map_err(|_| LinkError::Lost)?;
+        let ack = until(self.deadline, recv.read_to_end(1)).await?;
+        match ack.as_slice() {
+            [ACK_OK] => Ok(true),
+            [ACK_WAIT] => Ok(false),
+            [ACK_REPLAY | ACK_EXPIRED] => Err(LinkError::Replay),
+            _ => Err(LinkError::Lost),
+        }
+    }
+}
+
+impl Drop for Joiner {
+    fn drop(&mut self) {
+        self.tasks.abort_all();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::policy::AddressPolicy;
+    use tokio::time::{sleep, timeout};
+
+    fn options() -> ConnectOptions {
+        ConnectOptions {
+            gather: GatherOptions {
+                policy: AddressPolicy {
+                    lan: false,
+                    loopback: true,
+                },
+                interface: None,
+                stun_servers: Vec::new(),
+            },
+            window: Duration::from_secs(1),
+        }
+    }
+    fn route() -> RouteHash {
+        RouteHash([7; 32])
+    }
+    async fn host() -> Host {
+        Host::open("Anna", "Galibier", route(), &options())
+            .await
+            .unwrap()
+    }
+    async fn joiner(host: &Host) -> Joiner {
+        Joiner::open(host.invite().clone(), route(), &options())
+            .await
+            .unwrap()
+    }
+    async fn joined(host: &mut Host) -> Connection {
+        match timeout(Duration::from_secs(2), host.next())
+            .await
+            .unwrap()
+            .unwrap()
+        {
+            HostEvent::Joined(connection) => connection,
+            HostEvent::Expired => panic!("reply expired"),
+        }
+    }
+
+    #[tokio::test]
+    async fn only_an_admitted_joiner_gets_a_connection_and_both_can_talk() {
+        let mut host = host().await;
+        let joiner = joiner(&host).await;
+        host.admit(joiner.reply()).unwrap();
+        let client = joiner.connect().await.unwrap();
+        let peer = joined(&mut host).await;
+        client.send_datagram(&[7]).unwrap();
+        assert_eq!(peer.read_datagram().await.unwrap(), vec![7]);
+        peer.send_datagram(&[8]).unwrap();
+        assert_eq!(client.read_datagram().await.unwrap(), vec![8]);
+        drop(client);
+        timeout(Duration::from_secs(1), peer.closed())
+            .await
+            .unwrap();
+        host.close().await;
+    }
+
+    #[tokio::test]
+    async fn a_reply_may_be_pasted_after_the_joiner_has_started_connecting() {
+        let mut host = host().await;
+        let joiner = joiner(&host).await;
+        let reply = joiner.reply().clone();
+        let task = tokio::spawn(joiner.connect());
+        sleep(Duration::from_millis(40)).await;
+        host.admit(&reply).unwrap();
+        let client = task.await.unwrap().unwrap();
+        let peer = joined(&mut host).await;
+        peer.close();
+        drop(client);
+        host.close().await;
+    }
+
+    #[tokio::test]
+    async fn wrong_course_and_wrong_ride_replies_are_refused_before_network_work() {
+        let mut first = host().await;
+        let second = host().await;
+        let joiner = joiner(&second).await;
+        assert!(matches!(
+            first.admit(joiner.reply()),
+            Err(LinkError::Code(CodeError::WrongRide))
+        ));
+        assert!(matches!(
+            Joiner::open(first.invite().clone(), RouteHash([9; 32]), &options()).await,
+            Err(LinkError::Code(CodeError::WrongRide))
+        ));
+        first.close().await;
+        second.close().await;
+    }
+
+    #[tokio::test]
+    async fn a_different_certificate_cannot_receive_the_admission_credential() {
+        let mut host = host().await;
+        let legitimate = joiner(&host).await;
+        host.admit(legitimate.reply()).unwrap();
+        let mut invite = host.invite().clone();
+        invite.fingerprint.0[0] ^= 1;
+        let mut opts = options();
+        opts.window = Duration::from_millis(180);
+        let impostor = Joiner::open(invite, route(), &opts).await.unwrap();
+        assert!(matches!(
+            impostor.connect().await,
+            Err(LinkError::WrongHost)
+        ));
+        assert_eq!(
+            host.shared
+                .admissions()
+                .get(&legitimate.reply().secret)
+                .unwrap()
+                .state,
+            AdmissionState::Pending
+        );
+        drop(legitimate);
+        host.close().await;
+    }
+
+    #[tokio::test]
+    async fn a_consumed_credential_and_repeated_reply_cannot_admit_another_connection() {
+        let mut host = host().await;
+        let first = joiner(&host).await;
+        let used = first.reply().clone();
+        host.admit(&used).unwrap();
+        let client = first.connect().await.unwrap();
+        let peer = joined(&mut host).await;
+        assert!(matches!(host.admit(&used), Err(LinkError::Replay)));
+        let pending = joiner(&host).await;
+        host.admit(pending.reply()).unwrap();
+        let mut replay = joiner(&host).await;
+        replay.reply.secret = used.secret;
+        assert!(matches!(replay.connect().await, Err(LinkError::Replay)));
+        assert!(
+            timeout(Duration::from_millis(20), host.next())
+                .await
+                .is_err()
+        );
+        drop((client, peer, pending));
+        host.close().await;
+    }
+
+    #[tokio::test]
+    async fn expired_and_revoked_replies_remain_tombstones_and_the_table_is_bounded() {
+        let mut host = host().await;
+        for _ in 0..MAX_ADMISSIONS {
+            let joiner = joiner(&host).await;
+            let reply = joiner.reply().clone();
+            host.admit(&reply).unwrap();
+            host.revoke(&reply);
+            assert!(matches!(host.admit(&reply), Err(LinkError::Replay)));
+        }
+        let extra = joiner(&host).await;
+        assert!(matches!(host.admit(extra.reply()), Err(LinkError::Full)));
+        assert_eq!(host.shared.admissions().len(), MAX_ADMISSIONS);
+        host.close().await;
+    }
+
+    async fn ports_are_released(addresses: Vec<SocketAddr>) {
+        for address in addresses {
+            timeout(Duration::from_secs(1), async {
+                loop {
+                    if StdSocket::bind(address).is_ok() {
+                        break;
+                    }
+                    sleep(Duration::from_millis(5)).await;
+                }
+            })
+            .await
+            .expect("owner drop releases its UDP socket");
+        }
+    }
+
+    #[tokio::test]
+    async fn dropping_the_host_closes_its_listener_and_releases_the_port() {
+        let mut host = host().await;
+        let joiner = joiner(&host).await;
+        host.admit(joiner.reply()).unwrap();
+        let addresses = host
+            .local
+            .paths
+            .iter()
+            .map(|p| p.endpoint.local_addr().unwrap())
+            .collect();
+        drop(host);
+        assert!(joiner.connect().await.is_err());
+        ports_are_released(addresses).await;
+    }
+
+    #[tokio::test]
+    async fn cancelling_connect_drops_the_joiners_endpoint_and_owned_probe_tasks() {
+        let host = host().await;
+        let joiner = joiner(&host).await;
+        let addresses = joiner
+            .local
+            .as_ref()
+            .unwrap()
+            .paths
+            .iter()
+            .map(|p| p.endpoint.local_addr().unwrap())
+            .collect();
+        let task = tokio::spawn(joiner.connect());
+        sleep(Duration::from_millis(20)).await;
+        task.abort();
+        let _ = task.await;
+        ports_are_released(addresses).await;
+        host.close().await;
+    }
+
+    #[tokio::test]
+    async fn the_original_deadline_covers_a_pinned_host_that_never_acknowledges_admission() {
+        let mut host = host().await;
+        host.tasks.abort_all();
+        while host.tasks.join_next().await.is_some() {}
+        let endpoint = host.local.paths[0].endpoint.clone();
+        let mut invite = host.invite().clone();
+        invite.candidates.retain(|c| c.addr().is_ipv4());
+        let task = tokio::spawn(async move {
+            if let Some(incoming) = endpoint.accept().await {
+                let connection = incoming.await.unwrap();
+                let _ = connection.closed().await;
+            }
+        });
+        let mut opts = options();
+        opts.window = Duration::from_millis(100);
+        let start = Instant::now();
+        let joiner = Joiner::open(invite, route(), &opts).await.unwrap();
+        assert!(matches!(joiner.connect().await, Err(LinkError::Timeout)));
+        assert!(start.elapsed() < Duration::from_millis(500));
+        host.close().await;
+        task.abort();
+        let _ = task.await;
+    }
+
+    #[tokio::test]
+    async fn live_incoming_handshakes_obey_the_global_and_source_capacity_limits() {
+        let mut host = host().await;
+        let pending = joiner(&host).await;
+        host.admit(pending.reply()).unwrap();
+        let seed = joiner(&host).await;
+        let endpoint = seed
+            .local
+            .as_ref()
+            .unwrap()
+            .endpoint(host.invite().candidates[0].addr())
+            .unwrap();
+        let connection = timeout(
+            Duration::from_millis(350),
+            endpoint
+                .connect_with(
+                    seed.client.clone(),
+                    host.invite().candidates[0].addr(),
+                    tls::SERVER_NAME,
+                )
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        let mut held = vec![connection];
+        let mut clients = vec![seed];
+        let mut attempts = JoinSet::new();
+        for _ in 0..32 {
+            let client = joiner(&host).await;
+            let endpoint = client
+                .local
+                .as_ref()
+                .unwrap()
+                .endpoint(host.invite().candidates[0].addr())
+                .unwrap();
+            let connecting = endpoint
+                .connect_with(
+                    client.client.clone(),
+                    host.invite().candidates[0].addr(),
+                    tls::SERVER_NAME,
+                )
+                .unwrap();
+            attempts.spawn(async move { timeout(Duration::from_millis(350), connecting).await });
+            clients.push(client);
+        }
+        while let Some(result) = attempts.join_next().await {
+            if let Ok(Ok(Ok(connection))) = result {
+                held.push(connection);
+            }
+        }
+        assert!(held.len() <= crate::limits::MAX_PER_SOURCE);
+        assert!(
+            host.local
+                .paths
+                .iter()
+                .map(|p| p.endpoint.open_connections())
+                .sum::<usize>()
+                <= MAX_CONNECTIONS
+        );
+        assert!(
+            timeout(Duration::from_millis(20), host.next())
+                .await
+                .is_err()
+        );
+        drop((held, clients, pending));
+        host.close().await;
+    }
+}

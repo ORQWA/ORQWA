@@ -10,6 +10,8 @@ use crate::policy::{AddressPolicy, is_public};
 
 /// Maximum binary payload size, checked before any parser allocation.
 pub const MAX_PAYLOAD_BYTES: usize = 512;
+/// Maximum raw pasted UTF-8 bytes, including whitespace, before decoding.
+pub const MAX_PASTE_BYTES: usize = 2048;
 /// Maximum UTF-8 bytes in a rider or course name.
 pub const MAX_NAME_BYTES: usize = 64;
 /// Maximum destinations in either code, also limiting probe fan-out.
@@ -325,7 +327,7 @@ fn header(
     Ok(out)
 }
 
-fn valid_name(name: &str) -> bool {
+pub(crate) fn valid_name(name: &str) -> bool {
     !name.is_empty()
         && name.len() <= MAX_NAME_BYTES
         && name.trim() == name

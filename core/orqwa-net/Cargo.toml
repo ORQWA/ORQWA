@@ -11,6 +11,8 @@ publish.workspace = true
 base64.workspace = true
 netdev.workspace = true
 orqwa-domain.workspace = true
+quinn.workspace = true
+rcgen.workspace = true
 rustls.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["net", "time", "macros", "rt", "sync"] }

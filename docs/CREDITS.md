@@ -11,7 +11,9 @@ libraries (LGPL 2.1 or later) and every Rust crate, from `core/orqwa-app/notices
 
 The developer CLI's group networking uses [rustls](https://github.com/rustls/rustls)
 (Apache-2.0 OR ISC OR MIT), [base64](https://github.com/marshallpierce/rust-base64)
-(MIT OR Apache-2.0) and [netdev](https://github.com/shellrow/netdev) (MIT), beside the
+(MIT OR Apache-2.0), [netdev](https://github.com/shellrow/netdev) (MIT),
+[Quinn](https://github.com/quinn-rs/quinn) (MIT OR Apache-2.0) and
+[rcgen](https://github.com/rustls/rcgen) (MIT OR Apache-2.0), beside the
 workspace's existing Tokio and domain types. The STUN codec is original code based on
 [RFC 8489](https://www.rfc-editor.org/rfc/rfc8489.html); interoperability tests use the
 published test-vector data in [RFC 5769](https://www.rfc-editor.org/rfc/rfc5769.html).
