@@ -82,7 +82,7 @@ mod tests {
             let crate::Command::NetCheck(args) = cli.command else {
                 panic!("net-check");
             };
-            assert!(args.network.options().stun_servers.is_empty());
+            assert_eq!(args.network.options().stun_servers, Vec::<String>::new());
         }
         assert!(
             crate::Cli::try_parse_from(["orqwa-cli", "net-check", "--loopback", "--lan"]).is_err()
