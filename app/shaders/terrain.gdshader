@@ -201,10 +201,12 @@ void fragment() {
 		vec3 blossom = spring_colour(patch);
 		float brightness = dot(crowns, vec3(0.2126, 0.7152, 0.0722));
 		crowns = mix(crowns, blossom * brightness * 2.0, spring_amount(patch, world_position.y) * 0.35);
-		// Retain the texture's relief and brightness, and green among the mixed forest.
-		vec3 autumn_crown = autumn_colour(floor(world_position.xz / 24.0));
+		// Broadleaf-dominant groves turn orange/russet; other collections retain evergreen green.
+		float grove = autumn_collection(world_position.xz);
+		vec3 autumn_crown = mix(autumn_colors[1].rgb, autumn_colors[3].rgb, autumn_noise(world_position.xz / 75.0));
 		float autumn_light = max(dot(autumn_crown, vec3(0.2126, 0.7152, 0.0722)), 0.03);
-		crowns = mix(crowns, autumn_crown * brightness / autumn_light, autumn_amount(world_position.y) * 0.7);
+		crowns = mix(crowns, autumn_crown * brightness / autumn_light * 1.18,
+			autumn_amount(world_position.y) * mix(0.18, 1.0, grove));
 		floor_colour = mix(floor_colour, crowns, far);
 		floor_normal = normalize(mix(floor_normal, crowns_n, far));
 	}

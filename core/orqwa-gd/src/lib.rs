@@ -3149,6 +3149,39 @@ impl OrqwaApp {
         }
     }
 
+    /// Retained woodland coverage for autumn road litter, with tunnel interiors excluded.
+    #[func]
+    fn autumn_forest_mask(&self) -> VarDictionary {
+        let Some(app) = self.app.as_ref() else {
+            return VarDictionary::new();
+        };
+        let Some((land, corridor)) = app.minimap() else {
+            return VarDictionary::new();
+        };
+        let empty = orqwa_world::FlatMap::default();
+        let mut mask = orqwa_world::forest_mask(&[land.map_or(&empty, |map| &map.areas), corridor]);
+        if let (Some(world), Some(route)) = (app.world(), app.route()) {
+            mask.clear_tunnels(&world.road, route.points());
+        }
+        let (Ok(width), Ok(height)) = (i32::try_from(mask.columns), i32::try_from(mask.rows))
+        else {
+            return VarDictionary::new();
+        };
+        if width == 0 || height == 0 {
+            return VarDictionary::new();
+        }
+        let data = PackedByteArray::from(mask.pixels);
+        let Some(image) = Image::create_from_data(width, height, false, ImageFormat::R8, &data)
+        else {
+            return VarDictionary::new();
+        };
+        vdict! {
+            "image" => &image,
+            "origin" => Vector2::new(mask.origin[0], mask.origin[1]),
+            "size" => vector2(f64::from(width) * f64::from(mask.cell), f64::from(height) * f64::from(mask.cell)),
+        }
+    }
+
     /// How far the land around the loaded route lies from it, for the ground's distant canopy
     /// (R146): `{image, origin, size, step, dense}`. `image` holds one distance per cell in its
     /// red channel (R8, in `step`s of metres, 255 for that far or farther), laid over the land

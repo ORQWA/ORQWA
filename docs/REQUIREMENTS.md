@@ -292,6 +292,9 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 | R160 | Refines R155 (2026-10-27, #350): Spring's selected flowering broadleaves show five-petal blossom clusters on their twigs, with pink or white petals and stamen centres, including their authored LODs. Summer restores green leaf silhouettes. Existing retained instances and other tree species are preserved. |
 | R156 | Extends R154 (2026-10-27, #350): selectable **Autumn** gives temperate broadleaf trees and bushes varied red, orange and gold foliage, including authored LODs and the distant mixed canopy. Evergreen needles, palms and tropical lowland foliage stay green. Returning to Summer restores its palette immediately, including on kept worlds. |
 
+| R159 | Refines R156 (2026-10-27, #350): Autumn has no meadow flowers: every stored flower position is rendered as a grass tuft. Building flower-box blooms are hidden as well; returning to another season restores its own flower population without changing the kept world. |
+| R162 | Refines R156 (2026-10-28, #350): distant autumn woods include coherent orange/russet broadleaf-dominant collections among greener evergreen areas. Forest streets carry scattered fallen leaves and denser roadside drifts; open fields, clearings, tropical evergreen lowlands and ridden tunnel interiors remain clear. Leaves react to rain, preserve markings and change no riding physics. Kept courses receive the presentation without regeneration or new map requests. |
+
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero

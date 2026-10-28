@@ -482,6 +482,9 @@ physically based materials and light, restyled group by group.
   flower clumps (R158), with the other positions filled by full grass tufts.
 - [x] Autumn red, orange and gold broadleaf foliage (#350, R156), with the distant mixed
   canopy following it; conifers and tropical lowlands retain their green.
+- [x] Autumn has grass instead of meadow flowers and no flower-box blooms (R159).
+- [x] Autumn has stronger orange/russet distant woodland collections and fallen leaves on
+  forest streets, with open clearings, tropical lowlands and ridden tunnels excluded (R162).
 - [x] Winter snow where the route's climate and elevation allow it (#350, R157), on ground,
   foliage and rocks; dormant broadleaves and small plants. Raised roadside banks deepen
   with altitude, street snow has paired tyre tracks, and tunnels remain clear (R161).

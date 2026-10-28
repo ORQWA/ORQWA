@@ -37,6 +37,8 @@ const VIEWS: Dictionary[String, Array] = {
 	"city-overview": ["kirchenfeldbruecke", 100.0, 2, "Midday", "Clear"],
 	"city-benches": ["kirchenfeldbruecke", 100.0, 0, "Midday", "Clear", "bench"],
 	"forest-floor": ["gurtenstrasse", 1840.0, 0, "Midday", "Clear", "fern"],
+	"autumn-forest-road": ["gurtenstrasse", 0.0, 1, "Midday", "Clear"],
+	"autumn-forest-rain": ["gurtenstrasse", 0.0, 1, "Midday", "Rain"],
 	"rock-cliff-overview": ["kirchenfeldbruecke", 380.0, 0, "Midday", "Clear", "cliff-far"],
 	"rock-cliff-close": ["kirchenfeldbruecke", 380.0, 0, "Midday", "Clear", "cliff-near"],
 	# The reference route (#167): a planner's file over a pass, its hard places.
@@ -137,6 +139,12 @@ func _run() -> void:
 		ride_screen.show()
 		var spec: Array = specs[view]
 		var distance: float = spec[1]
+		if view.begins_with("autumn-forest-"):
+			distance = _forest_distance(orqwa)
+			if distance < 0.0:
+				push_error("No mapped woodland road for " + view)
+				quit(1)
+				return
 		var camera: int = spec[2]
 		var time: String = spec[3]
 		var weather: String = spec[4]
@@ -176,6 +184,41 @@ func _run() -> void:
 		root.get_texture().get_image().save_png(out.path_join(view + ".png"))
 		print("saved %s" % view)
 	quit(0)
+
+
+func _forest_distance(orqwa: OrqwaApp) -> float:
+	var mask: Dictionary = orqwa.autumn_forest_mask()
+	if mask.is_empty():
+		return -1.0
+	var image: Image = mask["image"]
+	var origin: Vector2 = mask["origin"]
+	var size: Vector2 = mask["size"]
+	var road: Dictionary = orqwa.road_mesh()
+	var vertices: PackedVector3Array = road["vertices"]
+	var uvs: PackedVector2Array = road["uvs"]
+	var start: float = -1.0
+	var longest: float = -1.0
+	var selected: float = -1.0
+	for index: int in range(2, vertices.size() - 1, 6):
+		if uvs[index].y < 400.0:
+			continue
+		var centre: Vector3 = (vertices[index] + vertices[index + 1]) * 0.5
+		var uv: Vector2 = (Vector2(centre.x, centre.z) - origin) / size
+		var wooded: bool = false
+		if uv.x >= 0.0 and uv.y >= 0.0 and uv.x < 1.0 and uv.y < 1.0:
+			var pixel: Vector2i = Vector2i(uv * Vector2(image.get_size()))
+			wooded = image.get_pixelv(pixel).r > 0.9
+		if wooded:
+			if start < 0.0:
+				start = uvs[index].y
+			var length: float = uvs[index].y - start
+			if length > longest:
+				longest = length
+				selected = (start + uvs[index].y) * 0.5
+		else:
+			start = -1.0
+	print("woodland review at ", selected, " m")
+	return selected
 
 
 func _focus_instance(orqwa: OrqwaApp, world: RideWorld, model: String) -> bool:

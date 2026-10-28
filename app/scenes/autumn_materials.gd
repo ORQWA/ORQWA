@@ -11,3 +11,5 @@ static func apply(active: bool, deciduous_from: float, terrain: ShaderMaterial) 
 		material.set_shader_parameter("autumn_strength", 1.0 if active else 0.0)
 		material.set_shader_parameter("autumn_from", deciduous_from)
 	VegetationModels.material("needles").set_shader_parameter("autumn_strength", 0.0)
+	var flowers: ShaderMaterial = BuildingModels.material("flowers") as ShaderMaterial
+	flowers.set_shader_parameter("autumn_flowers_hidden", active)

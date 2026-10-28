@@ -110,9 +110,24 @@ func _autumn() -> void:
 	var needles: ShaderMaterial = VegetationModels.material("needles")
 	strength = needles.get_shader_parameter("autumn_strength")
 	_check(strength == 0.0, "evergreen needles stay green")
+	var flowers: ShaderMaterial = BuildingModels.material("flowers") as ShaderMaterial
+	var hidden: bool = flowers.get_shader_parameter("autumn_flowers_hidden")
+	_check(hidden, "autumn hides flower-box blooms")
 	seasons.apply("Summer", null, terrain)
 	strength = leaves.get_shader_parameter("autumn_strength")
 	_check(strength == 0.0, "summer restores existing broadleaves")
+	hidden = flowers.get_shader_parameter("autumn_flowers_hidden")
+	_check(not hidden, "summer restores flower-box blooms")
+	var world: RideWorld = _new_world()
+	root.add_child(world)
+	world.apply_options({"season": "Autumn", "weather": "Rain", "time": "Evening", "camera": 0})
+	var road: ShaderMaterial = world.get("_road_material")
+	strength = road.get_shader_parameter("autumn_strength")
+	_check(strength == 1.0, "autumn enables woodland road litter")
+	world.apply_options({"season": "Summer", "weather": "Rain", "time": "Evening", "camera": 0})
+	strength = road.get_shader_parameter("autumn_strength")
+	_check(strength == 0.0, "summer clears fallen road leaves")
+	world.free()
 
 
 func _spring() -> void:

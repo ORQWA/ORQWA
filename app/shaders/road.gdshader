@@ -10,6 +10,7 @@ render_mode cull_disabled;
 
 #include "res://shaders/ground.gdshaderinc"
 #include "res://shaders/winter.gdshaderinc"
+#include "res://shaders/autumn_litter.gdshaderinc"
 #include "res://shaders/bridge_surface.gdshaderinc"
 
 uniform sampler2D asphalt_albedo : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
@@ -168,6 +169,9 @@ void fragment() {
 	float water = puddle(world_xz, world_normal, clamp(abs(UV.x - 0.5) * 2.0, 0.0, 1.0)) * (1.0 - shoulder) * (1.0 - verge);
 	ALBEDO = mix(albedo, puddle_color * 0.6, water * 0.6);
 	ROUGHNESS = mix(roughness, 0.08, water);
+	if (FRONT_FACING && world_normal.y > 0.1 && COLOR.a > 0.01) {
+		autumn_litter(world_position, clamp(abs(UV.x - 0.5) * 2.0, 0.0, 1.0), marking, wetness, ALBEDO, ROUGHNESS);
+	}
 	SPECULAR = mix(0.4, 0.5, max(wet, water));
 	NORMAL = normalize((VIEW_MATRIX * vec4(normalize(mix(normal, world_normal, water)), 0.0)).xyz);
 	float structure = 1.0 - step(0.01, COLOR.a);

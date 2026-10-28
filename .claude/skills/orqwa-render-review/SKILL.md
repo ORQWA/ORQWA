@@ -30,6 +30,12 @@ For general snow depth, run the material fixture at `ALTITUDE=700` and `ALTITUDE
 `winter-blanket.png` includes a one-metre stake with 10 cm bands beside the snow-covered
 boulders. Higher ground must bury more bands, while real-route streets remain visible.
 
+Autumn's controlled material review also includes forest/open-road litter and a distant
+canopy plane; run `FOREST_REVIEW=1 SEASON=Summer` for the same green baseline. Real-route
+`autumn-forest-road` and `autumn-forest-rain` views choose a road inside the retained woodland
+mask. Check pointed leaves near the road edges, preserved markings, rain response, open
+clearings and broad orange/russet collections on Low as well as Medium.
+
 For road hierarchy and paving (R119), generate the offline comparison meshes with
 `cargo test --manifest-path core/Cargo.toml -p orqwa-world road_profiles_render_fixture -- --ignored`,
 then render `app/tools/render_roads.gd` with `OUT` set to an absolute PNG path. It shares

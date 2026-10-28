@@ -37,8 +37,7 @@ impl Season {
         match self {
             Self::Summer => 0.1,
             Self::Spring => 1.0,
-            Self::Autumn => 0.0,
-            Self::Winter => 0.0,
+            Self::Autumn | Self::Winter => 0.0,
         }
     }
 

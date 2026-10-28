@@ -14,6 +14,7 @@ mod climate;
 pub mod course_map;
 mod drape;
 mod earthworks;
+mod forest_mask;
 mod foundations;
 mod horizon;
 mod junctions;
@@ -47,6 +48,7 @@ use tracing::{info, warn};
 
 pub use benchmark::benchmark;
 pub use climate::{SeasonClimate, season_climate};
+pub use forest_mask::{ForestMask, forest_mask};
 pub use horizon::{HORIZON, Horizon, horizon};
 use landcover::LandIndex;
 pub use minimap::{FlatMap, MapFeature, minimap};

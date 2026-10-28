@@ -261,3 +261,13 @@ road, railway, street, track and urban-paving triangles conservatively excludes 
 surroundings from the raised blanket. World-space sampling keeps chunks and horizon land
 consistent, while the original road and collision datum stay intact. The image and shader
 displacements are disposable presentation data; kept-world contracts remain unchanged.
+
+### Autumn woodland collections and road litter (2026-10-28, R162)
+
+Broad low-frequency colour fields distinguish orange/russet broadleaf-dominant collections
+from greener evergreen areas in the distant canopy, preserving its baked crown relief.
+Road litter samples a bounded image rasterized from the retained coarse and detailed flat
+maps, keeping clearings and water and excluding ridden tunnels. Pointed leaf silhouettes,
+edge-biased drifts, physical scale, rain response and subpixel filtering live in the road
+material. No texture download, stored data or generated geometry changes; season selection
+remains reversible and has no effect on resistance or grip.

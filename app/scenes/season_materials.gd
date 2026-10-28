@@ -23,6 +23,7 @@ func apply_options(
 	SpringMaterials.apply(world, season == "Spring", deciduous_from)
 	WinterMaterials.apply(world, season == "Winter", climate)
 	WinterSnowbanks.apply(world, orqwa, season == "Winter")
+	AutumnForest.apply(world, orqwa, season == "Autumn")
 	if previous != season:
 		world.call("_restart_chunks")
 	world.set_camera(camera)

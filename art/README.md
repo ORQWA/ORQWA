@@ -18,6 +18,9 @@ the procedural five-petal meadow flowers; placement and Blender exports stay the
 
 The [autumn materials](../docs/seasons-autumn.md) share the palette across nearby foliage,
 authored tree LODs and distant crowns; evergreen needles keep their own colours.
+Orange/russet distant collections stand among greener forest areas. Woodland streets gain
+procedural fallen leaves from a retained-map mask, with no new asset or generator change.
+Meadow flower clumps become grass, and flower-box blooms are hidden for Autumn.
 
 ## Running Blender
 

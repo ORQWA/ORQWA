@@ -86,6 +86,8 @@ func _run() -> void:
 		camera.fov = 55.0
 		camera.look_at_from_position(Vector3(1, _altitude + 3, 10), Vector3(0, _altitude + 3, 0))
 		await _save(out.path_join("spring-blossom.png"))
+	if season == "Autumn" or OS.get_environment("FOREST_REVIEW") == "1":
+		await SeasonAutumnReview.render(world, camera, out, season)
 	quit()
 
 

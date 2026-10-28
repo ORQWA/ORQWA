@@ -31,6 +31,7 @@ const int ACCENT = 18;
 const int FLAT_ROOF = 19;
 
 uniform int pattern = 0;
+uniform bool autumn_flowers_hidden = false;
 uniform vec3 color : source_color = vec3(0.8);
 uniform vec4 shutter_colors[4] : source_color;
 uniform vec4 flower_colors[3] : source_color;
@@ -69,6 +70,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (pattern == FLOWERS && autumn_flowers_hidden) {
+		discard;
+	}
 	vec3 tint = color;
 	float roughness = 0.9;
 	float specular = 0.4;
