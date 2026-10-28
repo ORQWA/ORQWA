@@ -1,14 +1,14 @@
 class_name StartPage
 extends Control
-## The start page (R38): tabs for Courses, Workouts (R58), History, Analysis (R61), Profile and
-## Devices, and the cog at the top right for the settings (R83). The ride view is separate;
+## The start page (R38): tabs for Courses, Workouts (R58), Group rides, History, Analysis (R61),
+## Profile and Devices, and the cog at the top right for settings (R83). The ride view is separate;
 ## riding starts from a course's detail page or the Workouts tab.
 
 ## A ride has started with `options` (`RideOptions.options()`); a workout's also carry
 ## `workout` (`WorkoutsTab.workout()`) and `on_course`.
 signal ride_started(options: Dictionary)
 
-enum Tab { COURSES, WORKOUTS, HISTORY, ANALYSIS, PROFILE, DEVICES, GROUP_RIDES }
+enum Tab { COURSES, WORKOUTS, GROUP_RIDES, HISTORY, ANALYSIS, PROFILE, DEVICES }
 
 ## Where the wordmark's letters sit in its drawing (its viewBox): their baseline is this share
 ## of its height above the bottom, the middle of their capitals this share above the baseline.
@@ -99,11 +99,11 @@ func _ready() -> void:
 	for page: Array in [
 		[_courses_page, "Courses"],
 		[_workouts, "Workouts"],
+		[_group_page, "Group rides"],
 		[_history, "History"],
 		[_analysis, "Analysis"],
 		[_profile, "Profile"],
 		[_devices, "Devices"],
-		[_group_page, "Group rides"],
 	]:
 		# i18n-end
 		var node: Control = page[0]

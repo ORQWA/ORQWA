@@ -9,7 +9,9 @@ var _main: Control
 
 
 func _group_screens(start: StartPage, orqwa: OrqwaApp, out: String) -> void:
+	TranslationServer.set_locale("en")
 	await create_timer(0.5).timeout
+	root.get_texture().get_image().save_png(out.path_join("start-courses.png"))
 	var group: GroupRidesTab = start.get("_group")
 	var tabs: TabContainer = start.get("_tabs")
 	tabs.current_tab = StartPage.Tab.GROUP_RIDES
