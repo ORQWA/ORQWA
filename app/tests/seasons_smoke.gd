@@ -43,6 +43,10 @@ func _check(ok: bool, message: String) -> void:
 		push_error(message)
 
 
+func _new_world() -> RideWorld:
+	return (load("res://scenes/world.tscn") as PackedScene).instantiate() as RideWorld
+
+
 func _small_plants() -> void:
 	var original: PackedFloat32Array = PackedFloat32Array()
 	for index: int in range(100):
@@ -65,7 +69,7 @@ func _small_plants() -> void:
 
 
 func _winter() -> void:
-	var world: RideWorld = (load("res://scenes/world.tscn") as PackedScene).instantiate()
+	var world: RideWorld = _new_world()
 	root.add_child(world)
 	world.apply_options({"season": "Winter", "weather": "Clear", "time": "Midday", "camera": 0})
 	var needles: ShaderMaterial = VegetationModels.material("needles")
@@ -95,7 +99,7 @@ func _winter() -> void:
 
 
 func _spring() -> void:
-	var world: RideWorld = (load("res://scenes/world.tscn") as PackedScene).instantiate()
+	var world: RideWorld = _new_world()
 	root.add_child(world)
 	world.apply_options({"season": "Spring", "weather": "Rain", "time": "Evening", "camera": 0})
 	var plants: ShaderMaterial = world.get("_plant_material")
