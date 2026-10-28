@@ -841,7 +841,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   - [x] synced course videos on Android 16: **Allow videos** asks for Photos and videos (R149)
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
-### Phase 13 — Group rides (R159–R163, [ADR 0035](adr/0035-group-rides.md))
+### Phase 13 — Group rides (R159–R168, [ADR 0035](adr/0035-group-rides.md))
 
 Application-owned replacements for the unmerged #241/#243/#246/#247 stack, based on current
 main. Each step has its own PR and preserves the security limits in ADR 0035.
@@ -861,10 +861,23 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
 - [x] CLI voice (R162–R163, [ADR 0036](adr/0036-group-voice.md)): opt-in, microphone muted
   initially, bounded Opus over existing encrypted host links, device selection, mute/deafen,
   per-speaker mute, volume and hardware-free conversation/security tests
+- [x] Activity/content foundation (R164–R165, [ADR 0037](adr/0037-group-ride-activities.md)):
+  bounded content identities and selection revisions, generation-bound readiness, normalized
+  workout wire data preserving absolute watts/FTP shares, bounded authenticated-stream
+  transfer helpers, validated atomic publication and a pre-extraction course validator;
+  existing lobby actors and CLI remain unchanged in this step
+- [ ] Course-independent lobby admission and versioned activity/readiness controls; integrate
+  current-selection content serving into the bounded lobby actors and update CLI callers
 - [ ] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
-  and gaps; no remote influence on local physics, trainer commands or saved activity
+  and gaps; remote telemetry never substitutes for local measurements or supplies trainer commands
 - [ ] App controls, translated errors, QR codes using existing support, settings, usage guides
-  and screenshots
+  and screenshots; create/join, select activities and automatically retain verified content
+- [ ] Drafting and Keep together (R166): independent shared toggles, both on by default,
+  individually calculated assistance, simulation/ERG behavior and assisted-record eligibility
+- [ ] Late joining and group workout timing (R167): independent preparation, entry near host,
+  no fictitious recorded distance, ordered host pause/resume/skips with personal intensity
+- [ ] Planned host handover (R168): successor consent, pinned replacement links, authority
+  epochs, bounded rollback, smooth assistance reference transition and independent riding on loss
 - [ ] Native microphone/headphone and audio-device permission/hotplug acceptance on supported desktops
 - [ ] Manual acceptance across two home networks and on native trainers; document networks
   that cannot connect without a relay without weakening the resource or trust limits

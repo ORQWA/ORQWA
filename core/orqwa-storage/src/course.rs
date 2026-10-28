@@ -23,6 +23,8 @@ use serde::{Deserialize, Serialize};
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
+pub mod shared;
+
 /// File extension of course files.
 pub const EXTENSION: &str = "tqc";
 /// The course file format written by this version; newer formats are rejected.

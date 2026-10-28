@@ -15,7 +15,7 @@ quinn.workspace = true
 rcgen.workspace = true
 rustls.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["net", "time", "macros", "rt", "sync"] }
+tokio = { workspace = true, features = ["net", "time", "macros", "rt", "sync", "fs", "io-util"] }
 tracing.workspace = true
 
 [dev-dependencies]

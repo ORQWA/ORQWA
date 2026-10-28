@@ -44,18 +44,22 @@ pub fn route_hash(route: &[u8]) -> RouteHash {
 }
 
 pub(crate) fn sha256(bytes: &[u8]) -> [u8; 32] {
+    sha256_provider()
+        .hash(bytes)
+        .as_ref()
+        .try_into()
+        .expect("SHA-256 has 32 bytes")
+}
+
+pub(crate) fn sha256_provider() -> &'static dyn rustls::crypto::hash::Hash {
     let provider = provider();
-    let hash = provider
+    provider
         .cipher_suites
         .iter()
         .filter_map(rustls::SupportedCipherSuite::tls13)
         .map(|suite| suite.common.hash_provider)
         .find(|hash| hash.algorithm() == rustls::crypto::hash::HashAlgorithm::SHA256)
-        .expect("the fixed aws-lc provider includes TLS 1.3 SHA-256");
-    hash.hash(bytes)
-        .as_ref()
-        .try_into()
-        .expect("SHA-256 has 32 bytes")
+        .expect("the fixed aws-lc provider includes TLS 1.3 SHA-256")
 }
 
 impl RideId {
