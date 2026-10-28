@@ -200,7 +200,7 @@ func _ready() -> void:
 	_bar.speed_chosen.connect(_set_time_scale)
 	_bar.folded_changed.connect(func(folded: bool) -> void: _orqwa.set_ride_bar_folded(folded))
 	add_child(_bar)
-	_group_button.text = tr("Group rides")
+	_group_button.text = tr("Group Rides")
 	_group_button.set_anchors_and_offsets_preset(
 		Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24
 	)

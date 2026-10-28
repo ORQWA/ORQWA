@@ -2463,7 +2463,7 @@ msgstr "Jahreszeit"
 msgid "Summer"
 msgstr "Sommer"
 
-msgid "Group rides"
+msgid "Group Rides"
 msgstr "Gruppenfahrten"
 
 msgid "Ready"

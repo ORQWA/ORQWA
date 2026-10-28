@@ -1,6 +1,6 @@
 class_name StartPage
 extends Control
-## The start page (R38): tabs for Courses, Workouts (R58), Group rides, History, Analysis (R61),
+## The start page (R38): tabs for Courses, Workouts (R58), Group Rides, History, Analysis (R61),
 ## Profile and Devices, and the cog at the top right for settings (R83). The ride view is separate;
 ## riding starts from a course's detail page or the Workouts tab.
 
@@ -99,7 +99,7 @@ func _ready() -> void:
 	for page: Array in [
 		[_courses_page, "Courses"],
 		[_workouts, "Workouts"],
-		[_group_page, "Group rides"],
+		[_group_page, "Group Rides"],
 		[_history, "History"],
 		[_analysis, "Analysis"],
 		[_profile, "Profile"],

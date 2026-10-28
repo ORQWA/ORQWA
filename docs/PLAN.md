@@ -870,7 +870,7 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
   current-selection content serving into the bounded lobby actors and update CLI callers
 - [ ] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
   and gaps; remote telemetry never substitutes for local measurements or supplies trainer commands
-- [x] Group rides tab, third after Workouts, and in-ride panel: private-code admission, activity selection,
+- [x] Group Rides tab, third after Workouts, and in-ride panel: private-code admission, activity selection,
   automatic retained downloads, byte progress/retry, local preparation, trainer readiness,
   common countdown, rider gaps, opt-in voice/device selection/local mute, usage guides and screenshots
 - [x] Guided create/join flow with native page cards, course map/elevation and workout power/duration
