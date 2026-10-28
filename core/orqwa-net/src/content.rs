@@ -453,15 +453,24 @@ pub async fn serve(
     recv: &mut RecvStream,
     source: &mut Source,
 ) -> Result<(), ContentError> {
+    if requested(recv).await? != source.id {
+        return Err(ContentError::Mismatch);
+    }
+    self::send(send, source).await
+}
+
+/// Reads a bounded request naming content, never a local path.
+///
+/// # Errors
+/// Returns [`ContentError`] for invalid framing, excess bytes or timeout.
+pub async fn requested(recv: &mut RecvStream) -> Result<ContentId, ContentError> {
     let deadline = Instant::now() + IDLE_WINDOW;
     let mut bytes = [0; HEADER];
     timeout_at(deadline, recv.read_exact(&mut bytes))
         .await
         .map_err(|_| ContentError::Timeout)?
         .map_err(|_| ContentError::Interrupted)?;
-    if identity(&bytes)? != source.id {
-        return Err(ContentError::Mismatch);
-    }
+    let id = identity(&bytes)?;
     let mut extra = [0];
     if timeout_at(deadline, recv.read(&mut extra))
         .await
@@ -471,7 +480,7 @@ pub async fn serve(
     {
         return Err(ContentError::Mismatch);
     }
-    self::send(send, source).await
+    Ok(id)
 }
 
 #[cfg(test)]

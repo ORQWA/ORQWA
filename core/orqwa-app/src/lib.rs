@@ -7,6 +7,7 @@ pub mod ambient;
 pub mod analysis;
 pub mod failure;
 pub mod graphics;
+pub mod group;
 use failure::{Failure, Kind};
 mod detail;
 #[cfg(test)]
@@ -312,6 +313,13 @@ pub const READING_AGE: Duration = Duration::from_secs(5);
 /// Something that happened since the last [`App::update`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppEvent {
+    /// A prepared group ride reached its common start target.
+    GroupRideStarted {
+        /// The activity has a course.
+        on_course: bool,
+        /// The activity has a structured workout.
+        workout: bool,
+    },
     /// A scan finished.
     DevicesFound(Vec<DeviceInfo>),
     /// Preparing a course advanced.
@@ -732,6 +740,7 @@ pub struct App {
     keys: orqwa_devices::shift::KeyboardKeys,
     /// The phone remote while it is on (#228): a shift input beside them.
     remote: Option<remote::RunningRemote>,
+    group: Option<group::Running>,
     /// What its page says, in the rider's language.
     remote_texts: remote::RemoteTexts,
     /// Identifier of the connected controller, to avoid reconnecting it.
@@ -830,6 +839,7 @@ impl App {
             shift_inputs_connected: vec![true],
             keys,
             remote: None,
+            group: None,
             remote_texts: remote::RemoteTexts::default(),
             controller_id: None,
             buttons: Arc::new(orqwa_devices::shift::Assignments::new(|model| {
@@ -872,6 +882,12 @@ impl App {
     /// # Errors
     /// [`AppError::UnknownProfile`] if there is no such profile.
     pub fn select_profile(&mut self, id: &str) -> Result<(), AppError> {
+        if self.group.is_some() {
+            return Err(AppError::Reported(Failure::new(
+                Kind::GroupRide,
+                "Leave the group before switching rider profiles.",
+            )));
+        }
         let profile = profiles::load(&self.data_dir, id).map_err(|_| AppError::UnknownProfile)?;
         self.profile = StoredProfile {
             id: id.to_owned(),
@@ -998,6 +1014,15 @@ impl App {
     /// reports [`AppEvent::RouteLoaded`] like [`App::load_route`]. Its 3D world is built only
     /// when asked for with [`App::build_world`].
     pub fn open_course(&mut self, path: PathBuf) {
+        if self.group.is_some() {
+            return;
+        }
+        self.open_course_mode(path, false);
+    }
+    pub(crate) fn open_shared_course(&mut self, path: PathBuf) {
+        self.open_course_mode(path, true);
+    }
+    fn open_course_mode(&mut self, path: PathBuf, shared: bool) {
         let used = self.start_loading(true);
         let load = self.load;
         self.naming = None;
@@ -1008,8 +1033,12 @@ impl App {
         let cache = self.cache_dir.clone();
         // A course in the library takes the map detail of the regions here (R144): its file
         // is brought up to date, and its kept world built again with it.
-        let ready = orqwa_osm::detail::installed(&cache.join("osm"));
-        let in_library = path.starts_with(self.courses_dir());
+        let ready = if shared {
+            Vec::new()
+        } else {
+            orqwa_osm::detail::installed(&cache.join("osm"))
+        };
+        let in_library = !shared && path.starts_with(self.courses_dir());
         self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
@@ -1086,7 +1115,7 @@ impl App {
                 if !outdated_preview {
                     map = course_map(&imported.route, (&cache, true), &used, &mut report).await;
                 }
-                if map.is_none() {
+                if map.is_none() && !shared {
                     map = course_map(&imported.route, (&cache, false), &used, &mut report).await;
                 }
                 imported.course_map = map;
@@ -2781,6 +2810,7 @@ impl App {
         descent: DescentMode,
         ghost: &GhostChoice,
     ) -> Result<(), AppError> {
+        self.check_group_start()?;
         let route = self.route.clone().ok_or(AppError::NoRoute)?;
         if self.trainer.is_none() {
             return Err(AppError::NoTrainer);
@@ -2818,6 +2848,7 @@ impl App {
         descent: DescentMode,
         name: &str,
     ) -> Result<(), AppError> {
+        self.check_group_start()?;
         if self.trainer.is_none() {
             return Err(AppError::NoTrainer);
         }
@@ -2846,6 +2877,7 @@ impl App {
             .chain(orqwa_workouts::library(&orqwa_workouts::library_dir(
                 &self.data_dir,
             )))
+            .chain(self.shared_workouts())
             .collect()
     }
 
@@ -2869,6 +2901,9 @@ impl App {
         plan: &orqwa_domain::workout::Plan,
         replace: Option<&str>,
     ) -> Result<String, AppError> {
+        let replace = replace.filter(|id| {
+            Path::new(id).parent() != Some(self.data_dir.join("shared-workouts").as_path())
+        });
         let dir = orqwa_workouts::library_dir(&self.data_dir);
         orqwa_workouts::save(&dir, plan, self.profile.profile.ftp, replace)
             .map_err(|e| AppError::Reported(Failure::new(Kind::SaveWorkout, e)))
@@ -2879,6 +2914,13 @@ impl App {
     /// # Errors
     /// [`AppError::Reported`] for built-ins and files that cannot be deleted.
     pub fn delete_workout(&mut self, id: &str) -> Result<(), AppError> {
+        let path = Path::new(id);
+        if path.parent() == Some(self.data_dir.join("shared-workouts").as_path())
+            && path.extension().is_some_and(|e| e == "oqw")
+        {
+            return std::fs::remove_file(path)
+                .map_err(|e| AppError::Reported(Failure::new(Kind::DeleteWorkout, e)));
+        }
         orqwa_workouts::delete(&orqwa_workouts::library_dir(&self.data_dir), id)
             .map_err(|e| AppError::Reported(Failure::new(Kind::DeleteWorkout, e)))
     }
@@ -2888,6 +2930,16 @@ impl App {
     /// # Errors
     /// [`AppError::Reported`] if it cannot be read.
     pub fn structured_workout(&self, id: &str) -> Result<Workout, AppError> {
+        if let Some(entry) = self
+            .shared_workouts()
+            .into_iter()
+            .find(|entry| entry.id == id)
+        {
+            return Ok(Workout::Structured {
+                plan: Arc::new(entry.plan),
+                ftp: self.profile.profile.ftp,
+            });
+        }
         let planned = self
             .planned_workouts()
             .into_iter()
@@ -3630,6 +3682,7 @@ impl App {
         self.poll_sensors(&mut events);
         self.poll_shift_inputs(&mut events);
         self.poll_phone_remote(&mut events);
+        self.poll_group(&mut events);
 
         if let Some(active) = &mut self.ride
             && active.started.is_some()
@@ -5320,7 +5373,11 @@ mod tests {
         assert_eq!(record.route_key, None, "a simulated ride sets no records");
         assert_eq!(record.climbs.len(), 0);
         assert!(record.simulated);
-        assert_eq!(app.history()[0].power_records, [], "nor power records");
+        assert_eq!(
+            app.history()[0].power_records,
+            [Duration::ZERO; 0],
+            "nor power records"
+        );
         app.shutdown();
     }
 

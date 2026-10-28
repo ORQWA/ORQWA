@@ -781,7 +781,10 @@ mod tests {
             power_records(&newer.record, &records),
             [Duration::from_mins(5), Duration::from_mins(20)]
         );
-        assert_eq!(power_records(&simulated.record, &records), []);
+        assert_eq!(
+            power_records(&simulated.record, &records),
+            [Duration::ZERO; 0]
+        );
         assert_eq!(
             best_efforts([&simulated], Kilograms(70.0), false),
             [],

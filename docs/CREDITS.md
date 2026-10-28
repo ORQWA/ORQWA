@@ -25,6 +25,8 @@ through opusic-sys 0.7.6, for bundled [Opus](https://opus-codec.org/) 1.6.1 spee
 Opus's copyright and redistribution conditions are preserved in
 `core/orqwa-voice/notices/opus.txt`. CLI archives carry `VOICE-LICENSES.txt`, generated from
 the complete CLI dependency graph plus that bundled-C notice by `scripts/notices.sh`.
+The graphical app now uses the same voice implementation; its About notices include the
+native audio dependencies and the bundled Opus copyright/licence notice too.
 No speech recording or third-party voice service is used.
 
 ## Models

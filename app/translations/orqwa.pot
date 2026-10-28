@@ -83,6 +83,10 @@ msgstr ""
 msgid "%s fps"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "%s ft"
+msgstr ""
+
 #: core/orqwa-app/src/failure.rs
 msgid "%s has no GPS track. Import its GPX route, then add the video to the course."
 msgstr ""
@@ -97,6 +101,10 @@ msgstr ""
 
 #: app/ui/course_settings.gd
 msgid "%s is up to date."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "%s m"
 msgstr ""
 
 #: app/scenes/history_screen.gd core/orqwa-app/src/failure.rs
@@ -223,6 +231,10 @@ msgstr ""
 msgid "Active"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Activity prepared. Connect your trainer, then mark yourself ready."
+msgstr ""
+
 #: app/ui/ghost_picker.gd
 msgid "Activity: %s"
 msgstr ""
@@ -263,6 +275,10 @@ msgstr ""
 msgid "Added to your workouts."
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Admit rider"
+msgstr ""
+
 #: app/scenes/analysis_tab.gd
 msgid "Against all time"
 msgstr ""
@@ -301,6 +317,10 @@ msgstr ""
 
 #: app/ui/moment_lines.gd
 msgid "All {planned} planned rides this week done."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Allow local network peers"
 msgstr ""
 
 #: app/scenes/course_detail.gd
@@ -535,6 +555,10 @@ msgstr ""
 msgid "Choose a country, or a part of a large one: it downloads faster."
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Choose a course or workout to share with the group."
+msgstr ""
+
 #: app/scenes/course_edit_dialog.gd
 msgid "Choose a video of this course"
 msgstr ""
@@ -667,6 +691,10 @@ msgstr ""
 msgid "Connected as %s"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Connecting — send your reply to the host within one minute."
+msgstr ""
+
 #: app/scenes/devices_tab.gd app/ui/ride_devices.gd
 msgid "Connecting…"
 msgstr ""
@@ -687,6 +715,10 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Copy private code"
+msgstr ""
+
 #: app/ui/about_page.gd
 msgid "Copy the version, e.g. for a bug report"
 msgstr ""
@@ -696,7 +728,15 @@ msgid "Correcting elevations"
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
+msgid "Could not complete the group ride action."
+msgstr ""
+
+#: core/orqwa-app/src/failure.rs
 msgid "Could not connect the account with %s: %s"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Could not connect. Leave the lobby and exchange fresh codes to retry."
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
@@ -867,6 +907,18 @@ msgstr ""
 msgid "Courses"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Create a lobby or join friends with a private code."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Create lobby"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Current file: %.1f / %.1f MiB"
+msgstr ""
+
 #: app/scenes/profile_tab.gd
 msgid "Custom"
 msgstr ""
@@ -891,12 +943,24 @@ msgstr ""
 msgid "Date added"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Deafen"
+msgstr ""
+
 #: app/ui/ui_theme.gd
 msgid "Dec"
 msgstr ""
 
 #: app/scenes/profile_tab.gd
 msgid "Default"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Default microphone"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Default speakers"
 msgstr ""
 
 #: app/scenes/course_detail.gd app/scenes/history_screen.gd app/scenes/profile_tab.gd app/ui/course_settings.gd app/ui/workout_editor.gd
@@ -955,7 +1019,7 @@ msgstr ""
 msgid "Details"
 msgstr ""
 
-#: app/scenes/devices_tab.gd app/scenes/ride_settings_dialog.gd app/scenes/start_page.gd
+#: app/scenes/devices_tab.gd app/scenes/group_rides_tab.gd app/scenes/ride_settings_dialog.gd app/scenes/start_page.gd
 msgid "Devices"
 msgstr ""
 
@@ -1017,6 +1081,10 @@ msgstr ""
 
 #: core/orqwa-app/src/import.rs
 msgid "Downloading map data"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Downloading or checking the selected activity…"
 msgstr ""
 
 #: core/orqwa-app/src/import.rs
@@ -1101,6 +1169,10 @@ msgstr ""
 
 #: app/ui/moment_lines.gd
 msgid "Every ride you planned this week is done, all {planned} of them!"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Exchange codes privately. Codes reveal connection addresses; replies contain admission secrets."
 msgstr ""
 
 #: app/ui/ride_bar.gd
@@ -1331,6 +1403,22 @@ msgstr ""
 msgid "Group"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Group connection ended. Your local ride continues."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Group ride action failed:"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Group ride in progress"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd app/scenes/ride_screen.gd app/scenes/start_page.gd
+msgid "Group rides"
+msgstr ""
+
 #: app/ui/ui_theme.gd core/orqwa-routes/src/climbs.rs
 msgid "HC"
 msgstr ""
@@ -1419,6 +1507,10 @@ msgstr ""
 msgid "Hold to finish"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Host: paste a joiner's reply code"
+msgstr ""
+
 #: app/ui/profile_form.gd
 msgid "How ORQWA tells you of climbs topped, milestones and records during the ride"
 msgstr ""
@@ -1483,6 +1575,10 @@ msgstr ""
 msgid "Jan"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Join lobby"
+msgstr ""
+
 #: app/ui/ui_theme.gd
 msgid "Jul"
 msgstr ""
@@ -1541,6 +1637,10 @@ msgstr ""
 
 #: app/ui/update_dialog.gd
 msgid "Later"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Leave group"
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -1647,6 +1747,10 @@ msgstr ""
 msgid "Metric (km, kg)"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Microphone"
+msgstr ""
+
 #: app/scenes/world.gd
 msgid "Midday"
 msgstr ""
@@ -1693,6 +1797,10 @@ msgstr ""
 
 #: app/scenes/button_dialog.gd app/scenes/ride_screen.gd
 msgid "Music: previous track"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Mute locally"
 msgstr ""
 
 #: app/scenes/course_edit_dialog.gd app/scenes/courses_tab.gd app/scenes/profile_dialog.gd app/ui/workout_editor.gd
@@ -1755,6 +1863,10 @@ msgstr ""
 msgid "No country"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "No course — workout only"
+msgstr ""
+
 #: app/scenes/courses_tab.gd
 msgid "No courses match"
 msgstr ""
@@ -1793,6 +1905,10 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "No video course is loaded."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "No workout — course ride"
 msgstr ""
 
 #: app/ui/ghost_picker.gd
@@ -1843,7 +1959,7 @@ msgstr ""
 msgid "Not found: %s. Wake the devices, then scan again."
 msgstr ""
 
-#: app/ui/course_settings.gd
+#: app/scenes/group_rides_tab.gd app/ui/course_settings.gd
 msgid "Not ready"
 msgstr ""
 
@@ -1999,6 +2115,10 @@ msgstr ""
 msgid "Pair moments of the video with places on the route."
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Paste an invite code to join"
+msgstr ""
+
 #: app/scenes/overlay_hud.gd app/scenes/remote_dialog.gd
 msgid "Pause"
 msgstr ""
@@ -2123,6 +2243,10 @@ msgstr ""
 msgid "Preparing %s…"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Preparing the course on this computer…"
+msgstr ""
+
 #: app/scenes/button_dialog.gd
 msgid "Press"
 msgstr ""
@@ -2171,6 +2295,10 @@ msgstr ""
 msgid "Reading route"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Ready"
+msgstr ""
+
 #: app/ui/preparation_log.gd
 msgid "Ready in %s"
 msgstr ""
@@ -2199,6 +2327,10 @@ msgstr ""
 msgid "Reflections on water"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Refresh audio devices"
+msgstr ""
+
 #: app/scenes/course_detail.gd
 msgid "Regenerate world"
 msgstr ""
@@ -2209,6 +2341,10 @@ msgstr ""
 
 #: app/scenes/remote_dialog.gd core/orqwa-remote/src/lib.rs
 msgid "Remote"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Remove"
 msgstr ""
 
 #: app/ui/video_align_dialog.gd
@@ -2237,6 +2373,10 @@ msgstr ""
 
 #: app/scenes/overlay_hud.gd app/scenes/remote_dialog.gd app/ui/ride_bar.gd
 msgid "Resume"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Retry download"
 msgstr ""
 
 #: app/scenes/profile_tab.gd
@@ -2411,6 +2551,10 @@ msgstr ""
 msgid "Season"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Select activity"
+msgstr ""
+
 #: app/ui/ui_theme.gd
 msgid "Sep"
 msgstr ""
@@ -2513,6 +2657,14 @@ msgstr ""
 
 #: app/scenes/workouts_tab.gd
 msgid "Start as overlay"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Start group ride"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Starting in %s seconds…"
 msgstr ""
 
 #: app/ui/workout_editor.gd
@@ -2875,6 +3027,10 @@ msgstr ""
 msgid "Use %d W"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Use public address discovery (STUN)"
+msgstr ""
+
 #: app/ui/graphics_settings.gd
 msgid "V-Sync"
 msgstr ""
@@ -2947,12 +3103,24 @@ msgstr ""
 msgid "Voice"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Voice chat (headphones)"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Voice volume"
+msgstr ""
+
 #: core/orqwa-app/src/hud.rs
 msgid "W/kg"
 msgstr ""
 
 #: app/scenes/devices_tab.gd
 msgid "Waiting for a phone or tablet…"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Waiting for the host to select an activity."
 msgstr ""
 
 #: app/scenes/ride_screen.gd

@@ -121,3 +121,43 @@ then late joining/workout synchronization and planned handover. Each updates its
 usage guides and screenshots. Those roadmap items stay unchecked until implemented and
 validated, including fake-trainer/FIT isolation tests. Native audio, trainer feel, cross-home
 connectivity and frame rate with seven remote avatars require separate manual acceptance.
+
+## App-lobby integration — 2026-10-28
+
+The next stacked step connects these primitives to the lobby actors, `orqwa-app` and Godot.
+Protocol/invitation version 3 and ALPN `orqwa-group/3` require matching builds and fresh codes;
+the CLI is rebuilt against the same protocol while preserving its course-bound workflow.
+`RouteHash::LOBBY` reserves the zero value for an app lobby: the independently generated
+ride ID and certificate still bind admission. Content hashes are checked after admission.
+
+Selected content is held in a watch channel. Each peer may have one owned transfer worker,
+which is cancelled on selection changes or departure. A completed worker is reaped before
+accepting the next file request. Only the selected course/workout identity is served. Ready
+controls and file requests have independent ingress budgets; file requests allow a burst
+of eight and sustained one per second, charged before spawning a transfer task. Ready
+controls bind to the authenticated membership and current revision; old acknowledgments
+are ignored. App host controls require all readiness flags before countdown. App joiners
+bound forwarded reliable controls to 64 per second; the CLI retains its 64-control lifetime
+limit. Existing fixed queues and voice/state budgets remain in force.
+
+The app exposes a Group rides tab and compact in-ride panel, byte progress/retry, device
+readiness, shared starts and voice controls. The background task owns networking, download
+jobs and voice startup. Leaving aborts it, closes its owners and cancels local preparation,
+without ending the local ride. Received courses load offline, without replacing inputs with
+locally installed map detail or refreshing old previews online. Decoded workouts are retained
+in memory before countdown so ride startup does no workout file I/O. Normalized `.oqw`
+files in `shared-workouts/` appear in the app's workout library; editing saves a new local
+workout rather than overwriting the downloaded original. Inactive tabs do not stop the group.
+
+Microphone off, deafen and voice off close the transmission gate synchronously in the app
+command, before queueing device cleanup. A shared generation and short control mutex prevent
+older queued unmute commands from reopening capture. Volume changes are separate and never
+reactivate a microphone. Pending native audio startup has an explicit UI state and stale
+startup results are discarded. Device failures stop local voice rather than group riding.
+
+Initial group UI delivery keeps drafting and keep-together off and exposes no misleading
+assistance controls. Peer avatars/map markers, assistance physics, shared workout control
+after start, late ride admission and planned handover stay unchecked in the roadmap. The
+current actor still seals admission at countdown and host loss ends networking/voice.
+Native microphone permissions, audio device/hotplug acceptance and cross-home-network
+connectivity remain manual checks; local integration tests do not claim those results.

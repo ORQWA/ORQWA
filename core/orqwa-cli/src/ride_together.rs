@@ -287,7 +287,10 @@ impl Others {
                 self.distances.insert(id, state.distance.0);
             }
             LobbyEvent::Expired => println!("A reply expired; ask for a fresh reply."),
-            LobbyEvent::Start { .. } | LobbyEvent::HostLeft => {}
+            LobbyEvent::Start { .. }
+            | LobbyEvent::HostLeft
+            | LobbyEvent::Selection(_)
+            | LobbyEvent::Readiness { .. } => {}
         }
     }
     fn gaps(&self, mine: f64) -> String {

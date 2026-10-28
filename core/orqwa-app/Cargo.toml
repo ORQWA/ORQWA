@@ -9,6 +9,8 @@ publish.workspace = true
 
 [dependencies]
 orqwa-domain.workspace = true
+orqwa-net.workspace = true
+orqwa-voice.workspace = true
 orqwa-osm.workspace = true
 orqwa-devices.workspace = true
 orqwa-physics.workspace = true

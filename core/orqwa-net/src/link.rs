@@ -374,6 +374,13 @@ pub struct Host {
 }
 
 impl Host {
+    /// Opens an empty app lobby, binding admission to this ride rather than mutable content.
+    ///
+    /// # Errors
+    /// Returns [`LinkError`] for discovery, entropy or encryption failures.
+    pub async fn lobby(host: &str, options: &ConnectOptions) -> Result<Self, LinkError> {
+        Self::open(host, "Group ride", RouteHash::LOBBY, options).await
+    }
     /// Creates this ride's certificate and sockets. Nothing is accepted before a reply is taken.
     ///
     /// # Errors
@@ -641,6 +648,13 @@ pub struct Joiner {
 }
 
 impl Joiner {
+    /// Answers an app-lobby invitation without requiring a preexisting local course.
+    ///
+    /// # Errors
+    /// Returns [`LinkError`] for legacy course invites or transport setup failure.
+    pub async fn lobby(invite: Invite, options: &ConnectOptions) -> Result<Self, LinkError> {
+        Self::open(invite, RouteHash::LOBBY, options).await
+    }
     /// Validates the expected route and destination policy before discovery or probing.
     ///
     /// # Errors
