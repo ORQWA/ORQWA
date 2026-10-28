@@ -852,7 +852,7 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
 - [x] Transport: per-ride pinned QUIC, reply/credential binding and replay protection, bounded
   handshakes before TLS, finite probing, one connection deadline, owner-drop cleanup and
   `orqwa-cli net-ping`
-- [ ] Lobby and CLI ride: bounded membership/control events, coalesced and rate-limited
+- [x] Lobby and CLI ride: bounded membership/control events, coalesced and rate-limited
   validated state, countdown, dropouts and `orqwa-cli ride-together` with fake trainers
 - [ ] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
   and gaps; no remote influence on local physics, trainer commands or saved activity

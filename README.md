@@ -104,6 +104,8 @@ remain available separately after notifications disappear.
 The [usage wiki](https://github.com/ORQWA/ORQWA/wiki) covers riding and every feature. Start
 with [Getting started](https://github.com/ORQWA/ORQWA/wiki/Getting-started); testers can ride a
 trainer without the app with the [command-line tool](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool).
+The CLI also supports [group rides](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool#ride-with-others)
+for up to eight riders, using privately exchanged codes and a shared local GPX file.
 
 [Syncing between devices](https://github.com/ORQWA/ORQWA/wiki/Syncing-between-devices) explains
 how to share ride history, courses and rider settings through a file-sync client such as Nextcloud.

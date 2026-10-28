@@ -251,7 +251,13 @@ impl StateInbox {
         .unwrap_or(STATE_BURST);
         if added > 0 {
             slot.tokens = slot.tokens.saturating_add(added).min(STATE_BURST);
-            slot.refilled = now;
+            // Preserve fractional refill time: normal jitter around 200 ms must not
+            // gradually exhaust a correctly paced rider's allowance.
+            let remainder =
+                now.saturating_duration_since(slot.refilled).as_nanos() % STATE_EVERY.as_nanos();
+            #[allow(clippy::cast_possible_truncation)] // remainder is below 200 million ns
+            let remainder = Duration::from_nanos(remainder as u64);
+            slot.refilled = now.checked_sub(remainder).unwrap_or(now);
         }
         if slot.tokens == 0 {
             return Err(StateError::Flood);
@@ -467,5 +473,26 @@ mod tests {
         assert!(RiderId::new(u8::try_from(MAX_RIDERS).unwrap()).is_err());
         assert_eq!(inbox.drain(now).iter().flatten().count(), MAX_RIDERS);
         assert!(inbox.drain(now + STATE_EVERY).iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn sustained_five_hertz_with_network_jitter_does_not_exhaust_the_allowance() {
+        let now = Instant::now();
+        let mut inbox = StateInbox::new(now);
+        let member = inbox.join(RiderId::HOST, now).unwrap();
+        for sample in 1..=1000_u64 {
+            let millis = sample * 200 + u64::from(sample % 2 == 0);
+            let state = state(millis);
+            assert!(
+                inbox
+                    .ingest(
+                        member,
+                        &state.datagram(RiderId::HOST).unwrap(),
+                        state.at,
+                        now + state.at
+                    )
+                    .is_ok()
+            );
+        }
     }
 }
