@@ -849,7 +849,7 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
   `orqwa-cli net-check`; usage/firewall documentation with the first network command
 - [ ] Optional router mappings, deferred: separately reviewed library selection, opt-in
   short-lived leases and bounded cleanup; no mappings are created by the initial network stack
-- [ ] Transport: per-ride pinned QUIC, reply/credential binding and replay protection, bounded
+- [x] Transport: per-ride pinned QUIC, reply/credential binding and replay protection, bounded
   handshakes before TLS, finite probing, one connection deadline, owner-drop cleanup and
   `orqwa-cli net-ping`
 - [ ] Lobby and CLI ride: bounded membership/control events, coalesced and rate-limited

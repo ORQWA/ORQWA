@@ -3,15 +3,14 @@
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
-use crate::code::{CodeError, Invite, MAX_PAYLOAD_BYTES, Reply};
+use crate::code::{CodeError, Invite, MAX_PASTE_BYTES, MAX_PAYLOAD_BYTES, Reply};
 use crate::policy::AddressPolicy;
 
 const PREFIX: &[u8] = b"orqwa:";
 const MAX_TEXT: usize = 6 + MAX_PAYLOAD_BYTES.div_ceil(3) * 4;
-const MAX_PASTE: usize = 2048;
 
 fn decode(text: &str) -> Result<([u8; MAX_PAYLOAD_BYTES + 3], usize), CodeError> {
-    if text.len() > MAX_PASTE {
+    if text.len() > MAX_PASTE_BYTES {
         return Err(CodeError::TooLong);
     }
     let mut normalized = [0; MAX_TEXT];
@@ -133,7 +132,7 @@ mod tests {
     fn oversized_input_invalid_alphabet_padding_and_noncanonical_base64_are_rejected() {
         let policy = AddressPolicy::default();
         assert_eq!(
-            Invite::from_code(&" ".repeat(MAX_PASTE + 1), policy),
+            Invite::from_code(&" ".repeat(MAX_PASTE_BYTES + 1), policy),
             Err(CodeError::TooLong)
         );
         assert_eq!(

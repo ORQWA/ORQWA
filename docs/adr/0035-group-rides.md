@@ -127,13 +127,19 @@ rides remain separate manual acceptance checks; passing local tests does not pro
 The protocol foundation provides bounded payloads, destination policy, connection permits and
 state validation/coalescing. Discovery adds bounded base64url text, cryptographic identifiers
 and SHA-256, selected-interface UDP sockets, strict STUN parsing (including FINGERPRINT) and
-the explicit `net-check` command. Loopback mode never contacts STUN. Transport and the lobby
-remain following steps; `net-check` alone is not an end-to-end group ride.
+the explicit `net-check` command. Loopback mode never contacts STUN. Transport adds per-ride
+TLS 1.3 certificate pinning with signature verification, one-use admission credentials and
+`net-ping`. Its TLS handshakes require a pending reply, address validation and a capacity/rate
+permit first. QUIC has explicit stream, flow-control, datagram and handshake-buffer limits.
+Both the application's tasks and Quinn's runtime drivers have owners; cancellation permits
+at most 100 ms to flush close packets, then aborts remaining drivers. The driver registry
+itself is capped at 128. Used/expired reply tombstones are retained within a sixteen-record
+host-lifetime budget. The lobby and trainer ride remain following steps.
 
 The owner approved the core dependency selection on 2026-10-27 after its advisory, licence
 and source checks: quinn 0.11.12, rustls 0.23.46, base64 0.23.1, rcgen 0.14.10 and netdev
-0.47.0 (current stable releases verified against crates.io). Add quinn/rcgen with transport;
-the discovery step uses base64, rustls and netdev. Router libraries crab_nat/igd-next remain
+0.47.0 (current stable releases verified against crates.io, again on 2026-10-28). Transport
+uses quinn/rcgen; discovery uses base64, rustls and netdev. Router libraries crab_nat/igd-next remain
 deferred; they are not needed for STUN, public IPv6 or LAN connections. Existing `fast_qr`
 covers future QR display.
 
