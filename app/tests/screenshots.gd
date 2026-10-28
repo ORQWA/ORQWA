@@ -8,6 +8,67 @@ const TIMEOUT_S: float = 180.0
 var _main: Control
 
 
+func _group_screens(start: StartPage, orqwa: OrqwaApp, out: String) -> void:
+	await create_timer(0.5).timeout
+	var group: GroupRidesTab = start.get("_group")
+	var tabs: TabContainer = start.get("_tabs")
+	tabs.current_tab = StartPage.Tab.GROUP_RIDES
+	for locale: String in ["en", "de"]:
+		TranslationServer.set_locale(locale)
+		await create_timer(0.4).timeout
+		root.get_texture().get_image().save_png(out.path_join("group-home-" + locale + ".png"))
+	group._lan.button_pressed = true
+	group._stun.button_pressed = false
+	group._open("")
+	var until: int = Time.get_ticks_msec() + 10000
+	while (
+		orqwa.group_status().get("phase", "idle") == "connecting" and Time.get_ticks_msec() < until
+	):
+		await process_frame
+	var phase: String = orqwa.group_status().get("phase", "idle")
+	_check(phase == "waiting", "local lobby opened")
+	var picker: GroupActivityPicker = group._picker
+	_check(picker._course.item_count > 1, "bundled course available for preview")
+	for locale: String in ["en", "de"]:
+		TranslationServer.set_locale(locale)
+		group.refresh()
+		picker._course.select(1)
+		picker._workout.select(1)
+		picker._preview()
+		await create_timer(0.5).timeout
+		root.get_texture().get_image().save_png(out.path_join("group-rides-" + locale + ".png"))
+		print("saved group-rides-" + locale)
+		var scroll: ScrollContainer = start.get("_group_page")
+		scroll.scroll_vertical = 100000
+		await create_timer(0.2).timeout
+		root.get_texture().get_image().save_png(out.path_join("group-bottom-" + locale + ".png"))
+		scroll.scroll_vertical = 0
+	# Use bounded presentation fixtures to review crowded and joining states without contacts.
+	group.set_process(false)
+	var audio: GroupVoiceControls = group._voice_controls
+	audio.update_status(
+		{
+			"voice": true,
+			"input_device": "headset",
+			"output_device": "headset",
+			"devices": [{"id": "headset", "name": "USB Headset", "input": true, "output": true}]
+		}
+	)
+	audio._settings.popup_centered(Vector2i(440, 0))
+	await create_timer(0.4).timeout
+	root.get_texture().get_image().save_png(out.path_join("group-audio-de.png"))
+	audio._settings.hide()
+	group._show_status({"phase": "connecting", "reply": "private"})
+	await create_timer(0.4).timeout
+	root.get_texture().get_image().save_png(out.path_join("group-joining-de.png"))
+	group._show_exchange("join")
+	await create_timer(0.4).timeout
+	root.get_texture().get_image().save_png(out.path_join("group-invitation-de.png"))
+	group._exchange.hide()
+	orqwa.group_leave()
+	print("saved group setup and joining views")
+
+
 func _initialize() -> void:
 	_create_main()
 	_run.call_deferred()
@@ -32,38 +93,7 @@ func _run() -> void:
 	var world: RideWorld = _main.get_node("World")
 	var start: StartPage = _main.get_node("StartPage")
 	if OS.get_environment("SCREENSHOT_GROUP_ONLY") == "1":
-		await create_timer(0.5).timeout
-		root.get_texture().get_image().save_png(out_dir.path_join("start-courses.png"))
-		var group: GroupRidesTab = start.get("_group")
-		var tabs: TabContainer = start.get("_tabs")
-		tabs.current_tab = StartPage.Tab.GROUP_RIDES
-		var group_lan: CheckBox = group.get("_lan")
-		var group_stun: CheckBox = group.get("_stun")
-		group_lan.button_pressed = true
-		group_stun.button_pressed = false
-		group.call("_open", "")
-		var group_limit: int = Time.get_ticks_msec() + 10000
-		while (
-			orqwa.group_status().get("phase", "idle") == "connecting"
-			and Time.get_ticks_msec() < group_limit
-		):
-			await process_frame
-		var group_phase: String = orqwa.group_status().get("phase", "idle")
-		_check(group_phase == "waiting", "local lobby opened")
-		for group_locale: String in ["en", "de"]:
-			TranslationServer.set_locale(group_locale)
-			await create_timer(0.5).timeout
-			# The screenshot shows the real host controls with its short-lived code redacted.
-			group.set_process(false)
-			var private_code: LineEdit = group.get("_code")
-			private_code.text = "orqwa:…"
-			await process_frame
-			root.get_texture().get_image().save_png(
-				out_dir.path_join("group-rides-" + group_locale + ".png")
-			)
-			print("saved group-rides-" + group_locale)
-			group.set_process(true)
-		orqwa.group_leave()
+		await _group_screens(start, orqwa, out_dir)
 		quit(0)
 		return
 	_software_render(world)

@@ -108,6 +108,12 @@ pub struct Snapshot {
     pub deafened: bool,
     /// Devices enumerated only after an explicit local request: (id, name, input, output).
     pub devices: Vec<(String, String, bool, bool)>,
+    /// Selected local microphone ID; empty uses the system default.
+    pub input_device: String,
+    /// Selected local playback ID; empty uses the system default.
+    pub output_device: String,
+    /// Local playback gain, retained when devices reconnect.
+    pub voice_volume: f32,
     /// Per-speaker playback mute on this computer.
     pub muted: [bool; MAX_RIDERS],
     /// Bytes stored for the current file, coalesced by the download worker.
@@ -139,6 +145,9 @@ impl Default for Snapshot {
             microphone: false,
             deafened: false,
             devices: Vec::new(),
+            input_device: String::new(),
+            output_device: String::new(),
+            voice_volume: 0.6,
             muted: [false; MAX_RIDERS],
             received: 0,
             total: 0,
@@ -413,7 +422,7 @@ impl App {
     pub fn group_voice_devices(&self) -> Result<(), AppError> {
         self.group_command(Command::Devices)
     }
-    /// Selects native devices for the next voice activation, keeping transmission off.
+    /// Selects native devices, restarting opted-in voice with the microphone muted.
     ///
     /// # Errors
     /// Returns [`AppError`] for excessive device IDs or an unavailable queue.
@@ -421,7 +430,25 @@ impl App {
         if input.len() > 512 || output.len() > 512 {
             return Err(error("The audio device ID is too long."));
         }
-        self.group_command(Command::ChooseDevices(input, output))
+        let controls = &self
+            .group
+            .as_ref()
+            .ok_or_else(|| error("Open a lobby first."))?
+            .voice_controls;
+        let generation = controls
+            .generation
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |g| g.checked_add(1))
+            .map_err(|_| error("Voice activation exhausted."))?
+            + 1;
+        if let Some(port) = controls
+            .port
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+        {
+            port.enable(false);
+        }
+        self.group_command(Command::ChooseDevices(generation, input, output))
     }
     /// Mutes one speaker locally without changing anyone else's audio.
     ///

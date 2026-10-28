@@ -126,6 +126,7 @@ func _ready() -> void:
 	_workouts.ready_to_start.connect(_start_workout)
 	_group.devices_requested.connect(func() -> void: _tabs.current_tab = Tab.DEVICES)
 	_group.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UiTheme.scroll_down_only(_group_page)
 	_group_page.add_child(_group)
 	_profile.profile_changed.connect(_courses.refresh)
 	_tabs.tab_changed.connect(_on_tab_changed)

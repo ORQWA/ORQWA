@@ -33,6 +33,7 @@ does the same.
 | Render screenshots of the start page, a ride, the summary and the analysis (software Vulkan, with 16 weeks of made-up rides) into `screenshots/` | `scripts/screenshots.sh` |
 | Render only the English/German error-details views, without preparing a route | `SCREENSHOT_ERRORS_ONLY=1 scripts/screenshots.sh` |
 | Render only Graphics settings, without preparing a route or kept world | `SCREENSHOT_GRAPHICS_ONLY=1 scripts/screenshots.sh` |
+| Render English/German group setup and activity previews, with local-only hosting and presentation fixtures for join/audio dialogs | `SCREENSHOT_GROUP_ONLY=1 scripts/screenshots.sh` |
 | Render the screenshots in another window size, e.g. the smallest the layouts are made for (R94) | `SCREENSHOT_SIZE=1024x640 scripts/screenshots.sh` |
 | Render the standard views of the 3D world (before and after a visual change) into `screenshots/views/` | `scripts/render-views.sh` |
 | Count what a course's world draws at chosen places (draw calls, primitives), with each kind of geometry, effect or panel taken away in turn; frame times need a Mac ([Measuring frame rate](#measuring-frame-rate)) | `scripts/perf/software.sh` |

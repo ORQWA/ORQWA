@@ -29,7 +29,7 @@ pub(super) enum Command {
     Voice(u64, bool, bool, bool, f32),
     Volume(f32),
     Devices,
-    ChooseDevices(String, String),
+    ChooseDevices(u64, String, String),
     Mute(RiderId, bool),
 }
 pub(super) enum Session {
@@ -60,9 +60,10 @@ enum Prepared {
     Host(SharedActivity),
     Join(Option<PathBuf>, Option<PathBuf>),
 }
-enum Audio {
-    Chat(u64, VoiceChat),
-    Devices(Vec<(String, String, bool, bool)>),
+struct Audio {
+    generation: u64,
+    chat: VoiceChat,
+    deaf: bool,
 }
 
 pub(super) struct Request {
@@ -88,6 +89,7 @@ pub(super) async fn run(
 ) {
     let mut snapshot = Snapshot {
         phase: Phase::Connecting,
+        host: request.invite.is_none(),
         ..Snapshot::default()
     };
     updates.send_replace(snapshot.clone());
@@ -149,8 +151,8 @@ async fn run_inner(
         .clone_from(&port);
     let mut voice: Option<VoiceChat> = None;
     let mut device_options = DeviceOptions::default();
-    let mut voice_volume = 0.6;
     let mut audio = JoinSet::new();
+    let mut scans = JoinSet::new();
     let mut jobs = JoinSet::new();
     let mut next_revision = 0u64;
     let (progress, mut latest_progress) = watch::channel(content::Progress {
@@ -199,19 +201,31 @@ async fn run_inner(
                     }
                     Command::Failure(error) => {snapshot.error = error; snapshot.prepared = false; snapshot.phase = Phase::Waiting; Ok(())}
                     Command::Devices => {
-                        if audio.is_empty() {audio.spawn(async {tokio::task::spawn_blocking(||orqwa_voice::device::devices().map(|devices|Audio::Devices(devices.into_iter().take(32).map(|d|(d.id,d.name,d.input,d.output)).collect())).map_err(|e|e.to_string())).await.map_err(|e|e.to_string())?});} Ok(())
+                        if scans.is_empty() {scans.spawn(async {tokio::task::spawn_blocking(||orqwa_voice::device::devices().map(|devices|devices.into_iter().take(32).map(|d|(d.id,d.name,d.input,d.output)).collect::<Vec<_>>()).map_err(|e|e.to_string())).await.map_err(|e|e.to_string())?});} Ok(())
                     }
-                    Command::ChooseDevices(input,output) => {
-                        if !snapshot.voice && audio.is_empty() {device_options=DeviceOptions {input:(!input.is_empty()).then_some(input),output:(!output.is_empty()).then_some(output)};} Ok(())
+                    Command::ChooseDevices(generation,input,output) => {
+                        if generation!=request.voice_controls.generation.load(Ordering::Acquire){continue;}
+                        let restart = snapshot.voice || snapshot.voice_pending;
+                        audio.abort_all(); while audio.join_next().await.is_some() {}
+                        let _gate=request.voice_controls.port.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                        if generation!=request.voice_controls.generation.load(Ordering::Acquire){continue;}
+                        voice=None;snapshot.voice=false;snapshot.voice_pending=false;snapshot.microphone=false;
+                        snapshot.input_device.clone_from(&input);snapshot.output_device.clone_from(&output);
+                        device_options=DeviceOptions {input:(!input.is_empty()).then_some(input),output:(!output.is_empty()).then_some(output)};
+                        if restart && let Some(port)=&port {
+                            snapshot.voice_pending=true;
+                            let port=port.clone();let options=device_options.clone();let deaf=snapshot.deafened;
+                            audio.spawn(async move {VoiceChat::open(port,options).await.map(|chat|Audio {generation,chat,deaf}).map_err(|e|e.to_string())});
+                        } Ok(())
                     }
                     Command::Mute(id,muted) => {if let Some(chat)=&voice {chat.mute_peer(id,muted);snapshot.muted[usize::from(id.value())]=muted;} Ok(())}
-                    Command::Volume(volume)=>{voice_volume=volume;if let Some(chat)=&voice {let _=chat.volume(volume);}Ok(())}
+                    Command::Volume(volume)=>{snapshot.voice_volume=volume;if let Some(chat)=&voice {let _=chat.volume(volume);}Ok(())}
                     Command::Voice(generation,on,mic,deaf,volume) => {
                         // Serialize generation checking and transmission changes with the UI's
                         // immediate mute gate; an older queued unmute cannot reopen it later.
                         let _gate=request.voice_controls.port.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
                         if generation!=request.voice_controls.generation.load(Ordering::Acquire){continue;}
-                        voice_volume=volume;
+                        snapshot.voice_volume=volume;
                         if !on {audio.abort_all(); voice = None; snapshot.voice = false; snapshot.voice_pending=false; snapshot.microphone = false; snapshot.deafened = false;}
                         else if let Some(chat) = &voice {
                             let configured = (|| {chat.deafen(deaf); chat.volume(volume).map_err(|e|e.to_string())?;
@@ -220,7 +234,7 @@ async fn run_inner(
                             snapshot.microphone = chat.microphone_enabled(); snapshot.deafened = deaf;
                         } else if audio.is_empty() && let Some(port) = &port {
                             snapshot.voice_pending=true;
-                            let port = port.clone();let options=device_options.clone(); audio.spawn(async move {VoiceChat::open(port,options).await.map(|chat|Audio::Chat(generation,chat)).map_err(|e|e.to_string())});
+                            let port = port.clone();let options=device_options.clone(); audio.spawn(async move {VoiceChat::open(port,options).await.map(|chat|Audio {generation,chat,deaf}).map_err(|e|e.to_string())});
                         } Ok(())
                     }
                 };
@@ -262,10 +276,18 @@ async fn run_inner(
                 }
             },
             result = audio.join_next(), if !audio.is_empty() => match result {
-                Some(Ok(Ok(Audio::Chat(generation,chat)))) if generation==request.voice_controls.generation.load(Ordering::Acquire) => {let _=chat.volume(voice_volume);voice = Some(chat); snapshot.voice = true;snapshot.voice_pending=false; snapshot.microphone = false; snapshot.deafened = false;snapshot.muted.fill(false);}
-                Some(Ok(Ok(Audio::Devices(devices)))) => snapshot.devices=devices,
+                Some(Ok(Ok(Audio {generation,chat,deaf}))) if generation==request.voice_controls.generation.load(Ordering::Acquire) => {
+                    let _=chat.volume(snapshot.voice_volume);chat.deafen(deaf);
+                    for (index,muted) in snapshot.muted.iter().enumerate() {if *muted && let Ok(id)=u8::try_from(index) && let Ok(id)=RiderId::new(id) {chat.mute_peer(id,true);}}
+                    voice = Some(chat); snapshot.voice = true;snapshot.voice_pending=false; snapshot.microphone = false; snapshot.deafened = deaf;
+                }
                 Some(Ok(Err(error))) => {snapshot.voice_pending=false;snapshot.error = error;},
                 _ => snapshot.voice_pending=false,
+            },
+            result = scans.join_next(), if !scans.is_empty() => match result {
+                Some(Ok(Ok(devices))) => snapshot.devices=devices,
+                Some(Ok(Err(error))) => snapshot.error=error,
+                _ => {},
             },
             _ = ticker.tick() => {
                 if let Some(start) = snapshot.start && std::time::Instant::now()>=start {

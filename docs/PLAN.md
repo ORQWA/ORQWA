@@ -841,7 +841,7 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   - [x] synced course videos on Android 16: **Allow videos** asks for Photos and videos (R149)
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
 
-### Phase 13 — Group rides (R159–R168, [ADR 0035](adr/0035-group-rides.md))
+### Phase 13 — Group rides (R159–R169, [ADR 0035](adr/0035-group-rides.md))
 
 Application-owned replacements for the unmerged #241/#243/#246/#247 stack, based on current
 main. Each step has its own PR and preserves the security limits in ADR 0035.
@@ -873,6 +873,8 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
 - [x] Group rides tab and in-ride panel: translated private-code admission, activity selection,
   automatic retained downloads, byte progress/retry, local preparation, trainer readiness,
   common countdown, rider gaps, opt-in voice/device selection/local mute, usage guides and screenshots
+- [x] Guided create/join flow with native page cards, course map/elevation and workout power/duration
+  previews before sharing; trainer guidance and voice device changes with automatic muted reconnection
 - [ ] QR sharing using existing support
 - [ ] Drafting and Keep together (R166): independent shared toggles, both on by default,
   individually calculated assistance, simulation/ERG behavior and assisted-record eligibility

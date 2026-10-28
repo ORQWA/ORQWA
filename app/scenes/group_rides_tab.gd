@@ -1,354 +1,503 @@
 class_name GroupRidesTab
 extends VBoxContainer
-## Private group lobby controls; the Rust core owns admission, downloads and readiness.
+## Rider-facing setup; membership, transfers and readiness belong to the Rust core.
 
 signal devices_requested
 
 var compact: bool = false
 var _orqwa: OrqwaApp
-var _setup: VBoxContainer = VBoxContainer.new()
-var _lobby: VBoxContainer = VBoxContainer.new()
-var _admin: VBoxContainer = VBoxContainer.new()
+var _setup: BoxContainer = BoxContainer.new()
+var _body: BoxContainer = BoxContainer.new()
+var _sidebar: VBoxContainer = VBoxContainer.new()
+var _activity_panel: PanelContainer = PanelContainer.new()
+var _picker: GroupActivityPicker = GroupActivityPicker.new()
 var _stage: Label = Label.new()
-var _activity: Label = Label.new()
-var _error: Label = Label.new()
-var _paste: LineEdit = LineEdit.new()
-var _reply: LineEdit = LineEdit.new()
-var _lan: CheckBox = CheckBox.new()
-var _stun: CheckBox = CheckBox.new()
-var _course: OptionButton = OptionButton.new()
-var _workout: OptionButton = OptionButton.new()
-var _code: LineEdit = LineEdit.new()
-var _codes: VBoxContainer = VBoxContainer.new()
+var _connecting: VBoxContainer = VBoxContainer.new()
+var _request: Button
+var _invite: VBoxContainer = VBoxContainer.new()
+var _notice: Label = Label.new()
 var _roster: VBoxContainer = VBoxContainer.new()
+var _next: Label = Label.new()
 var _ready_button: Button = Button.new()
 var _start: Button = Button.new()
-var _retry: Button = Button.new()
-var _listen: CheckBox = CheckBox.new()
-var _mic: CheckBox = CheckBox.new()
-var _deafen: CheckBox = CheckBox.new()
-var _volume: HSlider = HSlider.new()
-var _inputs: OptionButton = OptionButton.new()
-var _outputs: OptionButton = OptionButton.new()
-var _device_key: String = ""
+var _devices: Button
+var _retry: Button
+var _voice_controls: GroupVoiceControls = GroupVoiceControls.new()
+var _voice_panel: VBoxContainer = VBoxContainer.new()
 var _progress: ProgressBar = ProgressBar.new()
 var _bytes: Label = Label.new()
+var _error: HBoxContainer = HBoxContainer.new()
+var _details: AcceptDialog = AcceptDialog.new()
+var _connection: AcceptDialog = AcceptDialog.new()
+var _lan: CheckBox = CheckBox.new()
+var _stun: CheckBox = CheckBox.new()
+var _exchange: ConfirmationDialog = ConfirmationDialog.new()
+var _paste: LineEdit = LineEdit.new()
+var _exchange_help: Label = Label.new()
+var _exchange_error: Label = Label.new()
+var _exchange_kind: String = "join"
 var _status: Dictionary = {}
 var _roster_key: String = ""
+var _activity_key: String = ""
 var _elapsed: float = 0.0
 
 
 func bind(orqwa: OrqwaApp) -> void:
 	_orqwa = orqwa
+	_picker.bind(orqwa)
+	_voice_controls.bind(orqwa)
 	if is_node_ready():
 		refresh()
 
 
 func _ready() -> void:
-	add_theme_constant_override("separation", 12)
-	var title: Label = Label.new()
-	title.text = tr("Group rides")
-	add_child(title)
-	_stage.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(_stage)
-	add_child(_setup)
-	_lan.text = tr("Allow local network peers")
-	_setup.add_child(_lan)
-	_stun.text = tr("Use public address discovery (STUN)")
-	_stun.button_pressed = true
-	_setup.add_child(_stun)
-	_paste.placeholder_text = tr("Paste an invite code to join")
-	_paste.max_length = 2048
-	_setup.add_child(_paste)
-	var actions: HFlowContainer = HFlowContainer.new()
-	_button(actions, tr("Create lobby"), func() -> void: _open(""))
-	_button(actions, tr("Join lobby"), _join)
-	_setup.add_child(actions)
-	var privacy: Label = Label.new()
-	privacy.text = tr(
-		"Exchange codes privately. Codes reveal connection addresses; replies contain admission secrets."
-	)
-	privacy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_setup.add_child(privacy)
-	add_child(_lobby)
-	_lobby.add_child(_codes)
-	_code.editable = false
-	_code.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	_codes.add_child(_code)
-	_button(
-		_codes, tr("Copy private code"), func() -> void: DisplayServer.clipboard_set(_code.text)
-	)
-	_reply.placeholder_text = tr("Host: paste a joiner's reply code")
-	_reply.max_length = 2048
-	_admin.add_child(_reply)
-	_button(_admin, tr("Admit rider"), _admit)
-	_course.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_workout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for picker: OptionButton in [_course, _workout, _inputs, _outputs]:
-		picker.clip_text = true
-		picker.fit_to_longest_item = false
-		picker.custom_minimum_size.x = 240
-	_admin.add_child(_course)
-	_admin.add_child(_workout)
-	_button(_admin, tr("Select activity"), _select)
-	_lobby.add_child(_admin)
-	_activity.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_activity.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	_lobby.add_child(_activity)
-	_lobby.add_child(_progress)
-	_lobby.add_child(_bytes)
-	_lobby.add_child(_roster)
-	var ride_actions: HFlowContainer = HFlowContainer.new()
-	_ready_button.text = tr("Ready")
-	_ready_button.toggle_mode = true
-	_ready_button.toggled.connect(func(on: bool) -> void: _orqwa.group_ready(on))
-	ride_actions.add_child(_ready_button)
-	_start.text = tr("Start group ride")
-	_start.pressed.connect(func() -> void: _orqwa.group_start())
-	ride_actions.add_child(_start)
-	_retry.text = tr("Retry download")
-	_retry.pressed.connect(func() -> void: _orqwa.group_retry())
-	ride_actions.add_child(_retry)
+	add_theme_constant_override("separation", 18)
 	if not compact:
-		_button(ride_actions, tr("Devices"), func() -> void: devices_requested.emit())
-	_button(ride_actions, tr("Leave group"), func() -> void: _orqwa.group_leave())
-	_lobby.add_child(ride_actions)
-	var audio: HFlowContainer = HFlowContainer.new()
-	_listen.text = tr("Voice chat (headphones)")
-	_mic.text = tr("Microphone")
-	_deafen.text = tr("Deafen")
-	for control: CheckBox in [_listen, _mic, _deafen]:
-		audio.add_child(control)
-	_listen.toggled.connect(_on_voice_listen)
-	_mic.toggled.connect(func(_on: bool) -> void: _voice())
-	_deafen.toggled.connect(_on_voice_listen)
-	_volume.min_value = 0
-	_volume.max_value = 100
-	_volume.step = 5
-	_volume.value = 60
-	_volume.custom_minimum_size.x = 120
-	_volume.tooltip_text = tr("Voice volume")
-	_volume.value_changed.connect(
-		func(value: float) -> void: _orqwa.group_voice_volume(value / 100.0)
+		_label(self, tr("Ride with friends"), 26)
+	_stage.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_stage.add_theme_color_override("font_color", UiTheme.MUTED)
+	add_child(_stage)
+	_build_setup()
+	_build_connecting()
+	_body.add_theme_constant_override("separation", 24)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(_body)
+	_activity_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_activity_panel.size_flags_stretch_ratio = 1.6
+	_activity_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_activity_panel.add_child(_picker)
+	_picker.chosen.connect(_select_activity)
+	_body.add_child(_activity_panel)
+	_sidebar.add_theme_constant_override("separation", 16)
+	_sidebar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sidebar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_body.add_child(_sidebar)
+	_build_invitation()
+	_build_roster()
+	var audio: VBoxContainer = _card(_sidebar)
+	var voice: Button = _button(
+		audio, tr("Voice chat"), func() -> void: _voice_panel.visible = not _voice_panel.visible
 	)
-	audio.add_child(_volume)
-	_lobby.add_child(audio)
-	var devices: HFlowContainer = HFlowContainer.new()
-	_button(devices, tr("Refresh audio devices"), func() -> void: _orqwa.group_voice_devices())
-	_inputs.add_item(tr("Default microphone"))
-	_inputs.set_item_metadata(0, "")
-	_outputs.add_item(tr("Default speakers"))
-	_outputs.set_item_metadata(0, "")
-	_inputs.item_selected.connect(func(_index: int) -> void: _choose_devices())
-	_outputs.item_selected.connect(func(_index: int) -> void: _choose_devices())
-	devices.add_child(_inputs)
-	devices.add_child(_outputs)
-	_lobby.add_child(devices)
-	_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_error.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	voice.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	voice.icon = UiIcons.texture("down")
+	_voice_panel.add_child(_voice_controls)
+	_voice_panel.hide()
+	audio.add_child(_voice_panel)
+	_button(_sidebar, tr("Leave group"), func() -> void: _orqwa.group_leave())
+	_build_dialogs()
+	_error.add_theme_constant_override("separation", 12)
+	var error_label: Label = _label(
+		_error, tr("Something went wrong. Try again or check the details.")
+	)
+	error_label.add_theme_color_override("font_color", UiTheme.DANGER)
+	_button(_error, tr("Details…"), func() -> void: _details.popup_centered(Vector2i(580, 0)))
 	add_child(_error)
+	resized.connect(_reflow)
 	visibility_changed.connect(refresh)
+	_reflow()
 	refresh()
 
 
-func _button(parent: Node, text: String, action: Callable) -> void:
+func _build_setup() -> void:
+	_setup.add_theme_constant_override("separation", 24)
+	add_child(_setup)
+	var host: VBoxContainer = _card(_setup)
+	_label(host, tr("Start a group ride"), 22)
+	_muted(host, tr("Choose the ride and invite your friends. You decide when everyone starts."))
+	var create: Button = _button(host, tr("Create a ride"), func() -> void: _open(""))
+	create.custom_minimum_size.y = 48
+	create.add_theme_stylebox_override("normal", UiTheme.accent_button())
+	var join: VBoxContainer = _card(_setup)
+	_label(join, tr("Joining friends?"), 22)
+	_muted(join, tr("Ask the organizer for an invitation, then paste it here to join their ride."))
+	var join_button: Button = _button(
+		join, tr("Join a ride…"), func() -> void: _show_exchange("join")
+	)
+	join_button.custom_minimum_size.y = 48
+	var connection_button: Button = _button(
+		self,
+		tr("Connection settings…"),
+		func() -> void: _connection.popup_centered(Vector2i(520, 0))
+	)
+	connection_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_setup.visibility_changed.connect(func() -> void: connection_button.visible = _setup.visible)
+
+
+func _build_connecting() -> void:
+	add_child(_connecting)
+	var card: VBoxContainer = _card(_connecting)
+	_label(card, tr("Send your join request"), 22)
+	_muted(
+		card, tr("Copy your request and send it privately to the organizer. They'll let you in.")
+	)
+	_request = _button(card, tr("Copy join request"), _copy_request)
+	_request.add_theme_stylebox_override("normal", UiTheme.accent_button())
+	_muted(
+		card,
+		tr(
+			"Keep this page open. Requests expire after one minute; if needed, ask for a fresh invitation."
+		)
+	)
+	_button(card, tr("Cancel joining"), func() -> void: _orqwa.group_leave())
+
+
+func _build_invitation() -> void:
+	var card: VBoxContainer = _card(_sidebar)
+	card.add_child(_invite)
+	_invite.add_theme_constant_override("separation", 10)
+	_label(_invite, tr("Invite friends"), 20)
+	_muted(
+		_invite, tr("1. Send your invitation privately.\n2. Add each friend's join request here.")
+	)
+	var actions: HFlowContainer = HFlowContainer.new()
+	_button(actions, tr("Copy invitation"), _copy_invite)
+	_button(actions, tr("Add a friend…"), func() -> void: _show_exchange("admit"))
+	_invite.add_child(actions)
+	_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_notice.add_theme_color_override("font_color", UiTheme.SUCCESS)
+	_invite.add_child(_notice)
+	_invite.visibility_changed.connect(func() -> void: card.visible = _invite.visible)
+
+
+func _build_roster() -> void:
+	var card: VBoxContainer = _card(_sidebar)
+	_label(card, tr("Your group"), 20)
+	_roster.add_theme_constant_override("separation", 12)
+	card.add_child(_roster)
+	card.add_child(HSeparator.new())
+	_next.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_next.add_theme_color_override("font_color", UiTheme.MUTED)
+	card.add_child(_next)
+	_progress.show_percentage = false
+	_progress.custom_minimum_size.y = 6
+	card.add_child(_progress)
+	_bytes.add_theme_color_override("font_color", UiTheme.MUTED)
+	card.add_child(_bytes)
+	_ready_button.text = tr("I'm ready")
+	_ready_button.toggle_mode = true
+	_ready_button.custom_minimum_size.y = 44
+	_ready_button.toggled.connect(func(on: bool) -> void: _orqwa.group_ready(on))
+	card.add_child(_ready_button)
+	_start.text = tr("Start group ride")
+	_start.custom_minimum_size.y = 52
+	_start.add_theme_font_size_override("font_size", 20)
+	_start.add_theme_stylebox_override("normal", UiTheme.accent_button())
+	_start.pressed.connect(func() -> void: _orqwa.group_start())
+	card.add_child(_start)
+	_devices = _button(card, tr("Connect your trainer…"), func() -> void: devices_requested.emit())
+	_retry = _button(card, tr("Retry download"), func() -> void: _orqwa.group_retry())
+
+
+func _build_dialogs() -> void:
+	for dialog: AcceptDialog in [_exchange, _connection, _details]:
+		dialog.theme = UiTheme.build()
+		add_child(dialog)
+	_exchange.dialog_hide_on_ok = false
+	var fields: VBoxContainer = VBoxContainer.new()
+	fields.add_theme_constant_override("separation", 14)
+	_exchange_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_exchange_help.custom_minimum_size.x = 480
+	fields.add_child(_exchange_help)
+	_paste.max_length = 2048
+	_paste.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_paste.text_changed.connect(
+		func(value: String) -> void:
+			_exchange.get_ok_button().disabled = value.strip_edges().is_empty()
+	)
+	_paste.text_submitted.connect(func(_value: String) -> void: _submit_exchange())
+	fields.add_child(_paste)
+	_exchange_error.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_exchange_error.custom_minimum_size.x = 480
+	_exchange_error.add_theme_color_override("font_color", UiTheme.DANGER)
+	fields.add_child(_exchange_error)
+	_exchange.add_child(fields)
+	_exchange.confirmed.connect(_submit_exchange)
+	_connection.title = tr("Connection settings")
+	var network: VBoxContainer = VBoxContainer.new()
+	network.add_theme_constant_override("separation", 14)
+	_muted(
+		network,
+		tr("The defaults work for friends on different home networks. Change these only if needed.")
+	)
+	_lan.text = tr("Allow friends on my local network")
+	_stun.text = tr("Find my internet address automatically")
+	_stun.button_pressed = true
+	network.add_child(_lan)
+	network.add_child(_stun)
+	_muted(network, tr("Automatic discovery contacts public STUN services."))
+	_muted(network, tr("On the same home network, both riders must allow local connections."))
+	for child: Node in network.get_children():
+		if child is Label:
+			(child as Label).custom_minimum_size.x = 460
+	_connection.add_child(network)
+	_details.title = tr("Group ride details")
+	_details.dialog_autowrap = true
+
+
+func _reflow() -> void:
+	_setup.vertical = size.x < 760
+	_body.vertical = size.x < 760 or compact
+
+
+func _card(parent: Node) -> VBoxContainer:
+	var panel: PanelContainer = PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var content: VBoxContainer = VBoxContainer.new()
+	content.add_theme_constant_override("separation", 14)
+	panel.add_child(content)
+	parent.add_child(panel)
+	return content
+
+
+func _label(parent: Node, text: String, font_size: int = 15) -> Label:
+	var label: Label = Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", font_size)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(label)
+	return label
+
+
+func _muted(parent: Node, text: String) -> void:
+	_label(parent, text).add_theme_color_override("font_color", UiTheme.MUTED)
+
+
+func _button(parent: Node, text: String, action: Callable) -> Button:
 	var button: Button = Button.new()
 	button.text = text
 	button.pressed.connect(action)
 	parent.add_child(button)
+	return button
 
 
 func refresh() -> void:
 	if _orqwa == null or not is_node_ready():
 		return
-	_course.clear()
-	_course.add_item(tr("No course — workout only"))
-	_course.set_item_metadata(0, "")
-	for course: Dictionary in _orqwa.courses():
-		if course.get("video", false):
-			continue
-		var course_name: String = course["name"]
-		_course.add_item(course_name)
-		_course.set_item_metadata(_course.item_count - 1, course["path"])
-	_workout.clear()
-	_workout.add_item(tr("No workout — course ride"))
-	_workout.set_item_metadata(0, "")
-	for workout: Dictionary in _orqwa.workouts():
-		var workout_name: String = workout["name"]
-		_workout.add_item(workout_name)
-		_workout.set_item_metadata(_workout.item_count - 1, workout["id"])
+	_picker.refresh()
+	_activity_key = ""
 	_update()
 
 
 func _process(delta: float) -> void:
 	_elapsed += delta
-	if _elapsed >= 0.2 and visible and _orqwa != null:
+	if _elapsed >= 0.2 and is_visible_in_tree() and _orqwa != null:
 		_elapsed = 0.0
 		_update()
 
 
 func _update() -> void:
-	_status = _orqwa.group_status()
+	_show_status(_orqwa.group_status())
+
+
+func _show_status(status: Dictionary) -> void:
+	_status = status
 	var phase: String = _status.get("phase", "idle")
-	var countdown: float = _status.get("countdown_s", 0.0)
-	var received: float = _status.get("received", 0)
-	var total: float = _status.get("total", 0)
+	var host: bool = _status.get("host", false)
+	var prepared: bool = _status.get("prepared", false)
 	var ready: bool = _status.get("ready", false)
-	var voice: bool = _status.get("voice", false)
-	var microphone: bool = _status.get("microphone", false)
-	var deafened: bool = _status.get("deafened", false)
+	var name: String = _status.get("name", "")
+	var countdown: float = _status.get("countdown_s", 0.0)
 	var details: String = _status.get("error", "")
+	var underway: bool = phase in ["countdown", "riding", "ended"]
 	var captions: Dictionary = {
-		"idle": tr("Create a lobby or join friends with a private code."),
-		"connecting": tr("Connecting — send your reply to the host within one minute."),
-		"waiting": tr("Waiting for the host to select an activity."),
-		"downloading": tr("Downloading or checking the selected activity…"),
-		"preparing": tr("Preparing the course on this computer…"),
-		"ready": tr("Activity prepared. Connect your trainer, then mark yourself ready."),
+		"idle": tr("Choose who starts the ride. You'll be riding together in a few steps."),
+		"connecting": tr("Creating your ride…") if host else tr("Connecting to your friends…"),
+		"waiting":
+		(
+			tr("Invite your friends, then choose what to ride.")
+			if host
+			else tr("You're in! The organizer is choosing your ride.")
+		),
+		"downloading": tr("Getting your activity from the organizer…"),
+		"preparing": tr("Preparing your ride…"),
+		"ready": tr("Your ride is ready. Let's get everyone to the start."),
 		"countdown": tr("Starting in %s seconds…") % ceili(countdown),
 		"riding": tr("Group ride in progress"),
 		"ended": tr("Group connection ended. Your local ride continues."),
-		"failed": tr("Could not connect. Leave the lobby and exchange fresh codes to retry."),
+		"failed": tr("Could not connect. Leave the group and ask for a fresh invitation."),
 	}
 	_stage.text = captions.get(phase, "")
-	if phase == "waiting" and _status.get("host", false):
-		_stage.text = tr("Choose a course or workout to share with the group.")
 	_setup.visible = phase == "idle" and not compact
-	_lobby.visible = phase != "idle"
-	var code: String = _status.get("invite", "")
-	if code.is_empty():
-		code = _status.get("reply", "")
-	_codes.visible = not code.is_empty() and not compact
-	_code.text = code
-	_admin.visible = (
-		_status.get("host", false) and not compact and phase not in ["countdown", "riding", "ended"]
+	_connecting.visible = phase == "connecting" and not host and not compact
+	var reply: String = _status.get("reply", "")
+	_request.disabled = reply.is_empty()
+	_body.visible = phase != "idle" and not _connecting.visible
+	_invite.visible = host and not underway and not compact
+	_notice.visible = not _notice.text.is_empty()
+	var invite: String = _status.get("invite", "")
+	for action: Node in _invite.find_children("*", "Button", true, false):
+		(action as Button).disabled = invite.is_empty()
+	_activity_panel.visible = not compact and (host or (not name.is_empty() and prepared))
+	var course_path: String = _status.get("course_path", "")
+	var workout_id: String = _status.get("workout_id", "")
+	var activity_key: String = (
+		course_path + workout_id + str(host) + str(underway) + TranslationServer.get_locale()
 	)
-	_activity.text = _status.get("name", "")
-	_progress.visible = phase == "downloading" and _status.get("total", 0) > 0
+	if activity_key != _activity_key:
+		_activity_key = activity_key
+		_picker.refresh()
+		_picker.show_selection(host and not underway, course_path, workout_id)
+	var received: float = _status.get("received", 0)
+	var total: float = _status.get("total", 0)
+	_progress.visible = phase == "downloading" and total > 0
 	_bytes.visible = _progress.visible
-	_progress.max_value = maxf(1.0, total)
-	_progress.value = _status.get("received", 0)
-	_bytes.text = (tr("Current file: %.1f / %.1f MiB") % [received / 1048576.0, total / 1048576.0])
-	_ready_button.disabled = (
-		not _status.get("prepared", false) or phase in ["countdown", "riding", "ended"]
+	_progress.max_value = maxf(1, total)
+	_progress.value = received
+	_bytes.text = tr("%.1f / %.1f MiB") % [received / 1048576, total / 1048576]
+	var trainer: bool = _orqwa.trainer_connected()
+	_next.text = (
+		tr("Choose an activity to get started.")
+		if host
+		else tr("Waiting for the organizer to choose an activity.")
 	)
+	if not name.is_empty():
+		_next.text = tr("Getting your ride ready…")
+	if prepared:
+		_next.text = (
+			tr("Connect your trainer, then tell the group you're ready.")
+			if not trainer
+			else tr("All set? Let your friends know you're ready.")
+		)
+	if ready:
+		_next.text = (
+			tr("You're ready. Waiting for the rest of the group.")
+			if host
+			else tr("You're ready. The organizer will start the ride.")
+		)
+	if _status.get("can_start", false):
+		_next.text = tr("Everyone is ready. Start when you like!")
+	if underway:
+		_next.text = _stage.text
+	_ready_button.visible = not underway
+	_ready_button.disabled = not prepared or (not trainer and not ready)
 	_ready_button.set_pressed_no_signal(ready)
-	_start.visible = _status.get("host", false) and not compact
+	_ready_button.text = tr("Ready ✓ · click to undo") if ready else tr("I'm ready")
+	_start.visible = host and not underway and not compact
 	_start.disabled = not _status.get("can_start", false)
-	_retry.visible = (
-		not _status.get("host", false) and not details.is_empty() and phase == "waiting"
-	)
-	var voice_pending: bool = _status.get("voice_pending", false)
-	_listen.set_pressed_no_signal(voice or voice_pending)
-	_mic.disabled = not _status.get("voice", false)
-	_deafen.disabled = _mic.disabled
-	_mic.set_pressed_no_signal(microphone)
-	_deafen.set_pressed_no_signal(deafened)
-	_inputs.disabled = _status.get("voice", false)
-	_outputs.disabled = _inputs.disabled
-	var device_key: String = str(_status.get("devices", []))
-	if device_key != _device_key:
-		_device_key = device_key
-		_inputs.clear()
-		_outputs.clear()
-		_inputs.add_item(tr("Default microphone"))
-		_inputs.set_item_metadata(0, "")
-		_outputs.add_item(tr("Default speakers"))
-		_outputs.set_item_metadata(0, "")
-		for device: Dictionary in _status.get("devices", []):
-			var device_name: String = device["name"]
-			if device["input"]:
-				_inputs.add_item(device_name)
-				_inputs.set_item_metadata(_inputs.item_count - 1, device["id"])
-			if device["output"]:
-				_outputs.add_item(device_name)
-				_outputs.set_item_metadata(_outputs.item_count - 1, device["id"])
-	_error.text = "" if details.is_empty() else tr("Group ride action failed:") + "\n" + details
+	_devices.visible = not compact and not underway and not trainer
+	_retry.visible = not host and not details.is_empty() and phase == "waiting"
+	_error.visible = not details.is_empty()
+	_details.dialog_text = details
+	_voice_controls.update_status(_status)
 	var key: String = (
 		str(_status.get("roster", []))
 		+ str(_status.get("voice", false))
+		+ phase
 		+ TranslationServer.get_locale()
 	)
 	if key != _roster_key:
 		_roster_key = key
-		for child: Node in _roster.get_children():
-			_roster.remove_child(child)
-			child.queue_free()
-		for rider: Dictionary in _status.get("roster", []):
-			var row: HBoxContainer = HBoxContainer.new()
-			var label: Label = Label.new()
-			label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-			label.text = (
-				rider["name"] + " · " + (tr("Ready") if rider["ready"] else tr("Not ready"))
+		_show_roster(phase, host)
+
+
+func _show_roster(phase: String, host: bool) -> void:
+	for child: Node in _roster.get_children():
+		_roster.remove_child(child)
+		child.queue_free()
+	for rider: Dictionary in _status.get("roster", []):
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var rider_name: String = rider["name"]
+		row.add_child(UiTheme.initial(rider_name, 36))
+		var text: VBoxContainer = VBoxContainer.new()
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var label: Label = _label(text, rider_name, 17)
+		label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		var state: Label = _label(text, tr("Ready") if rider["ready"] else tr("Getting ready"), 13)
+		state.add_theme_color_override(
+			"font_color", UiTheme.SUCCESS if rider["ready"] else UiTheme.MUTED
+		)
+		if rider["me"]:
+			state.text += " · " + tr("You")
+		if phase == "riding" and rider.get("present", false):
+			var imperial: bool = _orqwa.profile().get("units", "metric") == "imperial"
+			var gap: float = rider["gap_m"]
+			state.text = (
+				tr("%s ft") % roundi(gap / HudPanel.METERS_PER_FOOT)
+				if imperial
+				else tr("%s m") % roundi(gap)
 			)
-			if phase == "riding" and rider.get("present", false):
-				var imperial: bool = _orqwa.profile().get("units", "metric") == "imperial"
-				var gap: float = rider["gap_m"]
-				label.text = (
-					rider["name"]
-					+ " · "
-					+ (
-						tr("%s ft") % roundi(gap / HudPanel.METERS_PER_FOOT)
-						if imperial
-						else tr("%s m") % roundi(gap)
-					)
-				)
-			row.add_child(label)
-			if not rider["me"]:
-				var speaker: int = rider["id"]
-				var mute: CheckBox = CheckBox.new()
-				mute.text = tr("Mute locally")
-				mute.disabled = not _status.get("voice", false)
-				var muted: bool = rider.get("muted", false)
-				mute.set_pressed_no_signal(muted)
-				mute.toggled.connect(func(on: bool) -> void: _orqwa.group_voice_mute(speaker, on))
-				row.add_child(mute)
-			if (
-				_status.get("host", false)
-				and not rider["me"]
-				and phase not in ["countdown", "riding"]
-			):
-				var id: int = rider["id"]
-				_button(row, tr("Remove"), func() -> void: _orqwa.group_remove(id))
-			_roster.add_child(row)
+		row.add_child(text)
+		if not rider["me"] and _status.get("voice", false):
+			var speaker: int = rider["id"]
+			var mute: Button = Button.new()
+			mute.text = tr("Mute")
+			mute.tooltip_text = tr("Mute this rider for me")
+			mute.toggle_mode = true
+			var muted: bool = rider.get("muted", false)
+			mute.set_pressed_no_signal(muted)
+			mute.toggled.connect(func(on: bool) -> void: _orqwa.group_voice_mute(speaker, on))
+			row.add_child(mute)
+		if host and not rider["me"] and phase not in ["countdown", "riding", "ended"]:
+			var id: int = rider["id"]
+			var remove: Button = _button(row, "", func() -> void: _orqwa.group_remove(id))
+			remove.icon = UiIcons.texture("cross")
+			remove.tooltip_text = tr("Remove from group")
+		_roster.add_child(row)
+
+
+func _select_activity(course: String, workout: String) -> void:
+	_orqwa.group_select(course, workout)
+	_activity_key = ""
+	_update()
+
+
+func _show_exchange(kind: String) -> void:
+	_exchange_kind = kind
+	_exchange.title = tr("Join a ride") if kind == "join" else tr("Add a friend")
+	_exchange_help.text = (
+		tr("Paste the invitation your organizer sent you.")
+		if kind == "join"
+		else tr("Paste the join request your friend sent back. Only add people you invited.")
+	)
+	_exchange.ok_button_text = tr("Join ride") if kind == "join" else tr("Add friend")
+	_paste.placeholder_text = (
+		tr("Paste invitation here") if kind == "join" else tr("Paste join request here")
+	)
+	_paste.clear()
+	_exchange_error.text = ""
+	_exchange_error.hide()
+	_exchange.get_ok_button().disabled = true
+	_exchange.popup_centered(Vector2i(540, 0))
+	_paste.grab_focus()
+
+
+func _submit_exchange() -> void:
+	var value: String = _paste.text.strip_edges()
+	if value.is_empty():
+		return
+	var accepted: bool = (
+		_orqwa.group_open(value, _lan.button_pressed, _stun.button_pressed)
+		if _exchange_kind == "join"
+		else _orqwa.group_admit(value)
+	)
+	if accepted:
+		_request.text = tr("Copy join request")
+		_exchange.hide()
+		_paste.clear()
+	else:
+		_exchange_error.show()
+		_exchange_error.text = tr(
+			"That didn't work. Paste the entire invitation or request, or ask for a fresh one."
+		)
+	_update()
 
 
 func _open(invite: String) -> void:
+	_notice.text = ""
+	_request.text = tr("Copy join request")
 	_orqwa.group_open(invite, _lan.button_pressed, _stun.button_pressed)
-	_paste.clear()
+	_update()
 
 
-func _join() -> void:
-	if not _paste.text.strip_edges().is_empty():
-		_open(_paste.text.strip_edges())
+func _copy_invite() -> void:
+	var invite: String = _status.get("invite", "")
+	DisplayServer.clipboard_set(invite)
+	_notice.text = tr("Invitation copied. Send it privately to your friends.")
 
 
-func _admit() -> void:
-	_orqwa.group_admit(_reply.text.strip_edges())
-	_reply.clear()
-
-
-func _select() -> void:
-	var course: String = _course.get_selected_metadata()
-	var workout: String = _workout.get_selected_metadata()
-	_orqwa.group_select(course, workout)
-
-
-func _choose_devices() -> void:
-	var input: String = _inputs.get_selected_metadata()
-	var output: String = _outputs.get_selected_metadata()
-	_orqwa.group_voice_choose(input, output)
-
-
-func _voice() -> void:
-	if _mic.button_pressed and OS.has_feature("android"):
-		if not OS.request_permission("android.permission.RECORD_AUDIO"):
-			_mic.set_pressed_no_signal(false)
-	_orqwa.group_voice(
-		_listen.button_pressed, _mic.button_pressed, _deafen.button_pressed, _volume.value / 100.0
-	)
-
-
-func _on_voice_listen(_on: bool) -> void:
-	_mic.set_pressed_no_signal(false)
-	_voice()
+func _copy_request() -> void:
+	var reply: String = _status.get("reply", "")
+	DisplayServer.clipboard_set(reply)
+	_request.text = tr("Copied · send it to the organizer")

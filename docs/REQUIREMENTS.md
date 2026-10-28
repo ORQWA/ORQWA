@@ -306,6 +306,12 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 | R154 | Extends R48 (2026-10-27, #350): 3D ride options offer **Season** beside **Weather** and **Time of day**, before and during a ride. **Summer** is the default, with green foliage and meadows. The choice is remembered on this computer, independent of the calendar, time and weather, and hidden for video-only rides and workouts without a course. Kept courses can change season without rebuilding their worlds. |
 | R158 | Refines R154 (2026-10-27, #350): Summer is predominantly grass, keeping only a stable 10% of the course's existing meadow flower clumps. All other flower positions become full grass tufts, preserving coverage, transforms and the complete kept world for other seasons. |
 
+## Guided group setup
+
+| ID | Requirement |
+|---|---|
+| R169 | Refines R164 and R162 (2026-10-28): group setup uses plain-language create/join actions and guided private invitation exchange. Course choices preview their map, elevation and key figures; workout choices preview power and duration before explicit sharing. Voice microphone and speaker choices remain usable during voice chat; changing devices reconnects opted-in voice with the microphone muted, retaining volume and local rider mutes. Lobby and in-ride controls reflect the same device choices. |
+
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero
