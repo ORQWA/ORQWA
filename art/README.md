@@ -6,6 +6,21 @@ remote's [silent clip](#the-remotes-clip-remote). The scripts are the source; wh
 
 Seasonal presentation reuses these models, including their authored tree LODs; Summer is
 the green baseline. See [seasons](../docs/seasons.md) for the rendering contract and review.
+[Winter materials](../docs/seasons-winter.md) reuse vegetation and rock geometry for
+slope-dependent snow and dormant broadleaf foliage. Disposable road-edge banks derive from
+the kept road mesh, deepen with elevation and leave junctions and structures open; street
+snow and paired tyre grooves share the climate treatment. Natural-ground blankets and
+boulder caps gain depth with altitude too; a derived clearance mask protects ways and paving.
+Greater snow load increases inclined-surface coverage. No additional source texture is needed.
+
+[Spring](../docs/seasons-spring.md) adds blossom to a subset of broadleaf crowns and opens
+the procedural five-petal meadow flowers; placement and Blender exports stay the same.
+
+The [autumn materials](../docs/seasons-autumn.md) share the palette across nearby foliage,
+authored tree LODs and distant crowns; evergreen needles keep their own colours.
+Orange/russet distant collections stand among greener forest areas. Woodland streets gain
+procedural fallen leaves from a retained-map mask, with no new asset or generator change.
+Meadow flower clumps become grass, and flower-box blooms are hidden for Autumn.
 
 ## Running Blender
 
@@ -194,8 +209,12 @@ and colour (`plants.ferns`) and places them in patches under mapped woods within
 road. They share the existing undergrowth budget and use the short small-plant draw distance
 (R104), with the same exclusions as other undergrowth.
 
-`foliage.py` draws the two foliage cards, `leaves_albedo.webp` and `needles_albedo.webp`, in
-grey on transparent ground into `app/assets/textures/` (the app tints them per plant).
+`foliage.py` draws leaf, needle and five-petal blossom cards (`leaves_albedo.webp`,
+`needles_albedo.webp`, `blossoms_albedo.png`) on transparent ground into
+`app/assets/textures/`. The app tints them per plant; Spring's selected broadleaf crowns
+use the blossom atlas, including authored LODs. `--blossoms-only` rebuilds that atlas alone.
+The small blossom alpha mask stays lossless PNG because the emulated Blender WebP encoder
+introduced line artifacts; Godot still imports it into the same mipmapped VRAM format.
 
 ```sh
 scripts/art.sh blender --background --factory-startup --python art/vegetation/foliage.py

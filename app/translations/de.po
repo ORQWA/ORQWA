@@ -2461,3 +2461,12 @@ msgstr "Jahreszeit"
 
 msgid "Summer"
 msgstr "Sommer"
+
+msgid "Autumn"
+msgstr "Herbst"
+
+msgid "Spring"
+msgstr "Frühling"
+
+msgid "Winter"
+msgstr "Winter"

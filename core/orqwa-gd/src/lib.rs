@@ -3102,6 +3102,86 @@ impl OrqwaApp {
             .map_or(0, |world| i64::try_from(world.chunks.len()).unwrap_or(0))
     }
 
+    /// Disposable, spatially bounded snow banks outside the retained ridden road.
+    #[func]
+    fn winter_snowbanks(&self) -> VarArray {
+        let Some(app) = self.app.as_ref() else {
+            return VarArray::new();
+        };
+        let (Some(world), Some(route)) = (app.world(), app.route()) else {
+            return VarArray::new();
+        };
+        let latitude = route.points().first().map_or(45.0, |point| point.lat);
+        let climate = orqwa_world::season_climate(latitude, orqwa_domain::season::Season::Winter);
+        orqwa_world::snowbanks(&world.road, route.points(), Meters(climate.snow_line))
+            .into_iter()
+            .map(|bank| {
+                let [x, y, z] = bank.center;
+                vdict! { "center" => Vector3::new(x, y, z), "mesh" => &mesh_arrays(&bank.mesh) }
+                    .to_variant()
+            })
+            .collect()
+    }
+
+    /// Conservative road/paving clearance for the raised winter ground blanket.
+    #[func]
+    fn winter_ground_mask(&self) -> VarDictionary {
+        let Some(world) = self.app.as_ref().and_then(App::world) else {
+            return VarDictionary::new();
+        };
+        let mask = orqwa_world::snow_ground_mask(world);
+        let (Ok(width), Ok(height)) = (i32::try_from(mask.columns), i32::try_from(mask.rows))
+        else {
+            return VarDictionary::new();
+        };
+        if width == 0 || height == 0 {
+            return VarDictionary::new();
+        }
+        let pixels = PackedByteArray::from(mask.pixels);
+        let Some(image) = Image::create_from_data(width, height, false, ImageFormat::R8, &pixels)
+        else {
+            return VarDictionary::new();
+        };
+        vdict! {
+            "image" => &image,
+            "origin" => Vector2::new(mask.origin[0], mask.origin[1]),
+            "size" => vector2(f64::from(width) * f64::from(mask.cell), f64::from(height) * f64::from(mask.cell)),
+        }
+    }
+
+    /// Retained woodland coverage for autumn road litter, with tunnel interiors excluded.
+    #[func]
+    fn autumn_forest_mask(&self) -> VarDictionary {
+        let Some(app) = self.app.as_ref() else {
+            return VarDictionary::new();
+        };
+        let Some((land, corridor)) = app.minimap() else {
+            return VarDictionary::new();
+        };
+        let empty = orqwa_world::FlatMap::default();
+        let mut mask = orqwa_world::forest_mask(&[land.map_or(&empty, |map| &map.areas), corridor]);
+        if let (Some(world), Some(route)) = (app.world(), app.route()) {
+            mask.clear_tunnels(&world.road, route.points());
+        }
+        let (Ok(width), Ok(height)) = (i32::try_from(mask.columns), i32::try_from(mask.rows))
+        else {
+            return VarDictionary::new();
+        };
+        if width == 0 || height == 0 {
+            return VarDictionary::new();
+        }
+        let data = PackedByteArray::from(mask.pixels);
+        let Some(image) = Image::create_from_data(width, height, false, ImageFormat::R8, &data)
+        else {
+            return VarDictionary::new();
+        };
+        vdict! {
+            "image" => &image,
+            "origin" => Vector2::new(mask.origin[0], mask.origin[1]),
+            "size" => vector2(f64::from(width) * f64::from(mask.cell), f64::from(height) * f64::from(mask.cell)),
+        }
+    }
+
     /// How far the land around the loaded route lies from it, for the ground's distant canopy
     /// (R146): `{image, origin, size, step, dense}`. `image` holds one distance per cell in its
     /// red channel (R8, in `step`s of metres, 255 for that far or farther), laid over the land
@@ -3278,10 +3358,22 @@ impl OrqwaApp {
     /// along the route in metres.
     #[func]
     fn road_mesh(&self) -> VarDictionary {
-        self.app
-            .as_ref()
-            .and_then(App::world)
-            .map_or_else(VarDictionary::new, |world| mesh_arrays(&world.road))
+        let Some(app) = self.app.as_ref() else {
+            return VarDictionary::new();
+        };
+        let Some(world) = app.world() else {
+            return VarDictionary::new();
+        };
+        let mut arrays = mesh_arrays(&world.road);
+        if let Some(route) = app.route() {
+            let exposure: PackedVector2Array =
+                orqwa_world::road_snow_exposure(&world.road, route.points())
+                    .into_iter()
+                    .map(|[x, y]| Vector2::new(x, y))
+                    .collect();
+            arrays.set("uv2", &exposure);
+        }
+        arrays
     }
 
     /// `(distance m, elevation m)` points of the loaded route, at most `max_points`.

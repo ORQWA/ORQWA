@@ -1,4 +1,5 @@
 shader_type spatial;
+#include "res://shaders/winter.gdshaderinc"
 // Materials of the Blender-made building models (R89, ADR 0020, art/buildings): textures baked
 // in Blender (plaster, clay tiles, slate, boards, masonry, gravel) by the models' coordinates in
 // metres, tinted by palette colours; glass dark and reflective, metal and copper with a sheen,
@@ -30,6 +31,7 @@ const int ACCENT = 18;
 const int FLAT_ROOF = 19;
 
 uniform int pattern = 0;
+uniform bool autumn_flowers_hidden = false;
 uniform vec3 color : source_color = vec3(0.8);
 uniform vec4 shutter_colors[4] : source_color;
 uniform vec4 flower_colors[3] : source_color;
@@ -43,6 +45,7 @@ varying vec3 roof_tint;
 varying float variant;
 varying vec3 world_position;
 varying float height_up;
+varying vec3 winter_normal;
 
 // A number in [0, 1) for the lattice point `p`, exact far from the origin (see ground.gdshaderinc).
 float hash(vec2 p) {
@@ -63,9 +66,13 @@ void vertex() {
 	variant = INSTANCE_CUSTOM.a;
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	height_up = VERTEX.y;
+	winter_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 }
 
 void fragment() {
+	if (pattern == FLOWERS && autumn_flowers_hidden) {
+		discard;
+	}
 	vec3 tint = color;
 	float roughness = 0.9;
 	float specular = 0.4;
@@ -126,6 +133,9 @@ void fragment() {
 	}
 
 	vec3 albedo = tint;
+	if (pattern == FLOWERS && winter_strength > 0.5 && world_position.y > winter_deciduous_from) {
+		discard;
+	}
 	if (textured) {
 		vec2 uv = UV / tile;
 		vec3 texel = texture(albedo_texture, uv).rgb;
@@ -142,6 +152,10 @@ void fragment() {
 		albedo *= mix(0.72, 1.0, smoothstep(-0.2, 1.4, height_up));
 	}
 
+	float snow = winter_cover(world_position, winter_normal);
+	albedo = mix(albedo, winter_snow_color.rgb, snow);
+	roughness = mix(roughness, 0.8, snow);
+	metallic *= 1.0 - snow;
 	ALBEDO = albedo;
 	ROUGHNESS = roughness;
 	SPECULAR = specular;
