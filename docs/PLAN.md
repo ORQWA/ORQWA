@@ -812,6 +812,8 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
   the core's log in Android's log; picked files copied from `content://` addresses
 - [x] B — an `android` CI job beside the others, building the APK on every pull request (its
   own image cached in GHCR like the dev image); on releases only with D
+- [x] Align native compiler/bindgen, plugin and APK minimum on Android 10 (API 29), including
+  the AAudio library required by group voice
 - [x] C — fitting Android, tried on the Tab S7 on 2026-10-20:
   - [x] profiles, rides and courses in the app's `files` folder, not the cache Android may clear
   - [x] saving to places picked in Android's save dialog (ride export), as opening already does
