@@ -2017,6 +2017,7 @@ version = "0.5.4"
 dependencies = [
  "orqwa-devices",
  "orqwa-domain",
+ "orqwa-net",
  "orqwa-osm",
  "orqwa-physics",
  "orqwa-remote",
@@ -2027,6 +2028,7 @@ dependencies = [
  "orqwa-update",
  "orqwa-upload",
  "orqwa-video",
+ "orqwa-voice",
  "orqwa-workouts",
  "orqwa-world",
  "serde_json",

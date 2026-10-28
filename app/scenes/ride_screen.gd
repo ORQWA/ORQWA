@@ -60,6 +60,9 @@ var _moment_card: MomentCard = MomentCard.new()
 var _chime: MomentChime = MomentChime.new()
 ## Simulated rides (fake trainer): speed, jumps on map and profile, free camera (#53).
 var _bar: RideBar = RideBar.new()
+var _group_button: Button = Button.new()
+var _group_popup: PopupPanel = PopupPanel.new()
+var _group_controls: GroupRidesTab = GroupRidesTab.new()
 var _simulating: bool = false
 ## The workout being ridden (`WorkoutsTab.workout()`), empty on a plain ride.
 var _workout: Dictionary = {}
@@ -102,6 +105,7 @@ func bind(orqwa: OrqwaApp, world: RideWorld) -> void:
 	_orqwa.moment.connect(_on_moment)
 	_orqwa.failed.connect(_on_failed)
 	_orqwa.control_requested.connect(_on_control_requested)
+	_group_controls.bind(orqwa)
 
 
 ## Prepares the screen for a new ride on the loaded route with `options` in effect.
@@ -196,6 +200,21 @@ func _ready() -> void:
 	_bar.speed_chosen.connect(_set_time_scale)
 	_bar.folded_changed.connect(func(folded: bool) -> void: _orqwa.set_ride_bar_folded(folded))
 	add_child(_bar)
+	_group_button.text = tr("Group rides")
+	_group_button.set_anchors_and_offsets_preset(
+		Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 24
+	)
+	_group_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_group_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_group_button.pressed.connect(func() -> void: _group_popup.popup_centered(Vector2i(640, 480)))
+	add_child(_group_button)
+	_group_controls.compact = true
+	var group_scroll: ScrollContainer = ScrollContainer.new()
+	group_scroll.custom_minimum_size = Vector2(320, 240)
+	_group_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	group_scroll.add_child(_group_controls)
+	_group_popup.add_child(group_scroll)
+	add_child(_group_popup)
 	_overlay_hud.hide()
 	_overlay_hud.leave_requested.connect(func() -> void: overlay_requested.emit(false))
 	_overlay_hud.zoom_requested.connect(overlay_zoom_requested.emit)
@@ -254,6 +273,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	if _orqwa != null:
+		_group_button.visible = (
+			not is_overlay() and _orqwa.group_status().get("phase", "idle") != "idle"
+		)
 	if _orqwa != null:
 		_sound.update(_orqwa, visible and not _finished)
 	if _toast_left > 0.0:

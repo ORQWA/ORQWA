@@ -15,6 +15,15 @@ cargo about generate --fail --locked \
     -c "$root/core/about.toml" -m "$root/core/orqwa-gd/Cargo.toml" \
     -o "$generated" "$root/core/about.hbs"
 
+printf '\nBundled libopus 1.6.1\n\n' >>"$generated"
+cat "$root/core/orqwa-voice/notices/opus.txt" >>"$generated"
+python3 - "$generated" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+path.write_text("".join(line.rstrip() + "\n" for line in path.read_text().splitlines()), newline="\n")
+PY
+
 case "${1:-}" in
     --check)
         if ! cmp -s "$generated" "$notices"; then
@@ -26,7 +35,7 @@ case "${1:-}" in
     *) echo "usage: $0 [--check]" >&2; exit 1 ;;
 esac
 
-# The CLI carries voice and native audio dependencies the graphical app does not yet use.
+# Both front ends carry the voice and native audio dependencies.
 # libopus is bundled C code; its own notice accompanies the Rust wrapper's licence too.
 notices="$root/core/orqwa-cli/notices/VOICE-LICENSES.txt"
 cargo about generate --fail --locked \

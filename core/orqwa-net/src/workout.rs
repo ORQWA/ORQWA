@@ -9,6 +9,21 @@ use crate::activity::{ActivityError, Input, MAX_WORKOUT_BYTES};
 use crate::code::valid_name;
 
 const MAGIC: &[u8; 4] = b"OQW1";
+
+/// Plugin adapter for normalized group workouts retained in the app library.
+pub struct SharedWorkoutParser;
+impl orqwa_domain::workout::WorkoutParser for SharedWorkoutParser {
+    fn extensions(&self) -> &'static [&'static str] {
+        &["oqw"]
+    }
+    fn parse(
+        &self,
+        bytes: &[u8],
+        _name: &str,
+    ) -> Result<Plan, orqwa_domain::workout::WorkoutFileError> {
+        decode(bytes).map_err(|e| orqwa_domain::workout::WorkoutFileError(e.to_string()))
+    }
+}
 /// Maximum steps or cues in one shared workout.
 pub const MAX_ITEMS: usize = 4096;
 /// Longest shared workout, matching the networking session limit.

@@ -31,6 +31,41 @@ func _run() -> void:
 	var orqwa: OrqwaApp = _main.get_node("Orqwa")
 	var world: RideWorld = _main.get_node("World")
 	var start: StartPage = _main.get_node("StartPage")
+	if OS.get_environment("SCREENSHOT_GROUP_ONLY") == "1":
+		await create_timer(0.5).timeout
+		root.get_texture().get_image().save_png(out_dir.path_join("start-courses.png"))
+		var group: GroupRidesTab = start.get("_group")
+		var tabs: TabContainer = start.get("_tabs")
+		tabs.current_tab = StartPage.Tab.GROUP_RIDES
+		var group_lan: CheckBox = group.get("_lan")
+		var group_stun: CheckBox = group.get("_stun")
+		group_lan.button_pressed = true
+		group_stun.button_pressed = false
+		group.call("_open", "")
+		var group_limit: int = Time.get_ticks_msec() + 10000
+		while (
+			orqwa.group_status().get("phase", "idle") == "connecting"
+			and Time.get_ticks_msec() < group_limit
+		):
+			await process_frame
+		var group_phase: String = orqwa.group_status().get("phase", "idle")
+		_check(group_phase == "waiting", "local lobby opened")
+		for group_locale: String in ["en", "de"]:
+			TranslationServer.set_locale(group_locale)
+			await create_timer(0.5).timeout
+			# The screenshot shows the real host controls with its short-lived code redacted.
+			group.set_process(false)
+			var private_code: LineEdit = group.get("_code")
+			private_code.text = "orqwa:…"
+			await process_frame
+			root.get_texture().get_image().save_png(
+				out_dir.path_join("group-rides-" + group_locale + ".png")
+			)
+			print("saved group-rides-" + group_locale)
+			group.set_process(true)
+		orqwa.group_leave()
+		quit(0)
+		return
 	_software_render(world)
 
 	var route: String = OS.get_environment("SCREENSHOT_ROUTE")

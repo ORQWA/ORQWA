@@ -17,7 +17,7 @@ pub const MAX_NAME_BYTES: usize = 64;
 /// Maximum destinations in either code, also limiting probe fan-out.
 pub const MAX_CANDIDATES: usize = 8;
 /// Wire version. Old Torqa codes are deliberately incompatible with the new security contract.
-pub const VERSION: u8 = 2;
+pub const VERSION: u8 = 3;
 
 const INVITE: u8 = 1;
 const REPLY: u8 = 2;
@@ -33,6 +33,12 @@ pub struct Fingerprint(pub [u8; 32]);
 /// SHA-256 of the route representation shared by all riders.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RouteHash(pub [u8; 32]);
+
+impl RouteHash {
+    /// Course-independent app lobby binding. The separate random ride ID still authenticates
+    /// one host lifetime; activity identities are exchanged only after admission.
+    pub const LOBBY: Self = Self([0; 32]);
+}
 
 /// A candidate's source. This label never overrides the receiver's destination policy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

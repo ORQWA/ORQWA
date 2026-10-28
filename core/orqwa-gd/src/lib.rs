@@ -35,6 +35,7 @@ use orqwa_session::workout::{EffortTest, HeartRateHold, RampTest, Workout};
 use orqwa_world::MapFeature;
 
 mod graphics;
+mod group;
 mod log;
 
 struct OrqwaExtension;
@@ -2027,6 +2028,113 @@ impl OrqwaApp {
         }
     }
 
+    /// The shared countdown started this prepared activity locally.
+    #[signal]
+    fn group_started(on_course: bool, workout: bool);
+
+    /// Current group phase, private codes, selected content, readiness and peer gaps.
+    #[func]
+    fn group_status(&self) -> VarDictionary {
+        self.app
+            .as_ref()
+            .map_or_else(VarDictionary::new, group::status)
+    }
+
+    /// Creates an empty lobby, or answers a pasted invite; discovery is explicitly opt-in.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot binding parameters are passed by value
+    fn group_open(&mut self, invite: GString, lan: bool, stun: bool) -> bool {
+        let mut options = orqwa_app::group::ConnectOptions::default();
+        options.gather.policy.lan = lan;
+        if !stun {
+            options.gather.stun_servers.clear();
+        }
+        let text = invite.to_string();
+        self.command(|app| app.group_open((!text.is_empty()).then_some(text), options))
+    }
+    /// Leaves the group without stopping or discarding a local ride.
+    #[func]
+    fn group_leave(&mut self) {
+        if let Some(app) = &mut self.app {
+            app.group_leave();
+        }
+    }
+
+    /// Admits a joiner's privately exchanged reply.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot binding parameters are passed by value
+    fn group_admit(&mut self, reply: GString) -> bool {
+        self.command(|app| app.group_admit(reply.to_string()))
+    }
+
+    /// Selects an optional course path and structured workout id from the local libraries.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot binding parameters are passed by value
+    fn group_select(&mut self, course: GString, workout: GString) -> bool {
+        let course = course.to_string();
+        let workout = workout.to_string();
+        self.command(|app| {
+            app.group_select(
+                (!course.is_empty()).then(|| PathBuf::from(&course)),
+                (!workout.is_empty()).then_some(workout.as_str()),
+            )
+        })
+    }
+    /// Marks the local prepared rider ready or not ready.
+    #[func]
+    fn group_ready(&mut self, ready: bool) -> bool {
+        self.command(|app| app.group_ready(ready))
+    }
+    /// Requests the shared countdown on the host.
+    #[func]
+    fn group_start(&mut self) -> bool {
+        self.command(|app| app.group_start())
+    }
+    /// Retries failed activity content/preparation.
+    #[func]
+    fn group_retry(&mut self) -> bool {
+        self.command(App::group_retry)
+    }
+    /// Removes an unavailable participant on the host.
+    #[func]
+    fn group_remove(&mut self, id: i64) -> bool {
+        let Ok(id) = u8::try_from(id) else {
+            return false;
+        };
+        self.command(|app| app.group_remove(id))
+    }
+    /// Enables/disables explicit voice consent and configures local mic, deafen and volume.
+    #[func]
+    #[allow(clippy::cast_possible_truncation)] // normalized gain is checked by the app before use
+    fn group_voice(&mut self, on: bool, mic: bool, deaf: bool, volume: f64) -> bool {
+        self.command(|app| app.group_voice(on, mic, deaf, volume as f32))
+    }
+    /// Sets playback gain without changing microphone consent or reactivating capture.
+    #[func]
+    #[allow(clippy::cast_possible_truncation)] // normalized gain is checked by the app
+    fn group_voice_volume(&mut self, volume: f64) -> bool {
+        self.command(|app| app.group_voice_volume(volume as f32))
+    }
+    /// Explicitly enumerates local audio device IDs without opening capture.
+    #[func]
+    fn group_voice_devices(&mut self) -> bool {
+        self.command(|app| app.group_voice_devices())
+    }
+    /// Selects native devices for the next muted voice activation.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot binding parameters are passed by value
+    fn group_voice_choose(&mut self, input: GString, output: GString) -> bool {
+        self.command(|app| app.group_voice_choose(input.to_string(), output.to_string()))
+    }
+    /// Mutes one peer on this computer only.
+    #[func]
+    fn group_voice_mute(&mut self, id: i64, muted: bool) -> bool {
+        let Ok(id) = u8::try_from(id) else {
+            return false;
+        };
+        self.command(|app| app.group_voice_mute(id, muted))
+    }
+
     /// The QR code of the phone remote's address: `{size, modules}`, `modules` a byte per
     /// module row by row, 0 dark and 255 light, without the quiet zone; empty without one.
     #[func]
@@ -3502,6 +3610,9 @@ impl OrqwaApp {
     #[allow(clippy::too_many_lines)]
     fn emit(&mut self, event: AppEvent) {
         match event {
+            AppEvent::GroupRideStarted { on_course, workout } => {
+                self.signals().group_started().emit(on_course, workout);
+            }
             AppEvent::DevicesFound(devices) => {
                 self.signals().devices_found().emit(&device_array(devices));
             }

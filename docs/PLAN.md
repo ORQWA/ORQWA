@@ -866,12 +866,14 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
   workout wire data preserving absolute watts/FTP shares, bounded authenticated-stream
   transfer helpers, validated atomic publication and a pre-extraction course validator;
   existing lobby actors and CLI remain unchanged in this step
-- [ ] Course-independent lobby admission and versioned activity/readiness controls; integrate
+- [x] Course-independent lobby admission and versioned activity/readiness controls; integrate
   current-selection content serving into the bounded lobby actors and update CLI callers
 - [ ] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
   and gaps; remote telemetry never substitutes for local measurements or supplies trainer commands
-- [ ] App controls, translated errors, QR codes using existing support, settings, usage guides
-  and screenshots; create/join, select activities and automatically retain verified content
+- [x] Group rides tab and in-ride panel: translated private-code admission, activity selection,
+  automatic retained downloads, byte progress/retry, local preparation, trainer readiness,
+  common countdown, rider gaps, opt-in voice/device selection/local mute, usage guides and screenshots
+- [ ] QR sharing using existing support
 - [ ] Drafting and Keep together (R166): independent shared toggles, both on by default,
   individually calculated assistance, simulation/ERG behavior and assisted-record eligibility
 - [ ] Late joining and group workout timing (R167): independent preparation, entry near host,

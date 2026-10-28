@@ -4,6 +4,8 @@ use std::fmt;
 /// Stable classification of a failure, independent of its technical cause.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
+    /// Could not complete the group ride action.
+    GroupRide,
     /// Could not save the rider profile.
     SaveProfile,
     /// Could not delete the rider profile.
@@ -155,6 +157,7 @@ impl Kind {
     pub fn message(self) -> &'static str {
         // i18n-begin
         match self {
+            Self::GroupRide => "Could not complete the group ride action.",
             Self::SaveProfile => "Could not save the rider profile.",
             Self::DeleteProfile => "Could not delete the rider profile.",
             Self::OpenFile => "Could not open %s.",

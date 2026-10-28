@@ -20,6 +20,8 @@ same licence; the footage is used only in documentation.
 
 ## Courses, setup and analysis
 
+![Group ride lobby, with its private code shortened](images/groups/lobby-en.png)
+
 | Before riding | After riding |
 |---|---|
 | | ![Quick finish summary](images/app/summary-quick.png) |

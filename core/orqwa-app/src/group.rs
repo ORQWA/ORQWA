@@ -1,0 +1,583 @@
+//! App group lobbies: owned background networking and local course preparation.
+
+use crate::{App, AppError, AppEvent, DescentMode, Failure, GhostChoice, Kind, Workout};
+use orqwa_domain::units::Kilograms;
+use orqwa_net::activity::Selection;
+use orqwa_net::code::MAX_PASTE_BYTES;
+pub use orqwa_net::link::ConnectOptions;
+use orqwa_net::lobby::Rider;
+use orqwa_net::state::{MAX_RIDERS, RiderId, RiderState};
+use std::path::PathBuf;
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicU64, Ordering},
+};
+use std::time::Instant;
+use tokio::sync::{mpsc, watch};
+mod runtime;
+#[cfg(test)]
+mod tests;
+use runtime::Command;
+
+/// Current connection/preparation phase, independent of presentation language.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub enum Phase {
+    /// No network operation requested.
+    #[default]
+    Idle,
+    /// Discovering or exchanging admission codes.
+    Connecting,
+    /// Waiting for activity selection or retry.
+    Waiting,
+    /// Hashing sources or receiving selected content.
+    Downloading,
+    /// Loading the local route and building its world.
+    Preparing,
+    /// Prepared locally; readiness can be announced.
+    Ready,
+    /// Waiting for the common start.
+    Countdown,
+    /// Shared start reached.
+    Riding,
+    /// Networking ended; local riding continues.
+    Ended,
+    /// Discovery or admission failed.
+    Failed,
+}
+impl Phase {
+    /// Stable key for translated captions.
+    #[must_use]
+    pub const fn key(self) -> &'static str {
+        match self {
+            Self::Idle => "idle",
+            Self::Connecting => "connecting",
+            Self::Waiting => "waiting",
+            Self::Downloading => "downloading",
+            Self::Preparing => "preparing",
+            Self::Ready => "ready",
+            Self::Countdown => "countdown",
+            Self::Riding => "riding",
+            Self::Ended => "ended",
+            Self::Failed => "failed",
+        }
+    }
+}
+/// Latest group view. Codes contain admission secrets, so this deliberately has no Debug.
+#[derive(Clone)]
+#[allow(clippy::struct_excessive_bools)] // presentation of independent readiness and local audio gates
+pub struct Snapshot {
+    /// Current phase.
+    pub phase: Phase,
+    /// Whether this rider owns the lobby.
+    pub host: bool,
+    /// Private host invitation.
+    pub invite: String,
+    /// Private joiner reply while awaiting admission.
+    pub reply: String,
+    /// Local assigned slot.
+    pub me: u8,
+    /// Current content identities and rules.
+    pub selection: Option<Selection>,
+    /// Fixed membership table without peer addresses or heart rate.
+    pub roster: [Option<Rider>; MAX_RIDERS],
+    /// Readiness for the selected revision.
+    pub ready: [bool; MAX_RIDERS],
+    /// Whether local preparation completed.
+    pub prepared: bool,
+    /// Verified local course.
+    pub course: Option<PathBuf>,
+    /// Verified local normalized workout.
+    pub workout: Option<PathBuf>,
+    /// Library ID for the ride controls, independent of a temporary host transfer source.
+    pub workout_id: String,
+    /// Decoded workout retained in memory before countdown, avoiding file I/O in the ride loop.
+    pub plan: Option<std::sync::Arc<orqwa_domain::workout::Plan>>,
+    /// Local monotonic countdown target.
+    pub start: Option<Instant>,
+    /// Latest peer samples and local arrival times.
+    pub states: [Option<(RiderState, Instant)>; MAX_RIDERS],
+    /// Diagnostic details under a translated error caption.
+    pub error: String,
+    /// Explicit voice listening consent.
+    pub voice: bool,
+    /// Native audio startup is pending; microphone controls stay disabled.
+    pub voice_pending: bool,
+    /// Live microphone transmission gate.
+    pub microphone: bool,
+    /// Local playback/transmission disabled.
+    pub deafened: bool,
+    /// Devices enumerated only after an explicit local request: (id, name, input, output).
+    pub devices: Vec<(String, String, bool, bool)>,
+    /// Per-speaker playback mute on this computer.
+    pub muted: [bool; MAX_RIDERS],
+    /// Bytes stored for the current file, coalesced by the download worker.
+    pub received: u64,
+    /// Expected current-file size; zero before a transfer begins.
+    pub total: u64,
+}
+impl Default for Snapshot {
+    fn default() -> Self {
+        Self {
+            phase: Phase::Idle,
+            host: false,
+            invite: String::new(),
+            reply: String::new(),
+            me: 0,
+            selection: None,
+            roster: std::array::from_fn(|_| None),
+            ready: [false; MAX_RIDERS],
+            prepared: false,
+            course: None,
+            workout: None,
+            workout_id: String::new(),
+            plan: None,
+            start: None,
+            states: [None; MAX_RIDERS],
+            error: String::new(),
+            voice: false,
+            voice_pending: false,
+            microphone: false,
+            deafened: false,
+            devices: Vec::new(),
+            muted: [false; MAX_RIDERS],
+            received: 0,
+            total: 0,
+        }
+    }
+}
+impl Snapshot {
+    /// Only the prepared host with every admitted participant ready can start.
+    #[must_use]
+    pub fn can_start(&self) -> bool {
+        self.host
+            && self.prepared
+            && self.start.is_none()
+            && self.selection.is_some()
+            && self
+                .roster
+                .iter()
+                .enumerate()
+                .filter(|(_, r)| r.is_some())
+                .all(|(id, _)| self.ready[id])
+    }
+}
+pub(crate) struct Running {
+    commands: mpsc::Sender<Command>,
+    snapshot: watch::Receiver<Snapshot>,
+    task: tokio::task::JoinHandle<()>,
+    states: watch::Sender<Option<RiderState>>,
+    preparing: Option<(u64, u64)>,
+    prepared: u64,
+    launched: bool,
+    launching: bool,
+    trainer_connected: bool,
+    workout_id: String,
+    voice_controls: Arc<VoiceControls>,
+}
+#[derive(Default)]
+struct VoiceControls {
+    generation: AtomicU64,
+    port: Mutex<Option<orqwa_net::voice::VoicePort>>,
+}
+impl Drop for Running {
+    fn drop(&mut self) {
+        self.voice_controls
+            .generation
+            .fetch_add(1, Ordering::AcqRel);
+        if let Some(port) = self
+            .voice_controls
+            .port
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
+        {
+            port.enable(false);
+        }
+        self.task.abort();
+    }
+}
+fn error(details: impl std::fmt::Display) -> AppError {
+    AppError::Reported(Failure::new(Kind::GroupRide, details))
+}
+
+impl App {
+    /// Reads current group state without opening network/audio devices.
+    #[must_use]
+    pub fn group(&self) -> Snapshot {
+        self.group.as_ref().map_or_else(Snapshot::default, |g| {
+            let mut snapshot = g.snapshot.borrow().clone();
+            if snapshot.host {
+                snapshot.workout_id.clone_from(&g.workout_id);
+            }
+            snapshot
+        })
+    }
+    /// Creates a lobby or answers an invite, with explicit discovery/address choices.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] when already riding/grouped, on excessive input or entropy failure.
+    pub fn group_open(
+        &mut self,
+        invite: Option<String>,
+        options: ConnectOptions,
+    ) -> Result<(), AppError> {
+        if self.group.is_some() || self.ride.is_some() {
+            return Err(error("Leave the current group or finish the ride first."));
+        }
+        if invite.as_ref().is_some_and(|s| s.len() > MAX_PASTE_BYTES) {
+            return Err(error("The invitation is too large."));
+        }
+        let (commands, receive) = mpsc::channel(8);
+        let (send, snapshot) = watch::channel(Snapshot {
+            phase: Phase::Connecting,
+            ..Snapshot::default()
+        });
+        let (states, local) = watch::channel(None);
+        let rider = &self.profile.profile;
+        let voice_controls = Arc::new(VoiceControls::default());
+        let token = orqwa_net::code::RideId::generate().map_err(error)?;
+        let request = runtime::Request {
+            voice_controls: Arc::clone(&voice_controls),
+            invite,
+            options,
+            rider: Rider {
+                name: rider.name.clone(),
+                mass: Kilograms(rider.rider_mass.0 + rider.bike_mass.0),
+            },
+            data: self.data_dir.clone(),
+            temporary: self.cache_dir.join(format!("group-{:x?}", token.0)),
+        };
+        let task = self
+            .runtime
+            .spawn(runtime::run(request, receive, send, local));
+        self.group = Some(Running {
+            commands,
+            snapshot,
+            task,
+            states,
+            preparing: None,
+            prepared: 0,
+            launched: false,
+            launching: false,
+            trainer_connected: self.trainer_connected(),
+            workout_id: String::new(),
+            voice_controls,
+        });
+        Ok(())
+    }
+    fn group_command(&self, command: Command) -> Result<(), AppError> {
+        self.group
+            .as_ref()
+            .ok_or_else(|| error("Open a lobby first."))?
+            .commands
+            .try_send(command)
+            .map_err(|_| error("The group is busy or disconnected. Retry or leave the lobby."))
+    }
+    /// Leaves networking/audio while preserving any local ride.
+    pub fn group_leave(&mut self) {
+        if self.group.as_ref().is_some_and(|g| g.preparing.is_some()) && self.ride.is_none() {
+            self.cancel_loading();
+        }
+        self.group = None;
+    }
+    /// Admits a privately exchanged reply.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for excessive input or a full/stopped command queue.
+    pub fn group_admit(&self, reply: String) -> Result<(), AppError> {
+        if reply.len() > MAX_PASTE_BYTES {
+            return Err(error("The reply is too large."));
+        }
+        self.group_command(Command::Admit(reply))
+    }
+    /// Selects a 3D course and/or a structured workout from the rider's libraries.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for empty selection, unknown workout or a stopped/full queue.
+    pub fn group_select(
+        &mut self,
+        course: Option<PathBuf>,
+        workout: Option<&str>,
+    ) -> Result<(), AppError> {
+        let plan = workout
+            .map(|id| {
+                self.workouts()
+                    .into_iter()
+                    .find(|w| w.id == id)
+                    .map(|w| w.plan)
+                    .ok_or_else(|| error("The selected workout is unavailable."))
+            })
+            .transpose()?;
+        if course.is_none() && plan.is_none() {
+            return Err(error("Choose a course or a structured workout."));
+        }
+        self.group_command(Command::Select(course, plan))?;
+        if let Some(group) = &mut self.group {
+            workout.unwrap_or("").clone_into(&mut group.workout_id);
+        }
+        Ok(())
+    }
+    /// Sets readiness after preparation; becoming ready also requires a connected trainer.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for missing trainer or unavailable queue.
+    pub fn group_ready(&self, ready: bool) -> Result<(), AppError> {
+        if ready && !self.trainer_connected() {
+            return Err(AppError::NoTrainer);
+        }
+        self.group_command(Command::Ready(ready))
+    }
+    /// Requests the host's shared five-second countdown.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] when participants are not all ready or the queue is unavailable.
+    pub fn group_start(&self) -> Result<(), AppError> {
+        if !self.group().can_start() {
+            return Err(error("Wait until every participant is ready."));
+        }
+        self.group_command(Command::Start)
+    }
+    /// Retries a failed content transfer/preparation.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] if the command queue is unavailable.
+    pub fn group_retry(&mut self) -> Result<(), AppError> {
+        if let Some(g) = &mut self.group {
+            g.preparing = None;
+            g.prepared = 0;
+        }
+        self.group_command(Command::Retry)
+    }
+    /// Removes an unavailable participant on the host.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for invalid slots or unavailable queue.
+    pub fn group_remove(&self, id: u8) -> Result<(), AppError> {
+        self.group_command(Command::Remove(RiderId::new(id).map_err(error)?))
+    }
+    /// Configures opted-in voice. First activation starts with the microphone muted.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for invalid volume or unavailable queue.
+    pub fn group_voice(
+        &self,
+        on: bool,
+        mic: bool,
+        deaf: bool,
+        volume: f32,
+    ) -> Result<(), AppError> {
+        if !volume.is_finite() || !(0.0..=1.0).contains(&volume) {
+            return Err(error("Voice volume is invalid."));
+        }
+        let controls = &self
+            .group
+            .as_ref()
+            .ok_or_else(|| error("Open a lobby first."))?
+            .voice_controls;
+        let generation = controls
+            .generation
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |g| g.checked_add(1))
+            .map_err(|_| error("Voice activation exhausted."))?
+            + 1;
+        if let Some(port) = controls
+            .port
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .as_ref()
+        {
+            if !on {
+                port.enable(false);
+            } else if !mic || deaf {
+                let _ = port.microphone(false);
+                if deaf {
+                    port.deafen(true);
+                }
+            }
+        }
+        self.group_command(Command::Voice(generation, on, mic, deaf, volume))
+    }
+    /// Changes playback gain without changing microphone consent or activation.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for invalid gain or an unavailable queue.
+    pub fn group_voice_volume(&self, volume: f32) -> Result<(), AppError> {
+        if !volume.is_finite() || !(0.0..=1.0).contains(&volume) {
+            return Err(error("Voice volume is invalid."));
+        }
+        self.group_command(Command::Volume(volume))
+    }
+    /// Enumerates local audio devices without opening microphone capture.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] if the queue is unavailable.
+    pub fn group_voice_devices(&self) -> Result<(), AppError> {
+        self.group_command(Command::Devices)
+    }
+    /// Selects native devices for the next voice activation, keeping transmission off.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for excessive device IDs or an unavailable queue.
+    pub fn group_voice_choose(&self, input: String, output: String) -> Result<(), AppError> {
+        if input.len() > 512 || output.len() > 512 {
+            return Err(error("The audio device ID is too long."));
+        }
+        self.group_command(Command::ChooseDevices(input, output))
+    }
+    /// Mutes one speaker locally without changing anyone else's audio.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for invalid slots or an unavailable queue.
+    pub fn group_voice_mute(&self, id: u8, muted: bool) -> Result<(), AppError> {
+        self.group_command(Command::Mute(RiderId::new(id).map_err(error)?, muted))
+    }
+    pub(crate) fn check_group_start(&self) -> Result<(), AppError> {
+        if self.group.as_ref().is_some_and(|g| !g.launching) {
+            return Err(error("Leave the group before starting a solo ride."));
+        }
+        Ok(())
+    }
+    pub(crate) fn poll_group(&mut self, events: &mut Vec<AppEvent>) {
+        let Some(group) = &self.group else {
+            return;
+        };
+        let snapshot = group.snapshot.borrow().clone();
+        let connected = self.trainer_connected();
+        if group.trainer_connected
+            && !connected
+            && !group.launched
+            && snapshot.ready[usize::from(snapshot.me)]
+        {
+            let _ = self.group_command(Command::Ready(false));
+        }
+        if let Some(group) = &mut self.group {
+            group.trainer_connected = connected;
+        }
+        let Some(group) = &self.group else {
+            return;
+        };
+        let revision = snapshot.selection.as_ref().map_or(0, |s| s.revision);
+        if group.preparing.is_some_and(|(old, _)| old != revision)
+            || (matches!(snapshot.phase, Phase::Ended | Phase::Failed)
+                && group.preparing.is_some()
+                && self.ride.is_none())
+        {
+            self.cancel_loading();
+            if let Some(group) = &mut self.group {
+                group.preparing = None;
+                group.prepared = 0;
+            }
+        }
+        let Some(group) = &self.group else {
+            return;
+        };
+        if snapshot.phase == Phase::Preparing && group.prepared != revision {
+            if let Some(course) = &snapshot.course {
+                if group.preparing.is_none_or(|(r, _)| r != revision) {
+                    events.push(AppEvent::CoursesChanged);
+                    self.open_shared_course(course.clone());
+                    if let Some(g) = &mut self.group {
+                        g.preparing = Some((revision, self.load));
+                    }
+                } else if group.preparing == Some((revision, self.load)) {
+                    if events.iter().any(|e| matches!(e, AppEvent::RouteLoaded(_))) {
+                        self.build_world();
+                    }
+                    if self.world.is_some() {
+                        self.group_prepared(revision);
+                    }
+                    if events.iter().any(|e| matches!(e, AppEvent::Error(_))) {
+                        let _=self.group_command(Command::Failure("The course could not be prepared. Retry the download or choose another course.".into()));
+                    }
+                }
+            } else {
+                self.group_prepared(revision);
+            }
+        }
+        if snapshot.start.is_some_and(|at| Instant::now() >= at)
+            && self
+                .group
+                .as_ref()
+                .is_some_and(|g| !g.launched && g.prepared == revision)
+        {
+            if let Some(g) = &mut self.group {
+                g.launched = true;
+                g.launching = true;
+            }
+            let on_course = snapshot.course.is_some();
+            let result = if let Some(plan) = &snapshot.plan {
+                self.start_workout(
+                    Workout::Structured {
+                        plan: std::sync::Arc::clone(plan),
+                        ftp: self.profile.profile.ftp,
+                    },
+                    on_course,
+                    DescentMode::Coast,
+                    snapshot.selection.as_ref().map_or("", |s| s.name.as_str()),
+                )
+            } else {
+                self.start_ride(
+                    self.profile.profile.default_difficulty,
+                    DescentMode::Coast,
+                    &GhostChoice::None,
+                )
+            };
+            if let Some(g) = &mut self.group {
+                g.launching = false;
+            }
+            match result {
+                Ok(()) => events.push(AppEvent::GroupRideStarted {
+                    on_course,
+                    workout: snapshot.workout.is_some(),
+                }),
+                Err(e) => events.push(AppEvent::Error(Failure::from(e))),
+            }
+        }
+        self.publish_group_state(&snapshot);
+    }
+    fn publish_group_state(&self, snapshot: &Snapshot) {
+        if let Some(g) = &self.group
+            && let Some(state) = self.ride_state()
+        {
+            let at = snapshot.start.map_or(state.elapsed, |at| at.elapsed());
+            g.states.send_replace(Some(RiderState {
+                at,
+                distance: state.distance,
+                speed: state.speed,
+                power: state.telemetry.power.unwrap_or_default(),
+                cadence: state.telemetry.cadence.unwrap_or_default(),
+            }));
+        }
+    }
+    fn group_prepared(&mut self, revision: u64) {
+        if let Some(g) = &mut self.group
+            && g.commands.try_send(Command::Prepared(revision)).is_ok()
+        {
+            g.prepared = revision;
+        }
+    }
+    pub(crate) fn shared_workouts(&self) -> Vec<orqwa_workouts::Entry> {
+        std::fs::read_dir(self.data_dir.join("shared-workouts"))
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|entry| {
+                let path = entry.path();
+                if path.extension().is_none_or(|e| e != "oqw")
+                    || entry.metadata().ok()?.len() > orqwa_net::activity::MAX_WORKOUT_BYTES
+                {
+                    return None;
+                }
+                let plan = orqwa_domain::workout::WorkoutParser::parse(
+                    &orqwa_net::workout::SharedWorkoutParser,
+                    &std::fs::read(&path).ok()?,
+                    "",
+                )
+                .ok()?;
+                Some(orqwa_workouts::Entry {
+                    id: path.display().to_string(),
+                    plan,
+                })
+            })
+            .collect()
+    }
+}

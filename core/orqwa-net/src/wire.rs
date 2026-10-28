@@ -20,6 +20,9 @@ pub(crate) enum Message {
     Start(u32),
     VoiceEnabled(bool),
     VoiceRoster([u64; MAX_RIDERS]),
+    Selection(crate::activity::Selection),
+    Ready(u64, bool),
+    Readiness(RiderId, u64, bool),
 }
 
 pub(crate) async fn write(send: &mut SendStream, message: &Message) -> Result<(), LobbyError> {
@@ -105,6 +108,18 @@ fn encode(message: &Message) -> Result<Vec<u8>, LobbyError> {
             for epoch in epochs {
                 bytes.extend_from_slice(&epoch.to_be_bytes());
             }
+        }
+        Message::Selection(selection) => {
+            bytes.push(8);
+            bytes.extend_from_slice(&selection.encode().map_err(|_| LobbyError::Protocol)?);
+        }
+        Message::Ready(revision, ready) => {
+            bytes.extend_from_slice(&[9, u8::from(*ready)]);
+            bytes.extend_from_slice(&revision.to_be_bytes());
+        }
+        Message::Readiness(id, revision, ready) => {
+            bytes.extend_from_slice(&[10, id.value(), u8::from(*ready)]);
+            bytes.extend_from_slice(&revision.to_be_bytes());
         }
     }
     if bytes.len() > MAX_FRAME {
@@ -193,6 +208,29 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
                 *epoch = u64::from_be_bytes(reader.take()?);
             }
             Message::VoiceRoster(epochs)
+        }
+        8 => {
+            let selection =
+                crate::activity::Selection::decode(reader.0).map_err(|_| LobbyError::Protocol)?;
+            reader.0 = &[];
+            Message::Selection(selection)
+        }
+        9 => {
+            let ready = match reader.byte()? {
+                0 => false,
+                1 => true,
+                _ => return Err(LobbyError::Protocol),
+            };
+            Message::Ready(u64::from_be_bytes(reader.take()?), ready)
+        }
+        10 => {
+            let id = reader.id()?;
+            let ready = match reader.byte()? {
+                0 => false,
+                1 => true,
+                _ => return Err(LobbyError::Protocol),
+            };
+            Message::Readiness(id, u64::from_be_bytes(reader.take()?), ready)
         }
         _ => return Err(LobbyError::Protocol),
     };
