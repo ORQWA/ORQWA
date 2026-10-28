@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["orqwa-domain", "orqwa-terrain", "orqwa-video", "orqwa-osm", "orqwa-routes", "orqwa-physics", "orqwa-devices", "orqwa-storage", "orqwa-workouts", "orqwa-session", "orqwa-world", "orqwa-upload", "orqwa-remote", "orqwa-update", "orqwa-app", "orqwa-gd", "orqwa-cli", "orqwa-net"]
+members = ["orqwa-domain", "orqwa-terrain", "orqwa-video", "orqwa-osm", "orqwa-routes", "orqwa-physics", "orqwa-devices", "orqwa-storage", "orqwa-workouts", "orqwa-session", "orqwa-world", "orqwa-upload", "orqwa-remote", "orqwa-update", "orqwa-app", "orqwa-gd", "orqwa-cli", "orqwa-net", "orqwa-voice"]
 
 [workspace.package]
 version = "0.5.4"
@@ -26,10 +26,13 @@ orqwa-remote = { path = "orqwa-remote" }
 orqwa-video = { path = "orqwa-video" }
 orqwa-workouts = { path = "orqwa-workouts" }
 orqwa-world = { path = "orqwa-world" }
+orqwa-voice = { path = "orqwa-voice" }
 anyhow = "1.0.104"
 base64 = "0.23.1"
 btleplug = "0.13.5"
 clap = { version = "4.6.7", features = ["derive"] }
+cpal = { version = "0.18.2", default-features = false }
+opusic-c = "1.6.1"
 # FFmpeg's libraries come prebuilt by scripts/build-ffmpeg.sh (a pinned release, verified),
 # found through FFMPEG_DIR and linked statically (ADR 0010).
 ffmpeg-next = { version = "9.0.0", default-features = false, features = ["codec", "format", "software-scaling", "static"] }

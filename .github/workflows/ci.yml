@@ -131,7 +131,7 @@ jobs:
           workspaces: core
       # FFmpeg's assembly needs nasm.
       - name: Install FFmpeg build tools
-        run: brew install nasm
+        run: brew install nasm cmake
       # FFmpeg's libraries, built once per release and platform (ADR 0010) and cached.
       - id: ffmpeg
         uses: actions/cache@v6
@@ -149,7 +149,8 @@ jobs:
           cargo build --manifest-path core/Cargo.toml -p orqwa-cli --release --locked
           mkdir -p dist
           # Artifacts drop the executable bit; a tarball keeps it.
-          tar -czf dist/orqwa-cli-macos-arm64.tar.gz -C core/target/release orqwa-cli
+          cp core/orqwa-cli/notices/VOICE-LICENSES.txt core/target/release/
+          tar -czf dist/orqwa-cli-macos-arm64.tar.gz -C core/target/release orqwa-cli VOICE-LICENSES.txt
       - name: Install Godot and export templates
         run: |
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
@@ -248,7 +249,7 @@ jobs:
           cargo build --manifest-path core/Cargo.toml -p orqwa-cli --release --locked
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive core/target/release/orqwa-cli.exe dist/orqwa-cli-windows-x86_64.zip
+          Compress-Archive -Path core/target/release/orqwa-cli.exe,core/orqwa-cli/notices/VOICE-LICENSES.txt -DestinationPath dist/orqwa-cli-windows-x86_64.zip
       - name: Install Godot and export templates
         run: |
           $base = "https://github.com/godotengine/godot/releases/download/$env:GODOT_VERSION-stable"
@@ -375,7 +376,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libdbus-1-dev pkg-config libclang-dev nasm libfontconfig1
+            libdbus-1-dev pkg-config libclang-dev nasm libfontconfig1 libasound2-dev cmake
       # FFmpeg's libraries, built once per release and platform (ADR 0010) and cached.
       - id: ffmpeg
         uses: actions/cache@v6
@@ -393,7 +394,8 @@ jobs:
           cargo build --manifest-path core/Cargo.toml -p orqwa-cli --release --locked
           mkdir -p dist
           # Artifacts drop the executable bit; a tarball keeps it.
-          tar -czf "dist/orqwa-cli-linux-${{ matrix.arch }}.tar.gz" -C core/target/release orqwa-cli
+          cp core/orqwa-cli/notices/VOICE-LICENSES.txt core/target/release/
+          tar -czf "dist/orqwa-cli-linux-${{ matrix.arch }}.tar.gz" -C core/target/release orqwa-cli VOICE-LICENSES.txt
       - name: Install Godot and export templates
         run: |
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"

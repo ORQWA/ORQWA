@@ -25,6 +25,8 @@ use crate::recorded_ride::{format_state, save};
 #[derive(Args)]
 pub(crate) struct RideTogetherArgs {
     #[command(flatten)]
+    voice: crate::voice::VoiceArgs,
+    #[command(flatten)]
     devices: DeviceArgs,
     /// Everyone must have exactly the same GPX file locally.
     #[arg(long)]
@@ -60,6 +62,13 @@ enum Group {
     Offline,
 }
 impl Group {
+    fn take_voice(&mut self) -> Option<orqwa_net::voice::VoicePort> {
+        match self {
+            Self::Host(lobby) => lobby.take_voice(),
+            Self::Joiner(lobby) => lobby.take_voice(),
+            Self::Offline => None,
+        }
+    }
     async fn next(&mut self) -> Option<LobbyEvent> {
         match self {
             Self::Host(lobby) => lobby.next().await,
@@ -154,7 +163,9 @@ async fn with_devices(
         );
         Group::Host(lobby)
     };
-    let result = ride_loop(ride, args, &mut group, devices).await;
+    let mut voice = crate::voice::Voice::open(&args.voice, group.take_voice());
+    let result = ride_loop(ride, args, &mut group, devices, &mut voice).await;
+    voice.close().await;
     group.close().await;
     result
 }
@@ -164,6 +175,7 @@ async fn ride_loop(
     args: &RideTogetherArgs,
     group: &mut Group,
     devices: &mut Devices,
+    voice: &mut crate::voice::Voice,
 ) -> Result<()> {
     let buttons = ButtonMap::shifting(args.devices.up_channel, args.devices.down_channel);
     let mut input = network::input();
@@ -182,6 +194,7 @@ async fn ride_loop(
     let result: Result<()> = async {
         loop {
             tokio::select! {
+                () = voice.next(), if voice.active() => {},
                 event = devices.trainer.next_event() => match event.context("trainer driver stopped")? {
                     DeviceEvent::Connected => println!("{}: connected", devices.trainer.name()),
                     DeviceEvent::Disconnected => { println!("Trainer disconnected; reconnecting."); ride.on_trainer_lost(); }
@@ -205,7 +218,7 @@ async fn ride_loop(
                 event = group.next(), if connected => match event {
                     Some(LobbyEvent::Start { at }) => if start.is_none() { start = Some(at); println!("Starting in {:.0} s", at.saturating_duration_since(Instant::now()).as_secs_f64().ceil()); },
                     Some(LobbyEvent::HostLeft) | None => { connected = false; others = Others::default(); println!("Group connection ended; continue riding alone. If waiting, type go to start locally."); },
-                    Some(event) => others.on(event),
+                    Some(event) => { if voice.active() && let LobbyEvent::Joined { id, rider } = &event { println!("Voice rider ID {}: {}",id.value(),rider.name); } others.on(event); },
                 },
                 () = sleep_until(start.unwrap_or_else(Instant::now)), if start.is_some() && started.is_none() => { started = Some(SystemTime::now()); last_tick = Instant::now(); println!("Go!"); },
                 _ = tick.tick(), if started.is_some() => {
@@ -225,6 +238,7 @@ async fn ride_loop(
                     None => break,
                     Some(Input::Invalid) => eprintln!("Input refused: invalid text or more than 2048 bytes."),
                     Some(Input::Line(line)) if line == "q" => break,
+                    Some(Input::Line(line)) if voice.command(&line) => {},
                     Some(Input::Line(line)) if line == "go" && start.is_none() => {
                         if !connected { start = Some(Instant::now() + Duration::from_secs(1)); }
                         else if let Group::Host(lobby) = group { match lobby.start(Duration::from_secs(args.countdown)).await { Ok(at) => { start = Some(at); println!("Starting in {} s", args.countdown); }, Err(error) => eprintln!("Cannot start: {error}"), } }

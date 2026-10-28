@@ -8,6 +8,7 @@ mod network;
 mod recorded_ride;
 mod ride_together;
 mod sample_rides;
+mod voice;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -46,6 +47,8 @@ enum Command {
     NetPing(net_ping::NetPingArgs),
     /// Ride the same local GPX with up to seven others, keeping your own physics and FIT.
     RideTogether(Box<ride_together::RideTogetherArgs>),
+    /// List local microphone and speaker/headphone IDs without recording audio.
+    VoiceDevices,
     /// List nearby trainers, power meters, cadence and heart-rate sensors and shifters.
     Scan {
         /// Scan duration in seconds.
@@ -232,6 +235,7 @@ async fn main() -> Result<()> {
         Command::NetCheck(args) => network::check(&args).await,
         Command::NetPing(args) => net_ping::run(args).await,
         Command::RideTogether(args) => ride_together::run(&args).await,
+        Command::VoiceDevices => voice::devices(),
         Command::Ride(args) => ride(*args).await,
         Command::GearCheck(args) => gear_check(&args).await,
         Command::Route(args) => route_info(&args).await,

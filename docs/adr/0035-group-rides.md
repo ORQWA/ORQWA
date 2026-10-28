@@ -159,6 +159,10 @@ riding after network loss. Two loopback CLI processes with fake trainers have ex
 countdown, gaps, independent FIT saves and continued recording after host exit. App rendering,
 native trainers and real home-network acceptance remain outstanding.
 
+ADR 0036 adds optional voice through the existing host links, with independent consent,
+traffic/jitter budgets and membership epochs. Voice can run in the lobby; protocol version 2
+requires fresh codes and matching builds. Router forwarding remains deferred.
+
 The owner approved the core dependency selection on 2026-10-27 after its advisory, licence
 and source checks: quinn 0.11.12, rustls 0.23.46, base64 0.23.1, rcgen 0.14.10 and netdev
 0.47.0 (current stable releases verified against crates.io, again on 2026-10-28). Transport
