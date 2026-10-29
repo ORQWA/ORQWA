@@ -2756,3 +2756,39 @@ msgstr "Deine Gruppe"
 
 msgid "Your ride is ready. Let's get everyone to the start."
 msgstr "Deine Fahrt ist vorbereitet. Macht euch bereit für den Start."
+
+msgid "Assisted group ride"
+msgstr "Gruppenfahrt mit Unterstützung"
+
+msgid "Assisted group ride · speed records excluded"
+msgstr "Gruppenfahrt mit Unterstützung · keine Geschwindigkeitsrekorde"
+
+msgid "Assisted rides count for training, but do not set speed records."
+msgstr "Fahrten mit Unterstützung zählen für dein Training, aber nicht für Geschwindigkeitsrekorde."
+
+msgid "Drafting"
+msgstr "Windschatten"
+
+msgid "Drafting off"
+msgstr "Windschatten aus"
+
+msgid "Drafting on"
+msgstr "Windschatten an"
+
+msgid "Help everyone stay with the organizer while pedaling."
+msgstr "Hilft allen beim Treten, bei der organisierenden Person zu bleiben."
+
+msgid "Keep together"
+msgstr "Gruppe zusammenhalten"
+
+msgid "Keep together off"
+msgstr "Gruppe zusammenhalten aus"
+
+msgid "Keep together on"
+msgstr "Gruppe zusammenhalten an"
+
+msgid "No signal"
+msgstr "Kein Signal"
+
+msgid "Save effort when riding behind friends."
+msgstr "Spare Kraft, wenn du hinter anderen fährst."

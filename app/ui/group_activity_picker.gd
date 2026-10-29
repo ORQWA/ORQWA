@@ -4,6 +4,9 @@ extends VBoxContainer
 
 signal chosen(course: String, workout: String)
 
+## Extra shared ride options, presented before confirming the activity.
+var options: VBoxContainer = VBoxContainer.new()
+
 var _orqwa: OrqwaApp
 var _previews: BoxContainer = BoxContainer.new()
 var _course_preview: VBoxContainer = VBoxContainer.new()
@@ -66,6 +69,8 @@ func _ready() -> void:
 	_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_description.add_theme_color_override("font_color", UiTheme.MUTED)
 	_workout_preview.add_child(_description)
+	options.add_theme_constant_override("separation", 8)
+	add_child(options)
 	_apply.text = tr("Use this activity")
 	_apply.custom_minimum_size.y = 44
 	_apply.add_theme_stylebox_override("normal", UiTheme.accent_button())

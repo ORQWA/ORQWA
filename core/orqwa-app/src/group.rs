@@ -1,8 +1,8 @@
 //! App group lobbies: owned background networking and local course preparation.
 
 use crate::{App, AppError, AppEvent, DescentMode, Failure, GhostChoice, Kind, Workout};
-use orqwa_domain::units::Kilograms;
-use orqwa_net::activity::Selection;
+use orqwa_domain::units::{Kilograms, Meters, MetersPerSecond, Rpm, Watts};
+use orqwa_net::activity::{Assistance, Selection};
 use orqwa_net::code::MAX_PASTE_BYTES;
 pub use orqwa_net::link::ConnectOptions;
 use orqwa_net::lobby::Rider;
@@ -18,6 +18,29 @@ mod runtime;
 #[cfg(test)]
 mod tests;
 use runtime::Command;
+
+const _: () = assert!(orqwa_session::group::MAX_RIDERS == MAX_RIDERS);
+
+/// A current authenticated group rider, interpolated locally without changing measurements.
+#[derive(Clone, Debug)]
+pub struct GroupRider {
+    /// Stable roster slot for this membership.
+    pub id: u8,
+    /// Membership generation; a reused slot must get a new avatar and motion history.
+    pub generation: u64,
+    /// Display name from the admitted roster.
+    pub name: String,
+    /// Rider and bike mass, for avatar effort only.
+    pub mass: Kilograms,
+    /// Smoothed course distance.
+    pub distance: Meters,
+    /// Peer virtual speed.
+    pub speed: MetersPerSecond,
+    /// Peer measured power; never the local rider's recording or trainer input.
+    pub power: Watts,
+    /// Peer measured cadence for animation.
+    pub cadence: Rpm,
+}
 
 /// Current connection/preparation phase, independent of presentation language.
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
@@ -80,6 +103,10 @@ pub struct Snapshot {
     pub selection: Option<Selection>,
     /// Fixed membership table without peer addresses or heart rate.
     pub roster: [Option<Rider>; MAX_RIDERS],
+    /// Local membership epochs, advanced on each joined assignment before exposing state.
+    pub generations: [u64; MAX_RIDERS],
+    /// Organizer's current assistance choices, also before selecting an activity.
+    pub assistance: Assistance,
     /// Readiness for the selected revision.
     pub ready: [bool; MAX_RIDERS],
     /// Whether local preparation completed.
@@ -131,6 +158,8 @@ impl Default for Snapshot {
             me: 0,
             selection: None,
             roster: std::array::from_fn(|_| None),
+            generations: [0; MAX_RIDERS],
+            assistance: Assistance::default(),
             ready: [false; MAX_RIDERS],
             prepared: false,
             course: None,
@@ -182,6 +211,7 @@ pub(crate) struct Running {
     trainer_connected: bool,
     workout_id: String,
     voice_controls: Arc<VoiceControls>,
+    peers: orqwa_session::group::Riders,
 }
 #[derive(Default)]
 struct VoiceControls {
@@ -271,6 +301,7 @@ impl App {
             trainer_connected: self.trainer_connected(),
             workout_id: String::new(),
             voice_controls,
+            peers: orqwa_session::group::Riders::default(),
         });
         Ok(())
     }
@@ -284,6 +315,11 @@ impl App {
     }
     /// Leaves networking/audio while preserving any local ride.
     pub fn group_leave(&mut self) {
+        if let Some(active) = &mut self.ride {
+            active
+                .ride
+                .set_group_effect(orqwa_physics::GroupEffect::default());
+        }
         if self.group.as_ref().is_some_and(|g| g.preparing.is_some()) && self.ride.is_none() {
             self.cancel_loading();
         }
@@ -325,6 +361,60 @@ impl App {
             workout.unwrap_or("").clone_into(&mut group.workout_id);
         }
         Ok(())
+    }
+
+    /// Changes the organizer's independent drafting and keep-together choices before start.
+    /// A shared change invalidates readiness, while already verified content is retained.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] when not organizing, after countdown, or if the queue is unavailable.
+    pub fn group_assistance(&self, drafting: bool, keep_together: bool) -> Result<(), AppError> {
+        let status = self.group();
+        if !status.host || status.start.is_some() {
+            return Err(error(
+                "Only the organizer can change ride settings before the start.",
+            ));
+        }
+        self.group_command(Command::Assistance(Assistance {
+            drafting,
+            keep_together,
+        }))
+    }
+
+    /// Up to seven current group riders for the road, map and profile. Stale state, departed
+    /// memberships and mismatched reused slots are omitted rather than left on screen.
+    #[must_use]
+    pub fn group_riders(&self) -> Vec<GroupRider> {
+        let Some(group) = &self.group else {
+            return Vec::new();
+        };
+        let snapshot = group.snapshot.borrow();
+        if snapshot.phase != Phase::Riding || !group.launched || self.ride.is_none() {
+            return Vec::new();
+        }
+        group
+            .peers
+            .view(Instant::now())
+            .iter()
+            .enumerate()
+            .filter_map(|(id, peer)| {
+                let peer = peer.as_ref()?;
+                let rider = snapshot.roster[id].as_ref()?;
+                if id == usize::from(snapshot.me) || snapshot.generations[id] != peer.generation {
+                    return None;
+                }
+                Some(GroupRider {
+                    id: u8::try_from(id).ok()?,
+                    generation: peer.generation,
+                    name: rider.name.clone(),
+                    mass: rider.mass,
+                    distance: peer.distance,
+                    speed: peer.speed,
+                    power: peer.power,
+                    cadence: peer.cadence,
+                })
+            })
+            .collect()
     }
     /// Sets readiness after preparation; becoming ready also requires a connected trainer.
     ///
@@ -520,6 +610,18 @@ impl App {
                 self.group_prepared(revision);
             }
         }
+        self.launch_group(&snapshot, revision, events);
+        if snapshot.phase == Phase::Ready
+            && snapshot.prepared
+            && self.group.as_ref().is_some_and(|g| g.prepared != revision)
+        {
+            self.group_prepared(revision);
+        }
+        self.update_group_motion(&snapshot);
+        self.publish_group_state(&snapshot);
+    }
+
+    fn launch_group(&mut self, snapshot: &Snapshot, revision: u64, events: &mut Vec<AppEvent>) {
         if snapshot.start.is_some_and(|at| Instant::now() >= at)
             && self
                 .group
@@ -552,26 +654,88 @@ impl App {
                 g.launching = false;
             }
             match result {
-                Ok(()) => events.push(AppEvent::GroupRideStarted {
-                    on_course,
-                    workout: snapshot.workout.is_some(),
-                }),
+                Ok(()) => {
+                    if let Some(active) = &mut self.ride {
+                        active.assisted =
+                            snapshot.assistance.drafting || snapshot.assistance.keep_together;
+                    }
+                    events.push(AppEvent::GroupRideStarted {
+                        on_course,
+                        workout: snapshot.workout.is_some(),
+                    });
+                }
                 Err(e) => events.push(AppEvent::Error(Failure::from(e))),
             }
         }
-        self.publish_group_state(&snapshot);
+    }
+
+    fn update_group_motion(&mut self, snapshot: &Snapshot) {
+        let Some(group) = &mut self.group else {
+            return;
+        };
+        for id in 0..MAX_RIDERS {
+            if id == usize::from(snapshot.me)
+                || snapshot.roster[id].is_none()
+                || snapshot.phase != Phase::Riding
+            {
+                group.peers.clear(id);
+            } else if let Some((state, at)) = snapshot.states[id] {
+                group.peers.observe(
+                    id,
+                    snapshot.generations[id],
+                    orqwa_session::group::Sample {
+                        elapsed: state.at,
+                        distance: state.distance,
+                        speed: state.speed,
+                        power: state.power,
+                        cadence: state.cadence,
+                    },
+                    at,
+                );
+            }
+        }
+        if let Some(active) = &mut self.ride {
+            let state = active.ride.state();
+            let pedaling = !active.paused
+                && !active.finished
+                && state.telemetry.power.is_some_and(|p| p.0 > 0.0)
+                && state.telemetry.cadence.is_none_or(|c| c.0 > 0.0);
+            let rules = snapshot.assistance;
+            let effect = orqwa_session::group::assistance(
+                &group.peers.view(Instant::now()),
+                state.distance,
+                state.speed,
+                pedaling,
+                (snapshot.me != 0).then_some(0),
+                rules.drafting,
+                rules.keep_together,
+            );
+            active.ride.set_group_effect(effect);
+        }
     }
     fn publish_group_state(&self, snapshot: &Snapshot) {
         if let Some(g) = &self.group
             && let Some(state) = self.ride_state()
         {
             let at = snapshot.start.map_or(state.elapsed, |at| at.elapsed());
+            let stopped = self
+                .ride
+                .as_ref()
+                .is_some_and(|ride| ride.paused || ride.finished);
             g.states.send_replace(Some(RiderState {
                 at,
                 distance: state.distance,
-                speed: state.speed,
+                speed: if stopped {
+                    MetersPerSecond(0.0)
+                } else {
+                    state.speed
+                },
                 power: state.telemetry.power.unwrap_or_default(),
-                cadence: state.telemetry.cadence.unwrap_or_default(),
+                cadence: if stopped {
+                    Rpm(0.0)
+                } else {
+                    state.telemetry.cadence.unwrap_or_default()
+                },
             }));
         }
     }
@@ -580,6 +744,7 @@ impl App {
             && g.commands.try_send(Command::Prepared(revision)).is_ok()
         {
             g.prepared = revision;
+            g.preparing = None;
         }
     }
     pub(crate) fn shared_workouts(&self) -> Vec<orqwa_workouts::Entry> {

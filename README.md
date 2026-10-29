@@ -106,7 +106,10 @@ with [Getting started](https://github.com/ORQWA/ORQWA/wiki/Getting-started); tes
 trainer without the app with the [command-line tool](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool).
 The **[Group Rides](https://github.com/ORQWA/ORQWA/wiki/Group-rides)** tab creates or joins
 private eight-rider lobbies. The host selects a 3D course or structured workout, participants
-receive it directly, and everyone starts together once ready. Optional voice starts microphone-muted
+receive it directly, and everyone starts together once ready. See friends on the road, map
+and profile, with distance gaps beside the ride. The organizer chooses **Drafting** and
+**Keep together** before starting; assisted rides count for training and measured-power records,
+but set no course or climb speed records. Optional voice starts microphone-muted
 and records no audio. The [CLI workflow](https://github.com/ORQWA/ORQWA/wiki/Command-line-tool#ride-with-others)
 continues to support rides using a shared local GPX.
 

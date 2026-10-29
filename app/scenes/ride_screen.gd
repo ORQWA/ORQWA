@@ -52,6 +52,7 @@ var _climb_time: Label = Label.new()
 var _ghost_panel: PanelContainer = PanelContainer.new()
 var _ghost_name: Label = UiTheme.caption("")
 var _ghost_gap: Label = UiTheme.value(20)
+var _group_riders: GroupRidersPanel = GroupRidersPanel.new()
 var _finished: bool = false
 var _saved: bool = false
 var _toast_left: float = 0.0
@@ -111,6 +112,7 @@ func bind(orqwa: OrqwaApp, world: RideWorld) -> void:
 ## Prepares the screen for a new ride on the loaded route with `options` in effect.
 func begin(options: Dictionary) -> void:
 	_options = options
+	($RightColumnScroll as ScrollContainer).scroll_vertical = 0
 	_apply_sound_options(options)
 	_finished = false
 	_saved = false
@@ -131,7 +133,7 @@ func begin(options: Dictionary) -> void:
 	var max_heart_rate: float = _orqwa.profile().get("max_heart_rate_bpm", 185.0)
 	_chart.heart_rate_range = Vector2(max_heart_rate * 0.5, max_heart_rate)
 	(get_node("Attribution") as Control).visible = not on_its_own
-	for panel: Control in [$RightColumn/MapPanel, $RightColumn/ProfilePanel]:
+	for panel: Control in [%Minimap.get_parent(), %Profile.get_parent().get_parent()]:
 		panel.visible = not on_its_own
 	_workout_panel.visible = not _workout.is_empty()
 	_workout_panel.show_workout(_workout)
@@ -174,6 +176,7 @@ func _ready() -> void:
 	map_panel.add_theme_stylebox_override("panel", opaque)
 	_build_backdrop()
 	_build_workout_panel()
+	(%RightColumn as VBoxContainer).add_child(_group_riders)
 	_build_climb_panel()
 	_build_ghost_panel()
 	_minimap.jump_requested.connect(
@@ -289,6 +292,10 @@ func _process(delta: float) -> void:
 	var state: Dictionary = _orqwa.ride_state()
 	if state.is_empty():
 		return
+	var peers: Array = state.get("peers", [])
+	_group_riders.show_riders(peers, _imperial)
+	_minimap.set_group_riders(peers)
+	_profile.set_group_riders(peers)
 	if is_overlay():
 		_overlay_hud.show_state(state)
 	_show_gear(state["gear"])
@@ -528,7 +535,7 @@ func _build_backdrop() -> void:
 
 func _build_workout_panel() -> void:
 	_workout_panel.hide()
-	var column: VBoxContainer = $RightColumn
+	var column: VBoxContainer = %RightColumn
 	column.add_child(_workout_panel)
 	column.move_child(_workout_panel, 0)
 
@@ -541,7 +548,7 @@ func _build_ghost_panel() -> void:
 	rows.add_child(_ghost_gap)
 	_ghost_panel.add_child(rows)
 	_ghost_panel.hide()
-	($RightColumn as VBoxContainer).add_child(_ghost_panel)
+	(%RightColumn as VBoxContainer).add_child(_ghost_panel)
 
 
 ## The ghost (`ride_state()["ghost"]`) on the map and profile, and the time gap to it.
@@ -584,7 +591,7 @@ func _build_climb_panel() -> void:
 	rows.add_child(_climb_time)
 	_climb_panel.add_child(rows)
 	_climb_panel.hide()
-	($RightColumn as VBoxContainer).add_child(_climb_panel)
+	(%RightColumn as VBoxContainer).add_child(_climb_panel)
 
 
 ## Progress on the climb the rider is on (`ride_state()["climb"]`), hidden between climbs.

@@ -63,11 +63,11 @@ msgstr ""
 msgid "%s (copy)"
 msgstr ""
 
-#: app/scenes/ride_screen.gd
+#: app/scenes/ride_screen.gd app/ui/group_riders_panel.gd
 msgid "%s ahead"
 msgstr ""
 
-#: app/scenes/ride_screen.gd
+#: app/scenes/ride_screen.gd app/ui/group_riders_panel.gd
 msgid "%s behind"
 msgstr ""
 
@@ -87,7 +87,7 @@ msgstr ""
 msgid "%s fps"
 msgstr ""
 
-#: app/scenes/group_rides_tab.gd
+#: app/scenes/group_rides_tab.gd app/ui/group_riders_panel.gd
 msgid "%s ft"
 msgstr ""
 
@@ -107,7 +107,7 @@ msgstr ""
 msgid "%s is up to date."
 msgstr ""
 
-#: app/scenes/group_rides_tab.gd
+#: app/scenes/group_rides_tab.gd app/ui/group_riders_panel.gd
 msgid "%s m"
 msgstr ""
 
@@ -405,6 +405,18 @@ msgstr ""
 
 #: app/ui/region_picker.gd
 msgid "Asking for the size of %s…"
+msgstr ""
+
+#: app/scenes/history_screen.gd
+msgid "Assisted group ride"
+msgstr ""
+
+#: app/scenes/ride_summary_dialog.gd
+msgid "Assisted group ride · speed records excluded"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Assisted rides count for training, but do not set speed records."
 msgstr ""
 
 #: app/ui/group_voice_controls.gd
@@ -1175,6 +1187,18 @@ msgstr ""
 msgid "Downloading the course map"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Drafting"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Drafting off"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Drafting on"
+msgstr ""
+
 #: app/scenes/overlay_hud.gd
 msgid "Drag to move the overlay"
 msgstr ""
@@ -1507,7 +1531,7 @@ msgstr ""
 msgid "Group"
 msgstr ""
 
-#: app/scenes/ride_screen.gd app/scenes/start_page.gd
+#: app/scenes/ride_screen.gd app/scenes/start_page.gd app/ui/group_riders_panel.gd
 msgid "Group Rides"
 msgstr ""
 
@@ -1577,6 +1601,10 @@ msgstr ""
 
 #: app/ui/zones_editor.gd
 msgid "Heart-rate zones, the top of each as a share of the maximum heart rate"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Help everyone stay with the organizer while pedaling."
 msgstr ""
 
 #: app/ui/graphics_settings.gd
@@ -1741,6 +1769,18 @@ msgstr ""
 
 #: app/scenes/remote_dialog.gd
 msgid "Keep this screen on while you ride: turn off its auto-lock."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Keep together"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Keep together off"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Keep together on"
 msgstr ""
 
 #: app/ui/course_settings.gd
@@ -2041,6 +2081,10 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "No route is loaded."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "No signal"
 msgstr ""
 
 #: app/scenes/start_page.gd
@@ -2673,6 +2717,10 @@ msgstr ""
 
 #: app/scenes/course_edit_dialog.gd app/scenes/profile_dialog.gd app/ui/workout_editor.gd
 msgid "Save"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Save effort when riding behind friends."
 msgstr ""
 
 #: app/scenes/history_screen.gd

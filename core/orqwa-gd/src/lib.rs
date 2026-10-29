@@ -1077,6 +1077,7 @@ impl OrqwaApp {
                     "max_heart_rate" => &optional(s.max_heart_rate.map(|v| v.0)),
                     "route_time_s" => &optional(entry.record.route_time.map(|t| t.as_secs_f64())),
                     "route_record" => entry.route_record,
+                    "assisted" => entry.record.assisted,
                     "ftp_estimate_w" => &optional(entry.record.ftp_estimate.map(|w| w.0)),
                     "climbs" => &climb_times(&entry),
                     "power_curve" => &entry
@@ -2085,6 +2086,11 @@ impl OrqwaApp {
     fn group_ready(&mut self, ready: bool) -> bool {
         self.command(|app| app.group_ready(ready))
     }
+    /// Sets the organizer's independent group assistance choices before the countdown.
+    #[func]
+    fn group_assistance(&mut self, drafting: bool, keep_together: bool) -> bool {
+        self.command(|app| app.group_assistance(drafting, keep_together))
+    }
     /// Requests the shared countdown on the host.
     #[func]
     fn group_start(&mut self) -> bool {
@@ -2984,6 +2990,7 @@ impl OrqwaApp {
         let mut dict = vdict! {
             "elapsed_s" => state.elapsed.as_secs_f64(),
             "paused" => app.is_paused(),
+            "peers" => &group::riders(app),
             "distance_m" => state.distance.0,
             "speed_kmh" => state.speed.as_kilometers_per_hour(),
             "power" => &optional(t.power.map(|p| p.0)),

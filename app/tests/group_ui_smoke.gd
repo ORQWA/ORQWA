@@ -10,6 +10,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _group_activity()
+	await _group_motion()
 	if not _failed:
 		print("GROUP UI SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -43,6 +44,23 @@ func _group_activity() -> void:
 	_check(
 		picker._course.disabled and not picker._apply.visible, "joiners preview the shared choice"
 	)
+	group._show_status({"host": true, "phase": "waiting", "drafting": true, "keep_together": true})
+	_check(
+		not group._drafting.disabled and not group._together.disabled, "organizer sets both rules"
+	)
+	group._show_status({"host": false, "phase": "ready", "drafting": false, "keep_together": true})
+	_check(
+		group._drafting.disabled and group._together.disabled, "joiners cannot change shared rules"
+	)
+	_check(
+		not group._drafting.button_pressed and group._together.button_pressed,
+		"rules are independent"
+	)
+	group._show_status(
+		{"host": true, "phase": "countdown", "drafting": false, "keep_together": true}
+	)
+	_check(group._drafting.disabled and group._together.disabled, "rules freeze at countdown")
+	_check(group._rule_summary.visible, "riders see the frozen rules during the ride")
 	var voice: GroupVoiceControls = group._voice_controls
 	voice.update_status({"voice": true, "microphone": false, "devices": []})
 	_check(
@@ -73,6 +91,54 @@ func _group_activity() -> void:
 	_check(voice._mic.disabled, "mute all sound prevents microphone activation")
 	group.free()
 	app.free()
+
+
+func _group_motion() -> void:
+	var avatars: GroupRidersWorld = GroupRidersWorld.new()
+	avatars.set_process(false)
+	root.add_child(avatars)
+	var panel: GroupRidersPanel = GroupRidersPanel.new()
+	root.add_child(panel)
+	await process_frame
+	var peer: Dictionary = {
+		"id": 1,
+		"generation": "1",
+		"name": "Alex <rider>",
+		"gap_m": 12.0,
+		"rider_x": 0.0,
+		"rider_y": 12.0,
+		"elevation_m": 500.0,
+		"heading": 0.0,
+		"grade": 8.0,
+		"speed_kmh": 20.0,
+		"cadence": 85.0,
+		"effort": 4.0,
+		"curvature": 0.0,
+	}
+	avatars.show_riders([peer], 1.0 / 60.0)
+	panel.show_riders([peer], false)
+	var first: GroupRiderAvatar = avatars.get_child(0)
+	_check(
+		first.generation == "1" and panel.visible, "fresh membership appears on the road and HUD"
+	)
+	_check(panel._labels[1].text == "12 m ahead", "relative gap uses metric distance")
+	peer["gap_m"] = -12.0
+	panel.show_riders([peer], true)
+	_check(panel._labels[1].text == "39 ft behind", "gap follows direction and rider units")
+	peer["generation"] = "2"
+	avatars.show_riders([peer], 1.0 / 60.0)
+	var replacement: GroupRiderAvatar = avatars.get_child(0)
+	_check(
+		first != replacement and replacement.generation == "2",
+		"reused slots discard the old avatar motion"
+	)
+	avatars.show_riders([], 1.0 / 60.0)
+	panel.show_riders([], false)
+	_check(
+		avatars.get_child_count() == 0 and not panel.visible, "stale or departed peers disappear"
+	)
+	avatars.free()
+	panel.free()
 
 
 func _check(condition: bool, message: String) -> void:

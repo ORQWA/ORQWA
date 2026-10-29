@@ -555,6 +555,7 @@ fn drive_shift_input(
     }
 }
 
+#[allow(clippy::struct_excessive_bools)] // playback state and independent recording eligibility
 struct ActiveRide {
     ride: Ride,
     /// The name it goes into the history by, for a workout without a course; rides on a course
@@ -592,6 +593,8 @@ struct ActiveRide {
     paused: bool,
     /// Sped up or jumped: its times are not real, so it counts towards no records.
     simulated: bool,
+    /// Group assistance was enabled; speed records are excluded while power metrics remain real.
+    assisted: bool,
 }
 
 impl ActiveRide {
@@ -3049,6 +3052,7 @@ impl App {
             time_scale: 1.0,
             paused: false,
             simulated: false,
+            assisted: false,
         });
     }
 
@@ -3153,13 +3157,13 @@ impl App {
                 summary: summarize(samples, self.profile.profile.ftp),
                 route_key: route.filter(|_| real).map(Route::key),
                 route_time: route
-                    .filter(|_| finished && real)
+                    .filter(|_| finished && real && !active.assisted)
                     .and_then(|route| effort(samples, Meters(0.0), route.length()))
                     .map(|e| e.elapsed),
                 climbs: route
                     .map_or(&[][..], Route::climbs)
                     .iter()
-                    .filter(|_| real)
+                    .filter(|_| real && !active.assisted)
                     .filter_map(|c| {
                         effort(samples, c.start, c.end).map(|e| ClimbTime {
                             start: c.start,
@@ -3173,6 +3177,7 @@ impl App {
                 ftp_estimate: active.ride.ftp_estimate(),
                 rider_mass: Some(self.profile.profile.rider_mass),
                 simulated: active.simulated,
+                assisted: active.assisted,
                 analysis: Some(analyse(samples)),
                 uploads: std::collections::BTreeMap::new(),
             };
@@ -3237,14 +3242,23 @@ impl App {
                         other.route_key.is_some() && other.route_key == record.route_key
                     })
                     .collect();
-                let best_route = same_route.iter().filter_map(|r| r.route_time).min();
+                let best_route = same_route
+                    .iter()
+                    .filter(|r| !r.assisted)
+                    .filter_map(|r| r.route_time)
+                    .min();
                 HistoryEntry {
                     fit: fit.clone(),
-                    route_record: record.route_time.is_some() && record.route_time == best_route,
+                    route_record: !record.assisted
+                        && record.route_time.is_some()
+                        && record.route_time == best_route,
                     climb_records: record
                         .climbs
                         .iter()
-                        .map(|climb| Some(climb.elapsed) == best_climb_time(&same_route, climb))
+                        .map(|climb| {
+                            !record.assisted
+                                && Some(climb.elapsed) == best_climb_time(&same_route, climb)
+                        })
                         .collect(),
                     power_records: analysis::power_records(record, &power_bests),
                     record: record.clone(),
@@ -3285,7 +3299,11 @@ impl App {
             .collect();
         RouteRecords {
             ridden: !same_route.is_empty(),
-            route: same_route.iter().filter_map(|r| r.route_time).min(),
+            route: same_route
+                .iter()
+                .filter(|r| !r.assisted)
+                .filter_map(|r| r.route_time)
+                .min(),
             climbs: route
                 .climbs()
                 .iter()
@@ -3498,6 +3516,7 @@ impl App {
                     .history()
                     .into_iter()
                     .filter(|h| h.record.route_key.as_deref() == Some(key.as_str()))
+                    .filter(|h| !h.record.assisted)
                     .filter_map(|h| h.record.route_time.map(|t| (t, h.fit)))
                     .min_by_key(|(t, _)| *t)
                     .ok_or_else(|| unavailable("no finished ride on this route yet".to_owned()))?;
@@ -3637,6 +3656,7 @@ impl App {
             ftp_estimate: None,
             rider_mass: None,
             simulated: false,
+            assisted: false,
             analysis: Some(analyse(&samples)),
             uploads: std::collections::BTreeMap::new(),
         };
@@ -3747,7 +3767,7 @@ impl App {
                         .get(active.next_climb)
                         .copied()
                         .flatten(),
-                    !active.simulated,
+                    !active.simulated && !active.assisted,
                 )));
                 active.next_climb += 1;
             }
@@ -4304,6 +4324,7 @@ fn thin(points: &[(f64, f64)]) -> Vec<[f32; 2]> {
 fn best_climb_time(records: &[&RideRecord], climb: &ClimbTime) -> Option<Duration> {
     records
         .iter()
+        .filter(|r| !r.assisted)
         .flat_map(|r| r.climbs.iter())
         .filter(|other| other.same_climb(climb))
         .map(|other| other.elapsed)
@@ -5491,6 +5512,7 @@ mod tests {
             ftp_estimate: None,
             rider_mass: None,
             simulated: false,
+            assisted: false,
             analysis: None,
             uploads: std::collections::BTreeMap::new(),
         };

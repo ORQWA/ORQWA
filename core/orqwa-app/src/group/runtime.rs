@@ -20,6 +20,7 @@ use std::sync::{Arc, atomic::Ordering};
 pub(super) enum Command {
     Admit(String),
     Select(Option<PathBuf>, Option<Plan>),
+    Assistance(Assistance),
     Prepared(u64),
     Ready(bool),
     Start,
@@ -137,6 +138,7 @@ async fn run_inner(
         Session::Host(HostLobby::open(host, request.rider.clone()).map_err(|e| e.to_string())?)
     };
     snapshot.roster[usize::from(snapshot.me)] = Some(request.rider);
+    snapshot.generations[usize::from(snapshot.me)] = 1;
     snapshot.phase = Phase::Waiting;
     snapshot.reply.clear();
     let port = match &mut session {
@@ -183,12 +185,13 @@ async fn run_inner(
                         snapshot.phase = Phase::Downloading; snapshot.error.clear(); snapshot.prepared = false;
                         jobs.spawn(async move {chosen(course,plan,dir,revision).await.map(Prepared::Host)}); Ok(())
                     }
+                    Command::Assistance(rules) => change_rules(&session,snapshot,&mut next_revision,rules,jobs.is_empty()).await,
                     Command::Prepared(revision) => {if snapshot.selection.as_ref().is_some_and(|s|s.revision==revision) {snapshot.prepared = true; snapshot.phase = Phase::Ready;} Ok(())}
                     Command::Ready(ready) => {
                         if !snapshot.prepared {continue;}
                         session.ready(snapshot.selection.as_ref().ok_or("Select an activity first.")?.revision,ready).await
                     }
-                    Command::Start => match &session {Session::Host(l)=>l.start(Duration::from_secs(5)).await.map(|_|()).map_err(|e|e.to_string()),Session::Join(_)=>Err("Only the host starts the ride.".into())},
+                    Command::Start => start(&session,snapshot).await,
                     Command::Remove(id) => match &session {Session::Host(l)=>l.remove(id).map_err(|e|e.to_string()),Session::Join(_)=>Err("Only the host removes riders.".into())},
                     Command::Retry => {
                         if let (Session::Join(l),Some(selection)) = (&session,&snapshot.selection) {
@@ -241,11 +244,21 @@ async fn run_inner(
                 if let Err(error) = result {snapshot.error = error;}
             },
             event = session.next() => match event {
-                Some(LobbyEvent::Joined {id,rider}) => {snapshot.roster[usize::from(id.value())] = Some(rider); snapshot.ready[usize::from(id.value())] = false;}
+                Some(LobbyEvent::Joined {id,rider}) => {
+                    let index=usize::from(id.value());
+                    snapshot.generations[index]=snapshot.generations[index].checked_add(1).ok_or("Rider membership exhausted.")?;
+                    snapshot.roster[index] = Some(rider); snapshot.ready[index] = false;snapshot.states[index]=None;
+                }
                 Some(LobbyEvent::Left {id}) => {let index = usize::from(id.value()); snapshot.roster[index] = None; snapshot.ready[index] = false; snapshot.states[index] = None;}
                 Some(LobbyEvent::Readiness {id,revision,ready}) => if snapshot.selection.as_ref().is_some_and(|s|s.revision==revision) {snapshot.ready[usize::from(id.value())] = ready;},
                 Some(LobbyEvent::Selection(selection)) => {
+                    if snapshot.start.is_some() {continue;}
                     if snapshot.selection.as_ref().is_some_and(|s|s.revision==selection.revision) {continue;}
+                    let retained=snapshot.prepared && snapshot.selection.as_ref().is_some_and(|s|s.course==selection.course&&s.workout==selection.workout);
+                    snapshot.assistance=selection.assistance;
+                    if retained && jobs.is_empty() {
+                        snapshot.selection=Some(selection);snapshot.ready.fill(false);snapshot.phase=Phase::Ready;continue;
+                    }
                     jobs.abort_all(); while jobs.join_next().await.is_some() {}
                     snapshot.selection = Some(selection.clone()); snapshot.ready.fill(false); snapshot.prepared = false; snapshot.error.clear();
                     snapshot.course = None; snapshot.workout = None; snapshot.plan=None;snapshot.workout_id.clear();
@@ -263,7 +276,8 @@ async fn run_inner(
             changed=latest_progress.changed()=>{if changed.is_ok(){let p=*latest_progress.borrow_and_update();snapshot.received=p.received;snapshot.total=p.total;}},
             result = jobs.join_next(), if !jobs.is_empty() => {
                 match result {
-                    Some(Ok(Ok(Prepared::Host(selected)))) => {
+                    Some(Ok(Ok(Prepared::Host(mut selected)))) => {
+                        selected.selection.assistance=snapshot.assistance;
                         if let Session::Host(l) = &session {l.select(selected.clone()).await.map_err(|e|e.to_string())?;}
                         snapshot.selection = Some(selected.selection); snapshot.course = selected.course; snapshot.workout = selected.workout;
                         snapshot.plan = load_plan(snapshot.workout.as_ref()).await?;
@@ -298,6 +312,63 @@ async fn run_inner(
             }
         }
     }
+}
+
+async fn start(session: &Session, snapshot: &mut Snapshot) -> Result<(), String> {
+    let Session::Host(lobby) = session else {
+        return Err("Only the host starts the ride.".into());
+    };
+    if !snapshot.can_start() {
+        return Err("Prepare the selected activity and wait for everyone to be ready.".into());
+    }
+    let at = lobby
+        .start(Duration::from_secs(5))
+        .await
+        .map_err(|e| e.to_string())?;
+    // Freeze the local command owner too; the corresponding lobby event may still be queued.
+    snapshot.start = Some(at.into_std());
+    snapshot.phase = Phase::Countdown;
+    Ok(())
+}
+
+async fn change_rules(
+    session: &Session,
+    snapshot: &mut Snapshot,
+    revision: &mut u64,
+    rules: Assistance,
+    idle: bool,
+) -> Result<(), String> {
+    if !snapshot.host || snapshot.start.is_some() {
+        return Err("Only the organizer can change ride settings before the start.".into());
+    }
+    if snapshot.assistance == rules {
+        return Ok(());
+    }
+    if idle && let Some(mut selection) = snapshot.selection.clone() {
+        let next = revision
+            .checked_add(1)
+            .ok_or("Activity revision exhausted.")?;
+        selection.revision = next;
+        selection.assistance = rules;
+        let Session::Host(lobby) = session else {
+            return Err("Only the organizer can change ride settings.".into());
+        };
+        // Start may already have committed in the lobby while its event is still queued.
+        // Publish local choices only after the authority accepts them, and keep riding on rejection.
+        lobby
+            .select(SharedActivity {
+                selection: selection.clone(),
+                course: snapshot.course.clone(),
+                workout: snapshot.workout.clone(),
+            })
+            .await
+            .map_err(|e| e.to_string())?;
+        *revision = next;
+        snapshot.selection = Some(selection);
+        snapshot.ready.fill(false);
+    }
+    snapshot.assistance = rules;
+    Ok(())
 }
 
 async fn voice_event(voice: &mut Option<VoiceChat>) -> Option<orqwa_voice::VoiceEvent> {
@@ -364,10 +435,7 @@ async fn chosen(
         name,
         course: course_id,
         workout: workout_id,
-        assistance: Assistance {
-            drafting: false,
-            keep_together: false,
-        },
+        assistance: Assistance::default(),
     };
     selection.validate().map_err(|e| e.to_string())?;
     Ok(SharedActivity {

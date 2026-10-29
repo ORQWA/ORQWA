@@ -511,6 +511,7 @@ mod tests {
                 ftp_estimate: None,
                 rider_mass: mass.map(Kilograms),
                 simulated: false,
+                assisted: false,
                 uploads: std::collections::BTreeMap::new(),
                 analysis: Some(RideAnalysis {
                     power_curve: PowerCurve(

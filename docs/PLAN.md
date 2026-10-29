@@ -868,7 +868,7 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
   existing lobby actors and CLI remain unchanged in this step
 - [x] Course-independent lobby admission and versioned activity/readiness controls; integrate
   current-selection content serving into the bounded lobby actors and update CLI callers
-- [ ] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
+- [x] Session/app integration: interpolated remote riders beside ghosts, map/profile markers
   and gaps; remote telemetry never substitutes for local measurements or supplies trainer commands
 - [x] Group Rides tab, third after Workouts, and in-ride panel: private-code admission, activity selection,
   automatic retained downloads, byte progress/retry, local preparation, trainer readiness,
@@ -876,7 +876,7 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
 - [x] Guided create/join flow with native page cards, course map/elevation and workout power/duration
   previews before sharing; trainer guidance and voice device changes with automatic muted reconnection
 - [ ] QR sharing using existing support
-- [ ] Drafting and Keep together (R166): independent shared toggles, both on by default,
+- [x] Drafting and Keep together (R166): independent shared toggles, both on by default,
   individually calculated assistance, simulation/ERG behavior and assisted-record eligibility
 - [ ] Late joining and group workout timing (R167): independent preparation, entry near host,
   no fictitious recorded distance, ordered host pause/resume/skips with personal intensity

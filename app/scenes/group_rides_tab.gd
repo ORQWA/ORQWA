@@ -12,6 +12,9 @@ var _sidebar: VBoxContainer = VBoxContainer.new()
 var _activity_panel: PanelContainer = PanelContainer.new()
 var _picker: GroupActivityPicker = GroupActivityPicker.new()
 var _stage: Label = Label.new()
+var _drafting: CheckBox = CheckBox.new()
+var _together: CheckBox = CheckBox.new()
+var _rule_summary: Label = Label.new()
 var _connecting: VBoxContainer = VBoxContainer.new()
 var _request: Button
 var _invite: VBoxContainer = VBoxContainer.new()
@@ -57,6 +60,9 @@ func _ready() -> void:
 	_stage.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_stage.add_theme_color_override("font_color", UiTheme.MUTED)
 	add_child(_stage)
+	_rule_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_rule_summary.add_theme_color_override("font_color", UiTheme.MUTED)
+	add_child(_rule_summary)
 	_build_setup()
 	_build_connecting()
 	_body.add_theme_constant_override("separation", 24)
@@ -66,6 +72,7 @@ func _ready() -> void:
 	_activity_panel.size_flags_stretch_ratio = 1.6
 	_activity_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_activity_panel.add_child(_picker)
+	_build_rules()
 	_picker.chosen.connect(_select_activity)
 	_body.add_child(_activity_panel)
 	_sidebar.add_theme_constant_override("separation", 16)
@@ -96,6 +103,25 @@ func _ready() -> void:
 	visibility_changed.connect(refresh)
 	_reflow()
 	refresh()
+
+
+func _build_rules() -> void:
+	var row: HFlowContainer = HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 24)
+	_drafting.text = tr("Drafting")
+	_drafting.tooltip_text = tr("Save effort when riding behind friends.")
+	_together.text = tr("Keep together")
+	_together.tooltip_text = tr("Help everyone stay with the organizer while pedaling.")
+	for option: CheckBox in [_drafting, _together]:
+		option.button_pressed = true
+		option.toggled.connect(_change_rules)
+		row.add_child(option)
+	_picker.options.add_child(row)
+	_muted(_picker.options, tr("Assisted rides count for training, but do not set speed records."))
+
+
+func _change_rules(_on: bool) -> void:
+	_orqwa.group_assistance(_drafting.button_pressed, _together.button_pressed)
 
 
 func _build_setup() -> void:
@@ -300,6 +326,21 @@ func _show_status(status: Dictionary) -> void:
 	var countdown: float = _status.get("countdown_s", 0.0)
 	var details: String = _status.get("error", "")
 	var underway: bool = phase in ["countdown", "riding", "ended"]
+	var drafting: bool = _status.get("drafting", true)
+	var together: bool = _status.get("keep_together", true)
+	_drafting.set_pressed_no_signal(drafting)
+	_together.set_pressed_no_signal(together)
+	_drafting.disabled = not host or phase not in ["waiting", "ready"]
+	_together.disabled = _drafting.disabled
+	_rule_summary.text = (
+		(tr("Drafting on") if drafting else tr("Drafting off"))
+		+ " · "
+		+ (tr("Keep together on") if together else tr("Keep together off"))
+	)
+	_rule_summary.visible = (
+		phase in ["countdown", "riding"]
+		or (not host and not name.is_empty() and phase in ["downloading", "preparing"])
+	)
 	var captions: Dictionary = {
 		"idle": tr("Choose who starts the ride. You'll be riding together in a few steps."),
 		"connecting": tr("Creating your ride…") if host else tr("Connecting to your friends…"),
@@ -405,6 +446,8 @@ func _show_roster(phase: String, host: bool) -> void:
 		var label: Label = _label(text, rider_name, 17)
 		label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		var state: Label = _label(text, tr("Ready") if rider["ready"] else tr("Getting ready"), 13)
+		if phase == "riding":
+			state.text = tr("No signal")
 		state.add_theme_color_override(
 			"font_color", UiTheme.SUCCESS if rider["ready"] else UiTheme.MUTED
 		)
