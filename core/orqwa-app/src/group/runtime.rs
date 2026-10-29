@@ -15,6 +15,7 @@ use tokio::sync::{mpsc, watch};
 use tokio::task::JoinSet;
 
 use super::{Phase, Snapshot, VoiceControls};
+use crate::Kind;
 use std::sync::{Arc, atomic::Ordering};
 
 pub(super) enum Command {
@@ -97,7 +98,7 @@ pub(super) async fn run(
     if let Err(error) = run_inner(request, &mut commands, &updates, &mut snapshot, &mut local).await
     {
         snapshot.phase = Phase::Failed;
-        snapshot.error = error;
+        snapshot.report(Kind::GroupRide, error);
         snapshot.invite.clear();
         snapshot.reply.clear();
         updates.send_replace(snapshot);
@@ -168,8 +169,8 @@ async fn run_inner(
         tokio::select! {
             event=voice_event(&mut voice)=>{
                 match event {
-                    Some(orqwa_voice::VoiceEvent::PeerMuted {peer})=>{snapshot.muted[usize::from(peer.value())]=true;snapshot.error="A speaker sent invalid audio and was muted locally.".into();}
-                    Some(orqwa_voice::VoiceEvent::DeviceUnavailable)=>{voice=None;snapshot.voice=false;snapshot.microphone=false;snapshot.error="The audio device is unavailable. Choose another device and enable voice again.".into();}
+                    Some(orqwa_voice::VoiceEvent::PeerMuted {peer})=>{snapshot.muted[usize::from(peer.value())]=true;snapshot.report(Kind::GroupVoice,"A speaker sent invalid audio and was muted locally.");}
+                    Some(orqwa_voice::VoiceEvent::DeviceUnavailable {error})=>{voice=None;snapshot.voice=false;snapshot.microphone=false;snapshot.report(Kind::GroupVoice,error);}
                     Some(orqwa_voice::VoiceEvent::Stopped)|None=>{voice=None;snapshot.voice=false;snapshot.microphone=false;}
                 }
             },
@@ -182,7 +183,7 @@ async fn run_inner(
                         jobs.abort_all(); while jobs.join_next().await.is_some() {}
                         next_revision = next_revision.checked_add(1).ok_or("Activity revision exhausted.")?;
                         let revision = next_revision; let dir = temp.0.clone();
-                        snapshot.phase = Phase::Downloading; snapshot.error.clear(); snapshot.prepared = false;
+                        snapshot.phase = Phase::Downloading; snapshot.error.clear();snapshot.activity_failed=false; snapshot.prepared = false;
                         jobs.spawn(async move {chosen(course,plan,dir,revision).await.map(Prepared::Host)}); Ok(())
                     }
                     Command::Assistance(rules) => change_rules(&session,snapshot,&mut next_revision,rules,jobs.is_empty()).await,
@@ -198,11 +199,11 @@ async fn run_inner(
                             jobs.abort_all(); while jobs.join_next().await.is_some() {}
                             let link = l.content_link().ok_or("The group connection ended.")?;
                             let selection = selection.clone(); let data = request.data.clone();
-                            snapshot.phase = Phase::Downloading; snapshot.error.clear();
+                            snapshot.phase = Phase::Downloading; snapshot.error.clear();snapshot.activity_failed=false;
                             let progress=progress.clone();jobs.spawn(async move {download(&link,&selection,&data,&progress).await.map(|(c,w)|Prepared::Join(c,w))});
                         } Ok(())
                     }
-                    Command::Failure(error) => {snapshot.error = error; snapshot.prepared = false; snapshot.phase = Phase::Waiting; Ok(())}
+                    Command::Failure(error) => {snapshot.activity_error(error); Ok(())}
                     Command::Devices => {
                         if scans.is_empty() {scans.spawn(async {tokio::task::spawn_blocking(||orqwa_voice::device::devices().map(|devices|devices.into_iter().take(32).map(|d|(d.id,d.name,d.input,d.output)).collect::<Vec<_>>()).map_err(|e|e.to_string())).await.map_err(|e|e.to_string())?});} Ok(())
                     }
@@ -233,7 +234,7 @@ async fn run_inner(
                         else if let Some(chat) = &voice {
                             let configured = (|| {chat.deafen(deaf); chat.volume(volume).map_err(|e|e.to_string())?;
                             chat.microphone(mic && !deaf).map_err(|e|e.to_string())?; Ok::<(),String>(())})();
-                            if let Err(error) = configured {snapshot.error=error;}
+                            if let Err(error) = configured {snapshot.report(Kind::GroupVoice,error);}
                             snapshot.microphone = chat.microphone_enabled(); snapshot.deafened = deaf;
                         } else if audio.is_empty() && let Some(port) = &port {
                             snapshot.voice_pending=true;
@@ -241,7 +242,7 @@ async fn run_inner(
                         } Ok(())
                     }
                 };
-                if let Err(error) = result {snapshot.error = error;}
+                if let Err(error) = result {snapshot.report(Kind::GroupRide,error);}
             },
             event = session.next() => match event {
                 Some(LobbyEvent::Joined {id,rider}) => {
@@ -260,7 +261,7 @@ async fn run_inner(
                         snapshot.selection=Some(selection);snapshot.ready.fill(false);snapshot.phase=Phase::Ready;continue;
                     }
                     jobs.abort_all(); while jobs.join_next().await.is_some() {}
-                    snapshot.selection = Some(selection.clone()); snapshot.ready.fill(false); snapshot.prepared = false; snapshot.error.clear();
+                    snapshot.selection = Some(selection.clone()); snapshot.ready.fill(false); snapshot.prepared = false; snapshot.error.clear();snapshot.activity_failed=false;
                     snapshot.course = None; snapshot.workout = None; snapshot.plan=None;snapshot.workout_id.clear();
                     if let Session::Join(l) = &session {
                         let link = l.content_link().ok_or("The group connection ended.")?; let data = request.data.clone();
@@ -270,7 +271,7 @@ async fn run_inner(
                 }
                 Some(LobbyEvent::Start {at}) => {snapshot.start = Some(at.into_std()); snapshot.phase = Phase::Countdown;}
                 Some(LobbyEvent::State {id,state}) => {snapshot.states[usize::from(id.value())] = Some((state,std::time::Instant::now()));}
-                Some(LobbyEvent::Expired) => snapshot.error = "An admission reply expired. Exchange fresh codes.".into(),
+                Some(LobbyEvent::Expired) => snapshot.report(Kind::GroupRide,"An admission reply expired. Exchange fresh codes."),
                 Some(LobbyEvent::HostLeft)|None => {jobs.abort_all(); audio.abort_all(); drop(voice); snapshot.voice = false; snapshot.microphone = false; snapshot.start = None; snapshot.phase = Phase::Ended; snapshot.states.fill(None); updates.send_replace(snapshot.clone()); return Ok(());}
             },
             changed=latest_progress.changed()=>{if changed.is_ok(){let p=*latest_progress.borrow_and_update();snapshot.received=p.received;snapshot.total=p.total;}},
@@ -284,8 +285,8 @@ async fn run_inner(
                         snapshot.ready.fill(false); snapshot.phase = Phase::Preparing;
                     }
                     Some(Ok(Ok(Prepared::Join(course,workout)))) => {snapshot.course = course; snapshot.workout_id=workout.as_ref().map_or(String::new(),|p|p.display().to_string()); snapshot.workout = workout; snapshot.plan=load_plan(snapshot.workout.as_ref()).await?; snapshot.phase = Phase::Preparing;}
-                    Some(Ok(Err(error))) => {snapshot.phase = Phase::Waiting; snapshot.error = error;}
-                    Some(Err(error)) if !error.is_cancelled() => {snapshot.phase = Phase::Waiting; snapshot.error = "Activity preparation stopped. Retry the download.".into();}
+                    Some(Ok(Err(error))) => {snapshot.activity_error(error);}
+                    Some(Err(error)) if !error.is_cancelled() => {snapshot.activity_error(error);}
                     _=>{}
                 }
             },
@@ -295,12 +296,14 @@ async fn run_inner(
                     for (index,muted) in snapshot.muted.iter().enumerate() {if *muted && let Ok(id)=u8::try_from(index) && let Ok(id)=RiderId::new(id) {chat.mute_peer(id,true);}}
                     voice = Some(chat); snapshot.voice = true;snapshot.voice_pending=false; snapshot.microphone = false; snapshot.deafened = deaf;
                 }
-                Some(Ok(Err(error))) => {snapshot.voice_pending=false;snapshot.error = error;},
+                Some(Ok(Err(error))) => {snapshot.voice_pending=false;snapshot.report(Kind::GroupVoice,error);},
+                Some(Err(error)) if !error.is_cancelled() => {snapshot.voice_pending=false;snapshot.report(Kind::GroupVoice,error);},
                 _ => snapshot.voice_pending=false,
             },
             result = scans.join_next(), if !scans.is_empty() => match result {
                 Some(Ok(Ok(devices))) => snapshot.devices=devices,
-                Some(Ok(Err(error))) => snapshot.error=error,
+                Some(Ok(Err(error))) => snapshot.report(Kind::GroupVoice,error),
+                Some(Err(error)) if !error.is_cancelled() => snapshot.report(Kind::GroupVoice,error),
                 _ => {},
             },
             _ = ticker.tick() => {

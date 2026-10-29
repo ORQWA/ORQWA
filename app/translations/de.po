@@ -2604,9 +2604,6 @@ msgstr "Fahrt erstellen"
 msgid "Creating your ride…"
 msgstr "Deine Fahrt wird erstellt…"
 
-msgid "Details…"
-msgstr "Details…"
-
 msgid "Everyone is ready. Start when you like!"
 msgstr "Alle sind bereit. Du kannst starten!"
 
@@ -2624,9 +2621,6 @@ msgstr "Eure Aktivität wird heruntergeladen…"
 
 msgid "Getting your ride ready…"
 msgstr "Deine Fahrt wird vorbereitet…"
-
-msgid "Group ride details"
-msgstr "Details zur Gruppenfahrt"
 
 msgid "I'm ready"
 msgstr "Ich bin bereit"
@@ -2705,9 +2699,6 @@ msgstr "Sende deine Beitrittsanfrage"
 
 msgid "Shared with everyone"
 msgstr "Mit allen geteilt"
-
-msgid "Something went wrong. Try again or check the details."
-msgstr "Etwas ist schiefgelaufen. Versuch es erneut oder schau in die Details."
 
 msgid "Speakers"
 msgstr "Lautsprecher"
@@ -2792,3 +2783,13 @@ msgstr "Kein Signal"
 
 msgid "Save effort when riding behind friends."
 msgstr "Spare Kraft, wenn du hinter anderen fährst."
+
+
+msgid "Could not prepare the shared activity."
+msgstr "Die gemeinsame Aktivität konnte nicht vorbereitet werden."
+
+msgid "Download stopped. Try again when you're ready."
+msgstr "Der Download wurde gestoppt. Versuche es erneut, wenn du bereit bist."
+
+msgid "Voice is unavailable. Check your audio devices and microphone permission."
+msgstr "Der Sprachchat ist nicht verfügbar. Prüfe deine Audiogeräte und die Mikrofonberechtigung."

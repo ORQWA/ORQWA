@@ -875,6 +875,9 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
   common countdown, rider gaps, opt-in voice/device selection/local mute, usage guides and screenshots
 - [x] Guided create/join flow with native page cards, course map/elevation and workout power/duration
   previews before sharing; trainer guidance and voice device changes with automatic muted reconnection
+- [x] Android group runtime: atomic publication on shared storage without hard links,
+  embedded AAudio context initialization, and classified group/voice diagnostics through the
+  application's translated Technical details / Dismiss history
 - [ ] QR sharing using existing support
 - [x] Drafting and Keep together (R166): independent shared toggles, both on by default,
   individually calculated assistance, simulation/ERG behavior and assisted-record eligibility

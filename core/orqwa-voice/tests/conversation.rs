@@ -293,3 +293,37 @@ async fn a_full_group_can_talk_while_ride_state_keeps_flowing() {
     }
     host.close().await;
 }
+
+#[tokio::test]
+async fn startup_failures_preserve_their_causes_and_leave_microphones_gated_off() {
+    let mut host = host().await;
+    let port = host.take_voice().unwrap();
+    let failed = VoiceChat::with_audio(port.clone(), |_| {
+        Err(VoiceDeviceError::new(
+            "opening speakers",
+            "AAudio permission denied",
+        ))
+    })
+    .await;
+    let error = failed.err().expect("the backend rejected startup");
+    assert!(
+        error
+            .to_string()
+            .contains("opening speakers: AAudio permission denied")
+    );
+    assert!(port.transmitting().is_none());
+    let failed = VoiceChat::with_audio(port.clone(), |_| {
+        panic!("android context was not initialized")
+    })
+    .await;
+    let error = failed
+        .err()
+        .expect("the worker panic must become a diagnostic");
+    assert!(
+        error
+            .to_string()
+            .contains("android context was not initialized")
+    );
+    assert!(port.transmitting().is_none());
+    host.close().await;
+}

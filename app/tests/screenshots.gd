@@ -68,7 +68,55 @@ func _group_screens(start: StartPage, orqwa: OrqwaApp, out: String) -> void:
 	root.get_texture().get_image().save_png(out.path_join("group-invitation-de.png"))
 	group._exchange.hide()
 	orqwa.group_leave()
+	await _group_error_screens(start, group, out)
 	print("saved group setup and joining views")
+
+
+func _group_error_screens(start: StartPage, group: GroupRidesTab, out: String) -> void:
+	var history: FailureDetails = _main.get("_failures")
+	var scroll: ScrollContainer = start.get("_group_page")
+	for locale: String in ["en", "de"]:
+		TranslationServer.set_locale(locale)
+		(
+			group
+			. _show_status(
+				{
+					"phase": "waiting",
+					"host": false,
+					"name": "Twann – Chasseral",
+					"can_retry": true,
+					"roster":
+					[
+						{"id": 0, "name": "Marco", "ready": false, "me": false, "muted": false},
+						{"id": 1, "name": "Rider", "ready": false, "me": true, "muted": false}
+					],
+				}
+			)
+		)
+		group._voice_panel.show()
+		history.clear()
+		history.report(
+			{
+				"message": "Could not prepare the shared activity.",
+				"details": "publishing verified activity: Permission denied (os error 13)"
+			}
+		)
+		history.report(
+			{
+				"message":
+				"Voice is unavailable. Check your audio devices and microphone permission.",
+				"details": "opening speakers: AAudio device is unavailable"
+			}
+		)
+		history._toggle.button_pressed = true
+		scroll.scroll_vertical = 100000
+		await create_timer(0.4).timeout
+		root.get_texture().get_image().save_png(out.path_join("group-errors-" + locale + ".png"))
+		print("saved group-errors-" + locale)
+		history._dismiss.pressed.emit()
+		await create_timer(0.2).timeout
+		root.get_texture().get_image().save_png(out.path_join("group-dismissed-" + locale + ".png"))
+		print("saved group-dismissed-" + locale)
 
 
 func _initialize() -> void:

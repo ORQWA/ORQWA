@@ -34,6 +34,8 @@ use orqwa_session::estimate;
 use orqwa_session::workout::{EffortTest, HeartRateHold, RampTest, Workout};
 use orqwa_world::MapFeature;
 
+#[cfg(target_os = "android")]
+mod android_audio;
 mod graphics;
 mod group;
 mod log;
@@ -2039,6 +2041,15 @@ impl OrqwaApp {
         self.app
             .as_ref()
             .map_or_else(VarDictionary::new, group::status)
+    }
+
+    /// Routes an Android package installer's original diagnostic through the same translated
+    /// summary and technical-details history as core update failures.
+    #[func]
+    fn android_update_failed(&mut self, cause: GString) {
+        let failure = Failure::new(Kind::InstallUpdate, cause);
+        let summary = self.record_failure(&failure);
+        self.signals().update_failed().emit(&summary);
     }
 
     /// Creates an empty lobby, or answers a pasted invite; discovery is explicitly opt-in.

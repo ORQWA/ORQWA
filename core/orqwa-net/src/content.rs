@@ -19,6 +19,8 @@ use crate::activity::{ActivityError, ContentId, ContentKind, Input};
 use crate::crypto::{random, sha256_provider};
 use crate::link::Connection;
 
+mod publication;
+
 const MAGIC: &[u8; 4] = b"OQC1";
 const HEADER: usize = 45;
 const CHUNK: usize = 16 * 1024;
@@ -192,7 +194,8 @@ impl Received {
 pub struct Validated(Received);
 impl Validated {
     /// Retains content under a hash-derived name without replacing any existing file.
-    /// The staging directory must be on the library's file system for atomic hard linking.
+    /// The staging directory must be on the library's file system. Android/Linux storage that
+    /// rejects hard links uses an atomic no-replace rename with the same publication guarantees.
     ///
     /// # Errors
     /// Returns [`ContentError`] for I/O failure or an existing file with different bytes.
@@ -208,12 +211,21 @@ impl Validated {
                 if Instant::now() >= deadline {
                     return Err(ContentError::Timeout);
                 }
-                match std::fs::hard_link(&self.0.path, &destination) {
+                match publication::retain(&self.0.path, &destination) {
                     Ok(()) => {}
                     Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
                         verify(&destination, self.0.id, deadline)?;
                     }
-                    Err(error) => return Err(error.into()),
+                    Err(error) => {
+                        return Err(io::Error::new(
+                            error.kind(),
+                            format!(
+                                "publishing verified activity to {}: {error}",
+                                destination.display()
+                            ),
+                        )
+                        .into());
+                    }
                 }
                 Ok(destination)
             }),

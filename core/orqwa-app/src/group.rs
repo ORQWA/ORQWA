@@ -125,6 +125,12 @@ pub struct Snapshot {
     pub states: [Option<(RiderState, Instant)>; MAX_RIDERS],
     /// Diagnostic details under a translated error caption.
     pub error: String,
+    /// Latest classified failure, emitted once through the application's normal failure events.
+    pub failure: Option<Failure>,
+    /// Monotonic occurrence number; dismissing an error must not resurface the same snapshot.
+    pub failure_revision: u64,
+    /// Preparation failed independently of later voice or admission errors.
+    pub activity_failed: bool,
     /// Explicit voice listening consent.
     pub voice: bool,
     /// Native audio startup is pending; microphone controls stay disabled.
@@ -169,6 +175,9 @@ impl Default for Snapshot {
             start: None,
             states: [None; MAX_RIDERS],
             error: String::new(),
+            failure: None,
+            failure_revision: 0,
+            activity_failed: false,
             voice: false,
             voice_pending: false,
             microphone: false,
@@ -184,6 +193,26 @@ impl Default for Snapshot {
     }
 }
 impl Snapshot {
+    fn report(&mut self, kind: Kind, details: impl std::fmt::Display) {
+        let failure = Failure::new(kind, details);
+        self.error.clone_from(&failure.details);
+        self.failure = Some(failure);
+        self.failure_revision = self.failure_revision.saturating_add(1);
+    }
+
+    fn activity_error(&mut self, details: impl std::fmt::Display) {
+        self.prepared = false;
+        self.phase = Phase::Waiting;
+        self.activity_failed = true;
+        self.report(Kind::GroupActivity, details);
+    }
+
+    /// A failed activity can be retried even if a subsequent voice error was dismissed.
+    #[must_use]
+    pub fn can_retry(&self) -> bool {
+        !self.host && self.activity_failed && self.phase == Phase::Waiting
+    }
+
     /// Only the prepared host with every admitted participant ready can start.
     #[must_use]
     pub fn can_start(&self) -> bool {
@@ -212,6 +241,7 @@ pub(crate) struct Running {
     workout_id: String,
     voice_controls: Arc<VoiceControls>,
     peers: orqwa_session::group::Riders,
+    reported_failure: u64,
 }
 #[derive(Default)]
 struct VoiceControls {
@@ -302,6 +332,7 @@ impl App {
             workout_id: String::new(),
             voice_controls,
             peers: orqwa_session::group::Riders::default(),
+            reported_failure: 0,
         });
         Ok(())
     }
@@ -569,6 +600,7 @@ impl App {
         if let Some(group) = &mut self.group {
             group.trainer_connected = connected;
         }
+        self.report_group_failure(&snapshot, events);
         let Some(group) = &self.group else {
             return;
         };
@@ -619,6 +651,17 @@ impl App {
         }
         self.update_group_motion(&snapshot);
         self.publish_group_state(&snapshot);
+    }
+
+    fn report_group_failure(&mut self, snapshot: &Snapshot, events: &mut Vec<AppEvent>) {
+        if let Some(group) = &mut self.group
+            && group.reported_failure != snapshot.failure_revision
+        {
+            group.reported_failure = snapshot.failure_revision;
+            if let Some(failure) = &snapshot.failure {
+                events.push(AppEvent::Error(failure.clone()));
+            }
+        }
     }
 
     fn launch_group(&mut self, snapshot: &Snapshot, revision: u64, events: &mut Vec<AppEvent>) {

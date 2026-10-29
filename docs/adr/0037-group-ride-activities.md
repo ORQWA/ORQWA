@@ -209,3 +209,20 @@ tests cover rule replication, readiness reset, local/remote power separation and
 session tests cover simulation/ERG behavior, and saved FIT tests cover recording isolation.
 Seven-rider review images use presentation fixtures, separately from transport tests. Native
 trainer feel, audio permissions, cross-home connectivity and GPU frame rate remain manual.
+
+### Android publication and diagnostics repair — 2026-10-29
+
+Android's shared-storage filesystem rejects hard links even in the app-owned media folder.
+After complete validation and rehashing, a denied/unsupported link now falls back on Android
+and Linux to atomic `renameat2(RENAME_NOREPLACE)`, which [Android's FUSE service accepts](https://android.googlesource.com/platform/packages/providers/MediaProvider/+/refs/heads/master/jni/FuseDaemon.cpp).
+Existing files and symlinks are never
+replaced; matching content is still reverified and reused, and cross-filesystem publication
+still fails. API 29 uses the stable kernel syscall because Bionic's wrapper starts at API 30.
+No copy into an exposed partial library file, overwrite rename or permission broadening occurs.
+
+The Android plugin supplies a retained application context to CPAL's existing `ndk-context`
+before Godot opens the extension. CPAL documents that embedded JNI hosts must initialize this
+context [when embedded through JNI](https://github.com/RustAudio/cpal#compiling-for-android);
+otherwise device setup can panic before readiness. Voice setup remains microphone-off.
+Group errors use ADR 0017's common classified/translated failure history with original causes,
+Technical details and Dismiss; independent activity retry state survives later voice failures.
