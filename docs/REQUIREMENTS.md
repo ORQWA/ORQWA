@@ -312,6 +312,12 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 |---|---|
 | R169 | Refines R164 and R162 (2026-10-28): group setup uses plain-language create/join actions and guided private invitation exchange. Course choices preview their map, elevation and key figures; workout choices preview power and duration before explicit sharing. Voice microphone and speaker choices remain usable during voice chat; changing devices reconnects opted-in voice with the microphone muted, retaining volume and local rider mutes. Lobby and in-ride controls reflect the same device choices. |
 
+## Consistent group failures
+
+| ID | Requirement |
+|---|---|
+| R170 | Refines R74, R162 and R164 (2026-10-29): asynchronous group activity and voice failures, including Android-native failures, use the application's translated explanations with original **Technical details** and **Dismiss** controls. A dismissed occurrence stays hidden through status refreshes; a new occurrence is reported again. Dismiss does not pause the local ride or leave the group, and an activity download can still be retried after a voice failure. Shared activities must publish atomically on Android shared storage without overwriting existing library content; native voice startup must initialize the embedded Android host before device access. |
+
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero

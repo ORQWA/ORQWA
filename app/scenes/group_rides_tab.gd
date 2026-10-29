@@ -27,10 +27,9 @@ var _devices: Button
 var _retry: Button
 var _voice_controls: GroupVoiceControls = GroupVoiceControls.new()
 var _voice_panel: VBoxContainer = VBoxContainer.new()
+var _invitation_panel: PanelContainer
 var _progress: ProgressBar = ProgressBar.new()
 var _bytes: Label = Label.new()
-var _error: HBoxContainer = HBoxContainer.new()
-var _details: AcceptDialog = AcceptDialog.new()
 var _connection: AcceptDialog = AcceptDialog.new()
 var _lan: CheckBox = CheckBox.new()
 var _stun: CheckBox = CheckBox.new()
@@ -92,13 +91,6 @@ func _ready() -> void:
 	audio.add_child(_voice_panel)
 	_button(_sidebar, tr("Leave group"), func() -> void: _orqwa.group_leave())
 	_build_dialogs()
-	_error.add_theme_constant_override("separation", 12)
-	var error_label: Label = _label(
-		_error, tr("Something went wrong. Try again or check the details.")
-	)
-	error_label.add_theme_color_override("font_color", UiTheme.DANGER)
-	_button(_error, tr("Details…"), func() -> void: _details.popup_centered(Vector2i(580, 0)))
-	add_child(_error)
 	resized.connect(_reflow)
 	visibility_changed.connect(refresh)
 	_reflow()
@@ -169,6 +161,7 @@ func _build_connecting() -> void:
 
 func _build_invitation() -> void:
 	var card: VBoxContainer = _card(_sidebar)
+	_invitation_panel = card.get_parent() as PanelContainer
 	card.add_child(_invite)
 	_invite.add_theme_constant_override("separation", 10)
 	_label(_invite, tr("Invite friends"), 20)
@@ -182,7 +175,6 @@ func _build_invitation() -> void:
 	_notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_notice.add_theme_color_override("font_color", UiTheme.SUCCESS)
 	_invite.add_child(_notice)
-	_invite.visibility_changed.connect(func() -> void: card.visible = _invite.visible)
 
 
 func _build_roster() -> void:
@@ -215,7 +207,7 @@ func _build_roster() -> void:
 
 
 func _build_dialogs() -> void:
-	for dialog: AcceptDialog in [_exchange, _connection, _details]:
+	for dialog: AcceptDialog in [_exchange, _connection]:
 		dialog.theme = UiTheme.build()
 		add_child(dialog)
 	_exchange.dialog_hide_on_ok = false
@@ -256,8 +248,6 @@ func _build_dialogs() -> void:
 		if child is Label:
 			(child as Label).custom_minimum_size.x = 460
 	_connection.add_child(network)
-	_details.title = tr("Group ride details")
-	_details.dialog_autowrap = true
 
 
 func _reflow() -> void:
@@ -324,7 +314,7 @@ func _show_status(status: Dictionary) -> void:
 	var ready: bool = _status.get("ready", false)
 	var name: String = _status.get("name", "")
 	var countdown: float = _status.get("countdown_s", 0.0)
-	var details: String = _status.get("error", "")
+	var can_retry: bool = _status.get("can_retry", false)
 	var underway: bool = phase in ["countdown", "riding", "ended"]
 	var drafting: bool = _status.get("drafting", true)
 	var together: bool = _status.get("keep_together", true)
@@ -365,6 +355,7 @@ func _show_status(status: Dictionary) -> void:
 	_request.disabled = reply.is_empty()
 	_body.visible = phase != "idle" and not _connecting.visible
 	_invite.visible = host and not underway and not compact
+	_invitation_panel.visible = _invite.visible
 	_notice.visible = not _notice.text.is_empty()
 	var invite: String = _status.get("invite", "")
 	for action: Node in _invite.find_children("*", "Button", true, false):
@@ -372,13 +363,23 @@ func _show_status(status: Dictionary) -> void:
 	_activity_panel.visible = not compact and (host or (not name.is_empty() and prepared))
 	var course_path: String = _status.get("course_path", "")
 	var workout_id: String = _status.get("workout_id", "")
+	var activity_failed: bool = _status.get("activity_failed", false)
 	var activity_key: String = (
-		course_path + workout_id + str(host) + str(underway) + TranslationServer.get_locale()
+		course_path
+		+ workout_id
+		+ str(host)
+		+ str(underway)
+		+ str(activity_failed)
+		+ TranslationServer.get_locale()
 	)
 	if activity_key != _activity_key:
 		_activity_key = activity_key
 		_picker.refresh()
-		_picker.show_selection(host and not underway, course_path, workout_id)
+		_picker.show_selection(
+			host and not underway,
+			"" if activity_failed else course_path,
+			"" if activity_failed else workout_id
+		)
 	var received: float = _status.get("received", 0)
 	var total: float = _status.get("total", 0)
 	_progress.visible = phase == "downloading" and total > 0
@@ -410,6 +411,9 @@ func _show_status(status: Dictionary) -> void:
 		_next.text = tr("Everyone is ready. Start when you like!")
 	if underway:
 		_next.text = _stage.text
+	elif can_retry:
+		_next.text = tr("Download stopped. Try again when you're ready.")
+		_stage.text = _next.text
 	_ready_button.visible = not underway
 	_ready_button.disabled = not prepared or (not trainer and not ready)
 	_ready_button.set_pressed_no_signal(ready)
@@ -417,9 +421,7 @@ func _show_status(status: Dictionary) -> void:
 	_start.visible = host and not underway and not compact
 	_start.disabled = not _status.get("can_start", false)
 	_devices.visible = not compact and not underway and not trainer
-	_retry.visible = not host and not details.is_empty() and phase == "waiting"
-	_error.visible = not details.is_empty()
-	_details.dialog_text = details
+	_retry.visible = can_retry
 	_voice_controls.update_status(_status)
 	var key: String = (
 		str(_status.get("roster", []))

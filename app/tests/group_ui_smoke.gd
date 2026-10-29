@@ -61,6 +61,11 @@ func _group_activity() -> void:
 	)
 	_check(group._drafting.disabled and group._together.disabled, "rules freeze at countdown")
 	_check(group._rule_summary.visible, "riders see the frozen rules during the ride")
+	group._show_status(
+		{"host": false, "phase": "waiting", "name": "Recovery 30", "can_retry": true}
+	)
+	_check(group._retry.visible, "activity retry remains available beside standard error history")
+	_check(not group._invitation_panel.visible, "joiners have no empty host invitation card")
 	var voice: GroupVoiceControls = group._voice_controls
 	voice.update_status({"voice": true, "microphone": false, "devices": []})
 	_check(

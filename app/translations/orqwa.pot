@@ -912,6 +912,10 @@ msgid "Could not prepare the map detail of %s."
 msgstr ""
 
 #: core/orqwa-app/src/failure.rs
+msgid "Could not prepare the shared activity."
+msgstr ""
+
+#: core/orqwa-app/src/failure.rs
 msgid "Could not reach %s. Check your internet connection."
 msgstr ""
 
@@ -1115,10 +1119,6 @@ msgstr ""
 msgid "Details"
 msgstr ""
 
-#: app/scenes/group_rides_tab.gd
-msgid "Details…"
-msgstr ""
-
 #: app/scenes/devices_tab.gd app/scenes/ride_settings_dialog.gd app/scenes/start_page.gd
 msgid "Devices"
 msgstr ""
@@ -1169,6 +1169,10 @@ msgstr ""
 
 #: app/ui/update_dialog.gd
 msgid "Download it from its release page."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Download stopped. Try again when you're ready."
 msgstr ""
 
 #: app/ui/course_settings.gd
@@ -1537,10 +1541,6 @@ msgstr ""
 
 #: app/scenes/group_rides_tab.gd
 msgid "Group connection ended. Your local ride continues."
-msgstr ""
-
-#: app/scenes/group_rides_tab.gd
-msgid "Group ride details"
 msgstr ""
 
 #: app/scenes/group_rides_tab.gd
@@ -2847,10 +2847,6 @@ msgstr ""
 msgid "Smaller (−)"
 msgstr ""
 
-#: app/scenes/group_rides_tab.gd
-msgid "Something went wrong. Try again or check the details."
-msgstr ""
-
 #: app/scenes/courses_tab.gd
 msgid "Sort"
 msgstr ""
@@ -3345,6 +3341,10 @@ msgstr ""
 
 #: app/scenes/group_rides_tab.gd
 msgid "Voice chat"
+msgstr ""
+
+#: core/orqwa-app/src/failure.rs
+msgid "Voice is unavailable. Check your audio devices and microphone permission."
 msgstr ""
 
 #: app/ui/group_voice_controls.gd

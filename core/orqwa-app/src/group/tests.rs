@@ -27,6 +27,55 @@ fn options() -> ConnectOptions {
     options.gather.stun_servers.clear();
     options
 }
+
+#[test]
+fn independent_failures_keep_retry_state_and_each_occurrence_is_reported_once() {
+    let directory = Directory::new();
+    let mut app = directory.app();
+    let idle_directory = Directory::new();
+    let mut idle = idle_directory.app();
+    app.group_open(None, options()).unwrap();
+    wait(&mut app, &mut idle, |host, _| {
+        !host.group().invite.is_empty()
+    });
+    let details = "publishing verified activity: Permission denied (os error 13)";
+    for _ in 0..2 {
+        app.group_command(Command::Failure(details.into())).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let mut received = None;
+        while received.is_none() && Instant::now() < deadline {
+            for event in app.update(Duration::from_millis(16)) {
+                if let AppEvent::Error(failure) = event {
+                    received = Some(failure);
+                }
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        let failure = received.expect("each new occurrence reaches the standard error history");
+        assert_eq!(failure.kind, crate::Kind::GroupActivity);
+        assert_eq!(failure.details, details);
+        for _ in 0..10 {
+            assert!(
+                !app.update(Duration::from_millis(16))
+                    .iter()
+                    .any(|event| matches!(event, AppEvent::Error(_)))
+            );
+        }
+    }
+    app.group_leave();
+    let mut snapshot = Snapshot::default();
+    snapshot.activity_error(details);
+    assert!(snapshot.can_retry());
+    snapshot.report(
+        crate::Kind::GroupVoice,
+        "opening speakers: AudioManager unavailable",
+    );
+    assert!(
+        snapshot.can_retry(),
+        "a voice failure must not hide an activity retry"
+    );
+    assert_eq!(snapshot.failure_revision, 2);
+}
 fn wait(host: &mut App, peer: &mut App, condition: impl Fn(&App, &App) -> bool) {
     let until = Instant::now() + Duration::from_secs(20);
     while Instant::now() < until {
