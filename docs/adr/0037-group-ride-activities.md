@@ -178,3 +178,34 @@ per-speaker mutes. The microphone always requires fresh explicit consent after r
 Selected device IDs and playback gain in the snapshot keep lobby and in-ride controls consistent.
 Device enumeration has its own single-job budget, independent of pending voice startup, so
 opening audio settings cannot consume or suppress the rider's voice activation request.
+
+### Remote motion and assistance delivery — 2026-10-28
+
+The app now renders up to seven remote riders beside the local rider and ghosts, with
+matching map/profile markers and HUD distance gaps. Eight fixed histories are bound to
+local membership generations. Positions interpolate 100 ms behind packet arrival,
+extrapolate for at most 300 ms, hold briefly, then disappear after two seconds. Reordered,
+invalid and departed state cannot extend a previous membership's motion. Heart rate is
+absent from remote motion and never leaves the local activity.
+
+Drafting and Keep together now default on. The organizer can change either before countdown;
+changing rules advances selection revision and clears readiness, retaining verified content
+and completed preparation. Countdown locks the rules in both the lobby authority and its
+app command owner; a queued setting change after Start is rejected without stopping the ride.
+Drafting uses the strongest shelter
+from riders within 15 m ahead, quadratically tapering from 30% drag reduction; effects never
+stack. Keep together uses a critically damped spring around the organizer, with a 5 m
+position dead zone and a gradient offset bounded to ±2 percentage points. Relative speed
+damps the catch-up before overshoot. The organizer receives no elastic band. Both effects
+require local pedaling, stop during local pause and fade between 500 ms and two seconds
+without fresh source state. Motion and simulation-mode resistance use the same modified
+drag/gradient before personal difficulty/gearing; ERG targets and measurements are unchanged.
+
+Rides started with either setting on retain an additive `assisted` metadata flag, even after
+leaving the group. Summaries/history identify them, and course/climb times and personal-best
+speed ghosts exclude them. Measured-power records, FIT power/cadence/heart rate and training
+analysis retain genuine local readings. Older metadata defaults to unassisted. Loopback
+tests cover rule replication, readiness reset, local/remote power separation and dropout;
+session tests cover simulation/ERG behavior, and saved FIT tests cover recording isolation.
+Seven-rider review images use presentation fixtures, separately from transport tests. Native
+trainer feel, audio permissions, cross-home connectivity and GPU frame rate remain manual.

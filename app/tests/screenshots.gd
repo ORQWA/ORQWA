@@ -94,8 +94,14 @@ func _run() -> void:
 	var orqwa: OrqwaApp = _main.get_node("Orqwa")
 	var world: RideWorld = _main.get_node("World")
 	var start: StartPage = _main.get_node("StartPage")
-	if OS.get_environment("SCREENSHOT_GROUP_ONLY") == "1":
-		await _group_screens(start, orqwa, out_dir)
+	if (
+		OS.get_environment("SCREENSHOT_GROUP_ONLY") == "1"
+		or OS.get_environment("SCREENSHOT_GROUP_RIDERS_ONLY") == "1"
+	):
+		if OS.get_environment("SCREENSHOT_GROUP_RIDERS_ONLY") == "1":
+			await GroupRiderScreenshots.capture(_main, out_dir)
+		else:
+			await _group_screens(start, orqwa, out_dir)
 		quit(0)
 		return
 	_software_render(world)

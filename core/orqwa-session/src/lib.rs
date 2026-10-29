@@ -10,6 +10,7 @@ pub mod estimate;
 pub mod fitness;
 pub mod ftp_estimate;
 pub mod ghost;
+pub mod group;
 pub mod workout;
 
 use std::time::Duration;
@@ -18,7 +19,9 @@ use orqwa_domain::recording::{Location, Sample};
 use orqwa_domain::shifting::Shift;
 use orqwa_domain::telemetry::{CadenceSource, Telemetry, TrainerControl};
 use orqwa_domain::units::{GradePercent, Meters, MetersPerSecond, Percent, Rpm, Watts};
-use orqwa_physics::{DescentMode, GEARS, Motion, RiderSetup, VirtualGears, trainer_grade};
+use orqwa_physics::{
+    DescentMode, GEARS, GroupEffect, Motion, RiderSetup, VirtualGears, trainer_grade,
+};
 use orqwa_routes::{Route, RoutePosition};
 use workout::{Workout, WorkoutControl, WorkoutState};
 
@@ -133,6 +136,7 @@ pub struct Ride {
     workout: Option<WorkoutControl>,
     config: RideConfig,
     motion: Motion,
+    group_effect: GroupEffect,
     distance: Meters,
     elapsed: Duration,
     telemetry: Telemetry,
@@ -177,6 +181,7 @@ impl Ride {
             workout,
             config,
             motion: Motion::default(),
+            group_effect: GroupEffect::default(),
             distance: Meters(0.0),
             elapsed: Duration::ZERO,
             telemetry: Telemetry::default(),
@@ -258,11 +263,12 @@ impl Ride {
             self.next_sample += SAMPLE_INTERVAL;
         }
 
-        let grade = self.road_grade();
+        let grade = self.group_effect.grade(self.road_grade());
+        let setup = self.group_effect.setup(self.config.setup);
         let power = self.telemetry.power.unwrap_or(Watts(0.0));
         let covered = self
             .motion
-            .step(&self.config.setup, power, grade, MetersPerSecond(0.0), dt);
+            .step(&setup, power, grade, MetersPerSecond(0.0), dt);
         self.distance = Meters(self.distance.0 + covered.0);
         if let Some(route) = &self.route {
             self.distance = Meters(self.distance.0.min(route.length().0));
@@ -283,6 +289,12 @@ impl Ride {
     /// was freed of its resistance, so the last control sent no longer holds.
     pub fn resend_control(&mut self) {
         self.last_control = None;
+    }
+
+    /// Updates bounded local group assistance. Telemetry, samples and ERG targets retain the
+    /// rider's real power; normal trainer control throttling also applies to these changes.
+    pub fn set_group_effect(&mut self, effect: GroupEffect) {
+        self.group_effect = effect;
     }
 
     /// Changes trainer difficulty and descent mode during the ride (R48); the trainer gets the
@@ -457,8 +469,14 @@ impl Ride {
         let control = if let Some(power) = self.workout.as_ref().and_then(WorkoutControl::power) {
             TrainerControl::TargetPower(power)
         } else {
-            let grade = trainer_grade(self.road_grade(), self.config.difficulty);
-            let road = self.config.setup.simulation_parameters(grade);
+            let grade = trainer_grade(
+                self.group_effect.grade(self.road_grade()),
+                self.config.difficulty,
+            );
+            let road = self
+                .group_effect
+                .setup(self.config.setup)
+                .simulation_parameters(grade);
             TrainerControl::Simulation(match self.config.gears {
                 Some(gears) => gears.in_gear(road, self.gear),
                 None => road,
@@ -567,6 +585,47 @@ mod tests {
         (0..seconds * 4)
             .filter_map(|_| ride.tick(Duration::from_millis(250)))
             .collect()
+    }
+
+    #[tokio::test]
+    async fn group_assistance_changes_motion_and_simulation_but_keeps_power_and_erg_real() {
+        let route = route(&[0.0], 10_000.0).await;
+        let config = RideConfig {
+            difficulty: Percent(100.0),
+            ..RideConfig::default()
+        };
+        let mut solo = Ride::new(route.clone(), config);
+        let mut group = Ride::new(route.clone(), config);
+        group.set_group_effect(GroupEffect::new(0.7, GradePercent(-2.0)));
+        let solo_controls = pedal(&mut solo, 200.0, 60);
+        let group_controls = pedal(&mut group, 200.0, 60);
+        assert!(group.state().distance.0 > solo.state().distance.0);
+        let TrainerControl::Simulation(normal) = solo_controls[0] else {
+            panic!("solo slope control");
+        };
+        let TrainerControl::Simulation(assisted) = group_controls[0] else {
+            panic!("group slope control");
+        };
+        assert!((assisted.cw.0 - normal.cw.0 * 0.7).abs() < 1e-9);
+        assert_eq!(assisted.grade, GradePercent(-2.0));
+        assert!(
+            group
+                .samples()
+                .iter()
+                .all(|s| s.power == Some(Watts(200.0)))
+        );
+        let mut erg = Ride::new(route, config).with_workout(Workout::ConstantPower(Watts(240.0)));
+        erg.set_group_effect(GroupEffect::new(0.65, GradePercent(-2.0)));
+        let controls = pedal(&mut erg, 180.0, 10);
+        assert!(
+            controls
+                .iter()
+                .all(|c| *c == TrainerControl::TargetPower(Watts(240.0)))
+        );
+        assert!(erg.samples().iter().all(|s| s.power == Some(Watts(180.0))));
+        group.set_group_effect(GroupEffect::default());
+        let controls = pedal(&mut group, 200.0, 2);
+        assert!(controls.iter().any(|c| matches!(c, TrainerControl::Simulation(p) if p.grade==GradePercent(0.0) && (p.cw.0-normal.cw.0).abs()<1e-9)));
     }
 
     fn grade_of(control: &TrainerControl) -> f64 {

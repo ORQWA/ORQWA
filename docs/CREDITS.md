@@ -9,7 +9,7 @@ libraries (LGPL 2.1 or later) and every Rust crate, from `core/orqwa-app/notices
 
 ## Group networking
 
-The developer CLI's group networking uses [rustls](https://github.com/rustls/rustls)
+Group networking in the app and CLI uses [rustls](https://github.com/rustls/rustls)
 (Apache-2.0 OR ISC OR MIT), [base64](https://github.com/marshallpierce/rust-base64)
 (MIT OR Apache-2.0), [netdev](https://github.com/shellrow/netdev) (MIT),
 [Quinn](https://github.com/quinn-rs/quinn) (MIT OR Apache-2.0) and

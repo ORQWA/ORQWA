@@ -13,6 +13,7 @@ mkdir -p "$out"
 # Weeks of made-up rides, so the history and the Analysis tab (R61) have something to show.
 if [ "${SCREENSHOT_ERRORS_ONLY:-}" != 1 ] && [ "${SCREENSHOT_SETTINGS_ONLY:-}" != 1 ] \
     && [ "${SCREENSHOT_GROUP_ONLY:-}" != 1 ] \
+    && [ "${SCREENSHOT_GROUP_RIDERS_ONLY:-}" != 1 ] \
     && [ "${SCREENSHOT_GRAPHICS_ONLY:-}" != 1 ] \
     && [ "${SCREENSHOT_SUMMARY_ONLY:-}" != 1 ]; then
     cargo run -q --manifest-path "$root/core/Cargo.toml" -p orqwa-cli -- sample-rides --weeks 16

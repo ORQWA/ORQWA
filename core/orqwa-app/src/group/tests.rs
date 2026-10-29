@@ -97,9 +97,17 @@ fn app_lobby_downloads_a_workout_starts_locally_and_survives_host_loss() {
     peer.group_ready(true).unwrap();
     wait(&mut host, &mut peer, |h, _| h.group().can_start());
     host.group_start().unwrap();
+    // A setting click queued behind Start must not rewrite frozen rules or stop the actor.
+    host.group_command(Command::Assistance(orqwa_net::activity::Assistance {
+        drafting: true,
+        keep_together: false,
+    }))
+    .unwrap();
     wait(&mut host, &mut peer, |h, p| {
         h.ride_state().is_some() && p.ride_state().is_some()
     });
+    assert!(host.group().assistance.drafting && host.group().assistance.keep_together);
+    assert_eq!(host.group().assistance, peer.group().assistance);
     let a = host.ride_state().unwrap().workout.unwrap();
     let b = peer.ride_state().unwrap().workout.unwrap();
     let a = a.target_power.unwrap().0;
@@ -224,4 +232,162 @@ fn changing_devices_mutes_immediately_and_supersedes_an_older_queued_unmute() {
     assert_eq!(host.group().output_device, "headset-output");
     assert!((host.group().voice_volume - 0.4).abs() < f32::EPSILON);
     host.group_leave();
+}
+
+#[test]
+fn shared_rules_retain_verified_content_invalidate_ready_and_freeze_at_start() {
+    let from = Directory::new();
+    let to = Directory::new();
+    let mut host = from.app();
+    let mut peer = to.app();
+    host.profile.profile.ftp = Watts(200.0);
+    peer.profile.profile.ftp = Watts(300.0);
+    host.connect_trainer(TrainerChoice::Fake(FakeRider {
+        power: Watts(180.0),
+        cadence: Rpm(85.0),
+        heart: None,
+    }))
+    .unwrap();
+    peer.connect_trainer(TrainerChoice::Fake(FakeRider {
+        power: Watts(300.0),
+        cadence: Rpm(95.0),
+        heart: None,
+    }))
+    .unwrap();
+    host.group_open(None, options()).unwrap();
+    wait(&mut host, &mut peer, |h, _| !h.group().invite.is_empty());
+    peer.group_open(Some(host.group().invite), options())
+        .unwrap();
+    wait(&mut host, &mut peer, |_, p| !p.group().reply.is_empty());
+    host.group_admit(peer.group().reply).unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        h.group().roster.iter().flatten().count() == 2 && p.group().phase == Phase::Waiting
+    });
+    host.group_select(None, Some("builtin:recovery-30"))
+        .unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        h.group().prepared && p.group().prepared
+    });
+    let received = peer.group().workout;
+    assert!(host.group().assistance.drafting && host.group().assistance.keep_together);
+    host.group_ready(true).unwrap();
+    peer.group_ready(true).unwrap();
+    wait(&mut host, &mut peer, |h, _| h.group().can_start());
+    host.group_assistance(false, true).unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        !h.group().ready[0] && !p.group().ready[1] && !p.group().assistance.drafting
+    });
+    assert!(host.group().prepared && peer.group().prepared);
+    assert_eq!(
+        peer.group().workout,
+        received,
+        "rule changes retain exact verified files"
+    );
+    assert!(!host.group().can_start());
+    assert!(peer.group_assistance(true, false).is_err());
+    host.group_ready(true).unwrap();
+    peer.group_ready(true).unwrap();
+    wait(&mut host, &mut peer, |h, _| h.group().can_start());
+    host.group_start().unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        h.ride_state().is_some() && p.ride_state().is_some()
+    });
+    wait(&mut host, &mut peer, |h, p| {
+        h.group_riders()
+            .first()
+            .is_some_and(|r| (r.power.0 - 120.0).abs() < 2.0)
+            && p.group_riders()
+                .first()
+                .is_some_and(|r| (r.power.0 - 80.0).abs() < 2.0)
+    });
+    assert!(host.group_assistance(true, false).is_err());
+    // The fake trainer follows ERG. This plan starts at 40% of each rider's own FTP.
+    assert!((host.ride_state().unwrap().telemetry.power.unwrap().0 - 80.0).abs() < 2.0);
+    assert!((peer.ride_state().unwrap().telemetry.power.unwrap().0 - 120.0).abs() < 2.0);
+    assert!((host.group_riders()[0].power.0 - 120.0).abs() < 2.0);
+    assert!((peer.group_riders()[0].power.0 - 80.0).abs() < 2.0);
+    peer.set_paused(true);
+    wait(&mut host, &mut peer, |h, _| {
+        h.group_riders()
+            .first()
+            .is_some_and(|r| r.speed.0 == 0.0 && r.cadence.0 == 0.0)
+    });
+    peer.set_paused(false);
+    host.group_leave();
+    wait(&mut host, &mut peer, |_, p| p.group().phase == Phase::Ended);
+    assert!(peer.group_riders().is_empty());
+    assert!(
+        peer.ride.as_ref().unwrap().assisted,
+        "eligibility remains marked after leaving"
+    );
+    peer.group_leave();
+}
+
+#[test]
+fn assisted_course_saves_measured_power_without_course_or_climb_speed_records() {
+    let directory = Directory::new();
+    let mut app = directory.app();
+    let xml = r#"<gpx><trk><trkseg><trkpt lat="46" lon="7"><ele>500</ele></trkpt><trkpt lat="46.01" lon="7"><ele>650</ele></trkpt></trkseg></trk></gpx>"#;
+    let route = app
+        .runtime
+        .block_on(orqwa_routes::Route::from_gpx(xml, None))
+        .unwrap();
+    assert!(
+        !route.climbs().is_empty(),
+        "the fixture includes a classified climb"
+    );
+    let ride = orqwa_session::Ride::new(route, orqwa_session::RideConfig::default());
+    app.begin(
+        ride,
+        Some("Assisted climb".into()),
+        crate::RouteRecords::default(),
+        None,
+        (None, None),
+    );
+    let active = app.ride.as_mut().unwrap();
+    active.started = Some(std::time::SystemTime::now());
+    active.assisted = true;
+    active
+        .ride
+        .set_group_effect(orqwa_physics::GroupEffect::new(
+            0.7,
+            orqwa_domain::units::GradePercent(-2.0),
+        ));
+    active
+        .ride
+        .on_telemetry(&orqwa_domain::telemetry::Telemetry {
+            power: Some(Watts(200.0)),
+            cadence: Some(Rpm(85.0)),
+            heart_rate: Some(orqwa_domain::units::BeatsPerMinute(151.0)),
+            ..Default::default()
+        });
+    for _ in 0..2000 {
+        active.ride.tick(Duration::from_secs(1));
+        if active.ride.is_finished() {
+            break;
+        }
+    }
+    assert!(active.ride.is_finished());
+    app.finish_ride();
+    let history = app.history();
+    assert_eq!(history.len(), 1);
+    let record = &history[0].record;
+    assert!(record.assisted && !record.simulated);
+    assert!(record.route_key.is_some());
+    assert!(record.route_time.is_none() && record.climbs.is_empty());
+    assert!(!history[0].route_record);
+    assert!(
+        !history[0].power_records.is_empty(),
+        "real measured power remains eligible"
+    );
+    assert_eq!(record.summary.avg_power, Some(Watts(200.0)));
+    let (_, samples) = crate::read_fit(&history[0].fit).unwrap();
+    assert_ne!(samples.len(), 0);
+    assert!(
+        samples
+            .iter()
+            .all(|sample| sample.power == Some(Watts(200.0))
+                && sample.cadence == Some(Rpm(85.0))
+                && sample.heart_rate == Some(orqwa_domain::units::BeatsPerMinute(151.0)))
+    );
 }
