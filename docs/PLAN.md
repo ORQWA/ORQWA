@@ -881,8 +881,9 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
 - [ ] QR sharing using existing support
 - [x] Drafting and Keep together (R166): independent shared toggles, both on by default,
   individually calculated assistance, simulation/ERG behavior and assisted-record eligibility
-- [ ] Late joining and group workout timing (R167): independent preparation, entry near host,
-  no fictitious recorded distance, ordered host pause/resume/skips with personal intensity
+- [x] Late joining (R167): independent preparation, explicit entry near the host at the current
+  workout step, separate course position and recorded distance, no records for skipped sections
+- [ ] Shared workout timing (R167): ordered host pause/resume/skips with personal intensity
 - [ ] Planned host handover (R168): successor consent, pinned replacement links, authority
   epochs, bounded rollback, smooth assistance reference transition and independent riding on loss
 - [ ] Native microphone/headphone and audio-device permission/hotplug acceptance on supported desktops

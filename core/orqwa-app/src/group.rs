@@ -5,7 +5,7 @@ use orqwa_domain::units::{Kilograms, Meters, MetersPerSecond, Rpm, Watts};
 use orqwa_net::activity::{Assistance, Selection};
 use orqwa_net::code::MAX_PASTE_BYTES;
 pub use orqwa_net::link::ConnectOptions;
-use orqwa_net::lobby::Rider;
+use orqwa_net::lobby::{RideProgress, Rider};
 use orqwa_net::state::{MAX_RIDERS, RiderId, RiderState};
 use std::path::PathBuf;
 use std::sync::{
@@ -121,6 +121,12 @@ pub struct Snapshot {
     pub plan: Option<std::sync::Arc<orqwa_domain::workout::Plan>>,
     /// Local monotonic countdown target.
     pub start: Option<Instant>,
+    /// Joined after countdown; preparation must not launch the ride implicitly.
+    pub late: bool,
+    /// An explicit entry request is awaiting the organizer's response.
+    pub entering: bool,
+    /// Fresh position and workout step accepted for this rider's first local tick.
+    pub entry: Option<RideProgress>,
     /// Latest peer samples and local arrival times.
     pub states: [Option<(RiderState, Instant)>; MAX_RIDERS],
     /// Diagnostic details under a translated error caption.
@@ -173,6 +179,9 @@ impl Default for Snapshot {
             workout_id: String::new(),
             plan: None,
             start: None,
+            late: false,
+            entering: false,
+            entry: None,
             states: [None; MAX_RIDERS],
             error: String::new(),
             failure: None,
@@ -213,6 +222,16 @@ impl Snapshot {
         !self.host && self.activity_failed && self.phase == Phase::Waiting
     }
 
+    /// A late joiner may explicitly enter after preparation, before starting a local ride.
+    #[must_use]
+    pub fn can_enter(&self) -> bool {
+        self.late
+            && self.prepared
+            && self.phase == Phase::Ready
+            && !self.entering
+            && self.entry.is_none()
+    }
+
     /// Only the prepared host with every admitted participant ready can start.
     #[must_use]
     pub fn can_start(&self) -> bool {
@@ -232,7 +251,7 @@ pub(crate) struct Running {
     commands: mpsc::Sender<Command>,
     snapshot: watch::Receiver<Snapshot>,
     task: tokio::task::JoinHandle<()>,
-    states: watch::Sender<Option<RiderState>>,
+    states: watch::Sender<Option<runtime::Local>>,
     preparing: Option<(u64, u64)>,
     prepared: u64,
     launched: bool,
@@ -277,6 +296,13 @@ impl App {
             let mut snapshot = g.snapshot.borrow().clone();
             if snapshot.host {
                 snapshot.workout_id.clone_from(&g.workout_id);
+            }
+            if snapshot.late
+                && snapshot.entry.is_some()
+                && !g.launched
+                && snapshot.phase == Phase::Riding
+            {
+                snapshot.phase = Phase::Ready;
             }
             snapshot
         })
@@ -467,6 +493,20 @@ impl App {
         }
         self.group_command(Command::Start)
     }
+    /// Requests entry near the organizer at the current workout step, after preparation.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] without a trainer, before preparation or if the group has ended.
+    pub fn group_enter(&self) -> Result<(), AppError> {
+        if !self.trainer_connected() {
+            return Err(AppError::NoTrainer);
+        }
+        if !self.group().can_enter() {
+            return Err(error("Prepare the activity before joining the ride."));
+        }
+        self.group_command(Command::Enter)
+    }
+
     /// Retries a failed content transfer/preparation.
     ///
     /// # Errors
@@ -665,7 +705,9 @@ impl App {
     }
 
     fn launch_group(&mut self, snapshot: &Snapshot, revision: u64, events: &mut Vec<AppEvent>) {
-        if snapshot.start.is_some_and(|at| Instant::now() >= at)
+        if (!snapshot.late || snapshot.entry.is_some())
+            && self.trainer_connected()
+            && snapshot.start.is_some_and(|at| Instant::now() >= at)
             && self
                 .group
                 .as_ref()
@@ -701,6 +743,24 @@ impl App {
                     if let Some(active) = &mut self.ride {
                         active.assisted =
                             snapshot.assistance.drafting || snapshot.assistance.keep_together;
+                        if let Some(entry) = snapshot.entry {
+                            let near = Meters((entry.distance.0 - 5.0).max(0.0));
+                            let entered = active.ride.enter_group(near, entry.workout);
+                            debug_assert!(
+                                entered,
+                                "validated entry must match the prepared activity"
+                            );
+                            let distance = active.ride.state().distance;
+                            active.milestones.skip_to(distance);
+                            let climbs = active
+                                .ride
+                                .route()
+                                .map_or(&[][..], orqwa_routes::Route::climbs);
+                            active.next_climb = climbs
+                                .iter()
+                                .position(|climb| climb.start.0 >= distance.0)
+                                .unwrap_or(climbs.len());
+                        }
                     }
                     events.push(AppEvent::GroupRideStarted {
                         on_course,
@@ -765,21 +825,33 @@ impl App {
                 .ride
                 .as_ref()
                 .is_some_and(|ride| ride.paused || ride.finished);
-            g.states.send_replace(Some(RiderState {
-                at,
-                distance: state.distance,
-                speed: if stopped {
-                    MetersPerSecond(0.0)
-                } else {
-                    state.speed
+            g.states.send_replace(Some(runtime::Local {
+                state: RiderState {
+                    at,
+                    distance: state.distance,
+                    speed: if stopped {
+                        MetersPerSecond(0.0)
+                    } else {
+                        state.speed
+                    },
+                    power: state.telemetry.power.unwrap_or_default(),
+                    cadence: if stopped {
+                        Rpm(0.0)
+                    } else {
+                        state.telemetry.cadence.unwrap_or_default()
+                    },
                 },
-                power: state.telemetry.power.unwrap_or_default(),
-                cadence: if stopped {
-                    Rpm(0.0)
-                } else {
-                    state.telemetry.cadence.unwrap_or_default()
-                },
+                progress: self
+                    .ride
+                    .as_ref()
+                    .filter(|ride| !ride.finished && !ride.paused)
+                    .map(|active| RideProgress {
+                        distance: state.distance,
+                        workout: active.ride.workout_elapsed(),
+                    }),
             }));
+        } else if let Some(group) = &self.group {
+            group.states.send_replace(None);
         }
     }
     fn group_prepared(&mut self, revision: u64) {

@@ -3140,10 +3140,7 @@ impl App {
             });
         if saved.is_ok() {
             let route = active.ride.route();
-            let finished = samples
-                .last()
-                .zip(route)
-                .is_some_and(|(s, route)| s.distance.0 >= route.length().0 - 1.0);
+            let finished = active.ride.is_finished();
             // A simulated ride's times are not real: like a ride known only from its FIT file,
             // it counts towards no records; neither does a workout without a route.
             let real = !active.simulated;
@@ -3157,7 +3154,12 @@ impl App {
                 summary: summarize(samples, self.profile.profile.ftp),
                 route_key: route.filter(|_| real).map(Route::key),
                 route_time: route
-                    .filter(|_| finished && real && !active.assisted)
+                    .filter(|_| {
+                        finished
+                            && real
+                            && !active.assisted
+                            && active.ride.entry_distance().0 == 0.0
+                    })
                     .and_then(|route| effort(samples, Meters(0.0), route.length()))
                     .map(|e| e.elapsed),
                 climbs: route
@@ -3165,12 +3167,21 @@ impl App {
                     .iter()
                     .filter(|_| real && !active.assisted)
                     .filter_map(|c| {
-                        effort(samples, c.start, c.end).map(|e| ClimbTime {
-                            start: c.start,
-                            end: c.end,
-                            elapsed: e.elapsed,
-                            avg_power: e.avg_power,
-                        })
+                        (c.start.0 >= active.ride.entry_distance().0)
+                            .then(|| {
+                                effort(
+                                    samples,
+                                    Meters(c.start.0 - active.ride.entry_distance().0),
+                                    Meters(c.end.0 - active.ride.entry_distance().0),
+                                )
+                            })
+                            .flatten()
+                            .map(|e| ClimbTime {
+                                start: c.start,
+                                end: c.end,
+                                elapsed: e.elapsed,
+                                avg_power: e.avg_power,
+                            })
                     })
                     .collect(),
                 name: None,
@@ -3568,7 +3579,14 @@ impl App {
             .iter()
             .enumerate()
             .find(|(_, c)| c.start.0 <= state.distance.0 && state.distance.0 < c.end.0)?;
-        let started = time_at(active.ride.samples(), climb.start).unwrap_or(state.elapsed);
+        if climb.start.0 < active.ride.entry_distance().0 {
+            return None;
+        }
+        let started = time_at(
+            active.ride.samples(),
+            Meters(climb.start.0 - active.ride.entry_distance().0),
+        )
+        .unwrap_or(state.elapsed);
         Some(ClimbProgress {
             index,
             climb: *climb,
@@ -3755,7 +3773,11 @@ impl App {
             // Samples arrive once a second, so a climb is timed once a sample lies past its top.
             let climbs = active.ride.route().map_or(&[][..], Route::climbs);
             while let Some(climb) = climbs.get(active.next_climb)
-                && let Some(done) = effort(active.ride.samples(), climb.start, climb.end)
+                && let Some(done) = effort(
+                    active.ride.samples(),
+                    Meters(climb.start.0 - active.ride.entry_distance().0),
+                    Meters(climb.end.0 - active.ride.entry_distance().0),
+                )
             {
                 events.push(AppEvent::Moment(moments::climb_topped(
                     active.next_climb,

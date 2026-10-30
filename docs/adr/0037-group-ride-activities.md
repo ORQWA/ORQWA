@@ -162,6 +162,31 @@ current actor still seals admission at countdown and host loss ends networking/v
 Native microphone permissions, audio device/hotplug acceptance and cross-home-network
 connectivity remain manual checks; local integration tests do not claim those results.
 
+### Late entry — 2026-10-29
+
+App lobbies retain explicit admission after countdown. The CLI continues sealing admissions.
+Protocol/invitation version 4 and ALPN `orqwa-group/4` add bounded Running, Enter and Entry
+controls; builds must match and exchange fresh codes. The eight-rider cap, one-use admission,
+fixed task/queue limits, selected-content serving and independent control/state/voice budgets
+remain in force. Activity and assistance selection stay frozen after countdown.
+
+New members receive the frozen selection and group clock without a local Start event. They
+download and build independently, then explicitly request entry after preparation and trainer
+connection. The host checks the current connection membership, selection revision, readiness
+and a recent active organizer snapshot. An unavailable snapshot yields a retryable response;
+it does not pause existing riders or end the connection. A successful connection enters once.
+Late members cannot publish ride state before entry; existing clients accept bounded roster
+changes during riding. Datagram/control reordering before clock receipt does not disconnect
+a preparing app joiner. Original countdown participants still start normally.
+
+The session keeps absolute course position separately from actual ridden distance and personal
+elapsed time. Entry starts at rest, five metres behind the organizer, seeks only the structured
+workout plan and creates no samples or previous telemetry. The HUD, FIT and summary count only
+post-entry riding. A partial course and climbs whose starts were skipped produce no speed
+records; later complete unassisted climbs and genuine power/training retain eligibility.
+Milestone and climb cursors skip unridden sections. Workout targets use local FTP and intensity.
+Shared pause/resume/skips and planned authority handover remain separate roadmap steps.
+
 ### Rider-facing setup refinement — 2026-10-28
 
 The tab starts with two actions: create a ride or join one. Invitation exchange is guided

@@ -66,6 +66,18 @@ func _group_activity() -> void:
 	)
 	_check(group._retry.visible, "activity retry remains available beside standard error history")
 	_check(not group._invitation_panel.visible, "joiners have no empty host invitation card")
+	group._show_status(
+		{"host": false, "phase": "ready", "late": true, "prepared": true, "can_enter": true}
+	)
+	_check(
+		group._enter.visible and not group._ready_button.visible,
+		"late joiners get one explicit entry action"
+	)
+	_check(not group._picker._apply.visible, "late joiners cannot change the running selection")
+	group.compact = true
+	group._show_status({"host": true, "phase": "riding", "invite": "private"})
+	_check(group._invitation_panel.visible, "organizers invite late friends during the ride")
+	_check(not group._enter.visible, "existing riders cannot restart through entry")
 	var voice: GroupVoiceControls = group._voice_controls
 	voice.update_status({"voice": true, "microphone": false, "devices": []})
 	_check(

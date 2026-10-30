@@ -2793,3 +2793,18 @@ msgstr "Der Download wurde gestoppt. Versuche es erneut, wenn du bereit bist."
 
 msgid "Voice is unavailable. Check your audio devices and microphone permission."
 msgstr "Der Sprachchat ist nicht verfügbar. Prüfe deine Audiogeräte und die Mikrofonberechtigung."
+
+msgid "Join ride now"
+msgstr "Jetzt mitfahren"
+
+msgid "Your friends are already riding. Get ready and join when you like."
+msgstr "Deine Freunde fahren bereits. Bereite dich vor und steige ein, wenn du bereit bist."
+
+msgid "Connect your trainer to join your friends."
+msgstr "Verbinde deinen Trainer, um mit deinen Freunden zu fahren."
+
+msgid "Join near the organizer at the current workout step. Your recording starts now."
+msgstr "Steige in der Nähe der organisierenden Person im aktuellen Trainingsabschnitt ein. Deine Aufzeichnung beginnt jetzt."
+
+msgid "Joining your friends…"
+msgstr "Du steigst in die gemeinsame Fahrt ein…"

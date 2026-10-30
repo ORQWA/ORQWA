@@ -756,6 +756,10 @@ msgid "Connect %s first."
 msgstr ""
 
 #: app/scenes/group_rides_tab.gd
+msgid "Connect your trainer to join your friends."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
 msgid "Connect your trainer, then tell the group you're ready."
 msgstr ""
 
@@ -1728,7 +1732,15 @@ msgid "Join a ride…"
 msgstr ""
 
 #: app/scenes/group_rides_tab.gd
+msgid "Join near the organizer at the current workout step. Your recording starts now."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
 msgid "Join ride"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Join ride now"
 msgstr ""
 
 #: app/ui/group_voice_controls.gd
@@ -1737,6 +1749,10 @@ msgstr ""
 
 #: app/scenes/group_rides_tab.gd
 msgid "Joining friends?"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Joining your friends…"
 msgstr ""
 
 #: app/ui/ui_theme.gd
@@ -3557,6 +3573,10 @@ msgstr ""
 
 #: app/ui/moment_lines.gd
 msgid "Your first ride on {course}."
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Your friends are already riding. Get ready and join when you like."
 msgstr ""
 
 #: app/scenes/group_rides_tab.gd

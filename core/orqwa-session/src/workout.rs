@@ -466,6 +466,18 @@ impl WorkoutControl {
         true
     }
 
+    pub(crate) fn elapsed(&self) -> Option<Duration> {
+        matches!(self.workout, Workout::Structured { .. }).then_some(self.elapsed)
+    }
+
+    pub(crate) fn seek(&mut self, time: Duration) -> bool {
+        let Workout::Structured { plan, .. } = &self.workout else {
+            return false;
+        };
+        self.elapsed = time.min(plan.duration());
+        true
+    }
+
     /// Whether a structured workout or an FTP test of efforts has run its last step, or the
     /// rider gave way in a ramp test; the others go on until stopped.
     pub(crate) fn is_finished(&self) -> bool {

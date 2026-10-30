@@ -23,6 +23,9 @@ pub(crate) enum Message {
     Selection(crate::activity::Selection),
     Ready(u64, bool),
     Readiness(RiderId, u64, bool),
+    Running(i64),
+    Enter(u64),
+    Entry(u64, Option<crate::lobby::RideProgress>),
 }
 
 pub(crate) async fn write(send: &mut SendStream, message: &Message) -> Result<(), LobbyError> {
@@ -121,6 +124,27 @@ fn encode(message: &Message) -> Result<Vec<u8>, LobbyError> {
             bytes.extend_from_slice(&[10, id.value(), u8::from(*ready)]);
             bytes.extend_from_slice(&revision.to_be_bytes());
         }
+        Message::Running(age) => {
+            crate::lobby::entry::clock(*age)?;
+            bytes.push(11);
+            bytes.extend_from_slice(&age.to_be_bytes());
+        }
+        Message::Enter(revision) => {
+            bytes.push(12);
+            bytes.extend_from_slice(&revision.to_be_bytes());
+        }
+        Message::Entry(revision, progress) => {
+            bytes.extend_from_slice(&[13, u8::from(progress.is_some())]);
+            bytes.extend_from_slice(&revision.to_be_bytes());
+            if let Some(progress) = progress {
+                progress.validate()?;
+                bytes.extend_from_slice(&progress.distance.0.to_be_bytes());
+                let millis = progress.workout.map_or(u64::MAX, |time| {
+                    u64::try_from(time.as_millis()).unwrap_or(u64::MAX)
+                });
+                bytes.extend_from_slice(&millis.to_be_bytes());
+            }
+        }
     }
     if bytes.len() > MAX_FRAME {
         return Err(LobbyError::Protocol);
@@ -156,6 +180,26 @@ impl Reader<'_> {
         };
         rider.validate()?;
         Ok(rider)
+    }
+
+    fn entry(&mut self) -> Result<Message, LobbyError> {
+        let present = self.byte()?;
+        let revision = u64::from_be_bytes(self.take()?);
+        let progress = match present {
+            0 => None,
+            1 => {
+                let distance = orqwa_domain::units::Meters(f64::from_be_bytes(self.take()?));
+                let millis = u64::from_be_bytes(self.take()?);
+                let progress = crate::lobby::RideProgress {
+                    distance,
+                    workout: (millis != u64::MAX).then(|| Duration::from_millis(millis)),
+                };
+                progress.validate()?;
+                Some(progress)
+            }
+            _ => return Err(LobbyError::Protocol),
+        };
+        Ok(Message::Entry(revision, progress))
     }
 }
 
@@ -232,6 +276,13 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
             };
             Message::Readiness(id, u64::from_be_bytes(reader.take()?), ready)
         }
+        11 => {
+            let age = i64::from_be_bytes(reader.take()?);
+            crate::lobby::entry::clock(age)?;
+            Message::Running(age)
+        }
+        12 => Message::Enter(u64::from_be_bytes(reader.take()?)),
+        13 => reader.entry()?,
         _ => return Err(LobbyError::Protocol),
     };
     if !reader.0.is_empty() {
@@ -275,5 +326,56 @@ mod tests {
         assert!(decode(&duplicate).is_err());
         assert!(decode(&vec![0; MAX_FRAME + 1]).is_err());
         assert!(decode(&[crate::code::VERSION, 5, 0, 1, 0, 0]).is_err());
+    }
+
+    #[test]
+    fn late_entry_frames_bound_coordinates_clocks_and_optional_workout_time() {
+        for message in [
+            Message::Running(172_800_000),
+            Message::Running(-60_000),
+            Message::Enter(1),
+            Message::Entry(1, None),
+            Message::Entry(
+                1,
+                Some(crate::lobby::RideProgress {
+                    distance: orqwa_domain::units::Meters(4200.0),
+                    workout: Some(Duration::from_secs(700)),
+                }),
+            ),
+        ] {
+            let bytes = encode(&message).unwrap();
+            assert!(decode(&bytes).is_ok());
+            for len in 0..bytes.len() {
+                assert!(decode(&bytes[..len]).is_err());
+            }
+            let mut extra = bytes;
+            extra.push(0);
+            assert!(decode(&extra).is_err());
+        }
+        for age in [i64::MIN, -60_001, 172_800_001, i64::MAX] {
+            assert!(encode(&Message::Running(age)).is_err());
+        }
+        for distance in [f64::NAN, f64::INFINITY, -1.0, 10_000_001.0] {
+            assert!(
+                encode(&Message::Entry(
+                    1,
+                    Some(crate::lobby::RideProgress {
+                        distance: orqwa_domain::units::Meters(distance),
+                        workout: None
+                    })
+                ))
+                .is_err()
+            );
+        }
+        assert!(
+            encode(&Message::Entry(
+                1,
+                Some(crate::lobby::RideProgress {
+                    distance: orqwa_domain::units::Meters(0.0),
+                    workout: Some(Duration::from_hours(49))
+                })
+            ))
+            .is_err()
+        );
     }
 }
