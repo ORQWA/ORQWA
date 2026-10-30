@@ -68,8 +68,41 @@ func _group_screens(start: StartPage, orqwa: OrqwaApp, out: String) -> void:
 	root.get_texture().get_image().save_png(out.path_join("group-invitation-de.png"))
 	group._exchange.hide()
 	orqwa.group_leave()
+	await _group_late_screens(start, group, orqwa, out)
 	await _group_error_screens(start, group, out)
 	print("saved group setup and joining views")
+
+
+func _group_late_screens(
+	start: StartPage, group: GroupRidesTab, orqwa: OrqwaApp, out: String
+) -> void:
+	_check(orqwa.connect_fake_trainer(180.0, 85.0), "late entry trainer")
+	var until: int = Time.get_ticks_msec() + 5000
+	while not orqwa.trainer_connected() and Time.get_ticks_msec() < until:
+		await process_frame
+	var scroll: ScrollContainer = start.get("_group_page")
+	for locale: String in ["en", "de"]:
+		TranslationServer.set_locale(locale)
+		group._show_status(
+			{
+				"phase": "ready",
+				"host": false,
+				"late": true,
+				"prepared": true,
+				"can_enter": true,
+				"name": "Recovery 30",
+				"workout_id": "builtin:recovery-30",
+				"roster":
+				[
+					{"id": 0, "name": "Alex", "ready": true, "me": false, "muted": false},
+					{"id": 1, "name": "Rider", "ready": false, "me": true, "muted": false}
+				]
+			}
+		)
+		scroll.scroll_vertical = 0
+		await create_timer(0.4).timeout
+		root.get_texture().get_image().save_png(out.path_join("group-late-join-" + locale + ".png"))
+		print("saved group-late-join-" + locale)
 
 
 func _group_error_screens(start: StartPage, group: GroupRidesTab, out: String) -> void:

@@ -2107,6 +2107,12 @@ impl OrqwaApp {
     fn group_start(&mut self) -> bool {
         self.command(|app| app.group_start())
     }
+    /// Enters the running ride after late-join preparation and explicit rider consent.
+    #[func]
+    fn group_enter(&mut self) -> bool {
+        self.command(|app| app.group_enter())
+    }
+
     /// Retries failed activity content/preparation.
     #[func]
     fn group_retry(&mut self) -> bool {

@@ -318,6 +318,12 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 |---|---|
 | R170 | Refines R74, R162 and R164 (2026-10-29): asynchronous group activity and voice failures, including Android-native failures, use the application's translated explanations with original **Technical details** and **Dismiss** controls. A dismissed occurrence stays hidden through status refreshes; a new occurrence is reported again. Dismiss does not pause the local ride or leave the group, and an activity download can still be retried after a voice failure. Shared activities must publish atomically on Android shared storage without overwriting existing library content; native voice startup must initialize the embedded Android host before device access. |
 
+## Entering ongoing rides
+
+| ID | Requirement |
+|---|---|
+| R171 | Refines R167 (2026-10-30): an admitted late joiner prepares the frozen activity independently, connects a trainer and explicitly chooses **Join ride now**. Entry uses recent organizer progress, starts near the organizer at rest and at the current structured-workout step, and cannot restart an already entered ride. Course position is independent of personal elapsed time and recorded distance; skipped sections add no samples or speed records. Complete later unassisted climbs and genuine measured-power training remain eligible. If the organizer is not actively riding, entry can be retried without stopping the group. The CLI retains its original pre-countdown admission workflow. |
+
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero

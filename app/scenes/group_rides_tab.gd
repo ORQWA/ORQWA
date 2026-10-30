@@ -23,6 +23,7 @@ var _roster: VBoxContainer = VBoxContainer.new()
 var _next: Label = Label.new()
 var _ready_button: Button = Button.new()
 var _start: Button = Button.new()
+var _enter: Button = Button.new()
 var _devices: Button
 var _retry: Button
 var _voice_controls: GroupVoiceControls = GroupVoiceControls.new()
@@ -202,6 +203,11 @@ func _build_roster() -> void:
 	_start.add_theme_stylebox_override("normal", UiTheme.accent_button())
 	_start.pressed.connect(func() -> void: _orqwa.group_start())
 	card.add_child(_start)
+	_enter.text = tr("Join ride now")
+	_enter.custom_minimum_size.y = 52
+	_enter.add_theme_stylebox_override("normal", UiTheme.accent_button())
+	_enter.pressed.connect(func() -> void: _orqwa.group_enter())
+	card.add_child(_enter)
 	_devices = _button(card, tr("Connect your trainer…"), func() -> void: devices_requested.emit())
 	_retry = _button(card, tr("Retry download"), func() -> void: _orqwa.group_retry())
 
@@ -311,6 +317,8 @@ func _show_status(status: Dictionary) -> void:
 	var phase: String = _status.get("phase", "idle")
 	var host: bool = _status.get("host", false)
 	var prepared: bool = _status.get("prepared", false)
+	var late: bool = _status.get("late", false)
+	var entering: bool = _status.get("entering", false)
 	var ready: bool = _status.get("ready", false)
 	var name: String = _status.get("name", "")
 	var countdown: float = _status.get("countdown_s", 0.0)
@@ -320,7 +328,7 @@ func _show_status(status: Dictionary) -> void:
 	var together: bool = _status.get("keep_together", true)
 	_drafting.set_pressed_no_signal(drafting)
 	_together.set_pressed_no_signal(together)
-	_drafting.disabled = not host or phase not in ["waiting", "ready"]
+	_drafting.disabled = not host or phase not in ["waiting", "ready"] or late
 	_together.disabled = _drafting.disabled
 	_rule_summary.text = (
 		(tr("Drafting on") if drafting else tr("Drafting off"))
@@ -329,6 +337,7 @@ func _show_status(status: Dictionary) -> void:
 	)
 	_rule_summary.visible = (
 		phase in ["countdown", "riding"]
+		or (late and not name.is_empty())
 		or (not host and not name.is_empty() and phase in ["downloading", "preparing"])
 	)
 	var captions: Dictionary = {
@@ -349,12 +358,14 @@ func _show_status(status: Dictionary) -> void:
 		"failed": tr("Could not connect. Leave the group and ask for a fresh invitation."),
 	}
 	_stage.text = captions.get(phase, "")
+	if late and not underway:
+		_stage.text = tr("Your friends are already riding. Get ready and join when you like.")
 	_setup.visible = phase == "idle" and not compact
 	_connecting.visible = phase == "connecting" and not host and not compact
 	var reply: String = _status.get("reply", "")
 	_request.disabled = reply.is_empty()
 	_body.visible = phase != "idle" and not _connecting.visible
-	_invite.visible = host and not underway and not compact
+	_invite.visible = host and phase not in ["ended", "failed"]
 	_invitation_panel.visible = _invite.visible
 	_notice.visible = not _notice.text.is_empty()
 	var invite: String = _status.get("invite", "")
@@ -376,7 +387,7 @@ func _show_status(status: Dictionary) -> void:
 		_activity_key = activity_key
 		_picker.refresh()
 		_picker.show_selection(
-			host and not underway,
+			host and not underway and not late,
 			"" if activity_failed else course_path,
 			"" if activity_failed else workout_id
 		)
@@ -414,7 +425,19 @@ func _show_status(status: Dictionary) -> void:
 	elif can_retry:
 		_next.text = tr("Download stopped. Try again when you're ready.")
 		_stage.text = _next.text
-	_ready_button.visible = not underway
+	if late and not underway and prepared:
+		_next.text = (
+			tr("Connect your trainer to join your friends.")
+			if not trainer
+			else tr(
+				"Join near the organizer at the current workout step. Your recording starts now."
+			)
+		)
+	if entering:
+		_next.text = tr("Joining your friends…")
+	_enter.visible = late and not underway
+	_enter.disabled = not trainer or not _status.get("can_enter", false)
+	_ready_button.visible = not underway and not late
 	_ready_button.disabled = not prepared or (not trainer and not ready)
 	_ready_button.set_pressed_no_signal(ready)
 	_ready_button.text = tr("Ready ✓ · click to undo") if ready else tr("I'm ready")

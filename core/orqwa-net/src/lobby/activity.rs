@@ -30,7 +30,7 @@ impl SharedActivity {
 }
 
 pub(super) struct Activities {
-    enabled: bool,
+    pub(super) enabled: bool,
     lobby: ActivityLobby,
     members: [Option<Participant>; MAX_RIDERS],
     ready: [bool; MAX_RIDERS],
@@ -96,6 +96,14 @@ impl Activities {
             self.lobby.start()?;
         }
         Ok(())
+    }
+    pub(super) fn can_enter(&self, id: RiderId, revision: u64) -> bool {
+        self.enabled
+            && self.ready[usize::from(id.value())]
+            && self
+                .lobby
+                .selection()
+                .is_some_and(|selected| selected.revision == revision)
     }
     pub(super) fn initial(&self) -> Vec<Message> {
         let mut messages = Vec::new();

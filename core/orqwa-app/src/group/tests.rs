@@ -94,6 +94,92 @@ fn wait(host: &mut App, peer: &mut App, condition: impl Fn(&App, &App) -> bool) 
         peer.group().error
     );
 }
+
+#[test]
+fn late_workout_entry_is_explicit_and_records_only_the_riders_own_effort() {
+    let from = Directory::new();
+    let to = Directory::new();
+    let mut host = from.app();
+    let mut peer = to.app();
+    for app in [&mut host, &mut peer] {
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(180.0),
+            cadence: Rpm(85.0),
+            heart: None,
+        }))
+        .unwrap();
+    }
+    peer.profile.profile.ftp = Watts(300.0);
+    host.group_open(None, options()).unwrap();
+    wait(&mut host, &mut peer, |host, _| {
+        !host.group().invite.is_empty()
+    });
+    host.group_select(None, Some("builtin:recovery-30"))
+        .unwrap();
+    wait(&mut host, &mut peer, |host, _| {
+        host.group().prepared && host.trainer_connected()
+    });
+    host.group_ready(true).unwrap();
+    wait(&mut host, &mut peer, |host, _| host.group().can_start());
+    host.group_start().unwrap();
+    wait(&mut host, &mut peer, |host, _| host.ride_state().is_some());
+    // Move the organizer into a later step without manufacturing earlier local samples.
+    host.ride.as_mut().unwrap().ride.skip_step();
+    peer.group_open(Some(host.group().invite), options())
+        .unwrap();
+    wait(&mut host, &mut peer, |_, peer| {
+        !peer.group().reply.is_empty()
+    });
+    host.group_admit(peer.group().reply).unwrap();
+    wait(&mut host, &mut peer, |_, peer| {
+        peer.group().can_enter() && peer.trainer_connected()
+    });
+    assert!(
+        peer.ride_state().is_none(),
+        "preparing must not automatically enter"
+    );
+    let host_before = host.ride_state().unwrap().elapsed;
+    for _ in 0..20 {
+        host.update(Duration::from_millis(16));
+        peer.update(Duration::from_millis(16));
+    }
+    assert!(
+        host.ride_state().unwrap().elapsed > host_before,
+        "late preparation never holds the group"
+    );
+    peer.group_enter().unwrap();
+    wait(&mut host, &mut peer, |_, peer| peer.ride_state().is_some());
+    let state = peer.ride_state().unwrap();
+    assert!(state.elapsed < Duration::from_secs(1));
+    assert!(state.ridden.0 < 10.0);
+    let progress = state.workout.unwrap().progress.unwrap();
+    assert!(
+        progress.step > 0,
+        "entry follows the current organizer step"
+    );
+    let plan = peer.group().plan.unwrap();
+    assert_eq!(
+        peer.ride_state().unwrap().workout.unwrap().target_power,
+        plan.at(progress.elapsed, Watts(300.0)).unwrap().power
+    );
+    assert!(peer.group_enter().is_err(), "cannot enter a second time");
+    let samples = peer.ride.as_ref().unwrap().ride.samples();
+    assert!(samples.len() < 3);
+    if let Some(sample) = samples.first() {
+        assert_eq!(sample.elapsed, Duration::ZERO);
+        assert_eq!(sample.distance, Meters(0.0));
+    }
+    host.group_leave();
+    wait(&mut host, &mut peer, |_, peer| {
+        peer.group().phase == Phase::Ended
+    });
+    let elapsed = peer.ride_state().unwrap().elapsed;
+    peer.update(Duration::from_secs(1));
+    assert!(
+        peer.ride_state().unwrap().elapsed > elapsed,
+        "host loss preserves local riding"
+    );
+}
 #[test]
 fn app_lobby_downloads_a_workout_starts_locally_and_survives_host_loss() {
     let from = Directory::new();
@@ -439,4 +525,73 @@ fn assisted_course_saves_measured_power_without_course_or_climb_speed_records() 
                 && sample.cadence == Some(Rpm(85.0))
                 && sample.heart_rate == Some(orqwa_domain::units::BeatsPerMinute(151.0)))
     );
+}
+
+#[test]
+fn late_course_entry_saves_only_ridden_distance_and_no_skipped_speed_records() {
+    let directory = Directory::new();
+    let mut app = directory.app();
+    let xml = r#"<gpx><trk><trkseg><trkpt lat="46" lon="7"><ele>500</ele></trkpt><trkpt lat="46.01" lon="7"><ele>650</ele></trkpt><trkpt lat="46.02" lon="7"><ele>500</ele></trkpt><trkpt lat="46.03" lon="7"><ele>800</ele></trkpt></trkseg></trk></gpx>"#;
+    let route = app
+        .runtime
+        .block_on(orqwa_routes::Route::from_gpx(xml, None))
+        .unwrap();
+    assert_eq!(route.climbs().len(), 2);
+    let entry = Meters(route.climbs()[0].start.0.midpoint(route.climbs()[0].end.0));
+    let full_distance = route.length().0;
+    let mut ride = orqwa_session::Ride::new(route, orqwa_session::RideConfig::default());
+    assert!(ride.enter_group(entry, None));
+    app.begin(
+        ride,
+        Some("Joined halfway".into()),
+        crate::RouteRecords::default(),
+        None,
+        (None, None),
+    );
+    assert!(
+        app.current_climb().is_none(),
+        "a skipped climb start has no personal timer"
+    );
+    let active = app.ride.as_mut().unwrap();
+    active.started = Some(std::time::SystemTime::now());
+    active
+        .ride
+        .on_telemetry(&orqwa_domain::telemetry::Telemetry {
+            power: Some(Watts(200.0)),
+            cadence: Some(Rpm(85.0)),
+            ..Default::default()
+        });
+    for _ in 0..4000 {
+        active.ride.tick(Duration::from_secs(1));
+        if active.ride.is_finished() {
+            break;
+        }
+    }
+    assert!(active.ride.is_finished());
+    app.finish_ride();
+    let history = app.history();
+    let record = &history[0].record;
+    assert!(!record.simulated && !record.assisted);
+    assert!(record.route_time.is_none());
+    assert_eq!(
+        record.climbs.len(),
+        1,
+        "only the complete later climb is eligible"
+    );
+    assert!(record.climbs[0].start.0 >= entry.0);
+    assert!(!history[0].route_record);
+    assert!(
+        !history[0].power_records.is_empty(),
+        "genuine post-entry power remains eligible"
+    );
+    assert!((record.summary.distance.0 - (full_distance - entry.0)).abs() < 1.0);
+    let (_, samples) = crate::read_fit(&history[0].fit).unwrap();
+    assert_eq!(samples[0].distance, Meters(0.0));
+    assert_eq!(samples[0].elapsed, Duration::ZERO);
+    assert!(
+        samples
+            .iter()
+            .all(|sample| sample.power == Some(Watts(200.0)))
+    );
+    assert!((samples.last().unwrap().distance.0 - (full_distance - entry.0)).abs() < 1.0);
 }

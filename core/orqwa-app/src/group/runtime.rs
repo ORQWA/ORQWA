@@ -8,7 +8,7 @@ use orqwa_net::activity::{Assistance, ContentId, ContentKind, Selection};
 use orqwa_net::code::{Invite, Reply};
 use orqwa_net::content::{self, Source};
 use orqwa_net::link::{ConnectOptions, Host, Joiner};
-use orqwa_net::lobby::{HostLobby, JoinerLobby, LobbyEvent, Rider, SharedActivity};
+use orqwa_net::lobby::{HostLobby, JoinerLobby, LobbyEvent, RideProgress, Rider, SharedActivity};
 use orqwa_net::state::{RiderId, RiderState};
 use orqwa_voice::{VoiceChat, device::DeviceOptions};
 use tokio::sync::{mpsc, watch};
@@ -25,6 +25,7 @@ pub(super) enum Command {
     Prepared(u64),
     Ready(bool),
     Start,
+    Enter,
     Remove(RiderId),
     Retry,
     Failure(String),
@@ -34,6 +35,12 @@ pub(super) enum Command {
     ChooseDevices(u64, String, String),
     Mute(RiderId, bool),
 }
+#[derive(Clone, Copy)]
+pub(super) struct Local {
+    pub(super) state: RiderState,
+    pub(super) progress: Option<RideProgress>,
+}
+
 pub(super) enum Session {
     Host(HostLobby),
     Join(JoinerLobby),
@@ -51,11 +58,16 @@ impl Session {
             Self::Join(l) => l.ready(revision, ready).map_err(|e| e.to_string()),
         }
     }
-    fn state(&self, state: RiderState) {
-        let _ = match self {
-            Self::Host(l) => l.send_state(state),
-            Self::Join(l) => l.send_state(state),
-        };
+    fn state(&self, local: Option<Local>) {
+        if let Self::Host(lobby) = self {
+            let _ = lobby.progress(local.and_then(|local| local.progress));
+        }
+        if let Some(local) = local {
+            let _ = match self {
+                Self::Host(lobby) => lobby.send_state(local.state),
+                Self::Join(lobby) => lobby.send_state(local.state),
+            };
+        }
     }
 }
 enum Prepared {
@@ -87,7 +99,7 @@ pub(super) async fn run(
     request: Request,
     mut commands: mpsc::Receiver<Command>,
     updates: watch::Sender<Snapshot>,
-    mut local: watch::Receiver<Option<RiderState>>,
+    mut local: watch::Receiver<Option<Local>>,
 ) {
     let mut snapshot = Snapshot {
         phase: Phase::Connecting,
@@ -111,7 +123,7 @@ async fn run_inner(
     commands: &mut mpsc::Receiver<Command>,
     updates: &watch::Sender<Snapshot>,
     snapshot: &mut Snapshot,
-    local: &mut watch::Receiver<Option<RiderState>>,
+    local: &mut watch::Receiver<Option<Local>>,
 ) -> Result<(), String> {
     let policy = request.options.gather.policy;
     let temp = Directory(request.temporary);
@@ -193,6 +205,15 @@ async fn run_inner(
                         session.ready(snapshot.selection.as_ref().ok_or("Select an activity first.")?.revision,ready).await
                     }
                     Command::Start => start(&session,snapshot).await,
+                    Command::Enter => {
+                        if let Session::Join(lobby) = &session && snapshot.can_enter() {
+                            let revision = snapshot.selection.as_ref().ok_or("Select an activity first.")?.revision;
+                            lobby.ready(revision, true).map_err(|error| error.to_string())?;
+                            lobby.enter(revision).map_err(|error| error.to_string())?;
+                            snapshot.entering = true;
+                        }
+                        Ok(())
+                    },
                     Command::Remove(id) => match &session {Session::Host(l)=>l.remove(id).map_err(|e|e.to_string()),Session::Join(_)=>Err("Only the host removes riders.".into())},
                     Command::Retry => {
                         if let (Session::Join(l),Some(selection)) = (&session,&snapshot.selection) {
@@ -270,6 +291,16 @@ async fn run_inner(
                     }
                 }
                 Some(LobbyEvent::Start {at}) => {snapshot.start = Some(at.into_std()); snapshot.phase = Phase::Countdown;}
+                Some(LobbyEvent::Running {at}) => {snapshot.start = Some(at.into_std()); snapshot.late = true;}
+                Some(LobbyEvent::Entry {revision,progress}) => {
+                    if snapshot.entering && snapshot.selection.as_ref().is_some_and(|selected| selected.revision == revision) {
+                        snapshot.entering = false;
+                        if let Some(progress) = progress {
+                            if progress.workout.is_some() != snapshot.plan.is_some() {return Err("The organizer sent progress for a different activity.".into());}
+                            snapshot.entry = Some(progress); snapshot.phase = Phase::Riding;
+                        } else {snapshot.report(Kind::GroupRide,"The organizer is not riding yet or has paused. Try joining again when they are riding.");}
+                    }
+                }
                 Some(LobbyEvent::State {id,state}) => {snapshot.states[usize::from(id.value())] = Some((state,std::time::Instant::now()));}
                 Some(LobbyEvent::Expired) => snapshot.report(Kind::GroupRide,"An admission reply expired. Exchange fresh codes."),
                 Some(LobbyEvent::HostLeft)|None => {jobs.abort_all(); audio.abort_all(); drop(voice); snapshot.voice = false; snapshot.microphone = false; snapshot.start = None; snapshot.phase = Phase::Ended; snapshot.states.fill(None); updates.send_replace(snapshot.clone()); return Ok(());}
@@ -308,8 +339,8 @@ async fn run_inner(
             },
             _ = ticker.tick() => {
                 if let Some(start) = snapshot.start && std::time::Instant::now()>=start {
-                    snapshot.phase = Phase::Riding;
-                    if let Some(state) = *local.borrow_and_update() {session.state(state);}
+                    if !snapshot.late || snapshot.entry.is_some() {snapshot.phase = Phase::Riding;}
+                    if local.has_changed().unwrap_or(false) {session.state(*local.borrow_and_update());}
                 }
                 if let Some(chat) = &voice {snapshot.microphone = chat.microphone_enabled();}
             }
