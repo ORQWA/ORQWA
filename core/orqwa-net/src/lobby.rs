@@ -19,9 +19,12 @@ use crate::wire::{self, Message};
 
 mod activity;
 pub(crate) mod entry;
+pub(crate) mod timing;
 use activity::Activities;
 pub use activity::SharedActivity;
 pub use entry::RideProgress;
+use timing::Timeline;
+pub use timing::WorkoutClock;
 
 const CONTROL_CAPACITY: usize = 32;
 const WRITE_WAIT: Duration = Duration::from_secs(2);
@@ -92,6 +95,8 @@ pub enum LobbyEvent {
         /// Fresh organizer progress, or unavailable while the organizer is not riding.
         progress: Option<RideProgress>,
     },
+    /// Organizer-owned structured-workout time; never a trainer target or personal intensity.
+    Workout(WorkoutClock),
     /// One validated latest sample, at most five times per second per rider.
     State {
         /// Authenticated sender assigned by the host.
@@ -134,6 +139,7 @@ pub enum LobbyError {
 struct Events {
     controls: mpsc::Receiver<LobbyEvent>,
     states: watch::Receiver<States>,
+    clock: watch::Receiver<Option<WorkoutClock>>,
     pending: States,
     me: RiderId,
     ended: bool,
@@ -164,6 +170,11 @@ impl Events {
                 }
                 Err(mpsc::error::TryRecvError::Empty) => {}
             }
+            if self.clock.has_changed().unwrap_or(false)
+                && let Some(clock) = *self.clock.borrow_and_update()
+            {
+                return Some(LobbyEvent::Workout(clock));
+            }
             for (id, state) in self.pending.iter_mut().enumerate() {
                 let id = rider_id(id);
                 if let Some(state) = state
@@ -178,6 +189,7 @@ impl Events {
                 changed = self.states.changed() => if changed.is_ok() {
                     self.pending = *self.states.borrow_and_update();
                 },
+                changed = self.clock.changed() => if changed.is_ok() && let Some(clock) = *self.clock.borrow_and_update() {return Some(LobbyEvent::Workout(clock));},
             }
         }
     }
@@ -191,10 +203,12 @@ fn events(
     me: RiderId,
     controls: mpsc::Receiver<LobbyEvent>,
     states: watch::Receiver<States>,
+    clock: watch::Receiver<Option<WorkoutClock>>,
 ) -> Events {
     Events {
         controls,
         states,
+        clock,
         pending: [None; MAX_RIDERS],
         me,
         ended: false,
@@ -209,6 +223,8 @@ enum Command {
     Ready(u64, bool, oneshot::Sender<Result<(), LobbyError>>),
     PeerReady(Membership, u64, bool),
     Enter(Membership, u64),
+    WorkoutPause(bool, oneshot::Sender<Result<(), LobbyError>>),
+    WorkoutSkip(Duration, oneshot::Sender<Result<(), LobbyError>>),
     Remove(RiderId),
 }
 
@@ -236,6 +252,7 @@ impl HostLobby {
         let (commands, receive) = mpsc::channel(8);
         let (control, controls) = mpsc::channel(CONTROL_CAPACITY);
         let (states, updates) = watch::channel([None; MAX_RIDERS]);
+        let (clock, clock_updates) = watch::channel(None);
         let (state, local) = watch::channel(None);
         let (progress, progress_updates) = watch::channel(None);
         let (voice, owner, _changes) = voice::channel(RiderId::HOST);
@@ -250,13 +267,14 @@ impl HostLobby {
             owner,
             commands.clone(),
             progress_updates,
+            clock,
         ));
         Ok(Self {
             invite,
             commands,
             state,
             progress,
-            events: events(RiderId::HOST, controls, updates),
+            events: events(RiderId::HOST, controls, updates, clock_updates),
             tasks,
             voice: Some(voice),
         })
@@ -326,6 +344,28 @@ impl HostLobby {
         let (send, receive) = oneshot::channel();
         self.commands
             .try_send(Command::Start(countdown, send))
+            .map_err(|_| LobbyError::Lost)?;
+        receive.await.map_err(|_| LobbyError::Lost)?
+    }
+    /// Pauses or resumes the shared workout clock while personal safety pauses stay local.
+    ///
+    /// # Errors
+    /// Returns [`LobbyError`] without an active selected workout or an available command queue.
+    pub async fn workout_pause(&self, paused: bool) -> Result<(), LobbyError> {
+        let (send, receive) = oneshot::channel();
+        self.commands
+            .try_send(Command::WorkoutPause(paused, send))
+            .map_err(|_| LobbyError::Lost)?;
+        receive.await.map_err(|_| LobbyError::Lost)?
+    }
+    /// Advances to a later workout boundary computed from the organizer's selected plan.
+    ///
+    /// # Errors
+    /// Returns [`LobbyError`] before start, on backward/out-of-range time or a stopped owner.
+    pub async fn workout_skip(&self, next: Duration) -> Result<(), LobbyError> {
+        let (send, receive) = oneshot::channel();
+        self.commands
+            .try_send(Command::WorkoutSkip(next, send))
             .map_err(|_| LobbyError::Lost)?;
         receive.await.map_err(|_| LobbyError::Lost)?
     }
@@ -407,6 +447,7 @@ impl JoinerLobby {
             }
         }
         let (states, updates) = watch::channel([None; MAX_RIDERS]);
+        let (clock, clock_updates) = watch::channel(None);
         let (state, local) = watch::channel(None);
         let (voice, owner, changes) = voice::channel(me);
         let mut tasks = JoinSet::new();
@@ -426,13 +467,14 @@ impl JoinerLobby {
                 changes,
                 ready,
                 route == RouteHash::LOBBY,
+                clock,
             )
             .await;
         });
         Ok(Self {
             me,
             state,
-            events: events(me, controls, updates),
+            events: events(me, controls, updates, clock_updates),
             tasks,
             voice: Some(voice),
             connection: content_connection,
@@ -594,6 +636,7 @@ async fn host_actor(
     voice: VoiceOwner,
     command_sender: mpsc::Sender<Command>,
     progress: watch::Receiver<Option<(RideProgress, Instant)>>,
+    clock: watch::Sender<Option<WorkoutClock>>,
 ) {
     let _ = host_loop(
         &mut host,
@@ -605,6 +648,7 @@ async fn host_actor(
         &voice.0,
         &command_sender,
         &progress,
+        &clock,
     )
     .await;
 }
@@ -621,6 +665,7 @@ async fn host_loop(
     voice: &VoiceHandle,
     command_sender: &mpsc::Sender<Command>,
     progress: &watch::Receiver<Option<(RideProgress, Instant)>>,
+    clock: &watch::Sender<Option<WorkoutClock>>,
 ) -> Result<(), LobbyError> {
     let shared = Arc::new(Mutex::new(Mailbox {
         inbox: StateInbox::new(Instant::now().into_std()),
@@ -635,6 +680,7 @@ async fn host_loop(
     roster[0] = Some(me);
     let mut peers: [Option<Peer>; MAX_RIDERS] = std::array::from_fn(|_| None);
     let mut activities = Activities::new(host.invite().route == RouteHash::LOBBY)?;
+    let mut timeline: Option<Timeline> = None;
     let mut tasks = JoinSet::new();
     let mut ticker = interval(STATE_EVERY);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -650,6 +696,9 @@ async fn host_loop(
                     if let Err(error) = activities.start() { let _ = result.send(Err(error)); continue; }
                     let at = Instant::now() + countdown;
                     lock(&shared).start = Some(at);
+                    if let Some(selected) = activities.selected.borrow().as_ref().filter(|selected| selected.selection.workout.is_some()) {
+                        timeline = Some(Timeline::new(selected.selection.revision, at.into_std()));
+                    }
                     if !activities.enabled { host.seal(); }
                     lock(&shared).entered = std::array::from_fn(|id| roster[id].is_some());
                     for peer in peers.iter().flatten() {
@@ -692,9 +741,22 @@ async fn host_loop(
                         };
                         let current = (*progress.borrow()).filter(|(_, at)| at.elapsed() <= Duration::from_secs(2))
                             .map(|(current, _)| current).filter(|_| available);
+                        let current = current.map(|mut current| {if current.workout.is_some() {current.workout = timeline.as_ref().map(Timeline::position);} current});
                         if current.is_some() { lock(&shared).entered[slot] = true; }
                         if peer.control.try_send(Control::Message(Message::Entry(revision, current))).is_err() {peer.connection.close();}
                     }
+                }
+                Some(Command::WorkoutPause(paused, result)) => {
+                    let answer = if elapsed(lock(&shared).start).is_some() {
+                        if let Some(timeline) = &mut timeline {timeline.pause(paused); Ok(())} else {Err(LobbyError::Protocol)}
+                    } else {Err(LobbyError::Protocol)};
+                    let _ = result.send(answer);
+                }
+                Some(Command::WorkoutSkip(next, result)) => {
+                    let answer = if elapsed(lock(&shared).start).is_some() {
+                        timeline.as_mut().ok_or(LobbyError::Protocol).and_then(|timeline| timeline.skip(next))
+                    } else {Err(LobbyError::Protocol)};
+                    let _ = result.send(answer);
                 }
                 Some(Command::Remove(id)) => if let Some(peer) = &peers[usize::from(id.value())] {peer.connection.close();},
                 None => return Ok(()),
@@ -725,7 +787,10 @@ async fn host_loop(
                     let voice = voice.clone();
                     let epochs = voice.epochs();
                     let mut initial = activities.initial();
-                    if let Some(at) = lock(&shared).start {initial.push(running(at)?);}
+                    if let Some(at) = lock(&shared).start {
+                        initial.push(running(at)?);
+                        if at <= Instant::now() && let Some(timeline) = &mut timeline {initial.push(Message::Workout(timeline.sample(at.into_std())?));}
+                    }
                     lock(&shared).entered[slot] = false;
                     let initial = initial; let selection = activities.selected.subscribe(); let commands = command_sender.clone();
                     tasks.spawn(async move { let _ = serve_peer(&connection, send, recv, welcome, member, shared, receive, updates, voice, epochs,initial,selection,commands).await; connection.close(); Done::Left(member) });
@@ -745,6 +810,11 @@ async fn host_loop(
                 _ => {}
             },
             _ = ticker.tick() => {
+                if let Some(at) = lock(&shared).start.filter(|at| *at <= Instant::now()) && let Some(timeline) = &mut timeline {
+                    let sample = timeline.sample(at.into_std())?;
+                    broadcast(&peers, &Message::Workout(sample));
+                    clock.send_replace(Some(sample.clock(at.into_std())?));
+                }
                 let mut mailbox = lock(&shared);
                 if let Some(elapsed) = elapsed(mailbox.start) {
                     if local.has_changed().unwrap_or(false)
@@ -878,6 +948,7 @@ async fn client_actor(
     mut voice_changes: watch::Receiver<bool>,
     mut readiness: mpsc::Receiver<Message>,
     app_lobby: bool,
+    clock: watch::Sender<Option<WorkoutClock>>,
 ) -> Result<(), LobbyError> {
     voice.0.uplink(connection.clone());
     let mut readers = JoinSet::new();
@@ -900,6 +971,7 @@ async fn client_actor(
     }
     let mut start = None;
     let mut selection_revision = 0;
+    let mut workout_sequence = 0;
     let mut late = false;
     let mut entered = false;
     let mut requested = None;
@@ -949,6 +1021,12 @@ async fn client_actor(
                     Message::Start(millis) if start.is_none() => {
                         let at = Instant::now() + Duration::from_millis(u64::from(millis)).saturating_sub(connection.rtt()/2);
                         entered = true; start = Some(at); event(&controls, LobbyEvent::Start { at })?;
+                    }
+                    Message::Workout(sample) if app_lobby && sample.revision == selection_revision && sample.sequence > workout_sequence => {
+                        let start = start.ok_or(LobbyError::Protocol)?;
+                        let current = sample.clock(start.into_std())?;
+                        workout_sequence = sample.sequence;
+                        clock.send_replace(Some(current));
                     }
                     Message::Running(age) if app_lobby && start.is_none() && selection_revision > 0 => {
                         let now = Instant::now();
@@ -1093,6 +1171,8 @@ mod tests {
             distance: Meters(4300.0),
             workout: Some(Duration::from_secs(740)),
         };
+        host.workout_skip(Duration::from_secs(740)).await.unwrap();
+        host.workout_pause(true).await.unwrap();
         host.progress(Some(progress)).unwrap();
         late.ready(1, true).unwrap();
         late.enter(1).unwrap();
@@ -1103,7 +1183,11 @@ mod tests {
         else {
             panic!("prepared rider enters");
         };
-        assert_eq!(entry, progress);
+        assert_eq!(entry.distance, progress.distance);
+        assert!(
+            entry.workout.unwrap() >= Duration::from_secs(740)
+                && entry.workout.unwrap() < Duration::from_secs(742)
+        );
         late.send_state(RiderState {
             at: start.elapsed(),
             distance: Meters(4295.0),
@@ -1384,6 +1468,41 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn a_joiner_cannot_send_organizer_workout_time_or_stop_the_lobby() {
+        let mut host = HostLobby::open(
+            Host::lobby("Host", &options()).await.unwrap(),
+            rider("Host"),
+        )
+        .unwrap();
+        let (_connection, mut send, _recv, id) = raw_join(&host).await;
+        wire::write(
+            &mut send,
+            &Message::Workout(timing::WorkoutSample {
+                revision: 1,
+                sequence: 1,
+                group: Duration::ZERO,
+                elapsed: Duration::from_mins(15),
+                paused: true,
+            }),
+        )
+        .await
+        .unwrap();
+        host_event(
+            &mut host,
+            |event| matches!(event, LobbyEvent::Left {id: gone} if *gone == id),
+        )
+        .await;
+        let mut other = join(&host, "Other").await;
+        client_event(
+            &mut other,
+            |event| matches!(event, LobbyEvent::Joined {id, ..} if *id == RiderId::HOST),
+        )
+        .await;
+        other.close().await;
+        host.close().await;
+    }
+
+    #[tokio::test]
     async fn forged_senders_invalid_physics_future_timestamps_and_floods_disconnect_only_the_offender()
      {
         for attack in 0..4 {
@@ -1485,7 +1604,8 @@ mod tests {
     async fn slow_event_consumers_coalesce_updates_and_do_not_resurrect_departed_riders() {
         let (send, receive) = mpsc::channel(CONTROL_CAPACITY);
         let (states, updates) = watch::channel([None; MAX_RIDERS]);
-        let mut events = events(RiderId::HOST, receive, updates);
+        let (clock, clock_updates) = watch::channel(None);
+        let mut events = events(RiderId::HOST, receive, updates, clock_updates);
         let id = rider_id(1);
         send.try_send(LobbyEvent::Joined {
             id,
@@ -1495,6 +1615,19 @@ mod tests {
         assert!(matches!(
             events.next().await,
             Some(LobbyEvent::Joined { .. })
+        ));
+        for sequence in 1..=1000 {
+            clock.send_replace(Some(WorkoutClock {
+                revision: 1,
+                sequence,
+                elapsed: Duration::from_secs(sequence),
+                at: std::time::Instant::now(),
+                paused: false,
+            }));
+        }
+        assert!(matches!(
+            events.next().await,
+            Some(LobbyEvent::Workout(WorkoutClock { sequence: 1000, .. }))
         ));
         for sample in 0..1000 {
             let mut snapshot = [None; MAX_RIDERS];

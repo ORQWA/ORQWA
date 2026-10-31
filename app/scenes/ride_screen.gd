@@ -410,6 +410,8 @@ func _apply_sound_options(options: Dictionary) -> void:
 
 ## A changed workout reaches the trainer at once; the ride keeps the name it started with.
 func _on_workout_changed(workout: Dictionary) -> void:
+	if _orqwa.group_status().get("workout_shared", false):
+		return
 	workout["name"] = _workout.get("name", "")
 	_workout = workout
 	_options["workout"] = workout

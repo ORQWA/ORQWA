@@ -123,8 +123,21 @@ fn late_workout_entry_is_explicit_and_records_only_the_riders_own_effort() {
     wait(&mut host, &mut peer, |host, _| host.group().can_start());
     host.group_start().unwrap();
     wait(&mut host, &mut peer, |host, _| host.ride_state().is_some());
-    // Move the organizer into a later step without manufacturing earlier local samples.
-    host.ride.as_mut().unwrap().ride.skip_step();
+    // The organizer advances the shared plan without manufacturing earlier local samples.
+    wait(&mut host, &mut peer, |host, _| {
+        host.group().can_control_workout()
+    });
+    assert!(host.skip_step());
+    wait(&mut host, &mut peer, |host, _| {
+        host.ride_state()
+            .unwrap()
+            .workout
+            .unwrap()
+            .progress
+            .unwrap()
+            .step
+            > 0
+    });
     peer.group_open(Some(host.group().invite), options())
         .unwrap();
     wait(&mut host, &mut peer, |_, peer| {
@@ -178,6 +191,178 @@ fn late_workout_entry_is_explicit_and_records_only_the_riders_own_effort() {
     assert!(
         peer.ride_state().unwrap().elapsed > elapsed,
         "host loss preserves local riding"
+    );
+}
+
+fn start_shared_workout(host: &mut App, peer: &mut App) {
+    for app in [&mut *host, &mut *peer] {
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(180.0),
+            cadence: Rpm(85.0),
+            heart: None,
+        }))
+        .unwrap();
+    }
+    host.group_open(None, options()).unwrap();
+    wait(host, peer, |host, _| !host.group().invite.is_empty());
+    peer.group_open(Some(host.group().invite), options())
+        .unwrap();
+    wait(host, peer, |_, peer| !peer.group().reply.is_empty());
+    host.group_admit(peer.group().reply).unwrap();
+    wait(host, peer, |host, peer| {
+        host.group().roster.iter().flatten().count() == 2 && peer.group().phase == Phase::Waiting
+    });
+    host.group_select(None, Some("builtin:recovery-30"))
+        .unwrap();
+    wait(host, peer, |host, peer| {
+        host.group().prepared
+            && peer.group().prepared
+            && host.trainer_connected()
+            && peer.trainer_connected()
+    });
+    host.group_ready(true).unwrap();
+    peer.group_ready(true).unwrap();
+    wait(host, peer, |host, _| host.group().can_start());
+    host.group_start().unwrap();
+    wait(host, peer, |host, peer| {
+        host.ride_state().is_some()
+            && peer.ride_state().is_some()
+            && host.group().can_control_workout()
+            && peer.group().workout_clock.is_some()
+    });
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // one two-rider lifecycle checks shared commands, local safety, personal targets and host loss together
+fn organizer_workout_controls_keep_personal_intensity_and_local_safety_pause_independent() {
+    let from = Directory::new();
+    let to = Directory::new();
+    let mut host = from.app();
+    let mut peer = to.app();
+    host.profile.profile.ftp = Watts(200.0);
+    peer.profile.profile.ftp = Watts(300.0);
+    start_shared_workout(&mut host, &mut peer);
+    assert_eq!(
+        peer.step_intensity(4),
+        Some(orqwa_domain::units::Percent(120.0))
+    );
+    assert!(!peer.skip_step());
+    assert!(peer.group_workout_pause(true).is_err());
+    host.change_workout(Workout::ConstantPower(Watts(999.0)));
+    assert!(
+        host.ride_state()
+            .unwrap()
+            .workout
+            .unwrap()
+            .progress
+            .is_some(),
+        "a frozen shared plan cannot be replaced during riding"
+    );
+    host.group_workout_pause(true).unwrap();
+    wait(&mut host, &mut peer, |host, peer| {
+        host.ride_state().unwrap().workout.unwrap().paused
+            && peer.ride_state().unwrap().workout.unwrap().paused
+    });
+    let held = peer.ride.as_ref().unwrap().ride.workout_elapsed().unwrap();
+    let recorded = peer.ride_state().unwrap().elapsed;
+    peer.update(Duration::from_secs(1));
+    host.update(Duration::from_secs(1));
+    assert_eq!(
+        peer.ride.as_ref().unwrap().ride.workout_elapsed(),
+        Some(held)
+    );
+    assert_eq!(
+        peer.ride_state().unwrap().elapsed,
+        recorded + Duration::from_secs(1)
+    );
+    assert!(
+        !peer.is_paused(),
+        "group workout pause does not stop personal riding"
+    );
+    assert_eq!(
+        peer.ride_state().unwrap().workout.unwrap().target_power,
+        None
+    );
+    assert!(host.skip_step());
+    wait(&mut host, &mut peer, |host, peer| {
+        host.ride_state()
+            .unwrap()
+            .workout
+            .unwrap()
+            .progress
+            .unwrap()
+            .step
+            > 0
+            && peer
+                .ride_state()
+                .unwrap()
+                .workout
+                .unwrap()
+                .progress
+                .unwrap()
+                .step
+                > 0
+    });
+    assert!(
+        host.group().workout_clock.unwrap().paused && peer.group().workout_clock.unwrap().paused
+    );
+    host.group_workout_pause(false).unwrap();
+    wait(&mut host, &mut peer, |host, peer| {
+        !host.ride_state().unwrap().workout.unwrap().paused
+            && !peer.ride_state().unwrap().workout.unwrap().paused
+    });
+    let state = peer.ride_state().unwrap().workout.unwrap();
+    let expected = peer
+        .group()
+        .plan
+        .unwrap()
+        .at(state.progress.unwrap().elapsed, Watts(300.0))
+        .unwrap()
+        .power
+        .unwrap()
+        .0
+        * 1.2;
+    assert!((state.target_power.unwrap().0 - expected).abs() < 0.01);
+    peer.set_paused(true);
+    let recorded = peer.ride_state().unwrap().elapsed;
+    let samples = peer.ride.as_ref().unwrap().ride.samples().len();
+    assert!(host.skip_step());
+    wait(&mut host, &mut peer, |host, _| {
+        host.ride_state()
+            .unwrap()
+            .workout
+            .unwrap()
+            .progress
+            .unwrap()
+            .step
+            >= 2
+    });
+    assert_eq!(peer.ride_state().unwrap().elapsed, recorded);
+    assert_eq!(peer.ride.as_ref().unwrap().ride.samples().len(), samples);
+    peer.set_paused(false);
+    wait(&mut host, &mut peer, |_, peer| {
+        peer.ride_state()
+            .unwrap()
+            .workout
+            .unwrap()
+            .progress
+            .unwrap()
+            .step
+            >= 2
+    });
+    assert_eq!(
+        peer.ride_state().unwrap().workout.unwrap().intensity,
+        orqwa_domain::units::Percent(120.0)
+    );
+    host.group_leave();
+    wait(&mut host, &mut peer, |_, peer| {
+        peer.group().phase == Phase::Ended
+    });
+    let before = peer.ride.as_ref().unwrap().ride.workout_elapsed().unwrap();
+    peer.update(Duration::from_secs(1));
+    assert_eq!(
+        peer.ride.as_ref().unwrap().ride.workout_elapsed(),
+        Some(before + Duration::from_secs(1))
     );
 }
 #[test]

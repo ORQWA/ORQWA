@@ -261,6 +261,14 @@ impl Ride {
     /// or the workout's power should change.
     pub fn tick(&mut self, dt: Duration) -> Option<TrainerControl> {
         if self.is_finished() {
+            // A shared skip may finish between ticks; retain only the actual local endpoint.
+            if self
+                .samples
+                .last()
+                .is_some_and(|last| last.elapsed < self.elapsed)
+            {
+                self.record();
+            }
             return None;
         }
         // Samples sit on a whole-second grid, so FIT timestamps are exact.
@@ -427,6 +435,31 @@ impl Ride {
         self.workout.as_ref().and_then(WorkoutControl::elapsed)
     }
 
+    /// Follows organizer workout time without changing local elapsed time, distance, samples,
+    /// FTP or intensity. `None` returns to independent timing after leaving or losing a group.
+    /// A shared workout pause releases trainer resistance while physical riding may continue.
+    pub fn sync_group_workout(&mut self, time: Option<(Duration, bool)>) -> bool {
+        let Some(control) = &mut self.workout else {
+            return false;
+        };
+        let before = control.paused();
+        let step = control.step();
+        let previous = control.elapsed();
+        if !control.sync(time) {
+            return false;
+        }
+        if before != control.paused()
+            || step != control.step()
+            || time.is_none()
+            || time.is_some_and(|(elapsed, _)| {
+                previous.is_some_and(|old| old.abs_diff(elapsed) > Duration::from_millis(500))
+            })
+        {
+            self.last_control = None;
+        }
+        true
+    }
+
     /// Moves the rider to `distance` along the route, keeping their speed — for simulated
     /// rides (#53). The trainer gets the gradient there on the next tick.
     pub fn jump_to(&mut self, distance: Meters) {
@@ -517,7 +550,9 @@ impl Ride {
 
     fn control_update(&mut self) -> Option<TrainerControl> {
         // A free step of a structured workout simulates the road like a ride without one.
-        let control = if let Some(power) = self.workout.as_ref().and_then(WorkoutControl::power) {
+        let control = if self.workout.as_ref().is_some_and(WorkoutControl::paused) {
+            TrainerControl::Resistance(Percent(0.0))
+        } else if let Some(power) = self.workout.as_ref().and_then(WorkoutControl::power) {
             TrainerControl::TargetPower(power)
         } else {
             let grade = trainer_grade(
@@ -871,6 +906,54 @@ mod tests {
         assert!(ride.skip_step() && ride.skip_step());
         assert!(ride.is_finished());
         assert!(!ride.skip_step(), "nothing left to skip");
+    }
+
+    #[test]
+    fn shared_workout_time_preserves_own_intensity_recording_and_safe_trainer_control() {
+        let mut ride = Ride::workout(
+            Workout::Structured {
+                plan: plan(),
+                ftp: Watts(300.0),
+            },
+            RideConfig::default(),
+        );
+        assert_eq!(ride.step_intensity(2), Some(Percent(110.0)));
+        assert!(ride.sync_group_workout(Some((Duration::from_secs(10), true))));
+        let controls = pedal(&mut ride, 180.0, 5);
+        assert_eq!(controls[0], TrainerControl::Resistance(Percent(0.0)));
+        assert_eq!(ride.workout_elapsed(), Some(Duration::from_secs(10)));
+        assert_eq!(ride.state().elapsed, Duration::from_secs(5));
+        assert!(
+            !ride.skip_step(),
+            "shared step changes require organizer authority"
+        );
+        assert!(
+            ride.samples()
+                .iter()
+                .all(|sample| sample.power == Some(Watts(180.0)))
+        );
+        ride.sync_group_workout(Some((Duration::from_secs(70), false)));
+        let resumed = ride.tick(Duration::from_millis(10));
+        assert_eq!(resumed, Some(TrainerControl::TargetPower(Watts(132.0))));
+        assert_eq!(ride.state().workout.unwrap().intensity, Percent(110.0));
+        assert_eq!(ride.workout_elapsed(), Some(Duration::from_secs(70)));
+        ride.sync_group_workout(None);
+        ride.tick(Duration::from_secs(1));
+        assert_eq!(ride.workout_elapsed(), Some(Duration::from_secs(71)));
+        assert!(
+            !ride.sync_group_workout(None),
+            "repeated independent snapshots must not reset trainer throttling"
+        );
+        let recorded = ride.state().elapsed;
+        ride.sync_group_workout(Some((plan().duration(), false)));
+        assert!(ride.is_finished());
+        assert_eq!(ride.tick(Duration::from_secs(1)), None);
+        assert_eq!(ride.samples().last().unwrap().elapsed, recorded);
+        assert_eq!(
+            ride.state().elapsed,
+            recorded,
+            "skipping the final step adds no riding time"
+        );
     }
 
     #[test]

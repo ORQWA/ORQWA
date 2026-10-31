@@ -251,3 +251,31 @@ context [when embedded through JNI](https://github.com/RustAudio/cpal#compiling-
 otherwise device setup can panic before readiness. Voice setup remains microphone-off.
 Group errors use ADR 0017's common classified/translated failure history with original causes,
 Technical details and Dismiss; independent activity retry state survives later voice failures.
+
+### Shared workout timing — 2026-10-31
+
+Protocol/invitation version 5 and ALPN `orqwa-group/5` add organizer-owned workout samples.
+Each includes the frozen activity revision, increasing sequence, bounded workout position,
+paused flag and sample position on the original group clock. Mapping that sample position
+onto the already established local group start accounts for reliable delivery delays instead
+of starting a stale clock at receipt. Values and future times are validated before use.
+
+The host owns a monotonic timeline independent of app frame steps, local safety pauses and
+personal recording. Pause/resume and forward skips enter its existing bounded command queue;
+peer attempts to supply organizer time disconnect only that peer. Reliable snapshots run at
+five Hz and coalesce into one latest app value, so a slow consumer accumulates no clock history.
+Existing control ingress/frame limits and state/voice/content budgets remain intact. Late
+entry uses current authoritative workout time rather than a previous local progress report.
+
+Only structured-plan time is aligned in the session. Shared pause holds the step and asks
+for zero resistance while physical simulation and personal recording can continue. FTP,
+intensity, measured telemetry, course position and personal elapsed time are untouched.
+Local safety pause still stops that rider and frees the trainer; resume aligns to the current
+group step without manufacturing samples or distance. Shared step boundaries, skips and
+pause changes promptly update trainer control while retaining normal control throttling.
+
+All app skip inputs pass through organizer authority, and the engine refuses local skips
+while externally timed. Frozen shared plans cannot be replaced in the app or ride settings.
+Leaving or losing networking releases external timing once and continues the local workout
+from its reached step, including when the group had paused. Planned host handover remains
+the next separate step; automatic recovery after unexpected host loss is still excluded.

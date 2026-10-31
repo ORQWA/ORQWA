@@ -26,6 +26,8 @@ pub(super) enum Command {
     Ready(bool),
     Start,
     Enter,
+    WorkoutPause(bool),
+    WorkoutSkip(Duration),
     Remove(RiderId),
     Retry,
     Failure(String),
@@ -205,6 +207,8 @@ async fn run_inner(
                         session.ready(snapshot.selection.as_ref().ok_or("Select an activity first.")?.revision,ready).await
                     }
                     Command::Start => start(&session,snapshot).await,
+                    Command::WorkoutPause(paused) => match &session {Session::Host(lobby) => lobby.workout_pause(paused).await.map_err(|error| error.to_string()), Session::Join(_) => Err("Only the organizer can control the shared workout.".into())},
+                    Command::WorkoutSkip(next) => match &session {Session::Host(lobby) => lobby.workout_skip(next).await.map_err(|error| error.to_string()), Session::Join(_) => Err("Only the organizer can control the shared workout.".into())},
                     Command::Enter => {
                         if let Session::Join(lobby) = &session && snapshot.can_enter() {
                             let revision = snapshot.selection.as_ref().ok_or("Select an activity first.")?.revision;
@@ -301,11 +305,13 @@ async fn run_inner(
                         } else {snapshot.report(Kind::GroupRide,"The organizer is not riding yet or has paused. Try joining again when they are riding.");}
                     }
                 }
+                Some(LobbyEvent::Workout(clock)) => {snapshot.workout_clock = Some(clock);}
                 Some(LobbyEvent::State {id,state}) => {snapshot.states[usize::from(id.value())] = Some((state,std::time::Instant::now()));}
                 Some(LobbyEvent::Expired) => snapshot.report(Kind::GroupRide,"An admission reply expired. Exchange fresh codes."),
                 Some(LobbyEvent::HostLeft)|None => {jobs.abort_all(); audio.abort_all(); drop(voice); snapshot.voice = false; snapshot.microphone = false; snapshot.start = None; snapshot.phase = Phase::Ended; snapshot.states.fill(None); updates.send_replace(snapshot.clone()); return Ok(());}
             },
             changed=latest_progress.changed()=>{if changed.is_ok(){let p=*latest_progress.borrow_and_update();snapshot.received=p.received;snapshot.total=p.total;}},
+            changed=local.changed()=>{if changed.is_ok(){session.state(*local.borrow_and_update());}},
             result = jobs.join_next(), if !jobs.is_empty() => {
                 match result {
                     Some(Ok(Ok(Prepared::Host(mut selected)))) => {
@@ -338,10 +344,8 @@ async fn run_inner(
                 _ => {},
             },
             _ = ticker.tick() => {
-                if let Some(start) = snapshot.start && std::time::Instant::now()>=start {
-                    if !snapshot.late || snapshot.entry.is_some() {snapshot.phase = Phase::Riding;}
-                    if local.has_changed().unwrap_or(false) {session.state(*local.borrow_and_update());}
-                }
+                if let Some(start) = snapshot.start && std::time::Instant::now()>=start
+                    && (!snapshot.late || snapshot.entry.is_some()) {snapshot.phase = Phase::Riding;}
                 if let Some(chat) = &voice {snapshot.microphone = chat.microphone_enabled();}
             }
         }

@@ -2808,3 +2808,36 @@ msgstr "Steige in der Nähe der organisierenden Person im aktuellen Trainingsabs
 
 msgid "Joining your friends…"
 msgstr "Du steigst in die gemeinsame Fahrt ein…"
+
+msgid "Group workout"
+msgstr "Gruppentraining"
+
+msgid "Your intensity stays personal. Pause in the ride controls stops only your own ride."
+msgstr "Deine Intensität bleibt individuell. Pause in der Fahrsteuerung hält nur deine eigene Fahrt an."
+
+msgid "Pause workout for everyone"
+msgstr "Training für alle pausieren"
+
+msgid "Next step for everyone"
+msgstr "Nächster Abschnitt für alle"
+
+msgid "Workout paused for the group. You can pedal freely."
+msgstr "Das Gruppentraining ist pausiert. Du kannst frei weiterfahren."
+
+msgid "The organizer controls workout timing for everyone."
+msgstr "Die organisierende Person steuert die Trainingsabschnitte für alle."
+
+msgid "Resume workout for everyone"
+msgstr "Training für alle fortsetzen"
+
+msgid "Workout paused"
+msgstr "Training pausiert"
+
+msgid "Use Group Rides for the shared workout. Your intensity stays personal."
+msgstr "Das gemeinsame Training wird unter Gruppenfahrten gesteuert. Deine Intensität bleibt individuell."
+
+msgid "Group workout complete"
+msgstr "Gruppentraining abgeschlossen"
+
+msgid "Riding"
+msgstr "Unterwegs"

@@ -324,6 +324,12 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 |---|---|
 | R171 | Refines R167 (2026-10-30): an admitted late joiner prepares the frozen activity independently, connects a trainer and explicitly chooses **Join ride now**. Entry uses recent organizer progress, starts near the organizer at rest and at the current structured-workout step, and cannot restart an already entered ride. Course position is independent of personal elapsed time and recorded distance; skipped sections add no samples or speed records. Complete later unassisted climbs and genuine measured-power training remain eligible. If the organizer is not actively riding, entry can be retried without stopping the group. The CLI retains its original pre-countdown admission workflow. |
 
+## Shared workout timing
+
+| ID | Requirement |
+|---|---|
+| R172 | Refines R167 (2026-10-30): the organizer controls a structured workout's **shared clock**, pause/resume and forward step skips through ordered authenticated updates. Pause holds the step and releases workout resistance while personal riding/recording can continue. FTP and intensity remain personal. Local safety pause stops only that rider and resumes at the current group step without invented samples, time or distance. Shared plans cannot be replaced while riding in the group; all input paths enforce organizer-only shared skips. Clock snapshots have fixed bounds and coalesce for slow consumers; leaving or losing the group resumes independent workout timing. |
+
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero
