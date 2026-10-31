@@ -78,6 +78,32 @@ func _group_activity() -> void:
 	group._show_status({"host": true, "phase": "riding", "invite": "private"})
 	_check(group._invitation_panel.visible, "organizers invite late friends during the ride")
 	_check(not group._enter.visible, "existing riders cannot restart through entry")
+	group._show_status(
+		{
+			"host": true,
+			"phase": "riding",
+			"workout_shared": true,
+			"workout_paused": true,
+			"can_control_workout": true
+		}
+	)
+	_check(
+		group._workout_panel.visible and not group._workout_pause.disabled,
+		"organizer controls the shared workout"
+	)
+	_check(
+		group._workout_pause.text == tr("Resume workout for everyone"),
+		"paused workout has a clear group resume action"
+	)
+	group._show_status({"host": false, "phase": "riding", "workout_shared": true})
+	_check(
+		(
+			group._workout_panel.visible
+			and not group._workout_pause.visible
+			and not group._workout_next.visible
+		),
+		"joiners see workout status without organizer buttons"
+	)
 	var voice: GroupVoiceControls = group._voice_controls
 	voice.update_status({"voice": true, "microphone": false, "devices": []})
 	_check(

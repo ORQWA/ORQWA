@@ -522,6 +522,14 @@ impl Reporter {
     }
 }
 
+fn release_trainer(trainer: Option<&DeviceHandle>) {
+    if let Some(trainer) = trainer
+        && let Err(error) = trainer.try_control(TrainerControl::Resistance(Percent(0.0)))
+    {
+        warn!(%error, "cannot free the trainer");
+    }
+}
+
 /// Feeds `ride` the shifts `input` asks for, passes on its other controls, and reports when it
 /// connects or drops, `was_connected` telling how it was at the last update.
 fn drive_shift_input(
@@ -2972,6 +2980,12 @@ impl App {
 
     /// Changes the workout of the current workout, e.g. its target power or heart rate.
     pub fn change_workout(&mut self, workout: Workout) {
+        if matches!(
+            self.group().phase,
+            group::Phase::Countdown | group::Phase::Riding
+        ) {
+            return;
+        }
         if let Some(active) = &mut self.ride {
             active.ride.change_workout(workout);
         }
@@ -3068,11 +3082,7 @@ impl App {
         }
         active.paused = paused;
         if paused {
-            if let Some(trainer) = &self.trainer
-                && let Err(error) = trainer.try_control(TrainerControl::Resistance(Percent(0.0)))
-            {
-                warn!(%error, "cannot free the trainer");
-            }
+            release_trainer(self.trainer.as_ref());
         } else {
             active.ride.resend_control();
         }
@@ -3107,6 +3117,9 @@ impl App {
 
     /// Goes on with the next step of a structured workout (#139); whether there was one.
     pub fn skip_step(&mut self) -> bool {
+        if let Some(skipped) = self.group_skip_step() {
+            return skipped;
+        }
         self.ride
             .as_mut()
             .is_some_and(|active| active.ride.skip_step())
@@ -3795,6 +3808,8 @@ impl App {
             }
             // The finish is the summary's to tell (R113).
             if active.ride.is_finished() {
+                // A shared last-step skip can finish before another ERG update reaches the trainer.
+                release_trainer(self.trainer.as_ref());
                 active.finished = true;
                 events.push(AppEvent::RideFinished);
             } else {

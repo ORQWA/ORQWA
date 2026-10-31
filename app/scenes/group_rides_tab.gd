@@ -29,6 +29,10 @@ var _retry: Button
 var _voice_controls: GroupVoiceControls = GroupVoiceControls.new()
 var _voice_panel: VBoxContainer = VBoxContainer.new()
 var _invitation_panel: PanelContainer
+var _workout_panel: PanelContainer
+var _workout_status: Label = Label.new()
+var _workout_pause: Button
+var _workout_next: Button
 var _progress: ProgressBar = ProgressBar.new()
 var _bytes: Label = Label.new()
 var _connection: AcceptDialog = AcceptDialog.new()
@@ -81,6 +85,7 @@ func _ready() -> void:
 	_body.add_child(_sidebar)
 	_build_invitation()
 	_build_roster()
+	_build_workout_controls()
 	var audio: VBoxContainer = _card(_sidebar)
 	var voice: Button = _button(
 		audio, tr("Voice chat"), func() -> void: _voice_panel.visible = not _voice_panel.visible
@@ -254,6 +259,26 @@ func _build_dialogs() -> void:
 		if child is Label:
 			(child as Label).custom_minimum_size.x = 460
 	_connection.add_child(network)
+
+
+func _build_workout_controls() -> void:
+	var card: VBoxContainer = _card(_sidebar)
+	_workout_panel = card.get_parent() as PanelContainer
+	_label(card, tr("Group workout"), 20)
+	_workout_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(_workout_status)
+	_muted(
+		card,
+		tr("Your intensity stays personal. Pause in the ride controls stops only your own ride.")
+	)
+	_workout_pause = _button(
+		card,
+		tr("Pause workout for everyone"),
+		func() -> void:
+			var paused: bool = _status.get("workout_paused", false)
+			_orqwa.group_workout_pause(not paused)
+	)
+	_workout_next = _button(card, tr("Next step for everyone"), func() -> void: _orqwa.skip_step())
 
 
 func _reflow() -> void:
@@ -446,15 +471,36 @@ func _show_status(status: Dictionary) -> void:
 	_devices.visible = not compact and not underway and not trainer
 	_retry.visible = can_retry
 	_voice_controls.update_status(_status)
+	_show_workout_controls()
 	var key: String = (
 		str(_status.get("roster", []))
 		+ str(_status.get("voice", false))
+		+ str(_status.get("local_paused", false))
 		+ phase
 		+ TranslationServer.get_locale()
 	)
 	if key != _roster_key:
 		_roster_key = key
 		_show_roster(phase, host)
+
+
+func _show_workout_controls() -> void:
+	_workout_panel.visible = _status.get("workout_shared", false)
+	var paused: bool = _status.get("workout_paused", false)
+	_workout_status.text = (
+		tr("Workout paused for the group. You can pedal freely.")
+		if paused
+		else tr("The organizer controls workout timing for everyone.")
+	)
+	if _status.get("workout_complete", false):
+		_workout_status.text = tr("Group workout complete")
+	_workout_pause.text = (
+		tr("Resume workout for everyone") if paused else tr("Pause workout for everyone")
+	)
+	_workout_pause.visible = _status.get("host", false)
+	_workout_next.visible = _workout_pause.visible
+	_workout_pause.disabled = not _status.get("can_control_workout", false)
+	_workout_next.disabled = _workout_pause.disabled
 
 
 func _show_roster(phase: String, host: bool) -> void:
@@ -472,7 +518,9 @@ func _show_roster(phase: String, host: bool) -> void:
 		label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		var state: Label = _label(text, tr("Ready") if rider["ready"] else tr("Getting ready"), 13)
 		if phase == "riding":
-			state.text = tr("No signal")
+			state.text = tr("No signal") if rider["ready"] else tr("Getting ready")
+			if rider["me"]:
+				state.text = tr("Paused") if _status.get("local_paused", false) else tr("Riding")
 		state.add_theme_color_override(
 			"font_color", UiTheme.SUCCESS if rider["ready"] else UiTheme.MUTED
 		)

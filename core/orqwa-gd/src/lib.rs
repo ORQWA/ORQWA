@@ -2113,6 +2113,12 @@ impl OrqwaApp {
         self.command(|app| app.group_enter())
     }
 
+    /// Pauses or resumes only the shared workout clock on the organizer.
+    #[func]
+    fn group_workout_pause(&mut self, paused: bool) -> bool {
+        self.command(|app| app.group_workout_pause(paused))
+    }
+
     /// Retries failed activity content/preparation.
     #[func]
     fn group_retry(&mut self) -> bool {
@@ -2980,7 +2986,7 @@ impl OrqwaApp {
     /// watts_per_kg, power_zone, heart_rate_zone, metrics, workout}`, and on a route also
     /// `{remaining_m, grade, elevation_m, x, y, rider_x, rider_y, heading, curvature, ghost, climb}`; sensor
     /// values and what derives from them are `null` when unknown. Empty when not riding.
-    /// `workout` is `{target_power_w, target_heart_rate, intensity_pct, progress}` in a
+    /// `workout` is `{target_power_w, target_heart_rate, intensity_pct, paused, progress}` in a
     /// workout, else `null`: the power `null` in a free step, the heart rate `null` but in a
     /// heart-rate hold, the intensity the share of the planned powers asked for, and
     /// `progress` of a structured workout `{step, steps, elapsed_s, step_left_s, left_s,
@@ -3777,6 +3783,7 @@ fn workout_state(w: &orqwa_session::workout::WorkoutState) -> Variant {
         "target_power_w" => &optional(w.target_power.map(|p| p.0)),
         "target_heart_rate" => &optional(w.target_heart_rate.map(|h| h.0)),
         "intensity_pct" => w.intensity.0,
+        "paused" => w.paused,
         "progress" => &w.progress.as_ref().map_or_else(Variant::nil, |p| {
             vdict! {
                 "step" => i64::try_from(p.step).unwrap_or(0),

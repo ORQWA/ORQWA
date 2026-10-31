@@ -5,7 +5,7 @@ use orqwa_domain::units::{Kilograms, Meters, MetersPerSecond, Rpm, Watts};
 use orqwa_net::activity::{Assistance, Selection};
 use orqwa_net::code::MAX_PASTE_BYTES;
 pub use orqwa_net::link::ConnectOptions;
-use orqwa_net::lobby::{RideProgress, Rider};
+use orqwa_net::lobby::{RideProgress, Rider, WorkoutClock};
 use orqwa_net::state::{MAX_RIDERS, RiderId, RiderState};
 use std::path::PathBuf;
 use std::sync::{
@@ -127,6 +127,8 @@ pub struct Snapshot {
     pub entering: bool,
     /// Fresh position and workout step accepted for this rider's first local tick.
     pub entry: Option<RideProgress>,
+    /// Latest organizer-owned workout time, separate from personal recording and local pause.
+    pub workout_clock: Option<WorkoutClock>,
     /// Latest peer samples and local arrival times.
     pub states: [Option<(RiderState, Instant)>; MAX_RIDERS],
     /// Diagnostic details under a translated error caption.
@@ -182,6 +184,7 @@ impl Default for Snapshot {
             late: false,
             entering: false,
             entry: None,
+            workout_clock: None,
             states: [None; MAX_RIDERS],
             error: String::new(),
             failure: None,
@@ -230,6 +233,25 @@ impl Snapshot {
             && self.phase == Phase::Ready
             && !self.entering
             && self.entry.is_none()
+    }
+
+    /// Organizer controls are available while the selected workout is running.
+    #[must_use]
+    pub fn can_control_workout(&self) -> bool {
+        self.host
+            && self.phase == Phase::Riding
+            && self
+                .workout_clock
+                .zip(self.plan.as_ref())
+                .is_some_and(|(clock, plan)| clock.position(Instant::now()) < plan.duration())
+    }
+
+    /// The shared plan has run its last step; course riding can still continue.
+    #[must_use]
+    pub fn workout_finished(&self) -> bool {
+        self.workout_clock
+            .zip(self.plan.as_ref())
+            .is_some_and(|(clock, plan)| clock.position(Instant::now()) >= plan.duration())
     }
 
     /// Only the prepared host with every admitted participant ready can start.
@@ -373,6 +395,7 @@ impl App {
     /// Leaves networking/audio while preserving any local ride.
     pub fn group_leave(&mut self) {
         if let Some(active) = &mut self.ride {
+            active.ride.sync_group_workout(None);
             active
                 .ride
                 .set_group_effect(orqwa_physics::GroupEffect::default());
@@ -505,6 +528,42 @@ impl App {
             return Err(error("Prepare the activity before joining the ride."));
         }
         self.group_command(Command::Enter)
+    }
+
+    /// Pauses or resumes the group's workout clock; personal safety pause remains local.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] unless this rider is the organizer of an active shared workout.
+    pub fn group_workout_pause(&self, paused: bool) -> Result<(), AppError> {
+        if !self.group().can_control_workout() {
+            return Err(error("Only the organizer can control the shared workout."));
+        }
+        self.group_command(Command::WorkoutPause(paused))
+    }
+
+    pub(crate) fn group_skip_step(&self) -> Option<bool> {
+        let snapshot = self.group();
+        if !matches!(snapshot.phase, Phase::Countdown | Phase::Riding) || snapshot.plan.is_none() {
+            return None;
+        }
+        if !snapshot.can_control_workout() {
+            return Some(false);
+        }
+        let Some(clock) = snapshot.workout_clock else {
+            return Some(false);
+        };
+        let elapsed = clock.position(Instant::now());
+        let Some(next) = snapshot
+            .plan
+            .as_ref()
+            .and_then(|plan| plan.at(elapsed, self.profile.profile.ftp))
+        else {
+            return Some(false);
+        };
+        Some(
+            self.group_command(Command::WorkoutSkip(elapsed + next.left))
+                .is_ok(),
+        )
     }
 
     /// Retries a failed content transfer/preparation.
@@ -689,6 +748,7 @@ impl App {
         {
             self.group_prepared(revision);
         }
+        self.sync_group_workout(&snapshot);
         self.update_group_motion(&snapshot);
         self.publish_group_state(&snapshot);
     }
@@ -768,6 +828,18 @@ impl App {
                     });
                 }
                 Err(e) => events.push(AppEvent::Error(Failure::from(e))),
+            }
+        }
+    }
+
+    fn sync_group_workout(&mut self, snapshot: &Snapshot) {
+        if let Some(active) = &mut self.ride {
+            if matches!(snapshot.phase, Phase::Ended | Phase::Failed) {
+                active.ride.sync_group_workout(None);
+            } else if let Some(clock) = snapshot.workout_clock {
+                active
+                    .ride
+                    .sync_group_workout(Some((clock.position(Instant::now()), clock.paused)));
             }
         }
     }

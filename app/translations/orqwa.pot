@@ -1551,6 +1551,14 @@ msgstr ""
 msgid "Group ride in progress"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Group workout"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Group workout complete"
+msgstr ""
+
 #: app/ui/ui_theme.gd core/orqwa-routes/src/climbs.rs
 msgid "HC"
 msgstr ""
@@ -2051,6 +2059,10 @@ msgstr ""
 msgid "Next camera"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "Next step for everyone"
+msgstr ""
+
 #: app/ui/workout_panel.gd
 msgid "Next: %d W for %s"
 msgstr ""
@@ -2355,7 +2367,11 @@ msgstr ""
 msgid "Pause the ride: the clock and the trainer wait (P)"
 msgstr ""
 
-#: app/scenes/remote_dialog.gd app/scenes/ride_screen.gd
+#: app/scenes/group_rides_tab.gd
+msgid "Pause workout for everyone"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd app/scenes/remote_dialog.gd app/scenes/ride_screen.gd
 msgid "Paused"
 msgstr ""
 
@@ -2596,6 +2612,10 @@ msgid "Resume"
 msgstr ""
 
 #: app/scenes/group_rides_tab.gd
+msgid "Resume workout for everyone"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
 msgid "Retry download"
 msgstr ""
 
@@ -2673,6 +2693,10 @@ msgstr ""
 
 #: app/scenes/profile_tab.gd
 msgid "Rides you keep with Done on their summary go up by themselves"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Riding"
 msgstr ""
 
 #: app/scenes/button_dialog.gd
@@ -3051,6 +3075,10 @@ msgstr ""
 msgid "The only rider cannot be deleted"
 msgstr ""
 
+#: app/scenes/group_rides_tab.gd
+msgid "The organizer controls workout timing for everyone."
+msgstr ""
+
 #: app/scenes/analysis_tab.gd
 msgid "The period before"
 msgstr ""
@@ -3275,6 +3303,10 @@ msgstr ""
 msgid "Use %d W"
 msgstr ""
 
+#: app/scenes/ride_settings_dialog.gd
+msgid "Use Group Rides for the shared workout. Your intensity stays personal."
+msgstr ""
+
 #: app/ui/group_voice_controls.gd
 msgid "Use headphones. Your microphone starts off."
 msgstr ""
@@ -3483,6 +3515,14 @@ msgstr ""
 msgid "Workout intensity: %d %%"
 msgstr ""
 
+#: app/ui/workout_panel.gd
+msgid "Workout paused"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Workout paused for the group. You can pedal freely."
+msgstr ""
+
 #: app/scenes/ride_screen.gd
 msgid "Workout: next step"
 msgstr ""
@@ -3581,6 +3621,10 @@ msgstr ""
 
 #: app/scenes/group_rides_tab.gd
 msgid "Your group"
+msgstr ""
+
+#: app/scenes/group_rides_tab.gd
+msgid "Your intensity stays personal. Pause in the ride controls stops only your own ride."
 msgstr ""
 
 #: app/scenes/analysis_tab.gd

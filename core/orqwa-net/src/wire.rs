@@ -24,6 +24,7 @@ pub(crate) enum Message {
     Ready(u64, bool),
     Readiness(RiderId, u64, bool),
     Running(i64),
+    Workout(crate::lobby::timing::WorkoutSample),
     Enter(u64),
     Entry(u64, Option<crate::lobby::RideProgress>),
 }
@@ -124,6 +125,18 @@ fn encode(message: &Message) -> Result<Vec<u8>, LobbyError> {
             bytes.extend_from_slice(&[10, id.value(), u8::from(*ready)]);
             bytes.extend_from_slice(&revision.to_be_bytes());
         }
+        Message::Workout(sample) => {
+            sample.validate()?;
+            bytes.extend_from_slice(&[14, u8::from(sample.paused)]);
+            for value in [
+                sample.revision,
+                sample.sequence,
+                u64::try_from(sample.group.as_millis()).map_err(|_| LobbyError::Protocol)?,
+                u64::try_from(sample.elapsed.as_millis()).map_err(|_| LobbyError::Protocol)?,
+            ] {
+                bytes.extend_from_slice(&value.to_be_bytes());
+            }
+        }
         Message::Running(age) => {
             crate::lobby::entry::clock(*age)?;
             bytes.push(11);
@@ -200,6 +213,23 @@ impl Reader<'_> {
             _ => return Err(LobbyError::Protocol),
         };
         Ok(Message::Entry(revision, progress))
+    }
+
+    fn workout(&mut self) -> Result<Message, LobbyError> {
+        let paused = match self.byte()? {
+            0 => false,
+            1 => true,
+            _ => return Err(LobbyError::Protocol),
+        };
+        let sample = crate::lobby::timing::WorkoutSample {
+            revision: u64::from_be_bytes(self.take()?),
+            sequence: u64::from_be_bytes(self.take()?),
+            group: Duration::from_millis(u64::from_be_bytes(self.take()?)),
+            elapsed: Duration::from_millis(u64::from_be_bytes(self.take()?)),
+            paused,
+        };
+        sample.validate()?;
+        Ok(Message::Workout(sample))
     }
 }
 
@@ -283,6 +313,7 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
         }
         12 => Message::Enter(u64::from_be_bytes(reader.take()?)),
         13 => reader.entry()?,
+        14 => reader.workout()?,
         _ => return Err(LobbyError::Protocol),
     };
     if !reader.0.is_empty() {
@@ -377,5 +408,46 @@ mod tests {
             ))
             .is_err()
         );
+    }
+
+    #[test]
+    fn shared_workout_frames_bound_every_counter_clock_and_boolean() {
+        let sample = crate::lobby::timing::WorkoutSample {
+            revision: 1,
+            sequence: 5,
+            group: Duration::from_secs(100),
+            elapsed: Duration::from_secs(700),
+            paused: true,
+        };
+        let bytes = encode(&Message::Workout(sample)).unwrap();
+        for len in 0..bytes.len() {
+            assert!(decode(&bytes[..len]).is_err());
+        }
+        let mut extra = bytes.clone();
+        extra.push(0);
+        assert!(decode(&extra).is_err());
+        let mut boolean = bytes;
+        boolean[2] = 2;
+        assert!(decode(&boolean).is_err());
+        for invalid in [
+            crate::lobby::timing::WorkoutSample {
+                revision: 0,
+                ..sample
+            },
+            crate::lobby::timing::WorkoutSample {
+                sequence: 0,
+                ..sample
+            },
+            crate::lobby::timing::WorkoutSample {
+                group: Duration::from_hours(49),
+                ..sample
+            },
+            crate::lobby::timing::WorkoutSample {
+                elapsed: Duration::from_hours(49),
+                ..sample
+            },
+        ] {
+            assert!(encode(&Message::Workout(invalid)).is_err());
+        }
     }
 }
