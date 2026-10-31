@@ -361,7 +361,7 @@ async fn run_inner(
                         let generation = request.voice_controls.generation.fetch_add(1,Ordering::AcqRel)+1;
                         let mut gate=request.voice_controls.port.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
                         if let Some(old)=&port {old.enable(false);}
-                        audio.abort_all(); audio=JoinSet::new(); voice=None; snapshot.voice=false;snapshot.voice_pending=false;snapshot.microphone=false;
+                        audio.abort_all(); audio=JoinSet::new(); let previous=voice.take(); snapshot.voice=false;snapshot.voice_pending=false;snapshot.microphone=false;
                         session=replacement;
                         port=match &mut session {Session::Host(l)=>l.take_voice(),Session::Join(l)=>l.take_voice()};
                         gate.clone_from(&port);drop(gate);
@@ -369,7 +369,12 @@ async fn run_inner(
                         if restart && let Some(port)=&port {
                             let port=port.clone();let options=device_options.clone();let deaf=snapshot.deafened;
                             snapshot.voice_pending=true;
-                            audio.spawn(async move {VoiceChat::open(port,options).await.map(|chat|Audio {generation,chat,deaf}).map_err(|error|error.to_string())});
+                            audio.spawn(async move {
+                                // Exclusive native devices must finish their bounded cleanup
+                                // before the replacement opens them; transport polling continues.
+                                if let Some(chat)=previous {chat.close().await;}
+                                VoiceChat::open(port,options).await.map(|chat|Audio {generation,chat,deaf}).map_err(|error|error.to_string())
+                            });
                         }
                     }
                     Ok(None)=>{},
