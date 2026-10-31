@@ -260,14 +260,31 @@ pub struct Participant {
 }
 
 /// Pure host-owned readiness state; it never operates devices or starts network tasks.
-#[derive(Default)]
 pub struct ActivityLobby {
+    organizer: RiderId,
     selection: Option<Selection>,
     slots: [Option<(u64, bool)>; MAX_RIDERS],
     next_generation: u64,
     started: bool,
 }
+impl Default for ActivityLobby {
+    fn default() -> Self {
+        Self::new(RiderId::HOST)
+    }
+}
 impl ActivityLobby {
+    /// Creates readiness state for the organizer's stable rider identity.
+    #[must_use]
+    pub fn new(organizer: RiderId) -> Self {
+        Self {
+            organizer,
+            selection: None,
+            slots: [None; MAX_RIDERS],
+            next_generation: 0,
+            started: false,
+        }
+    }
+
     /// Current activity, or none while the host is still choosing one.
     #[must_use]
     pub const fn selection(&self) -> Option<&Selection> {
@@ -352,7 +369,7 @@ impl ActivityLobby {
     pub fn can_start(&self) -> bool {
         !self.started
             && self.selection.is_some()
-            && self.slots[0].is_some()
+            && self.slots[usize::from(self.organizer.value())].is_some()
             && self.slots.iter().flatten().all(|(_, ready)| *ready)
     }
     /// Freezes selection and settings only once all current participants are prepared.

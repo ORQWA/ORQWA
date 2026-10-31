@@ -293,7 +293,8 @@ impl Others {
             | LobbyEvent::Readiness { .. }
             | LobbyEvent::Running { .. }
             | LobbyEvent::Entry { .. }
-            | LobbyEvent::Workout(_) => {}
+            | LobbyEvent::Workout(_)
+            | LobbyEvent::Handover { .. } => {}
         }
     }
     fn gaps(&self, mine: f64) -> String {

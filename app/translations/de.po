@@ -2841,3 +2841,51 @@ msgstr "Gruppentraining abgeschlossen"
 
 msgid "Riding"
 msgstr "Unterwegs"
+
+#: app/scenes/group_rides_tab.gd
+msgid "Choose a new organizer"
+msgstr "Neue Organisation auswählen"
+
+#: app/scenes/group_rides_tab.gd
+msgid "Ride organizer"
+msgstr "Organisation der Fahrt"
+
+#: app/scenes/group_rides_tab.gd
+msgid "Change organizer…"
+msgstr "Organisation übergeben…"
+
+#: app/scenes/group_rides_tab.gd
+msgid "Accept organizer duties"
+msgstr "Organisation übernehmen"
+
+#: app/scenes/group_rides_tab.gd
+msgid "Decline"
+msgstr "Ablehnen"
+
+#: app/scenes/group_rides_tab.gd
+msgid "Cancel organizer change"
+msgstr "Übergabe abbrechen"
+
+#: app/scenes/group_rides_tab.gd
+msgid "Choose a friend who is ready. They must accept before anything changes."
+msgstr "Wähle eine Person, die bereit ist. Die Übergabe beginnt erst nach ihrer Zustimmung."
+
+#: app/scenes/group_rides_tab.gd
+msgid "You choose who organizes the ride. Your recording continues when you hand over."
+msgstr "Du bestimmst, wer die Fahrt organisiert. Deine Aufzeichnung läuft bei der Übergabe weiter."
+
+#: app/scenes/group_rides_tab.gd
+msgid "Waiting for %s to accept organizer duties."
+msgstr "Warten auf die Zustimmung von %s zur Übernahme der Organisation."
+
+#: app/scenes/group_rides_tab.gd
+msgid "Would you like to organize this ride? You will control the workout and welcome new riders. Accepting shares connection addresses with everyone in this group, using your connection settings."
+msgstr "Möchtest du diese Fahrt organisieren? Du steuerst das Workout und lässt neue Personen beitreten. Mit deiner Zustimmung werden Verbindungsadressen innerhalb dieser Gruppe geteilt. Deine Verbindungseinstellungen gelten weiterhin."
+
+#: app/scenes/group_rides_tab.gd
+msgid "Connecting everyone to %s. Keep riding; your recording continues. Voice reconnects with your microphone off."
+msgstr "Alle werden mit %s verbunden. Fahre weiter; deine Aufzeichnung läuft weiter. Der Sprachchat verbindet sich neu, dein Mikrofon bleibt aus."
+
+#: app/scenes/group_rides_tab.gd
+msgid "Organizer"
+msgstr "Organisation"

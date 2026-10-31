@@ -37,10 +37,10 @@ pub(super) struct Activities {
     pub(super) selected: watch::Sender<Option<SharedActivity>>,
 }
 impl Activities {
-    pub(super) fn new(enabled: bool) -> Result<Self, LobbyError> {
-        let mut lobby = ActivityLobby::default();
+    pub(super) fn new(enabled: bool, organizer: RiderId) -> Result<Self, LobbyError> {
+        let mut lobby = ActivityLobby::new(organizer);
         let mut members = [None; MAX_RIDERS];
-        members[0] = Some(lobby.join(RiderId::HOST)?);
+        members[usize::from(organizer.value())] = Some(lobby.join(organizer)?);
         let (selected, _) = watch::channel(None);
         Ok(Self {
             enabled,

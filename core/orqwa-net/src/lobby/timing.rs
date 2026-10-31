@@ -70,6 +70,9 @@ impl WorkoutSample {
 
 pub(super) struct Timeline(WorkoutClock);
 impl Timeline {
+    pub(super) const fn from_clock(clock: WorkoutClock) -> Self {
+        Self(clock)
+    }
     pub(super) fn new(revision: u64, start: Instant) -> Self {
         Self(WorkoutClock {
             revision,

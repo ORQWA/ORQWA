@@ -330,6 +330,8 @@ Import a GPX → generate the 3D world → ride it on the KICKR Core 2 in SIM mo
 |---|---|
 | R172 | Refines R167 (2026-10-30): the organizer controls a structured workout's **shared clock**, pause/resume and forward step skips through ordered authenticated updates. Pause holds the step and releases workout resistance while personal riding/recording can continue. FTP and intensity remain personal. Local safety pause stops only that rider and resumes at the current group step without invented samples, time or distance. Shared plans cannot be replaced while riding in the group; all input paths enforce organizer-only shared skips. Clock snapshots have fixed bounds and coalesce for slow consumers; leaving or losing the group resumes independent workout timing. |
 
+| R173 | Refines R168 (2026-10-31): planned organizer changes require an explicit offer and successor acceptance, preserve original rider slots and group identity across fresh pinned links, and commit only with the old organizer's bound proof after every replacement connection is ready. Consent expires after 30 seconds and preparation after 60 seconds; cancelled proposals consume epochs. Precommit failure retains the old authority; a revealed commit cannot restore it. Keep personal recording, course position, workout clock/pause, intensity and eligibility intact, blend assistance over two seconds and reconnect opted-in listening microphone-off. Use existing address permissions and explain address sharing. The new organizer supplies a fresh invitation and verified content to later joiners. Unexpected loss preserves solo riding without electing a replacement. |
+
 ## Test hardware available
 
 KICKR Core 2, Polar H9 heart-rate strap, Garmin Venu 3 (broadcasting heart rate), Favero

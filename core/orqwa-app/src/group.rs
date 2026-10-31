@@ -14,6 +14,7 @@ use std::sync::{
 };
 use std::time::Instant;
 use tokio::sync::{mpsc, watch};
+mod handover;
 mod runtime;
 #[cfg(test)]
 mod tests;
@@ -67,6 +68,31 @@ pub enum Phase {
     /// Discovery or admission failed.
     Failed,
 }
+/// Planned organizer transition, independent of personal riding and recording.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub enum Handover {
+    /// No request is pending.
+    #[default]
+    Idle,
+    /// The selected rider must explicitly accept or decline.
+    Offered,
+    /// The old organizer still owns the ride while replacement links connect.
+    Preparing,
+    /// The authorized commit is completing on the replacement links.
+    Committing,
+}
+impl Handover {
+    /// Stable presentation key for translated status text.
+    #[must_use]
+    pub const fn key(self) -> &'static str {
+        match self {
+            Self::Idle => "idle",
+            Self::Offered => "offered",
+            Self::Preparing => "preparing",
+            Self::Committing => "committing",
+        }
+    }
+}
 impl Phase {
     /// Stable key for translated captions.
     #[must_use]
@@ -99,6 +125,16 @@ pub struct Snapshot {
     pub reply: String,
     /// Local assigned slot.
     pub me: u8,
+    /// Original group identity, retained when transport invitations change.
+    pub root: Option<orqwa_net::code::RideId>,
+    /// Current committed authority epoch.
+    pub epoch: u64,
+    /// Organizer's stable roster slot.
+    pub organizer: u8,
+    /// Current planned transition.
+    pub handover: Handover,
+    /// Selected successor while a transition is pending.
+    pub successor: Option<u8>,
     /// Current content identities and rules.
     pub selection: Option<Selection>,
     /// Fixed membership table without peer addresses or heart rate.
@@ -170,6 +206,11 @@ impl Default for Snapshot {
             invite: String::new(),
             reply: String::new(),
             me: 0,
+            root: None,
+            epoch: 1,
+            organizer: 0,
+            handover: Handover::Idle,
+            successor: None,
             selection: None,
             roster: std::array::from_fn(|_| None),
             generations: [0; MAX_RIDERS],
@@ -239,11 +280,26 @@ impl Snapshot {
     #[must_use]
     pub fn can_control_workout(&self) -> bool {
         self.host
+            && self.handover == Handover::Idle
             && self.phase == Phase::Riding
             && self
                 .workout_clock
                 .zip(self.plan.as_ref())
                 .is_some_and(|(clock, plan)| clock.position(Instant::now()) < plan.duration())
+    }
+
+    /// An active organizer can offer authority to another prepared member.
+    #[must_use]
+    pub fn can_handover(&self) -> bool {
+        self.host
+            && self.prepared
+            && self.phase == Phase::Riding
+            && self.handover == Handover::Idle
+            && self
+                .roster
+                .iter()
+                .enumerate()
+                .any(|(id, rider)| id != usize::from(self.me) && rider.is_some() && self.ready[id])
     }
 
     /// The shared plan has run its last step; course riding can still continue.
@@ -283,6 +339,9 @@ pub(crate) struct Running {
     voice_controls: Arc<VoiceControls>,
     peers: orqwa_session::group::Riders,
     reported_failure: u64,
+    authority: u64,
+    effect: orqwa_physics::GroupEffect,
+    transition: Option<(Instant, orqwa_physics::GroupEffect)>,
 }
 #[derive(Default)]
 struct VoiceControls {
@@ -316,7 +375,7 @@ impl App {
     pub fn group(&self) -> Snapshot {
         self.group.as_ref().map_or_else(Snapshot::default, |g| {
             let mut snapshot = g.snapshot.borrow().clone();
-            if snapshot.host {
+            if !g.workout_id.is_empty() {
                 snapshot.workout_id.clone_from(&g.workout_id);
             }
             if snapshot.late
@@ -381,6 +440,9 @@ impl App {
             voice_controls,
             peers: orqwa_session::group::Riders::default(),
             reported_failure: 0,
+            authority: 1,
+            effect: orqwa_physics::GroupEffect::default(),
+            transition: None,
         });
         Ok(())
     }
@@ -583,6 +645,35 @@ impl App {
     /// Returns [`AppError`] for invalid slots or unavailable queue.
     pub fn group_remove(&self, id: u8) -> Result<(), AppError> {
         self.group_command(Command::Remove(RiderId::new(id).map_err(error)?))
+    }
+    /// Offers organizer duties to a prepared connected rider, who must accept.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] unless locally riding as the current organizer.
+    pub fn group_handover(&self, id: u8) -> Result<(), AppError> {
+        if !self.group().can_handover() || self.ride.is_none() {
+            return Err(error("Only the riding organizer can offer a handover."));
+        }
+        self.group_command(Command::Handover(RiderId::new(id).map_err(error)?))
+    }
+    /// Accepts or declines the current offer; accepting permits pinned peer connections.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] without an active local ride or command queue.
+    pub fn group_handover_answer(&self, accepted: bool) -> Result<(), AppError> {
+        if self.ride.is_none() {
+            return Err(error(
+                "Join the ride before answering the organizer request.",
+            ));
+        }
+        self.group_command(Command::HandoverAnswer(accepted))
+    }
+    /// Cancels a pending handover before the old organizer releases authority.
+    ///
+    /// # Errors
+    /// Returns [`AppError`] for an unavailable command queue.
+    pub fn group_handover_cancel(&self) -> Result<(), AppError> {
+        self.group_command(Command::HandoverCancel)
     }
     /// Configures opted-in voice. First activation starts with the microphone muted.
     ///
@@ -848,6 +939,11 @@ impl App {
         let Some(group) = &mut self.group else {
             return;
         };
+        if group.authority != snapshot.epoch {
+            group.authority = snapshot.epoch;
+            group.transition = Some((Instant::now(), group.effect));
+            group.peers = orqwa_session::group::Riders::default();
+        }
         for id in 0..MAX_RIDERS {
             if id == usize::from(snapshot.me)
                 || snapshot.roster[id].is_none()
@@ -881,10 +977,24 @@ impl App {
                 state.distance,
                 state.speed,
                 pedaling,
-                (snapshot.me != 0).then_some(0),
+                (snapshot.me != snapshot.organizer).then_some(usize::from(snapshot.organizer)),
                 rules.drafting,
                 rules.keep_together,
             );
+            let effect = if pedaling {
+                group.transition.map_or(effect, |(at, previous)| {
+                    blend(previous, effect, at.elapsed())
+                })
+            } else {
+                orqwa_physics::GroupEffect::default()
+            };
+            if group
+                .transition
+                .is_some_and(|(at, _)| at.elapsed() >= std::time::Duration::from_secs(2))
+            {
+                group.transition = None;
+            }
+            group.effect = effect;
             active.ride.set_group_effect(effect);
         }
     }
@@ -959,4 +1069,19 @@ impl App {
             })
             .collect()
     }
+}
+
+fn blend(
+    from: orqwa_physics::GroupEffect,
+    to: orqwa_physics::GroupEffect,
+    elapsed: std::time::Duration,
+) -> orqwa_physics::GroupEffect {
+    let t = (elapsed.as_secs_f64() / 2.0).clamp(0.0, 1.0);
+    let weight = t * t * (3.0 - 2.0 * t);
+    orqwa_physics::GroupEffect::new(
+        from.drag_share() + (to.drag_share() - from.drag_share()) * weight,
+        orqwa_domain::units::GradePercent(
+            from.grade_offset().0 + (to.grade_offset().0 - from.grade_offset().0) * weight,
+        ),
+    )
 }

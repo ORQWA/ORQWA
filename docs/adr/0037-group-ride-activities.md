@@ -277,5 +277,49 @@ pause changes promptly update trainer control while retaining normal control thr
 All app skip inputs pass through organizer authority, and the engine refuses local skips
 while externally timed. Frozen shared plans cannot be replaced in the app or ride settings.
 Leaving or losing networking releases external timing once and continues the local workout
-from its reached step, including when the group had paused. Planned host handover remains
-the next separate step; automatic recovery after unexpected host loss is still excluded.
+from its reached step, including when the group had paused. Automatic recovery after unexpected
+host loss is still excluded.
+
+### Planned organizer handover — 2026-10-31
+
+Protocol/invitation version 6 and ALPN `orqwa-group/6` retain a logical root group identity,
+stable rider slots and a committed authority epoch independently of fresh transport identities.
+Welcome includes the actual organizer slot, root and epoch, also for later ordinary joiners.
+Activity readiness and voice forwarding use this explicit organizer rather than assuming slot 0.
+
+The current organizer offers duties to one prepared member. That rider explicitly accepts
+before opening a fresh pinned listener under their existing discovery/address settings.
+Authenticated old links distribute a bounded public plan; admission replies travel privately
+to the successor through the predecessor. Each rider validates their own address policy and
+the frozen group, complete membership/metadata, selection and fresh pin before opening links.
+Replacement admission binds a transport-authenticated secret to the reserved original rider
+slot, preventing a claimed rider number or matching display name from taking another slot.
+
+A fresh random proof stays with the old organizer. Its SHA-256 commitment binds the root,
+proposal epoch, old/new organizer, complete roster/selection, pinned invitation and original
+group/workout clock. All replacement links prepare with state and voice disabled. The source
+reveals the proof on its new pinned link only after each member reports readiness and the
+successor confirms the complete server roster. The successor validates the commitment and
+full roster before activating; every peer validates the proof before replacing its old owner.
+Cancelled proposals consume epochs too, so delayed decisions and asynchronous replies cannot
+authorize a later attempt. Credentials, plans and proofs are redacted from Debug output.
+
+Consent lasts 30 seconds; accepted preparation uses a common deadline of 60 seconds on the
+existing group clock. Each app owns one cancellable job and at most an old and replacement
+session (14 peer links for eight riders). Existing frame, ingress, voice and transfer budgets
+remain in force. Membership changes or precommit failure discard replacement owners and retain
+the old authority. Once the proof is revealed, rollback cannot restore the old authority.
+Old-link loss allows at most five seconds, bounded by the original deadline, to finish an
+already prepared valid commit; otherwise group networking ends and the local ride continues.
+Prepared peers also defer old membership departures briefly: the successor may close its old
+link before their new proof arrives. The old source cancels precommit departures; a valid
+commit discards deferred old departures, while cancellation applies them to the old roster.
+This grace completes planned consent and does not elect an organizer after a crash.
+
+The switch keeps local recording, course position, assistance eligibility, workout/intensity,
+membership generations and the original monotonic start. It clears old peer motion history
+and blends assistance to the new reference over two seconds. Voice closes the old transmission
+gate synchronously, replaces the port and reconnects previously opted-in listening with a fresh
+generation and microphone off; device choices, gain, deafen and local mutes remain personal.
+The new host shares its already verified content and publishes a fresh invitation. No extra
+service, endpoint, package or dependency version is introduced.

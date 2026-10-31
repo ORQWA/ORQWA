@@ -20,7 +20,7 @@ const DATAGRAM_BYTES: usize = 22;
 pub struct RiderId(u8);
 
 impl RiderId {
-    /// The host's reserved number.
+    /// The initial organizer's number; handover preserves identities when authority changes.
     pub const HOST: Self = Self(0);
 
     /// Checks a wire/roster number against the fixed rider limit.

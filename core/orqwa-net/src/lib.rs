@@ -8,6 +8,7 @@ pub mod code;
 pub mod content;
 pub mod crypto;
 pub mod discovery;
+pub mod handover;
 pub mod limits;
 pub mod link;
 pub mod lobby;

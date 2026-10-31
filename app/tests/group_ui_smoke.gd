@@ -80,6 +80,23 @@ func _group_activity() -> void:
 	_check(not group._enter.visible, "existing riders cannot restart through entry")
 	group._show_status(
 		{
+			"phase": "riding",
+			"handover": "offered",
+			"handover_offer": true,
+			"can_cancel_handover": true
+		}
+	)
+	_check(
+		group._organizer_accept.visible and group._organizer_decline.visible,
+		"successor gives explicit consent"
+	)
+	group._show_status({"phase": "riding", "handover": "preparing", "can_cancel_handover": true})
+	_check(
+		not group._organizer_accept.visible and group._organizer_cancel.visible,
+		"preparation can be cancelled before commit"
+	)
+	group._show_status(
+		{
 			"host": true,
 			"phase": "riding",
 			"workout_shared": true,

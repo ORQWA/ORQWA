@@ -2132,6 +2132,24 @@ impl OrqwaApp {
         };
         self.command(|app| app.group_remove(id))
     }
+    /// Offers organizer duties to a prepared friend.
+    #[func]
+    fn group_handover(&mut self, id: i64) -> bool {
+        let Ok(id) = u8::try_from(id) else {
+            return false;
+        };
+        self.command(|app| app.group_handover(id))
+    }
+    /// Answers the current organizer request.
+    #[func]
+    fn group_handover_answer(&mut self, accepted: bool) -> bool {
+        self.command(|app| app.group_handover_answer(accepted))
+    }
+    /// Cancels preparation before authority commits.
+    #[func]
+    fn group_handover_cancel(&mut self) -> bool {
+        self.command(|app| app.group_handover_cancel())
+    }
     /// Enables/disables explicit voice consent and configures local mic, deafen and volume.
     #[func]
     #[allow(clippy::cast_possible_truncation)] // normalized gain is checked by the app before use

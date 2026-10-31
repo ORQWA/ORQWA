@@ -70,6 +70,7 @@ func _group_screens(start: StartPage, orqwa: OrqwaApp, out: String) -> void:
 	orqwa.group_leave()
 	await _group_late_screens(start, group, orqwa, out)
 	await _group_workout_screens(start, group, out)
+	await _group_handover_screens(start, group, out)
 	await _group_error_screens(start, group, out)
 	print("saved group setup and joining views")
 
@@ -131,6 +132,41 @@ func _group_workout_screens(start: StartPage, group: GroupRidesTab, out: String)
 		await create_timer(0.4).timeout
 		root.get_texture().get_image().save_png(out.path_join("group-workout-" + locale + ".png"))
 		print("saved group-workout-" + locale)
+
+
+func _group_handover_screens(start: StartPage, group: GroupRidesTab, out: String) -> void:
+	var scroll: ScrollContainer = start.get("_group_page")
+	for locale: String in ["en", "de"]:
+		TranslationServer.set_locale(locale)
+		group._show_status(
+			{
+				"host": false,
+				"phase": "riding",
+				"handover": "offered",
+				"handover_offer": true,
+				"can_cancel_handover": true,
+				"successor_name": "Alex",
+				"name": "Recovery 30",
+				"workout_shared": true,
+				"roster":
+				[
+					{
+						"id": 0,
+						"name": "Rider",
+						"ready": true,
+						"me": false,
+						"muted": false,
+						"organizer": true
+					},
+					{"id": 1, "name": "Alex", "ready": true, "me": true, "muted": false}
+				]
+			}
+		)
+		await create_timer(0.2).timeout
+		scroll.scroll_vertical = 260
+		await create_timer(0.4).timeout
+		root.get_texture().get_image().save_png(out.path_join("group-handover-" + locale + ".png"))
+		print("saved group-handover-" + locale)
 
 
 func _group_error_screens(start: StartPage, group: GroupRidesTab, out: String) -> void:
