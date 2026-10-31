@@ -192,6 +192,161 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::too_many_lines)] // a pinned but premature successor must not buffer media or poison clock ordering
+    async fn prepared_clients_discard_uncommitted_clock_state_and_voice() {
+        use crate::link::HostEvent;
+        use crate::state::RiderState;
+        use crate::wire::{self, Message as Frame};
+        use orqwa_domain::units::{MetersPerSecond, Rpm, Watts};
+
+        let organizer = RiderId::new(3).unwrap();
+        let mut roster: Roster = std::array::from_fn(|_| None);
+        for (id, name) in [(0, "Previous"), (3, "Successor")] {
+            roster[id] = Some(Rider {
+                name: name.into(),
+                mass: Kilograms(80.0),
+            });
+        }
+        let selection = Selection {
+            revision: 1,
+            name: "Workout".into(),
+            course: None,
+            workout: Some(ContentId::of(ContentKind::Workout, b"workout").unwrap()),
+            assistance: Assistance::default(),
+        };
+        let mut transport = Host::lobby("Successor", &options()).await.unwrap();
+        let root = crate::code::RideId([1; 16]);
+        let context = Context::new(root, 2, RiderId::HOST, organizer, &roster, &selection).unwrap();
+        let (plan, proof) = Plan::prepare(
+            context,
+            transport.invite().clone(),
+            Duration::from_secs(30),
+            Some(WorkoutPosition {
+                elapsed: Duration::from_secs(30),
+                paused: true,
+                sequence: 4,
+            }),
+        )
+        .unwrap();
+        let joiner = Joiner::lobby(transport.invite().clone(), &options())
+            .await
+            .unwrap();
+        transport.admit(joiner.reply()).unwrap();
+        let metadata = roster.clone();
+        let chosen = selection.clone();
+        let server = tokio::spawn(async move {
+            let HostEvent::Joined(connection) = transport.next().await.unwrap() else {
+                panic!("expected pinned connection");
+            };
+            let (mut send, mut receive) = connection.accept_bi().await.unwrap();
+            assert!(matches!(
+                wire::read(&mut receive).await.unwrap(),
+                Frame::Hello(..)
+            ));
+            wire::write(
+                &mut send,
+                &Frame::Welcome(RiderId::HOST, organizer, root, 2, metadata),
+            )
+            .await
+            .unwrap();
+            wire::write(&mut send, &Frame::Selection(chosen))
+                .await
+                .unwrap();
+            wire::write(&mut send, &Frame::Running(30_000))
+                .await
+                .unwrap();
+            let mut epochs = [0; MAX_RIDERS];
+            epochs[0] = 1;
+            epochs[3] = 2;
+            wire::write(&mut send, &Frame::VoiceRoster(epochs))
+                .await
+                .unwrap();
+            (transport, connection, send, receive)
+        });
+        let mut client = JoinerLobby::prepare(
+            joiner,
+            roster[0].clone().unwrap(),
+            RiderId::HOST,
+            plan,
+            roster,
+            selection,
+        )
+        .await
+        .unwrap();
+        let (_transport, connection, mut send, _receive) = server.await.unwrap();
+        let voice = client.take_voice().unwrap();
+        assert!(!voice.alive());
+        let premature = super::super::timing::WorkoutSample {
+            revision: 1,
+            sequence: 1_000,
+            group: Duration::from_secs(30),
+            elapsed: Duration::from_mins(15),
+            paused: true,
+        };
+        wire::write(&mut send, &Frame::Workout(premature))
+            .await
+            .unwrap();
+        let state = RiderState {
+            at: Duration::from_secs(30),
+            distance: Meters(10.0),
+            speed: MetersPerSecond(2.0),
+            power: Watts(100.0),
+            cadence: Rpm(80.0),
+        };
+        connection
+            .send_datagram(&state.datagram(organizer).unwrap())
+            .unwrap();
+        let (mut speech, len) = VoiceFrame::new(organizer, 1, 0, b"early speech")
+            .unwrap()
+            .datagram();
+        speech[11..19].copy_from_slice(&2_u64.to_be_bytes());
+        connection.send_datagram(&speech[..len]).unwrap();
+        let end = tokio::time::Instant::now() + Duration::from_millis(250);
+        while let Ok(Some(event)) = tokio::time::timeout_at(end, client.next()).await {
+            assert!(
+                !matches!(event, LobbyEvent::State { .. } | LobbyEvent::Workout(_)),
+                "uncommitted data reached the app"
+            );
+        }
+        wire::write(
+            &mut send,
+            &Frame::Handover(Message::Commit { epoch: 2, proof }),
+        )
+        .await
+        .unwrap();
+        client_event(&mut client, |event| {
+            matches!(
+                event,
+                LobbyEvent::Handover {
+                    message: Message::Commit { .. },
+                    ..
+                }
+            )
+        })
+        .await;
+        voice.enable(true);
+        assert!(
+            voice
+                .playout(Instant::now())
+                .iter()
+                .all(|item| matches!(item.action, Playout::Silence))
+        );
+        let committed = super::super::timing::WorkoutSample {
+            sequence: 5,
+            ..premature
+        };
+        wire::write(&mut send, &Frame::Workout(committed))
+            .await
+            .unwrap();
+        client_event(
+            &mut client,
+            |event| matches!(event,LobbyEvent::Workout(clock) if clock.sequence==5),
+        )
+        .await;
+        client.close().await;
+    }
+
+    #[tokio::test]
     #[allow(clippy::too_many_lines)] // real stable-ID replacement, commit barrier, voice forwarding, late admission and socket cleanup share one owned listener
     async fn prepared_links_require_the_authorized_proof_and_preserve_ids_voice_and_late_admission()
     {

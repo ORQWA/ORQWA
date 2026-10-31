@@ -1291,6 +1291,7 @@ async fn client_actor(
                         }
                         event(&controls, LobbyEvent::Handover {sender: organizer, message})?;
                     }
+                    Message::Workout(_) if prepared.is_some() => {},
                     Message::Workout(sample) if app_lobby && sample.revision == selection_revision && sample.sequence > workout_sequence => {
                         let start = start.ok_or(LobbyError::Protocol)?;
                         let current = sample.clock(start.into_std())?;
@@ -1314,6 +1315,7 @@ async fn client_actor(
                 let bytes = bytes?;
                 if bytes.first() == Some(&voice::TAG) {
                     voice_packets.charge().map_err(|_| LobbyError::Protocol)?;
+                    if prepared.is_some() {continue;}
                     let id = RiderId::new(*bytes.get(2).ok_or(LobbyError::Protocol)?)?;
                     if id == me { return Err(LobbyError::Protocol); }
                     if let Some(member) = members[usize::from(id.value())] {
@@ -1329,6 +1331,7 @@ async fn client_actor(
                     refill = now - Duration::from_nanos(u64::try_from(remainder).expect("under 25 ms"));
                 }
                 if packets == 0 { return Err(StateError::Flood.into()); } packets -= 1;
+                if prepared.is_some() {continue;}
                 let id = RiderId::new(*bytes.get(1).ok_or(LobbyError::Protocol)?)?;
                 let Some(elapsed) = elapsed(start) else {if app_lobby {continue;} return Err(LobbyError::Protocol);};
                 if id == me { return Err(LobbyError::Protocol); }

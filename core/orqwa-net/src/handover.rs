@@ -701,6 +701,10 @@ mod tests {
                 epoch: 2,
                 accepted: true,
             },
+            Message::Preparing {
+                epoch: 2,
+                group_at: Duration::from_secs(30),
+            },
             Message::Invite {
                 epoch: 2,
                 invite: plan.invite.clone(),
