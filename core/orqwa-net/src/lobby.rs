@@ -9,7 +9,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use tokio::task::JoinSet;
 use tokio::time::{Instant, interval, timeout, timeout_at};
 
-use crate::code::{Invite, Reply, RouteHash, valid_name};
+use crate::code::{Invite, Reply, RideId, RouteHash, valid_name};
 use crate::link::{Connection, Host, HostEvent, Joiner, LinkError};
 use crate::state::{
     MAX_RIDERS, Membership, RiderId, RiderState, STATE_EVERY, StateError, StateInbox,
@@ -19,10 +19,13 @@ use crate::wire::{self, Message};
 
 mod activity;
 pub(crate) mod entry;
+mod replacement;
 pub(crate) mod timing;
 use activity::Activities;
 pub use activity::SharedActivity;
 pub use entry::RideProgress;
+use replacement::Prepared;
+pub use replacement::Replacement;
 use timing::Timeline;
 pub use timing::WorkoutClock;
 
@@ -97,6 +100,13 @@ pub enum LobbyEvent {
     },
     /// Organizer-owned structured-workout time; never a trainer target or personal intensity.
     Workout(WorkoutClock),
+    /// A bounded handover control from the authenticated current membership or organizer.
+    Handover {
+        /// Authenticated sender; never copied from an asserted peer identity.
+        sender: RiderId,
+        /// Typed, bounded proposal or preparation message.
+        message: crate::handover::Message,
+    },
     /// One validated latest sample, at most five times per second per rider.
     State {
         /// Authenticated sender assigned by the host.
@@ -226,10 +236,16 @@ enum Command {
     WorkoutPause(bool, oneshot::Sender<Result<(), LobbyError>>),
     WorkoutSkip(Duration, oneshot::Sender<Result<(), LobbyError>>),
     Remove(RiderId),
+    AdmitAs(Reply, RiderId, oneshot::Sender<Result<(), LobbyError>>),
+    Handover(Option<RiderId>, crate::handover::Message),
+    PeerHandover(Membership, crate::handover::Message),
 }
 
 /// The host's lobby owner. Dropping it aborts its actor, peer tasks and transport listeners.
 pub struct HostLobby {
+    organizer: RiderId,
+    root: RideId,
+    epoch: u64,
     invite: Invite,
     commands: mpsc::Sender<Command>,
     state: watch::Sender<Option<RiderState>>,
@@ -244,18 +260,50 @@ impl HostLobby {
     /// # Errors
     /// Returns [`LobbyError::Protocol`] for invalid metadata or a host-name mismatch.
     pub fn open(host: Host, me: Rider) -> Result<Self, LobbyError> {
+        Self::open_as(host, me, RiderId::HOST)
+    }
+    fn open_as(host: Host, me: Rider, organizer: RiderId) -> Result<Self, LobbyError> {
+        Self::open_with(host, me, organizer, None)
+    }
+    /// Prepares a fresh successor listener without changing the live group's authority.
+    ///
+    /// # Errors
+    /// Returns [`LobbyError`] for a changed roster/activity, mismatched pin or invalid sources.
+    pub fn prepare(host: Host, replacement: Replacement) -> Result<Self, LobbyError> {
+        let organizer = replacement.plan.context.successor;
+        let me = replacement.roster[usize::from(organizer.value())]
+            .clone()
+            .ok_or(LobbyError::Protocol)?;
+        let prepared = Prepared::new(replacement, &host)?;
+        Self::open_with(host, me, organizer, Some(prepared))
+    }
+    fn open_with(
+        host: Host,
+        me: Rider,
+        organizer: RiderId,
+        prepared: Option<Prepared>,
+    ) -> Result<Self, LobbyError> {
         me.validate()?;
         if me.name != host.invite().host {
             return Err(LobbyError::Protocol);
         }
         let invite = host.invite().clone();
+        let (root, epoch) = prepared.as_ref().map_or((invite.ride, 1), |prepared| {
+            (
+                prepared.replacement.plan.context.root,
+                prepared.replacement.plan.context.epoch,
+            )
+        });
         let (commands, receive) = mpsc::channel(8);
         let (control, controls) = mpsc::channel(CONTROL_CAPACITY);
         let (states, updates) = watch::channel([None; MAX_RIDERS]);
         let (clock, clock_updates) = watch::channel(None);
         let (state, local) = watch::channel(None);
         let (progress, progress_updates) = watch::channel(None);
-        let (voice, owner, _changes) = voice::channel(RiderId::HOST);
+        let (voice, owner, _changes) = voice::channel_for(organizer, organizer);
+        if prepared.is_some() {
+            owner.0.suspend();
+        }
         let mut tasks = JoinSet::new();
         tasks.spawn(host_actor(
             host,
@@ -268,17 +316,40 @@ impl HostLobby {
             commands.clone(),
             progress_updates,
             clock,
+            organizer,
+            prepared,
+            (root, epoch),
         ));
         Ok(Self {
+            organizer,
+            root,
+            epoch,
             invite,
             commands,
             state,
             progress,
-            events: events(RiderId::HOST, controls, updates, clock_updates),
+            events: events(organizer, controls, updates, clock_updates),
             tasks,
             voice: Some(voice),
         })
     }
+    /// The organizer's stable rider identity, independent of the hosting role.
+    #[must_use]
+    pub const fn organizer(&self) -> RiderId {
+        self.organizer
+    }
+
+    /// Logical ride identity, retained through planned handover.
+    #[must_use]
+    pub const fn root(&self) -> RideId {
+        self.root
+    }
+    /// Current authority epoch, independent of fresh transport invitation identities.
+    #[must_use]
+    pub const fn epoch(&self) -> u64 {
+        self.epoch
+    }
+
     /// The private-channel invite for this host lifetime.
     #[must_use]
     pub fn invite(&self) -> &Invite {
@@ -321,12 +392,40 @@ impl HostLobby {
             .map_err(|_| LobbyError::Lost)?;
         receive.await.map_err(|_| LobbyError::Lost)?
     }
+    /// Privately binds a replacement admission credential to its original stable identity.
+    ///
+    /// # Errors
+    /// Returns [`LobbyError`] outside preparation, for occupied/unexpected identities or replay.
+    pub async fn admit_as(&self, reply: &Reply, id: RiderId) -> Result<(), LobbyError> {
+        let (send, receive) = oneshot::channel();
+        self.commands
+            .try_send(Command::AdmitAs(reply.clone(), id, send))
+            .map_err(|_| LobbyError::Lost)?;
+        receive.await.map_err(|_| LobbyError::Lost)?
+    }
+    /// Sends an old-authority handover control privately, or broadcasts public preparation.
+    /// Admission replies must always specify the consenting successor as recipient.
+    ///
+    /// # Errors
+    /// Returns [`LobbyError`] for a stopped/full queue or a broadcast admission credential.
+    pub fn handover(
+        &self,
+        recipient: Option<RiderId>,
+        message: crate::handover::Message,
+    ) -> Result<(), LobbyError> {
+        if recipient.is_none() && matches!(message, crate::handover::Message::Reply { .. }) {
+            return Err(LobbyError::Protocol);
+        }
+        self.commands
+            .try_send(Command::Handover(recipient, message))
+            .map_err(|_| LobbyError::Lost)
+    }
     /// Disconnects one joiner so an unavailable participant need not block countdown.
     ///
     /// # Errors
     /// Returns [`LobbyError`] for the host slot or a full/stopped command queue.
     pub fn remove(&self, id: RiderId) -> Result<(), LobbyError> {
-        if id == RiderId::HOST {
+        if id == self.organizer {
             return Err(LobbyError::Protocol);
         }
         self.commands
@@ -374,7 +473,7 @@ impl HostLobby {
     /// # Errors
     /// Returns [`LobbyError`] for invalid physical values.
     pub fn send_state(&self, state: RiderState) -> Result<(), LobbyError> {
-        state.datagram(RiderId::HOST)?;
+        state.datagram(self.organizer)?;
         self.state.send_replace(Some(state));
         Ok(())
     }
@@ -404,6 +503,9 @@ impl HostLobby {
 /// The joiner's lobby owner. Losing it closes its connection and owned endpoint.
 pub struct JoinerLobby {
     me: RiderId,
+    organizer: RiderId,
+    root: RideId,
+    epoch: u64,
     state: watch::Sender<Option<RiderState>>,
     events: Events,
     tasks: JoinSet<()>,
@@ -418,22 +520,74 @@ impl JoinerLobby {
     /// # Errors
     /// Returns [`LobbyError`] for invalid metadata, transport, timeout or protocol failures.
     pub async fn join(joiner: Joiner, rider: Rider) -> Result<Self, LobbyError> {
+        Self::join_inner(joiner, rider, None).await
+    }
+    /// Prepares a pinned replacement link while retaining the original rider identity.
+    /// The caller checks the plan against its live group and local policy before opening the joiner.
+    ///
+    /// # Errors
+    /// Returns [`LobbyError`] for changed bindings, a wrong assigned identity or invalid welcome.
+    pub async fn prepare(
+        joiner: Joiner,
+        rider: Rider,
+        id: RiderId,
+        plan: crate::handover::Plan,
+        roster: Roster,
+        selection: crate::activity::Selection,
+    ) -> Result<Self, LobbyError> {
+        let context = crate::handover::Context::new(
+            plan.context.root,
+            plan.context.epoch,
+            plan.context.predecessor,
+            plan.context.successor,
+            &roster,
+            &selection,
+        )?;
+        if plan.context != context || roster[usize::from(id.value())].as_ref() != Some(&rider) {
+            return Err(LobbyError::Protocol);
+        }
+        joiner
+            .reply()
+            .matches(&plan.invite)
+            .map_err(LinkError::from)?;
+        Self::join_inner(joiner, rider, Some((id, plan, roster))).await
+    }
+    async fn join_inner(
+        joiner: Joiner,
+        rider: Rider,
+        prepared: Option<(RiderId, crate::handover::Plan, Roster)>,
+    ) -> Result<Self, LobbyError> {
         rider.validate()?;
         let route = joiner.reply().route;
         let connection = joiner.connect().await?;
-        let (me, roster, send, recv) = timeout_at(connection.admission_deadline(), async {
-            let (mut send, mut recv) = connection.open_bi().await?;
-            wire::write(&mut send, &Message::Hello(route, rider.clone())).await?;
-            let Message::Welcome(me, roster) = wire::read(&mut recv).await? else {
-                return Err(LobbyError::Protocol);
-            };
-            if roster[usize::from(me.value())].as_ref() != Some(&rider) {
-                return Err(LobbyError::Protocol);
-            }
-            Ok::<_, LobbyError>((me, roster, send, recv))
-        })
-        .await
-        .map_err(|_| LinkError::Timeout)??;
+        let (me, organizer, root, epoch, roster, send, recv) =
+            timeout_at(connection.admission_deadline(), async {
+                let (mut send, mut recv) = connection.open_bi().await?;
+                wire::write(&mut send, &Message::Hello(route, rider.clone())).await?;
+                let Message::Welcome(me, organizer, root, epoch, roster) =
+                    wire::read(&mut recv).await?
+                else {
+                    return Err(LobbyError::Protocol);
+                };
+                if roster[usize::from(me.value())].as_ref() != Some(&rider) {
+                    return Err(LobbyError::Protocol);
+                }
+                if let Some((id, plan, expected)) = &prepared
+                    && (*id != me
+                        || organizer != plan.context.successor
+                        || root != plan.context.root
+                        || epoch != plan.context.epoch
+                        || roster
+                            .iter()
+                            .enumerate()
+                            .any(|(id, rider)| rider.is_some() && rider != &expected[id]))
+                {
+                    return Err(LobbyError::Protocol);
+                }
+                Ok::<_, LobbyError>((me, organizer, root, epoch, roster, send, recv))
+            })
+            .await
+            .map_err(|_| LinkError::Timeout)??;
         let (control, controls) = mpsc::channel(CONTROL_CAPACITY);
         for (id, rider) in roster
             .iter()
@@ -449,7 +603,11 @@ impl JoinerLobby {
         let (states, updates) = watch::channel([None; MAX_RIDERS]);
         let (clock, clock_updates) = watch::channel(None);
         let (state, local) = watch::channel(None);
-        let (voice, owner, changes) = voice::channel(me);
+        let (voice, owner, changes) = voice::channel_for(me, organizer);
+        if prepared.is_some() {
+            owner.0.suspend();
+        }
+        let prepared = prepared.map(|(_, plan, _)| plan);
         let mut tasks = JoinSet::new();
         let (readiness, ready) = mpsc::channel(8);
         let content_connection = connection.clone();
@@ -468,11 +626,16 @@ impl JoinerLobby {
                 ready,
                 route == RouteHash::LOBBY,
                 clock,
+                organizer,
+                prepared,
             )
             .await;
         });
         Ok(Self {
             me,
+            organizer,
+            root,
+            epoch,
             state,
             events: events(me, controls, updates, clock_updates),
             tasks,
@@ -487,6 +650,23 @@ impl JoinerLobby {
     pub const fn me(&self) -> RiderId {
         self.me
     }
+    /// The current organizer, authenticated by this connection's certificate pin.
+    #[must_use]
+    pub const fn organizer(&self) -> RiderId {
+        self.organizer
+    }
+
+    /// Logical ride identity learned from the pinned authority, including late admission after handover.
+    #[must_use]
+    pub const fn root(&self) -> RideId {
+        self.root
+    }
+    /// Current authority epoch from the pinned welcome.
+    #[must_use]
+    pub const fn epoch(&self) -> u64 {
+        self.epoch
+    }
+
     /// An authenticated content link for one locally owned download task in app-lobby mode.
     #[must_use]
     pub fn content_link(&self) -> Option<Connection> {
@@ -515,6 +695,18 @@ impl JoinerLobby {
         }
         self.readiness
             .try_send(Message::Enter(revision))
+            .map_err(|_| LobbyError::Lost)
+    }
+    /// Sends a bounded preparation response over the existing pinned organizer connection.
+    ///
+    /// # Errors
+    /// Returns [`LobbyError`] in legacy mode or when its fixed control queue is unavailable.
+    pub fn handover(&self, message: crate::handover::Message) -> Result<(), LobbyError> {
+        if !self.app_lobby {
+            return Err(LobbyError::Protocol);
+        }
+        self.readiness
+            .try_send(Message::Handover(message))
             .map_err(|_| LobbyError::Lost)
     }
     /// Takes the local, disabled voice port once, without opening audio hardware.
@@ -551,6 +743,7 @@ struct Mailbox {
     inbox: StateInbox,
     start: Option<Instant>,
     entered: [bool; MAX_RIDERS],
+    active: bool,
 }
 type Shared = Arc<Mutex<Mailbox>>;
 fn lock(shared: &Shared) -> MutexGuard<'_, Mailbox> {
@@ -637,6 +830,9 @@ async fn host_actor(
     command_sender: mpsc::Sender<Command>,
     progress: watch::Receiver<Option<(RideProgress, Instant)>>,
     clock: watch::Sender<Option<WorkoutClock>>,
+    organizer: RiderId,
+    prepared: Option<Prepared>,
+    authority: (RideId, u64),
 ) {
     let _ = host_loop(
         &mut host,
@@ -649,6 +845,9 @@ async fn host_actor(
         &command_sender,
         &progress,
         &clock,
+        organizer,
+        prepared,
+        authority,
     )
     .await;
 }
@@ -666,21 +865,37 @@ async fn host_loop(
     command_sender: &mpsc::Sender<Command>,
     progress: &watch::Receiver<Option<(RideProgress, Instant)>>,
     clock: &watch::Sender<Option<WorkoutClock>>,
+    organizer: RiderId,
+    mut prepared: Option<Prepared>,
+    authority: (RideId, u64),
 ) -> Result<(), LobbyError> {
     let shared = Arc::new(Mutex::new(Mailbox {
         inbox: StateInbox::new(Instant::now().into_std()),
-        start: None,
+        start: prepared
+            .as_ref()
+            .map(|prepared| Instant::from_std(prepared.replacement.start)),
         entered: [false; MAX_RIDERS],
+        active: prepared.is_none(),
     }));
     let member = lock(&shared)
         .inbox
-        .join(RiderId::HOST, Instant::now().into_std())?;
+        .join(organizer, Instant::now().into_std())?;
     voice.join(member, None);
     let mut roster: Roster = std::array::from_fn(|_| None);
-    roster[0] = Some(me);
+    roster[usize::from(organizer.value())] = Some(me);
     let mut peers: [Option<Peer>; MAX_RIDERS] = std::array::from_fn(|_| None);
-    let mut activities = Activities::new(host.invite().route == RouteHash::LOBBY)?;
+    let mut activities = Activities::new(host.invite().route == RouteHash::LOBBY, organizer)?;
     let mut timeline: Option<Timeline> = None;
+    if let Some(prepared) = &prepared {
+        let replacement = &prepared.replacement;
+        activities.select(replacement.activity.clone())?;
+        activities.ready(organizer, replacement.plan.context.revision, true)?;
+        activities.start()?;
+        timeline = replacement
+            .plan
+            .clock(replacement.start)?
+            .map(Timeline::from_clock);
+    }
     let mut tasks = JoinSet::new();
     let mut ticker = interval(STATE_EVERY);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -688,7 +903,7 @@ async fn host_loop(
         tokio::select! {
             command = commands.recv() => match command {
                 Some(Command::Admit(reply, result)) => {
-                    let answer = if !activities.enabled && lock(&shared).start.is_some() { Err(LobbyError::Started) } else { host.admit(&reply).map_err(Into::into) };
+                    let answer = if prepared.as_ref().is_some_and(|prepared| !prepared.active) { Err(LobbyError::Protocol) } else if !activities.enabled && lock(&shared).start.is_some() { Err(LobbyError::Started) } else { host.admit(&reply).map_err(Into::into) };
                     let _ = result.send(answer);
                 }
                 Some(Command::Start(countdown, result)) => {
@@ -716,10 +931,10 @@ async fn host_loop(
                     let _ = result.send(answer);
                 }
                 Some(Command::Ready(revision,ready,result)) => {
-                    let answer = activities.ready(RiderId::HOST,revision,ready);
+                    let answer = activities.ready(organizer,revision,ready);
                     if answer.is_ok() {
-                        broadcast(&peers,&Message::Readiness(RiderId::HOST,revision,ready));
-                        event(controls,LobbyEvent::Readiness {id:RiderId::HOST,revision,ready})?;
+                        broadcast(&peers,&Message::Readiness(organizer,revision,ready));
+                        event(controls,LobbyEvent::Readiness {id:organizer,revision,ready})?;
                     }
                     let _ = result.send(answer);
                 }
@@ -758,6 +973,35 @@ async fn host_loop(
                     } else {Err(LobbyError::Protocol)};
                     let _ = result.send(answer);
                 }
+                Some(Command::AdmitAs(reply, id, result)) => {
+                    let answer = prepared.as_mut().ok_or(LobbyError::Protocol).and_then(|prepared| prepared.admit(host, &roster, id, &reply));
+                    let _ = result.send(answer);
+                }
+                Some(Command::Handover(recipient, message)) => {
+                    if let Some(id) = recipient {
+                        if let Some(peer) = &peers[usize::from(id.value())]
+                            && peer.control.try_send(Control::Message(Message::Handover(message))).is_err() {peer.connection.close();}
+                    } else {broadcast(&peers, &Message::Handover(message));}
+                }
+                Some(Command::PeerHandover(member, message)) => {
+                    let slot = usize::from(member.rider().value());
+                    if !peers[slot].as_ref().is_some_and(|peer| peer.member == member) {continue;}
+                    if let crate::handover::Message::Commit {epoch, ref proof} = message
+                        && let Some(prepared) = &mut prepared && !prepared.active {
+                        match prepared.activate(epoch, proof, &roster) {
+                            Ok(true) => {
+                                let revision = prepared.replacement.plan.context.revision;
+                                for (slot, rider) in roster.iter().enumerate() {if rider.is_some() {activities.ready(rider_id(slot), revision, true)?;}}
+                                {let mut mailbox = lock(&shared); mailbox.active = true; mailbox.entered = std::array::from_fn(|id| roster[id].is_some());}
+                                drop(local.borrow_and_update());
+                                voice.activate();
+                                broadcast(&peers, &Message::Handover(message.clone()));
+                                event(controls, LobbyEvent::Handover {sender: organizer, message})?;
+                            }
+                            _ => if let Some(peer) = &peers[slot] {peer.connection.close();},
+                        }
+                    } else {event(controls, LobbyEvent::Handover {sender: member.rider(), message})?;}
+                }
                 Some(Command::Remove(id)) => if let Some(peer) = &peers[usize::from(id.value())] {peer.connection.close();},
                 None => return Ok(()),
             },
@@ -772,8 +1016,12 @@ async fn host_loop(
             },
             done = tasks.join_next(), if !tasks.is_empty() => match done {
                 Some(Ok(Done::Hello(Ok((connection, send, recv, rider))))) if activities.enabled || lock(&shared).start.is_none() => {
-                    let Some(slot) = roster.iter().position(Option::is_none) else { connection.close(); continue; };
-                    let id = rider_id(slot);
+                    let id = if let Some(prepared) = prepared.as_mut().filter(|prepared| !prepared.active) {
+                        if let Ok(id) = prepared.assign(&connection, &rider, &roster) {id} else {connection.close(); continue;}
+                    } else {
+                        let Some(slot) = roster.iter().position(Option::is_none) else {connection.close(); continue;}; rider_id(slot)
+                    };
+                    let slot = usize::from(id.value());
                     activities.joined(id)?;
                     let member = lock(&shared).inbox.join(id, Instant::now().into_std())?;
                     voice.join(member,Some(connection.clone()));
@@ -783,7 +1031,7 @@ async fn host_loop(
                     roster[slot] = Some(rider);
                     let (control, receive) = mpsc::channel(16);
                     peers[slot] = Some(Peer { connection: connection.clone(), member, control });
-                    let shared = shared.clone(); let welcome = Message::Welcome(id, roster.clone()); let updates = states.subscribe();
+                    let shared = shared.clone(); let welcome = Message::Welcome(id, organizer, authority.0, authority.1, roster.clone()); let updates = states.subscribe();
                     let voice = voice.clone();
                     let epochs = voice.epochs();
                     let mut initial = activities.initial();
@@ -810,16 +1058,16 @@ async fn host_loop(
                 _ => {}
             },
             _ = ticker.tick() => {
-                if let Some(at) = lock(&shared).start.filter(|at| *at <= Instant::now()) && let Some(timeline) = &mut timeline {
+                if let Some(at) = {let mailbox = lock(&shared); mailbox.start.filter(|at| mailbox.active && *at <= Instant::now())} && let Some(timeline) = &mut timeline {
                     let sample = timeline.sample(at.into_std())?;
                     broadcast(&peers, &Message::Workout(sample));
                     clock.send_replace(Some(sample.clock(at.into_std())?));
                 }
                 let mut mailbox = lock(&shared);
-                if let Some(elapsed) = elapsed(mailbox.start) {
+                if let Some(elapsed) = elapsed(mailbox.start).filter(|_| mailbox.active) {
                     if local.has_changed().unwrap_or(false)
                         && let Some(state) = *local.borrow_and_update() {
-                            mailbox.inbox.ingest(member, &state.datagram(RiderId::HOST)?, elapsed, Instant::now().into_std())?;
+                            mailbox.inbox.ingest(member, &state.datagram(organizer)?, elapsed, Instant::now().into_std())?;
                     }
                     states.send_replace(mailbox.inbox.drain(Instant::now().into_std()));
                 }
@@ -870,15 +1118,24 @@ async fn serve_peer(
     let mut transfers = JoinSet::new();
     let mut transfer_budget = voice::IncomingBudget::controls();
     let receiver_voice = voice.clone();
+    let receiver_shared = shared.clone();
     readers.spawn(async move {
         let mut budget = voice::IncomingBudget::controls();
         loop {
             let message = wire::read(&mut recv).await?;
             budget.charge().map_err(|_| LobbyError::Protocol)?;
             match message {
-                Message::VoiceEnabled(enabled) => receiver_voice
-                    .consent(member, enabled)
-                    .map_err(|_| LobbyError::Protocol)?,
+                Message::VoiceEnabled(enabled) => {
+                    if enabled && !lock(&receiver_shared).active {
+                        return Err(LobbyError::Protocol);
+                    }
+                    receiver_voice
+                        .consent(member, enabled)
+                        .map_err(|_| LobbyError::Protocol)?;
+                }
+                Message::Handover(message) => commands
+                    .try_send(Command::PeerHandover(member, message))
+                    .map_err(|_| LobbyError::Lost)?,
                 Message::Enter(revision) => commands
                     .try_send(Command::Enter(member, revision))
                     .map_err(|_| LobbyError::Lost)?,
@@ -910,6 +1167,7 @@ async fn serve_peer(
             },
             bytes = connection.read_datagram() => {
                 let bytes = bytes?;
+                if !lock(&shared).active {return Err(LobbyError::Protocol);}
                 if bytes.first() == Some(&voice::TAG) {
                     voice.ingest(member,&bytes).map_err(|_| LobbyError::Protocol)?;
                     continue;
@@ -949,6 +1207,8 @@ async fn client_actor(
     mut readiness: mpsc::Receiver<Message>,
     app_lobby: bool,
     clock: watch::Sender<Option<WorkoutClock>>,
+    organizer: RiderId,
+    mut prepared: Option<crate::handover::Plan>,
 ) -> Result<(), LobbyError> {
     voice.0.uplink(connection.clone());
     let mut readers = JoinSet::new();
@@ -1013,7 +1273,7 @@ async fn client_actor(
                         voice.0.join(members[index].ok_or(LobbyError::Protocol)?,None);
                         roster[index] = Some(rider.clone()); event(&controls, LobbyEvent::Joined { id, rider })?;
                     }
-                    Message::Left(id) if id != RiderId::HOST && id != me => {
+                    Message::Left(id) if id != organizer && id != me => {
                         let index = usize::from(id.value()); let member = members[index].take().ok_or(LobbyError::Protocol)?;
                         voice.0.leave(member);
                         inbox.remove(member); roster[index] = None; event(&controls, LobbyEvent::Left { id })?;
@@ -1021,6 +1281,15 @@ async fn client_actor(
                     Message::Start(millis) if start.is_none() => {
                         let at = Instant::now() + Duration::from_millis(u64::from(millis)).saturating_sub(connection.rtt()/2);
                         entered = true; start = Some(at); event(&controls, LobbyEvent::Start { at })?;
+                    }
+                    Message::Handover(message) if app_lobby => {
+                        if let crate::handover::Message::Commit {epoch, ref proof} = message && let Some(plan) = &prepared {
+                            let members = roster.iter().enumerate().fold(0_u8, |mask, (id, rider)| if rider.is_some() {mask | (1 << id)} else {mask});
+                            if epoch != plan.context.epoch || !plan.accepts(proof) || members != plan.context.members {return Err(LobbyError::Protocol);}
+                            drop(local.borrow_and_update());
+                            entered = true; voice.0.activate(); prepared = None;
+                        }
+                        event(&controls, LobbyEvent::Handover {sender: organizer, message})?;
                     }
                     Message::Workout(sample) if app_lobby && sample.revision == selection_revision && sample.sequence > workout_sequence => {
                         let start = start.ok_or(LobbyError::Protocol)?;
@@ -1088,6 +1357,35 @@ mod tests {
     use crate::link::ConnectOptions;
     use crate::policy::AddressPolicy;
     use orqwa_domain::units::{Meters, Watts};
+
+    #[tokio::test]
+    async fn organizer_authority_does_not_require_rider_zero() {
+        let organizer = RiderId::new(3).unwrap();
+        let mut host = HostLobby::open_as(
+            Host::lobby("Host", &options()).await.unwrap(),
+            rider("Host"),
+            organizer,
+        )
+        .unwrap();
+        let mut peer = join(&host, "Original organizer").await;
+        assert_eq!(host.organizer(), organizer);
+        assert_eq!(peer.me(), RiderId::HOST);
+        assert_eq!(peer.organizer(), organizer);
+        client_event(
+            &mut peer,
+            |event| matches!(event, LobbyEvent::Joined {id, ..} if *id == organizer),
+        )
+        .await;
+        assert!(host.remove(organizer).is_err());
+        host.remove(peer.me()).unwrap();
+        host_event(
+            &mut host,
+            |event| matches!(event, LobbyEvent::Left {id} if *id == peer.me()),
+        )
+        .await;
+        host.close().await;
+        peer.close().await;
+    }
 
     #[tokio::test]
     #[allow(clippy::too_many_lines)] // one real three-peer lifecycle proves preparation and entry preserve existing riders
@@ -1461,7 +1759,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let Message::Welcome(id, _) = wire::read(&mut recv).await.unwrap() else {
+        let Message::Welcome(id, _, _, _, _) = wire::read(&mut recv).await.unwrap() else {
             panic!("welcome");
         };
         (connection, send, recv, id)

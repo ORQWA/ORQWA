@@ -1,5 +1,6 @@
 class_name GroupRidesTab
 extends VBoxContainer
+# gdlint: disable=max-line-length
 ## Rider-facing setup; membership, transfers and readiness belong to the Rust core.
 
 signal devices_requested
@@ -33,6 +34,14 @@ var _workout_panel: PanelContainer
 var _workout_status: Label = Label.new()
 var _workout_pause: Button
 var _workout_next: Button
+var _organizer_panel: PanelContainer
+var _organizer_status: Label = Label.new()
+var _organizer_change: Button
+var _organizer_accept: Button
+var _organizer_decline: Button
+var _organizer_cancel: Button
+var _organizer_picker: AcceptDialog = AcceptDialog.new()
+var _organizer_choices: VBoxContainer = VBoxContainer.new()
 var _progress: ProgressBar = ProgressBar.new()
 var _bytes: Label = Label.new()
 var _connection: AcceptDialog = AcceptDialog.new()
@@ -85,6 +94,7 @@ func _ready() -> void:
 	_body.add_child(_sidebar)
 	_build_invitation()
 	_build_roster()
+	_build_organizer()
 	_build_workout_controls()
 	var audio: VBoxContainer = _card(_sidebar)
 	var voice: Button = _button(
@@ -259,6 +269,86 @@ func _build_dialogs() -> void:
 		if child is Label:
 			(child as Label).custom_minimum_size.x = 460
 	_connection.add_child(network)
+	_organizer_picker.theme = UiTheme.build()
+	_organizer_picker.title = tr("Choose a new organizer")
+	_organizer_choices.add_theme_constant_override("separation", 12)
+	_organizer_choices.custom_minimum_size.x = 380
+	_organizer_picker.add_child(_organizer_choices)
+	add_child(_organizer_picker)
+
+
+func _build_organizer() -> void:
+	var card: VBoxContainer = _card(_sidebar)
+	_organizer_panel = card.get_parent() as PanelContainer
+	_label(card, tr("Ride organizer"), 20)
+	_organizer_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card.add_child(_organizer_status)
+	_organizer_change = _button(card, tr("Change organizer…"), _choose_organizer)
+	_organizer_accept = _button(
+		card, tr("Accept organizer duties"), func() -> void: _orqwa.group_handover_answer(true)
+	)
+	_organizer_accept.add_theme_stylebox_override("normal", UiTheme.accent_button())
+	_organizer_decline = _button(
+		card, tr("Decline"), func() -> void: _orqwa.group_handover_answer(false)
+	)
+	_organizer_cancel = _button(
+		card, tr("Cancel organizer change"), func() -> void: _orqwa.group_handover_cancel()
+	)
+
+
+func _choose_organizer() -> void:
+	for child: Node in _organizer_choices.get_children():
+		_organizer_choices.remove_child(child)
+		child.queue_free()
+	_muted(
+		_organizer_choices,
+		tr("Choose a friend who is ready. They must accept before anything changes.")
+	)
+	for rider: Dictionary in _status.get("roster", []):
+		if rider["me"] or not rider["ready"]:
+			continue
+		var id: int = rider["id"]
+		var rider_name: String = rider["name"]
+		var choice: Button = _button(
+			_organizer_choices,
+			rider_name,
+			func() -> void:
+				_orqwa.group_handover(id)
+				_organizer_picker.hide()
+		)
+		choice.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_organizer_picker.popup_centered()
+
+
+func _show_organizer() -> void:
+	var phase: String = _status.get("phase", "idle")
+	var handover: String = _status.get("handover", "idle")
+	var host: bool = _status.get("host", false)
+	var offer: bool = _status.get("handover_offer", false)
+	_organizer_panel.visible = phase == "riding" and (host or handover != "idle")
+	_organizer_change.visible = host and handover == "idle"
+	_organizer_change.disabled = not _status.get("can_handover", false)
+	_organizer_accept.visible = offer
+	_organizer_decline.visible = offer
+	_organizer_cancel.visible = _status.get("can_cancel_handover", false) and not offer
+	_organizer_status.text = tr(
+		"You choose who organizes the ride. Your recording continues when you hand over."
+	)
+	if handover == "offered":
+		_organizer_status.text = (
+			tr("Waiting for %s to accept organizer duties.") % _status.get("successor_name", "")
+		)
+	if offer:
+		_organizer_status.text = tr(
+			"Would you like to organize this ride? You will control the workout and welcome new riders. Accepting shares connection addresses with everyone in this group, using your connection settings."
+		)
+	if handover in ["preparing", "committing"]:
+		_organizer_status.text = (
+			tr(
+				"Connecting everyone to %s. Keep riding; your recording continues. Voice reconnects with your microphone off."
+			)
+			% _status.get("successor_name", "")
+		)
 
 
 func _build_workout_controls() -> void:
@@ -395,7 +485,7 @@ func _show_status(status: Dictionary) -> void:
 	_notice.visible = not _notice.text.is_empty()
 	var invite: String = _status.get("invite", "")
 	for action: Node in _invite.find_children("*", "Button", true, false):
-		(action as Button).disabled = invite.is_empty()
+		(action as Button).disabled = invite.is_empty() or _status.get("handover", "idle") != "idle"
 	_activity_panel.visible = not compact and (host or (not name.is_empty() and prepared))
 	var course_path: String = _status.get("course_path", "")
 	var workout_id: String = _status.get("workout_id", "")
@@ -472,6 +562,7 @@ func _show_status(status: Dictionary) -> void:
 	_retry.visible = can_retry
 	_voice_controls.update_status(_status)
 	_show_workout_controls()
+	_show_organizer()
 	var key: String = (
 		str(_status.get("roster", []))
 		+ str(_status.get("voice", false))
@@ -521,9 +612,10 @@ func _show_roster(phase: String, host: bool) -> void:
 			state.text = tr("No signal") if rider["ready"] else tr("Getting ready")
 			if rider["me"]:
 				state.text = tr("Paused") if _status.get("local_paused", false) else tr("Riding")
-		state.add_theme_color_override(
-			"font_color", UiTheme.SUCCESS if rider["ready"] else UiTheme.MUTED
+		var live: bool = (
+			rider["ready"] and (phase != "riding" or rider["me"] or rider.get("present", false))
 		)
+		state.add_theme_color_override("font_color", UiTheme.SUCCESS if live else UiTheme.MUTED)
 		if rider["me"]:
 			state.text += " · " + tr("You")
 		if phase == "riding" and rider.get("present", false):
@@ -534,6 +626,8 @@ func _show_roster(phase: String, host: bool) -> void:
 				if imperial
 				else tr("%s m") % roundi(gap)
 			)
+		if rider.get("organizer", false):
+			state.text += " · " + tr("Organizer")
 		row.add_child(text)
 		if not rider["me"] and _status.get("voice", false):
 			var speaker: int = rider["id"]

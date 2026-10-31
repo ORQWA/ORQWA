@@ -76,6 +76,7 @@ fn independent_failures_keep_retry_state_and_each_occurrence_is_reported_once() 
     );
     assert_eq!(snapshot.failure_revision, 2);
 }
+#[track_caller]
 fn wait(host: &mut App, peer: &mut App, condition: impl Fn(&App, &App) -> bool) {
     let until = Instant::now() + Duration::from_secs(20);
     while Instant::now() < until {
@@ -87,11 +88,13 @@ fn wait(host: &mut App, peer: &mut App, condition: impl Fn(&App, &App) -> bool) 
         std::thread::sleep(Duration::from_millis(5));
     }
     panic!(
-        "group timed out: host {} {}, peer {} {}",
+        "group timed out: host {} {} handover {}, peer {} {} handover {}",
         host.group().phase.key(),
         host.group().error,
+        host.group().handover.key(),
         peer.group().phase.key(),
-        peer.group().error
+        peer.group().error,
+        peer.group().handover.key()
     );
 }
 
@@ -230,6 +233,141 @@ fn start_shared_workout(host: &mut App, peer: &mut App) {
             && host.group().can_control_workout()
             && peer.group().workout_clock.is_some()
     });
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // consent, rollback, two authority changes and late entry share one real group lifecycle
+fn planned_handover_requires_consent_and_preserves_riding_and_workout_authority() {
+    let from = Directory::new();
+    let to = Directory::new();
+    let mut host = from.app();
+    let mut peer = to.app();
+    start_shared_workout(&mut host, &mut peer);
+    let root = host.group().root;
+    let peer_id = peer.group().me;
+    let generations = host.group().generations;
+    let invitation = host.group().invite;
+    assert_eq!(
+        peer.step_intensity(4),
+        Some(orqwa_domain::units::Percent(120.0))
+    );
+    host.group_handover(peer_id).unwrap();
+    wait(&mut host, &mut peer, |_, p| {
+        p.group().handover == Handover::Offered
+    });
+    assert!(host.group().host && !peer.group().host);
+    peer.group_handover_answer(false).unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        h.group().handover == Handover::Idle && p.group().handover == Handover::Idle
+    });
+    assert_eq!(host.group().epoch, 1);
+    host.group_handover(peer_id).unwrap();
+    wait(&mut host, &mut peer, |_, p| {
+        p.group().handover == Handover::Offered
+    });
+    host.group_handover_cancel().unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        h.group().handover == Handover::Idle && p.group().handover == Handover::Idle
+    });
+    host.group_workout_pause(true).unwrap();
+    wait(&mut host, &mut peer, |_, p| {
+        p.group().workout_clock.is_some_and(|c| c.paused)
+    });
+    let elapsed = peer.ride_state().unwrap().elapsed;
+    let distance = peer.ride_state().unwrap().distance;
+    let workout = peer.ride.as_ref().unwrap().ride.workout_elapsed();
+    assert!(peer.set_paused(true));
+    host.group_handover(peer_id).unwrap();
+    wait(&mut host, &mut peer, |_, p| {
+        p.group().handover == Handover::Offered
+    });
+    peer.group_handover_answer(true).unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        !h.group().host && p.group().host
+    });
+    for app in [&host, &peer] {
+        let group = app.group();
+        assert_eq!(group.root, root);
+        assert_eq!(group.epoch, 4);
+        assert_eq!(group.organizer, peer_id);
+        assert_eq!(group.generations, generations);
+        assert!(group.workout_clock.unwrap().paused);
+    }
+    assert_ne!(peer.group().invite, invitation);
+    assert_eq!(host.group().me, 0);
+    assert_eq!(peer.group().me, peer_id);
+    assert!(peer.ride_state().unwrap().elapsed >= elapsed);
+    assert!(peer.ride_state().unwrap().distance.0 >= distance.0);
+    assert_eq!(peer.ride.as_ref().unwrap().ride.workout_elapsed(), workout);
+    assert!(
+        peer.is_paused(),
+        "handover preserves a personal safety pause"
+    );
+    peer.set_paused(false);
+    assert!(!peer.is_paused());
+    assert_eq!(
+        peer.step_intensity(0),
+        Some(orqwa_domain::units::Percent(120.0))
+    );
+    assert!(host.group_workout_pause(false).is_err());
+    peer.group_workout_pause(false).unwrap();
+    wait(&mut host, &mut peer, |h, _| {
+        h.group().workout_clock.is_some_and(|c| !c.paused)
+    });
+    assert!(peer.skip_step());
+    assert!(!host.skip_step());
+    let late_directory = Directory::new();
+    let mut late = late_directory.app();
+    late.connect_trainer(TrainerChoice::Fake(FakeRider {
+        power: Watts(150.0),
+        cadence: Rpm(80.0),
+        heart: None,
+    }))
+    .unwrap();
+    late.group_open(Some(peer.group().invite), options())
+        .unwrap();
+    wait(&mut peer, &mut late, |_, p| !p.group().reply.is_empty());
+    peer.group_admit(late.group().reply).unwrap();
+    wait(&mut peer, &mut late, |_, p| {
+        p.group().can_enter() && p.trainer_connected()
+    });
+    assert_eq!(late.group().root, root);
+    assert_eq!(late.group().epoch, 4);
+    assert_eq!(late.group().organizer, peer_id);
+    late.group_enter().unwrap();
+    wait(&mut peer, &mut late, |_, p| p.ride_state().is_some());
+    // A later handover can return authority to original rider zero without changing identity.
+    peer.group_handover(0).unwrap();
+    wait(&mut host, &mut peer, |h, _| {
+        h.group().handover == Handover::Offered
+    });
+    host.group_handover_answer(true).unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        h.group().host && !p.group().host && late.group().organizer == 0
+    });
+    assert_eq!(host.group().epoch, 5);
+    assert_eq!(peer.group().organizer, 0);
+    assert_eq!(host.group().root, root);
+    late.update(Duration::from_millis(16));
+    assert!(late.ride_state().is_some());
+    assert_eq!(late.group().epoch, 5);
+    // Losing the new host preserves both the old host's local recording and independent timing.
+    host.group_leave();
+    wait(&mut host, &mut peer, |_, p| p.group().phase == Phase::Ended);
+    assert!(peer.ride_state().is_some());
+}
+
+#[test]
+fn assistance_transitions_keep_force_continuous_and_bounded() {
+    use orqwa_domain::units::GradePercent;
+    use orqwa_physics::GroupEffect;
+    let old = GroupEffect::new(0.7, GradePercent(-2.0));
+    let new = GroupEffect::new(1.0, GradePercent(2.0));
+    assert_eq!(blend(old, new, Duration::ZERO), old);
+    let middle = blend(old, new, Duration::from_secs(1));
+    assert!((middle.drag_share() - 0.85).abs() < 1e-9);
+    assert!(middle.grade_offset().0.abs() < 1e-9);
+    assert_eq!(blend(old, new, Duration::from_secs(2)), new);
 }
 
 #[test]

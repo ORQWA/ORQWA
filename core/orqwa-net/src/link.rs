@@ -225,6 +225,7 @@ async fn probe(
 
 struct LiveConnection {
     quic: quinn::Connection,
+    admission: Option<AdmissionSecret>,
     deadline: Instant,
     _permit: Option<ConnectionPermit>,
     _owner: Option<Local>,
@@ -250,6 +251,9 @@ impl std::fmt::Debug for Connection {
 }
 
 impl Connection {
+    pub(crate) fn admission(&self) -> Option<&AdmissionSecret> {
+        self.0.admission.as_ref()
+    }
     /// Peer address for local diagnostics; not forwarded to other riders.
     #[must_use]
     pub fn peer_address(&self) -> SocketAddr {
@@ -614,13 +618,20 @@ async fn welcome(incoming: quinn::Incoming, shared: Arc<Shared>, permit: Connect
             let _ = timeout_at(end, send.stopped()).await;
             return Err(LinkError::Replay);
         }
-        Ok(expires.expect("an accepted credential has an expiry"))
+        let secret = AdmissionSecret::from_random_bytes(
+            bytes[81..].try_into().map_err(|_| LinkError::Lost)?,
+        )?;
+        Ok((
+            expires.expect("an accepted credential has an expiry"),
+            secret,
+        ))
     }
     .await;
     match result {
-        Ok(expires) => {
+        Ok((expires, secret)) => {
             let connection = Connection(Arc::new(LiveConnection {
                 quic,
+                admission: Some(secret),
                 deadline: expires.min(end),
                 _permit: Some(permit),
                 _owner: None,
@@ -728,6 +739,7 @@ impl Joiner {
                         self.tasks.abort_all();
                         return Ok(Connection(Arc::new(LiveConnection {
                             quic,
+                            admission: None,
                             deadline: self.deadline,
                             _permit: None,
                             _owner: self.local.take(),

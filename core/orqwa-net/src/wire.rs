@@ -14,7 +14,7 @@ const MAX_FRAME: usize = 1024;
 #[derive(Clone, Debug)]
 pub(crate) enum Message {
     Hello(RouteHash, Rider),
-    Welcome(RiderId, Roster),
+    Welcome(RiderId, RiderId, crate::code::RideId, u64, Roster),
     Joined(RiderId, Rider),
     Left(RiderId),
     Start(u32),
@@ -25,6 +25,7 @@ pub(crate) enum Message {
     Readiness(RiderId, u64, bool),
     Running(i64),
     Workout(crate::lobby::timing::WorkoutSample),
+    Handover(crate::handover::Message),
     Enter(u64),
     Entry(u64, Option<crate::lobby::RideProgress>),
 }
@@ -83,8 +84,10 @@ fn encode(message: &Message) -> Result<Vec<u8>, LobbyError> {
             bytes.extend_from_slice(&route.0);
             rider(&mut bytes, who)?;
         }
-        Message::Welcome(me, roster) => {
-            bytes.extend_from_slice(&[2, me.value()]);
+        Message::Welcome(me, organizer, root, epoch, roster) => {
+            bytes.extend_from_slice(&[2, me.value(), organizer.value()]);
+            bytes.extend_from_slice(&root.0);
+            bytes.extend_from_slice(&epoch.to_be_bytes());
             bytes.push(
                 u8::try_from(roster.iter().flatten().count()).map_err(|_| LobbyError::Protocol)?,
             );
@@ -124,6 +127,10 @@ fn encode(message: &Message) -> Result<Vec<u8>, LobbyError> {
         Message::Readiness(id, revision, ready) => {
             bytes.extend_from_slice(&[10, id.value(), u8::from(*ready)]);
             bytes.extend_from_slice(&revision.to_be_bytes());
+        }
+        Message::Handover(message) => {
+            bytes.push(15);
+            bytes.extend_from_slice(&message.encode()?);
         }
         Message::Workout(sample) => {
             sample.validate()?;
@@ -245,8 +252,14 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
         1 => Message::Hello(RouteHash(reader.take()?), reader.rider()?),
         2 => {
             let me = reader.id()?;
+            let organizer = reader.id()?;
+            let root = crate::code::RideId(reader.take()?);
+            let epoch = u64::from_be_bytes(reader.take()?);
+            if root.0 == [0; 16] || epoch == 0 {
+                return Err(LobbyError::Protocol);
+            }
             let count = usize::from(reader.byte()?);
-            if !(2..=MAX_RIDERS).contains(&count) || me == RiderId::HOST {
+            if !(2..=MAX_RIDERS).contains(&count) || me == organizer {
                 return Err(LobbyError::Protocol);
             }
             let mut roster: Roster = std::array::from_fn(|_| None);
@@ -257,10 +270,12 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
                 }
                 roster[id] = Some(reader.rider()?);
             }
-            if roster[0].is_none() || roster[usize::from(me.value())].is_none() {
+            if roster[usize::from(organizer.value())].is_none()
+                || roster[usize::from(me.value())].is_none()
+            {
                 return Err(LobbyError::Protocol);
             }
-            Message::Welcome(me, roster)
+            Message::Welcome(me, organizer, root, epoch, roster)
         }
         3 => Message::Joined(reader.id()?, reader.rider()?),
         4 => Message::Left(reader.id()?),
@@ -314,6 +329,11 @@ fn decode(bytes: &[u8]) -> Result<Message, LobbyError> {
         12 => Message::Enter(u64::from_be_bytes(reader.take()?)),
         13 => reader.entry()?,
         14 => reader.workout()?,
+        15 => {
+            let message = crate::handover::Message::decode(reader.0)?;
+            reader.0 = &[];
+            Message::Handover(message)
+        }
         _ => return Err(LobbyError::Protocol),
     };
     if !reader.0.is_empty() {
@@ -350,10 +370,17 @@ mod tests {
         let mut roster: Roster = std::array::from_fn(|_| None);
         roster[0] = Some(who.clone());
         roster[1] = Some(who);
-        let welcome = encode(&Message::Welcome(RiderId::new(1).unwrap(), roster)).unwrap();
+        let welcome = encode(&Message::Welcome(
+            RiderId::new(1).unwrap(),
+            RiderId::HOST,
+            crate::code::RideId([1; 16]),
+            1,
+            roster,
+        ))
+        .unwrap();
         assert!(decode(&welcome).is_ok());
         let mut duplicate = welcome;
-        duplicate[18] = 0;
+        duplicate[43] = 0;
         assert!(decode(&duplicate).is_err());
         assert!(decode(&vec![0; MAX_FRAME + 1]).is_err());
         assert!(decode(&[crate::code::VERSION, 5, 0, 1, 0, 0]).is_err());

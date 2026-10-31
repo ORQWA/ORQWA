@@ -28,6 +28,9 @@ pub(super) enum Command {
     Enter,
     WorkoutPause(bool),
     WorkoutSkip(Duration),
+    Handover(RiderId),
+    HandoverAnswer(bool),
+    HandoverCancel,
     Remove(RiderId),
     Retry,
     Failure(String),
@@ -48,11 +51,22 @@ pub(super) enum Session {
     Join(JoinerLobby),
 }
 impl Session {
-    async fn next(&mut self) -> Option<LobbyEvent> {
+    pub(super) async fn next(&mut self) -> Option<LobbyEvent> {
         match self {
             Self::Host(l) => l.next().await,
             Self::Join(l) => l.next().await,
         }
+    }
+    pub(super) fn handover(
+        &self,
+        recipient: Option<RiderId>,
+        message: orqwa_net::handover::Message,
+    ) -> Result<(), String> {
+        match self {
+            Self::Host(lobby) => lobby.handover(recipient, message),
+            Self::Join(lobby) => lobby.handover(message),
+        }
+        .map_err(|error| error.to_string())
     }
     async fn ready(&self, revision: u64, ready: bool) -> Result<(), String> {
         match self {
@@ -115,8 +129,8 @@ pub(super) async fn run(
         snapshot.report(Kind::GroupRide, error);
         snapshot.invite.clear();
         snapshot.reply.clear();
-        updates.send_replace(snapshot);
     }
+    updates.send_replace(snapshot);
 }
 
 #[allow(clippy::too_many_lines)] // one owner makes all state/transfer/audio cancellation paths explicit
@@ -152,11 +166,20 @@ async fn run_inner(
         snapshot.host = true;
         Session::Host(HostLobby::open(host, request.rider.clone()).map_err(|e| e.to_string())?)
     };
+    let mut handover =
+        super::handover::Coordinator::new(request.options.clone(), request.rider.clone());
+    let (root, epoch, organizer) = match &session {
+        Session::Host(l) => (l.root(), l.epoch(), l.organizer()),
+        Session::Join(l) => (l.root(), l.epoch(), l.organizer()),
+    };
+    snapshot.root = Some(root);
+    snapshot.epoch = epoch;
+    snapshot.organizer = organizer.value();
     snapshot.roster[usize::from(snapshot.me)] = Some(request.rider);
     snapshot.generations[usize::from(snapshot.me)] = 1;
     snapshot.phase = Phase::Waiting;
     snapshot.reply.clear();
-    let port = match &mut session {
+    let mut port = match &mut session {
         Session::Host(l) => l.take_voice(),
         Session::Join(l) => l.take_voice(),
     };
@@ -190,7 +213,16 @@ async fn run_inner(
             },
             command = commands.recv() => {
                 let Some(command) = command else {return Ok(());};
+                if handover.busy() && matches!(command, Command::Admit(_) | Command::Remove(_) | Command::WorkoutPause(_) | Command::WorkoutSkip(_) | Command::Ready(_) | Command::Enter) {
+                    snapshot.report(Kind::GroupRide,"Wait until the organizer change finishes, or cancel it first."); continue;
+                }
                 let result = match command {
+                    Command::Handover(id) => handover.propose(&session,snapshot,id),
+                    Command::HandoverAnswer(accepted) => handover.answer(&session,snapshot,accepted),
+                    Command::HandoverCancel => {
+                        if snapshot.host || snapshot.successor == Some(snapshot.me) {handover.cancel(&session,snapshot)}
+                        else {Err("Only the organizer or selected successor can cancel this request.".into())}
+                    }
                     Command::Admit(text) => match &session {Session::Host(l)=>match Reply::from_code(&text,policy) {Ok(reply)=>l.admit(&reply).await.map_err(|e|e.to_string()),Err(e)=>Err(e.to_string())},Session::Join(_)=>Err("Only the host can admit riders.".into())},
                     Command::Select(course,plan) => {
                         if snapshot.start.is_some() || !snapshot.host {continue;}
@@ -269,13 +301,23 @@ async fn run_inner(
                 };
                 if let Err(error) = result {snapshot.report(Kind::GroupRide,error);}
             },
-            event = session.next() => match event {
+            event = session.next(), if !handover.old_lost => match event {
+                Some(LobbyEvent::Handover {sender,message}) => {
+                    if let Err(error) = handover.message(&session,snapshot,sender,message).await {
+                        snapshot.report(Kind::GroupRide,error);
+                        if handover.fail(&session,snapshot) {end(snapshot);return Ok(());}
+                    }
+                }
                 Some(LobbyEvent::Joined {id,rider}) => {
+                    if snapshot.handover==super::Handover::Committing {continue;}
+                    if handover.busy() && handover.fail(&session,snapshot) {end(snapshot);return Ok(());}
                     let index=usize::from(id.value());
                     snapshot.generations[index]=snapshot.generations[index].checked_add(1).ok_or("Rider membership exhausted.")?;
                     snapshot.roster[index] = Some(rider); snapshot.ready[index] = false;snapshot.states[index]=None;
                 }
-                Some(LobbyEvent::Left {id}) => {let index = usize::from(id.value()); snapshot.roster[index] = None; snapshot.ready[index] = false; snapshot.states[index] = None;}
+                Some(LobbyEvent::Left {id}) => {if handover.departure(snapshot,id) {continue;}
+                    if handover.busy() && handover.fail(&session,snapshot) {end(snapshot);return Ok(());}
+                    let index = usize::from(id.value()); snapshot.roster[index] = None; snapshot.ready[index] = false; snapshot.states[index] = None;}
                 Some(LobbyEvent::Readiness {id,revision,ready}) => if snapshot.selection.as_ref().is_some_and(|s|s.revision==revision) {snapshot.ready[usize::from(id.value())] = ready;},
                 Some(LobbyEvent::Selection(selection)) => {
                     if snapshot.start.is_some() {continue;}
@@ -308,7 +350,31 @@ async fn run_inner(
                 Some(LobbyEvent::Workout(clock)) => {snapshot.workout_clock = Some(clock);}
                 Some(LobbyEvent::State {id,state}) => {snapshot.states[usize::from(id.value())] = Some((state,std::time::Instant::now()));}
                 Some(LobbyEvent::Expired) => snapshot.report(Kind::GroupRide,"An admission reply expired. Exchange fresh codes."),
-                Some(LobbyEvent::HostLeft)|None => {jobs.abort_all(); audio.abort_all(); drop(voice); snapshot.voice = false; snapshot.microphone = false; snapshot.start = None; snapshot.phase = Phase::Ended; snapshot.states.fill(None); updates.send_replace(snapshot.clone()); return Ok(());}
+                Some(LobbyEvent::HostLeft)|None => {if !handover.lost() {end(snapshot);updates.send_replace(snapshot.clone());return Ok(());}}
+            },
+            event = handover.next() => {
+                match handover.event(&session,snapshot,event) {
+                    Ok(Some(replacement)) => {
+                        // Close transmission synchronously before replacing any audio owner. Keep
+                        // listening consent, but require a fresh microphone action on the new link.
+                        let restart = snapshot.voice || snapshot.voice_pending;
+                        let generation = request.voice_controls.generation.fetch_add(1,Ordering::AcqRel)+1;
+                        let mut gate=request.voice_controls.port.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+                        if let Some(old)=&port {old.enable(false);}
+                        audio.abort_all(); audio=JoinSet::new(); voice=None; snapshot.voice=false;snapshot.voice_pending=false;snapshot.microphone=false;
+                        session=replacement;
+                        port=match &mut session {Session::Host(l)=>l.take_voice(),Session::Join(l)=>l.take_voice()};
+                        gate.clone_from(&port);drop(gate);
+                        session.state(*local.borrow());
+                        if restart && let Some(port)=&port {
+                            let port=port.clone();let options=device_options.clone();let deaf=snapshot.deafened;
+                            snapshot.voice_pending=true;
+                            audio.spawn(async move {VoiceChat::open(port,options).await.map(|chat|Audio {generation,chat,deaf}).map_err(|error|error.to_string())});
+                        }
+                    }
+                    Ok(None)=>{},
+                    Err(error)=>{snapshot.report(Kind::GroupRide,error);if handover.fail(&session,snapshot) {end(snapshot);updates.send_replace(snapshot.clone());return Ok(());}}
+                }
             },
             changed=latest_progress.changed()=>{if changed.is_ok(){let p=*latest_progress.borrow_and_update();snapshot.received=p.received;snapshot.total=p.total;}},
             changed=local.changed()=>{if changed.is_ok(){session.state(*local.borrow_and_update());}},
@@ -344,12 +410,27 @@ async fn run_inner(
                 _ => {},
             },
             _ = ticker.tick() => {
+                if handover.expired() {
+                    snapshot.report(Kind::GroupRide,"The organizer change timed out. The current ride can continue.");
+                    if handover.fail(&session,snapshot) {end(snapshot);updates.send_replace(snapshot.clone());return Ok(());}
+                }
                 if let Some(start) = snapshot.start && std::time::Instant::now()>=start
                     && (!snapshot.late || snapshot.entry.is_some()) {snapshot.phase = Phase::Riding;}
                 if let Some(chat) = &voice {snapshot.microphone = chat.microphone_enabled();}
             }
         }
     }
+}
+
+fn end(snapshot: &mut Snapshot) {
+    snapshot.voice = false;
+    snapshot.voice_pending = false;
+    snapshot.microphone = false;
+    snapshot.start = None;
+    snapshot.phase = Phase::Ended;
+    snapshot.states.fill(None);
+    snapshot.handover = super::Handover::Idle;
+    snapshot.successor = None;
 }
 
 async fn start(session: &Session, snapshot: &mut Snapshot) -> Result<(), String> {
