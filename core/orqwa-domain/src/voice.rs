@@ -19,6 +19,16 @@ pub struct CapturedVoice {
     pub samples: PcmFrame,
 }
 
+/// Speaker audio consumed by the device, including silence on an underrun.
+pub struct RenderedVoice {
+    /// Twenty milliseconds of the mono playback reference at [`SAMPLE_RATE`].
+    pub samples: PcmFrame,
+    /// When this reference was completed; old references must not delay live processing.
+    pub at: Instant,
+    /// Consecutive reference number. A gap means the echo processor must discard its history.
+    pub sequence: u64,
+}
+
 /// A local device error, containing no audio samples.
 #[derive(Debug, Clone)]
 pub struct VoiceDeviceError {
@@ -59,6 +69,15 @@ pub trait VoiceAudio {
     /// small queue topped up, so mixing follows the speaker's own clock. `None` means the
     /// backend has no device clock and the worker paces playback every twenty milliseconds.
     fn playback_queued(&self) -> Option<usize> {
+        None
+    }
+    /// Whether this backend supplies the audio actually consumed by its speaker device.
+    /// Backends without a reference retain the bounded speaker gate.
+    fn has_render_reference(&self) -> bool {
+        false
+    }
+    /// Takes the oldest bounded playback reference, without waiting on the device callback.
+    fn render_reference(&mut self) -> Option<RenderedVoice> {
         None
     }
     /// Silences output and clears pending speech; reopening must never replay it.

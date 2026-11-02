@@ -1,4 +1,4 @@
-//! Speaker mode uses a bounded half-duplex gate rather than claiming acoustic cancellation.
+//! Experimental AEC3 with the existing bounded speaker gate as fallback.
 //!
 //! The gate listens for a friend's *speech* in what is about to play, not for any sound:
 //! see [`Speech`].
@@ -6,6 +6,115 @@
 use crate::speech::Speech;
 use orqwa_domain::voice::PcmFrame;
 use std::time::{Duration, Instant};
+
+/// The experiment leaves unsupported backends and platforms on the existing gate.
+pub(crate) struct EchoPrevention {
+    gate: SpeakerGate,
+    enabled: bool,
+    supported: bool,
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    canceller: Option<crate::acoustic::Canceller>,
+    sequence: Option<u64>,
+}
+
+impl EchoPrevention {
+    pub(crate) fn new(has_reference: bool) -> Self {
+        Self {
+            gate: SpeakerGate::new(),
+            enabled: false,
+            supported: has_reference
+                && cfg!(any(target_os = "macos", target_os = "linux"))
+                && std::env::var_os("ORQWA_VOICE_ECHO_GATE").is_none(),
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            canceller: None,
+            sequence: None,
+        }
+    }
+
+    pub(crate) fn enable(&mut self, enabled: bool) {
+        if self.enabled != enabled {
+            self.enabled = enabled;
+            self.restart();
+        }
+    }
+
+    pub(crate) fn restart(&mut self) {
+        self.gate.restart();
+        self.sequence = None;
+        if !self.enabled || !self.supported {
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            {
+                self.canceller = None;
+            }
+            return;
+        }
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        {
+            self.canceller = None;
+            if self.enabled && self.supported {
+                match crate::acoustic::Canceller::new() {
+                    Ok(canceller) => {
+                        self.canceller = Some(canceller);
+                        tracing::info!("voice speaker echo prevention: WebRTC AEC3 (experimental)");
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "WebRTC unavailable; using voice speaker gate");
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn observe(&mut self, playback: &PcmFrame, now: Instant) {
+        self.gate.observe(playback, now);
+    }
+
+    pub(crate) fn references(&mut self, audio: &mut dyn orqwa_domain::voice::VoiceAudio) {
+        let mut skipped = false;
+        for _ in 0..crate::MAX_FRAMES_PER_WAKE {
+            let Some(reference) = audio.render_reference() else {
+                break;
+            };
+            if reference.at.elapsed() > crate::CAPTURE_FRESH {
+                skipped = true;
+                continue;
+            }
+            if skipped
+                || self
+                    .sequence
+                    .is_some_and(|previous| reference.sequence != previous.wrapping_add(1))
+            {
+                self.restart();
+                skipped = false;
+            }
+            self.sequence = Some(reference.sequence);
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            if let Some(canceller) = &self.canceller
+                && let Err(error) = canceller.render(&reference.samples)
+            {
+                tracing::warn!(%error, "WebRTC reference failed; using voice speaker gate");
+                self.canceller = None;
+            }
+        }
+        if skipped {
+            self.restart();
+        }
+    }
+
+    pub(crate) fn apply(&mut self, samples: &mut PcmFrame, captured: Instant) {
+        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        if let Some(canceller) = &self.canceller {
+            match canceller.capture(samples) {
+                Ok(()) => return,
+                Err(error) => {
+                    tracing::warn!(%error, "WebRTC capture failed; using voice speaker gate");
+                    self.canceller = None;
+                }
+            }
+        }
+        self.gate.apply(samples, captured);
+    }
+}
 
 /// After speech stops its echo still has to leave the queue, the speaker and the room.
 const TAIL: Duration = Duration::from_millis(300);
