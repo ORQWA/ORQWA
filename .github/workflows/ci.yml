@@ -454,7 +454,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libdbus-1-dev pkg-config libclang-dev nasm libfontconfig1 libasound2-dev cmake meson ninja-build
+            libdbus-1-dev pkg-config libclang-dev nasm libfontconfig1 libasound2-dev cmake ninja-build
+          # Ubuntu 22.04's Meson is older than WebRTC's required 0.63.
+          python3 -m pip install --user --upgrade meson
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       # FFmpeg's libraries, built once per release and platform (ADR 0010) and cached.
       - id: ffmpeg
         uses: actions/cache@v6

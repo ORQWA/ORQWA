@@ -27,7 +27,7 @@ RUN apt-get update \
         libclang-dev nasm gcc-mingw-w64-x86-64 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rustup component add rustfmt clippy llvm-tools && rustup target add x86_64-pc-windows-gnu
+RUN rustup component add rustfmt clippy && rustup target add x86_64-pc-windows-gnu
 
 RUN rustup toolchain install "$RUST_FUZZ_TOOLCHAIN" --profile minimal \
     && cargo install cargo-fuzz --version "$CARGO_FUZZ_VERSION" --locked \
@@ -88,7 +88,8 @@ RUN arch="$(uname -m)" \
 
 # Voice-chat development: CPAL/libopus and the experimental WebRTC C++ processor.
 # Kept after FFmpeg so these additions preserve the expensive video-build cache.
-RUN apt-get update \
+RUN rustup component add llvm-tools \
+    && apt-get update \
     && apt-get install -y --no-install-recommends libasound2-dev cmake meson ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
