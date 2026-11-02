@@ -1,5 +1,7 @@
 //! Local voice capture and Opus speech; audio is never recorded or sent to a voice service.
 
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod acoustic;
 pub mod audio_test;
 pub mod codec;
 pub mod device;
@@ -191,9 +193,8 @@ impl VoiceChat {
     pub fn microphone_enabled(&self) -> bool {
         self.port.transmitting().is_some()
     }
-    /// Prevents speaker feedback by holding outgoing speech while a friend's speech is audible,
-    /// including a short echo tail; background noise does not hold it. Disable for
-    /// full-duplex conversation with headphones.
+    /// Prevents speaker feedback. This experimental build uses local WebRTC AEC3 on native
+    /// macOS/Linux audio, with the speech gate as fallback. Disable for headphones.
     pub fn echo_prevention(&self, enabled: bool) {
         self.controls
             .echo_prevention
@@ -304,7 +305,7 @@ fn run(
     let mut activation = None;
     let mut playback = (false, 0);
     let mut pacer = pacing::Pacer::new(Instant::now());
-    let mut speaker_gate = echo::SpeakerGate::new();
+    let mut speaker_gate = echo::EchoPrevention::new(audio.has_render_reference());
     while !controls.stop.load(Ordering::Acquire) && port.alive() {
         let requested = port.transmitting();
         if requested != activation {
@@ -321,11 +322,13 @@ fn run(
         if output != playback {
             audio.deafen(output.0);
             playback = output;
+            speaker_gate.restart();
         }
         if !audio.healthy() {
             let error = match audio.recover() {
                 Ok(true) => {
                     voices.fill_with(|| None);
+                    speaker_gate.restart();
                     pacer.defer(Instant::now());
                     continue;
                 }
@@ -335,6 +338,8 @@ fn run(
             let _ = events.try_send(VoiceEvent::DeviceUnavailable { error });
             break;
         }
+        speaker_gate
+            .enable(controls.echo_prevention.load(Ordering::Acquire) && activation.is_some());
         // The speaker's clock sets the pace: each frame it takes is mixed once, so the
         // microphone, worker and speaker never drift apart into skipped or doubled speech.
         let queued = audio.playback_queued();
@@ -352,6 +357,7 @@ fn run(
             speaker_gate.observe(&mixed, Instant::now());
             audio.play(mixed);
         }
+        speaker_gate.references(audio.as_mut());
         if let Some(spurt) = activation {
             let gate = controls
                 .echo_prevention
@@ -412,7 +418,7 @@ fn send_captures(
     encoder: &mut SpeechEncoder,
     spurt: u32,
     own: &mut Speaking,
-    mut gate: Option<&mut echo::SpeakerGate>,
+    mut gate: Option<&mut echo::EchoPrevention>,
     events: &mpsc::Sender<VoiceEvent>,
 ) {
     // Every fresh frame is sent, in order: dropping any cuts a hole into the words.

@@ -26,3 +26,9 @@ targets = [
 ignore-build-dependencies = true
 ignore-dev-dependencies = true
 private = { ignore = true }
+
+# Bundled PFFFT uses UCAR's NCL licence: the same notice, redistribution and
+# non-endorsement conditions as BSD-3-Clause, with an expanded warranty disclaimer.
+# Preserve its exact text in notices/webrtc.txt.
+[webrtc-audio-processing-sys]
+accepted = ["NCL"]

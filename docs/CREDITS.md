@@ -33,6 +33,14 @@ The graphical app now uses the same voice implementation; its About notices incl
 native audio dependencies and the bundled Opus copyright/licence notice too.
 No speech recording or third-party voice service is used.
 
+The experimental macOS/Linux speaker mode uses the C++ WebRTC AudioProcessing 2.1 library
+through [webrtc-audio-processing](https://github.com/tonarino/webrtc-audio-processing) 2.1.0
+(BSD-3-Clause). Its bundled Abseil C++ is Apache-2.0 and PFFFT uses UCAR's permissive NCL
+licence; WebRTC's patent grant and included
+third-party DSP notices are preserved in `core/orqwa-voice/notices/webrtc.txt`, appended to
+both front ends' generated notices. Only local echo cancellation is enabled; no WebRTC
+networking or voice service is used. Windows and Android retain the speaker gate in this draft.
+
 ## Models
 
 The East Asian house and castle archetypes for Asian rides, Nordic painted-timber houses and

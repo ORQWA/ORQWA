@@ -86,10 +86,11 @@ RUN arch="$(uname -m)" \
     && mv "/tmp/cargo-about-${CARGO_ABOUT_VERSION}-${arch}-unknown-linux-musl/cargo-about" /usr/local/cargo/bin/ \
     && rm -rf /tmp/cargo-about*
 
-# Voice-chat development: ALSA headers for CPAL and CMake for bundled, hardened libopus.
+# Voice-chat development: CPAL/libopus and the experimental WebRTC C++ processor.
 # Kept after FFmpeg so these additions preserve the expensive video-build cache.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libasound2-dev cmake \
+RUN rustup component add llvm-tools \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends libasound2-dev cmake meson ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspaces/orqwa

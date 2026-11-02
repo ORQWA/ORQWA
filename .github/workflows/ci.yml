@@ -171,6 +171,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools
       - name: Check native music-control scripts
         run: |
           rustc --edition=2024 --test -D warnings core/orqwa-app/src/media/commands.rs -o "$RUNNER_TEMP/music-tests"
@@ -180,9 +182,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
-      # FFmpeg's assembly needs nasm.
-      - name: Install FFmpeg build tools
-        run: brew install nasm cmake
+      # WebRTC's bundled audio processor also needs Meson and Ninja.
+      - name: Install native build tools
+        run: brew install nasm cmake meson ninja llvm
+      - name: Use LLVM nm for bundled WebRTC archives
+        run: |
+          mkdir -p "$RUNNER_TEMP/webrtc-tools"
+          ln -s "$(brew --prefix llvm)/bin/llvm-nm" "$RUNNER_TEMP/webrtc-tools/nm"
+          echo "$RUNNER_TEMP/webrtc-tools" >> "$GITHUB_PATH"
       # FFmpeg's libraries, built once per release and platform (ADR 0010) and cached.
       - name: Test native group voice controls and disconnect diagnostics
         run: cargo test --manifest-path core/Cargo.toml -p orqwa-net --locked --lib lobby::tests
@@ -436,6 +443,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: core
@@ -445,7 +454,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libdbus-1-dev pkg-config libclang-dev nasm libfontconfig1 libasound2-dev cmake
+            libdbus-1-dev pkg-config libclang-dev nasm libfontconfig1 libasound2-dev cmake ninja-build
+          # Ubuntu 22.04's Meson is older than WebRTC's required 0.63.
+          python3 -m pip install --user --upgrade meson
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       # FFmpeg's libraries, built once per release and platform (ADR 0010) and cached.
       - id: ffmpeg
         uses: actions/cache@v6

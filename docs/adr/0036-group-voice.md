@@ -407,3 +407,35 @@ mute or a closed microphone clears the indicator.
 Sources: [CPAL](https://github.com/RustAudio/cpal),
 [Opus 1.6.1](https://opus-codec.org/downloads/),
 [Opus packet format](https://www.rfc-editor.org/rfc/rfc6716.html).
+
+## Experiment — local C++ WebRTC AEC3 (2026-11-02, R195)
+
+This draft tests full-duplex speaker conversations with WebRTC AudioProcessing 2.1 through
+`webrtc-audio-processing` 2.1.0, bundled and statically linked on macOS/Linux. Enable only AEC3;
+noise suppression and gain control stay off so this experiment can assess cancellation alone.
+The existing **Prevent speaker echo** switch enables it; disabled processing keeps the normal
+headphone path. Windows, Android and backends without playback references retain the existing
+speech gate. Set `ORQWA_VOICE_ECHO_GATE=1` before starting the executable to force the old gate
+on macOS/Linux for comparison. Logs identify `WebRTC AEC3 (experimental)` when it activates.
+
+The device callback collects the 48 kHz mono samples consumed by output resampling, including
+silence on an underrun, into a separate eight-frame nonblocking queue. It excludes queued
+frames that were dropped as old or invalidated. The owning voice thread drains references
+before capture and splits each 20 ms frame into two 10 ms APM blocks. AEC3 estimates delay;
+there is no fixed room-delay assumption. Sequence gaps, references over 120 ms old, device
+recovery, microphone activation changes, deafen/local-mute flushes and mode changes reset the
+processor. Reference/capture work stays bounded by the existing eight-frames-per-wake budget.
+Processor errors fall back to the gate without changing microphone consent or group membership.
+The callback does no WebRTC processing; no extra network traffic, service or recording is added.
+
+The reference precedes the hardware-rate output filter and does not contain Godot scenery
+sounds or other applications' audio. It is intended to cancel group voice echo. Separate
+input/output devices, their clock drift, Bluetooth buffering, changed volume and real room
+reflections still need physical-device acceptance. Synthetic tests require at least 10 dB
+reduction of delayed echo after adaptation and preservation of a simultaneous local signal;
+they do not establish subjective call quality or CPU cost on riders' computers.
+
+Builds add Meson, Ninja and Rust's LLVM tools for the bundled library. Both front ends preserve
+the exact WebRTC and third-party DSP licence notices, patent grant and bundled Abseil licence.
+The wiki checkout and pointer stay unchanged at the owner's explicit request for this draft.
+This experiment needs a separate acceptance decision before becoming the production approach.

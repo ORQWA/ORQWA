@@ -17,6 +17,8 @@ cargo about generate --fail --locked \
 
 printf '\nBundled libopus 1.6.1\n\n' >>"$generated"
 cat "$root/core/orqwa-voice/notices/opus.txt" >>"$generated"
+printf '\n' >>"$generated"
+cat "$root/core/orqwa-voice/notices/webrtc.txt" >>"$generated"
 python3 - "$generated" <<'PY'
 from pathlib import Path
 import sys
@@ -43,6 +45,8 @@ cargo about generate --fail --locked \
     -o "$generated" "$root/core/about.hbs"
 printf '\nBundled libopus 1.6.1\n\n' >>"$generated"
 cat "$root/core/orqwa-voice/notices/opus.txt" >>"$generated"
+printf '\n' >>"$generated"
+cat "$root/core/orqwa-voice/notices/webrtc.txt" >>"$generated"
 # Third-party licence files can carry CRLF or trailing spaces. Keep the words intact while
 # making generation match Git's LF checkout on every platform.
 python3 - "$generated" <<'PY'

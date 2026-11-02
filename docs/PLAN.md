@@ -932,6 +932,10 @@ main. Each step has its own PR and preserves the security limits in ADR 0035.
   - [x] Who is speaking (R190): a small speaker beside each name in the participant list and
     the Group Rides panel, from the echo gate's speech detection on each voice as it plays and
     on the rider's own microphone as it is sent.
+  - [x] Experimental native macOS/Linux WebRTC AEC3 build for speaker overlap testing (R195),
+    with device-consumed playback references and the existing gate as fallback.
+  - [ ] Accept or reject experimental AEC3 after two-computer speaker conversations, overlapping
+    replies, device changes, fan/trainer noise and runtime-cost measurements.
 - [x] Android group runtime: atomic publication on shared storage without hard links,
   embedded AAudio context initialization, and classified group/voice diagnostics through the
   application's translated Technical details / Dismiss history

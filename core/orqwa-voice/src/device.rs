@@ -12,7 +12,8 @@ use std::time::{Duration, Instant};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, SizedSample, Stream, StreamConfig};
 use orqwa_domain::voice::{
-    CapturedVoice, FRAME_SAMPLES, PcmFrame, SAMPLE_RATE, VoiceAudio, VoiceDeviceError,
+    CapturedVoice, FRAME_SAMPLES, PcmFrame, RenderedVoice, SAMPLE_RATE, VoiceAudio,
+    VoiceDeviceError,
 };
 
 use crate::resample::Resampler;
@@ -159,6 +160,41 @@ struct Output {
     revision: u32,
 }
 
+struct Reference {
+    voice: RenderedVoice,
+    revision: u32,
+}
+
+/// Keep device callbacks free of DSP and allocation; the voice owner runs WebRTC.
+struct ReferenceWriter {
+    send: SyncSender<Reference>,
+    samples: PcmFrame,
+    count: usize,
+    sequence: u64,
+}
+impl ReferenceWriter {
+    fn push(&mut self, sample: f32, revision: u32) {
+        self.samples[self.count] = sample;
+        self.count += 1;
+        if self.count == FRAME_SAMPLES {
+            let _ = self.send.try_send(Reference {
+                voice: RenderedVoice {
+                    samples: self.samples,
+                    at: Instant::now(),
+                    sequence: self.sequence,
+                },
+                revision,
+            });
+            self.sequence = self.sequence.wrapping_add(1);
+            self.count = 0;
+        }
+    }
+    fn reset(&mut self) {
+        self.count = 0;
+        self.sequence = self.sequence.wrapping_add(1);
+    }
+}
+
 /// The worker's end of the playback queue. The callback counts every frame it takes, so the
 /// worker can mix exactly as fast as the speaker plays instead of by its own timer.
 struct Speaker {
@@ -167,6 +203,7 @@ struct Speaker {
     taken: Arc<AtomicU64>,
     largest: Arc<AtomicUsize>,
     rate: u32,
+    references: Receiver<Reference>,
 }
 impl Speaker {
     fn closed() -> Self {
@@ -176,6 +213,7 @@ impl Speaker {
             taken: Arc::new(AtomicU64::new(0)),
             largest: Arc::new(AtomicUsize::new(0)),
             rate: SAMPLE_RATE,
+            references: sync_channel(1).1,
         }
     }
 }
@@ -267,6 +305,7 @@ fn speakers(
     validate(&config)?;
     // Room for large device blocks; the worker keeps only what the device needs queued.
     let (send, receive) = sync_channel(8);
+    let (reference_send, references) = sync_channel(8);
     let taken = Arc::new(AtomicU64::new(0));
     let largest = Arc::new(AtomicUsize::new(0));
     let rate = config.sample_rate;
@@ -274,6 +313,7 @@ fn speakers(
         receive,
         taken: taken.clone(),
         largest: largest.clone(),
+        reference_send,
     };
     let gates = gates.clone();
     let output = match format {
@@ -305,6 +345,7 @@ fn speakers(
             taken,
             largest,
             rate,
+            references,
         },
     ))
 }
@@ -503,6 +544,19 @@ impl VoiceAudio for NativeAudio {
             self.speaker.rate,
         ))
     }
+    fn has_render_reference(&self) -> bool {
+        self.output.is_some()
+    }
+    fn render_reference(&mut self) -> Option<RenderedVoice> {
+        let revision = self.gates.revision.load(Ordering::Acquire);
+        for _ in 0..8 {
+            let reference = self.speaker.references.try_recv().ok()?;
+            if reference.revision == revision {
+                return Some(reference.voice);
+            }
+        }
+        None
+    }
     fn deafen(&mut self, deafened: bool) {
         self.gates.deafened.store(deafened, Ordering::Release);
         self.gates.revision.fetch_add(1, Ordering::AcqRel);
@@ -647,6 +701,7 @@ struct Queue {
     receive: Receiver<Output>,
     taken: Arc<AtomicU64>,
     largest: Arc<AtomicUsize>,
+    reference_send: SyncSender<Reference>,
 }
 impl Queue {
     fn take(&self) -> Option<Output> {
@@ -670,6 +725,12 @@ where
     let mut samples = [0.0; FRAME_SAMPLES];
     let mut position = FRAME_SAMPLES;
     let mut revision = 0;
+    let mut reference = ReferenceWriter {
+        send: queue.reference_send.clone(),
+        samples: [0.0; FRAME_SAMPLES],
+        count: 0,
+        sequence: 0,
+    };
     let failures = gates.clone();
     device
         .build_output_stream(
@@ -685,6 +746,7 @@ where
                     position = FRAME_SAMPLES;
                     revision = current;
                     resampler.reset();
+                    reference.reset();
                     data.fill(T::from_sample(0.0));
                     return;
                 }
@@ -709,12 +771,14 @@ where
                                 None => starved = true,
                             }
                         }
-                        if position < FRAME_SAMPLES {
+                        let value = if position < FRAME_SAMPLES {
                             position += 1;
                             samples[position - 1]
                         } else {
                             0.0
-                        }
+                        };
+                        reference.push(value, revision);
+                        value
                     });
                     for sample in frame {
                         *sample = T::from_sample(value);
@@ -732,6 +796,61 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn playback_reference_keeps_silence_and_marks_dropped_or_flushed_audio() {
+        let (send, receive) = sync_channel(1);
+        let mut writer = ReferenceWriter {
+            send,
+            samples: [0.0; FRAME_SAMPLES],
+            count: 0,
+            sequence: 0,
+        };
+        for _ in 0..FRAME_SAMPLES {
+            writer.push(0.2, 3);
+        }
+        // A slow worker fills the finite queue. The lost reference cannot hide the gap.
+        for _ in 0..FRAME_SAMPLES {
+            writer.push(0.7, 3);
+        }
+        let first = receive.try_recv().unwrap();
+        assert_eq!(first.voice.sequence, 0);
+        assert!(
+            first
+                .voice
+                .samples
+                .iter()
+                .all(|sample| (*sample - 0.2).abs() < 1e-6)
+        );
+        for _ in 0..FRAME_SAMPLES {
+            writer.push(0.0, 3);
+        }
+        let silent = receive.try_recv().unwrap();
+        assert_eq!(silent.voice.sequence, 2);
+        assert!(
+            silent
+                .voice
+                .samples
+                .iter()
+                .all(|sample| sample.abs() < 1e-6)
+        );
+        // Mute/deafen discards the partial frame rather than replaying it in a new revision.
+        writer.push(0.9, 3);
+        writer.reset();
+        for _ in 0..FRAME_SAMPLES {
+            writer.push(0.1, 4);
+        }
+        let resumed = receive.try_recv().unwrap();
+        assert_eq!(resumed.revision, 4);
+        assert_eq!(resumed.voice.sequence, 4);
+        assert!(
+            resumed
+                .voice
+                .samples
+                .iter()
+                .all(|sample| (*sample - 0.1).abs() < 1e-6)
+        );
+    }
+
     #[test]
     fn buffer_underruns_recover_but_device_errors_keep_the_original_cause() {
         let gates = Gates {
