@@ -408,7 +408,7 @@ Sources: [CPAL](https://github.com/RustAudio/cpal),
 [Opus 1.6.1](https://opus-codec.org/downloads/),
 [Opus packet format](https://www.rfc-editor.org/rfc/rfc6716.html).
 
-## Experiment — local C++ WebRTC AEC3 (2026-11-02, R195)
+## Experiment — local C++ WebRTC AEC3 (2026-11-02, R217)
 
 This draft tests full-duplex speaker conversations with WebRTC AudioProcessing 2.1 through
 `webrtc-audio-processing` 2.1.0, bundled and statically linked on macOS/Linux. Enable only AEC3;
