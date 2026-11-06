@@ -30,6 +30,19 @@ is integration with world-generated façades and distance detail, followed by re
 rendering and measurement against R43's Medium/M1 budget. No frame-rate claim is made from
 software rendering.
 
+## Proposed graphics rollout
+
+Start the additional façade geometry and simulated window interiors on **Ultra**. Gutters,
+downpipes, glazing bars, open balcony rails, awnings and other small details should use a
+short camera range and fall back to the simpler appearance at distance. Low, Medium and High
+keep their current geometry initially; the improved shared surface textures can be evaluated
+across presets within their existing texture budgets. Medium retains R43's M1 frame-time
+target. Measure a dense real street before extending detailed geometry to other presets.
+
+Choose detail in presentation so changing the graphics preset does not itself require
+regenerating a kept world. The standalone comparison does not implement this quality gating;
+it establishes the visual direction for that integration.
+
 ## Reproduce
 
 Run from the application checkout. Both commands use the existing containers and need no
