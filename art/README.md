@@ -205,6 +205,15 @@ tropical lowland houses; castles remain mapped points of interest. See
 [regional buildings](../docs/regional-buildings.md) for placement, references, rebuild
 commands and validation. These are own-work archetypes, not replicas.
 
+### Building realism study
+
+`studies/building_realism.py` and `studies/render_building_realism.gd` create a standalone
+house and town-façade comparison using the existing kit and Godot materials, with archived
+CC0 plaster and roof scans. Generated models and materials stay in ignored
+`screenshots/building-realism/`; `GALLERY` optionally writes review JPEGs elsewhere. These
+experimental models are not in the application catalogue. See the
+[comparison and reproduction steps](../docs/building-realism-study.md).
+
 ## Vegetation (`vegetation/`)
 
 `build.py` holds the catalogue and the kinds in one file: `conifer` (a spruce: a trunk under

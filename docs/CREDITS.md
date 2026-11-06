@@ -35,6 +35,14 @@ No speech recording or third-party voice service is used.
 
 ## Models
 
+The standalone, unshipped [building realism study](building-realism-study.md) uses
+[Painted Plaster Wall](https://polyhaven.com/a/painted_plaster_wall) by **Amal Kumar** and
+[Roof Tiles](https://polyhaven.com/a/roof_tiles) by **Stephan Seeliger**, Poly Haven,
+**CC0 1.0**. Untouched 1K diffuse, OpenGL normal and roughness sources are archived under
+`art/sources/painted-plaster-wall/` and `art/sources/roof-tiles/`, with source URLs and SHA-256
+checksums. The study converts these offline to WebP in `screenshots/`; the application does
+not bundle or download these proposed materials.
+
 The East Asian house and castle archetypes for Asian rides, Nordic painted-timber houses and
 stone keeps, and French village houses, Haussmann-inspired city houses and château-inspired
 keeps (R164) are own work,

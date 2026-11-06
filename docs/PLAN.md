@@ -503,6 +503,11 @@ physically based materials and light, restyled group by group.
   six-storey Haussmann-inspired city houses and three château-inspired stone keeps for
   metropolitan France and Corsica. [Assets and validation](regional-buildings.md).
 - [ ] More locally distinct architecture sets and house/landmark types across Asia.
+- [x] Standalone [building realism study](building-realism-study.md): fixed-camera house and
+  town-façade comparisons, scanned plaster/roof materials, glazing bars, curtains, drainage,
+  cornices and open balcony railings; application assets and generation unchanged.
+- [ ] Integrate the reviewed building detail into nearby models and generated façades;
+  review full-course coverage and measure Medium/M1 performance before shipping.
 - [x] Quality presets Low–Ultra in settings, frame-time budget per preset (60 fps; a lower
   preset is suggested when a ride stays below)
 - [x] **Benchmark graphics** in Settings → Graphics (R151, #353): offline calibration with
