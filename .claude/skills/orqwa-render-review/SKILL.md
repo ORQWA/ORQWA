@@ -18,7 +18,7 @@ shots, run them in the background, and read the PNGs with the Read tool. Output 
 
 ## Ready-made
 
-For close building detail (R227), export `building_detail_render_fixture` from the world
+For close building detail (R233), export `building_detail_render_fixture` from the world
 crate's ignored tests and render `app/tools/render_building_details.gd`. It captures the same
 model and Rust-derived shell on Medium and Ultra with fixed cameras/light. Pair with town
 course views, Winter and the 160 m transition. `BUILDING_DETAIL=1` selects Ultra variants in

@@ -151,7 +151,7 @@ all maps, normal-map import on normals, and keep these six textures with their s
 
 ## Regional buildings
 
-Nearby Ultra building variants (R227) are authored with
+Nearby Ultra building variants (R233) are authored with
 `art/buildings/build.py -- --detail`, into `app/assets/models/buildings/detail/`. Retain the
 ordinary GLBs, manifest, model names and dimensions. `details.py` adds normalized panes with
 stable second-UV seeds, glazing bars and main-roof drainage. Tall French city blocks keep

@@ -99,7 +99,7 @@ Blender Python; its header shows how to run it).
 
 ## How to get it
 
-Close building detail (R227) belongs to Ultra within 160 m, fading over 20 m. Keep ordinary
+Close building detail (R233) belongs to Ultra within 160 m, fading over 20 m. Keep ordinary
 geometry on Low–High and preserve the regional proportions/colours. Use the shared neutral
 scans across presets; inspect raised façade frames, sills, glazing bars, curtains and roof
 drainage at eye height, at the distance transition and in Winter. Derive shell additions from

@@ -204,7 +204,7 @@ tropical lowland houses; castles remain mapped points of interest. See
 [regional buildings](../docs/regional-buildings.md) for placement, references, rebuild
 commands and validation. These are own-work archetypes, not replicas.
 
-### Close Ultra detail (R227)
+### Close Ultra detail (R233)
 
 `build.py -- --detail` exports nearby Ultra variants into
 `app/assets/models/buildings/detail/`, using the ordinary model names and footprint contract.

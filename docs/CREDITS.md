@@ -35,7 +35,7 @@ No speech recording or third-party voice service is used.
 
 ## Models
 
-Building materials ([R227 and integration](building-realism-study.md)) use
+Building materials ([R233 and integration](building-realism-study.md)) use
 [Painted Plaster Wall](https://polyhaven.com/a/painted_plaster_wall) by **Amal Kumar** and
 [Roof Tiles](https://polyhaven.com/a/roof_tiles) by **Stephan Seeliger**, Poly Haven,
 **CC0 1.0**. Untouched 1K diffuse, OpenGL normal and roughness sources are archived under

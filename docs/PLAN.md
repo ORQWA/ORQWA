@@ -518,10 +518,10 @@ physically based materials and light, restyled group by group.
 - [x] Standalone [building realism study](building-realism-study.md): fixed-camera house and
   town-façade comparisons, scanned plaster/roof materials, glazing bars, curtains, drainage,
   cornices and open balcony railings; application assets and generation unchanged.
-- [x] Integrate the reviewed building detail into nearby models and generated façades (R227):
+- [x] Integrate the reviewed building detail into nearby models and generated façades (R233):
   extra geometry and window interiors only on Ultra within 160 m; shared scanned materials,
   unchanged kept-world data and no additional geometry on Low–High.
-- [ ] Complete native Medium/M1 and dense-street Ultra frame-rate acceptance for R227.
+- [ ] Complete native Medium/M1 and dense-street Ultra frame-rate acceptance for R233.
 - [x] Quality presets Low–Ultra in settings, frame-time budget per preset (60 fps; a lower
   preset is suggested when a ride stays below)
 - [x] **Benchmark graphics** in Settings → Graphics (R151, #353): offline calibration with

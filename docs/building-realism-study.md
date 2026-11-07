@@ -1,6 +1,6 @@
 # Building detail
 
-R227 integrates the building study into the production renderer. **Ultra** selects detailed
+R233 integrates the building study into the production renderer. **Ultra** selects detailed
 fitted models and adds nearby façade geometry; Low, Medium and High retain the ordinary
 geometry. Scanned plaster and roof materials are shared across presets and preserve the
 existing regional palette hues. All resources are bundled and work offline.

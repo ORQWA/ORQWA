@@ -272,7 +272,7 @@ edge-biased drifts, physical scale, rain response and subpixel filtering live in
 material. No texture download, stored data or generated geometry changes; season selection
 remains reversible and has no effect on resistance or grip.
 
-### Nearby Ultra buildings (2026-11-07, R227)
+### Nearby Ultra buildings (2026-11-07, R233)
 
 Separate close model appearances and Rust-derived façade additions are selected only by
 Ultra, within 160 m with a 20 m fade. View distance remains independent. Low–High upload
