@@ -394,8 +394,6 @@ func _kinds() -> Dictionary:
 
 
 func _kind(geometry: GeometryInstance3D) -> String:
-	if geometry is MeshInstance3D and geometry.has_meta("building_detail"):
-		return "building_details"
 	if geometry is Label3D:
 		return "labels"
 	if geometry.has_meta("tree"):
@@ -417,7 +415,11 @@ func _kind(geometry: GeometryInstance3D) -> String:
 		_world.get("_water_material"): "water",
 		UrbanSurfaces.material(): "urban",
 	}
-	return by_material.get(material, "other")
+	return (
+		"building_details"
+		if geometry.has_meta("building_detail")
+		else by_material.get(material, "other")
+	)
 
 
 ## How much of each kind the world holds: nodes, surfaces (draw calls per pass when all are in
