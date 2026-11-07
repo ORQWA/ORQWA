@@ -116,6 +116,9 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Rust workspace skeleton + lint config (clippy pedantic, missing_docs, cargo-deny)
 - [x] Godot project + gdext hello-world
 - [x] GitHub Actions: container job (fmt, clippy, test, deny) + macOS runner job (GDExtension + app export)
+- [x] Keep all CI checks while sharing optimized test dependencies with the smoke-test
+  GDExtension; one bounded Godot runner reports each suite's duration and failure output,
+  with fresh project imports instead of cached Godot state
 - [x] Tagged releases (#273): after checks and all native builds, publish the app/CLI
   archives for macOS arm64, Windows x86_64 and Linux x86_64/arm64 on GitHub Releases;
   preserve ZIP uploads as archives when downloading them for publication
@@ -824,6 +827,8 @@ physically based materials and light, restyled group by group.
   - [x] Riders and bikes: detailed road bikes and cycling kit; realistic bodies (Human Base
     Meshes) skinned to a skeleton, posed on the bike in Blender, the app turning the leg bones
     to the pedals
+    - [x] Female hairstyle (R89): fitted hairline above the ears and at the nape, a smooth
+      gathered ponytail with broad tresses, tapered ends and subdued specular shading
   - [x] Road-racing helmets (R225–R226): white, unbranded shells following the Z1 KinetiCore
     reference, carved from a distance field: ribs meeting at the fit dial, a central ring and
     spine, long side channels, recessed braces, rear exhausts and dark foam inside rounded
