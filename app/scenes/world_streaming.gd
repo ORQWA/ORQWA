@@ -77,10 +77,13 @@ func upload_some(world: RideWorld) -> void:
 	while world._next_chunk < world._chunk_count and built < RideWorld.CHUNKS_PER_FRAME:
 		var index: int = 0 if world._benchmark != null else _order[_cursor]
 		var density: float = world._quality["tree_density"]
+		var detailed: bool = world._quality["building_detail"]
 		var chunk: Dictionary = (
-			world._benchmark.chunk(density)
+			world._benchmark.chunk_with_building_detail(density, detailed)
 			if world._benchmark != null
-			else world._orqwa.world_chunk_for_season(index, density, world._seasons.season)
+			else world._orqwa.world_chunk_for_graphics(
+				index, density, world._seasons.season, detailed
+			)
 		)
 		# The core drops old geometry as soon as another course is opened.
 		if chunk.is_empty():
@@ -126,9 +129,21 @@ func _add_chunk(world: RideWorld, chunk: Dictionary) -> void:
 	var buildings: MeshInstance3D = world._mesh_instance(building_arrays, world._building_material)
 	buildings.visibility_range_end = RideWorld.DETAIL_RANGE * world._distance
 	node.add_child(buildings)
+	var detailed: bool = world._quality["building_detail"]
+	if detailed:
+		var detail_arrays: Array = chunk.get("building_details", [])
+		BuildingDetails.add_to(node, detail_arrays)
 	var modelled: Array = chunk.get("modelled", [])
+	var model_range: float = world._quality["model_range"]
 	for cell: Dictionary in modelled:
-		world._add_modelled(node, cell)
+		BuildingModels.add_to(
+			node,
+			cell,
+			world._building_material,
+			model_range,
+			RideWorld.DETAIL_RANGE * world._distance,
+			detailed
+		)
 	var plants: Dictionary = chunk.get("plants", {})
 	var tree_range: float = world._quality["tree_range"]
 	var tree_cell: float = world._quality["tree_cell"]

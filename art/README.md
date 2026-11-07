@@ -152,9 +152,8 @@ scripts/art.sh blender --background --factory-startup --python art/textures/buil
 - `kit.py` holds the pieces: walls with recessed openings, windows with frames, sills and
   shutters, doors, balconies with solid balustrades, flower boxes, gable, hipped and
   half-hipped roofs with thick edges, flat roofs behind a parapet with a cornice, bands round
-  the walls, canopies, roof machinery, flags, spires and clocks. Parts are chunky and few (ADR 0011):
-  no gutters, downpipes, rafters or glazing bars, nothing that does not show at riding
-  distance.
+  the walls, canopies, roof machinery, flags, spires and clocks. Ordinary parts stay lean (ADR 0011);
+  Ultra variants add glazing bars and main-roof gutters/downpipes for nearby views.
 
 Models use metres with x along the building, y across it and z up; the origin is the centre of
 the footprint at ground level, and walls reach 3 m below it for slopes. Texture coordinates
@@ -205,14 +204,21 @@ tropical lowland houses; castles remain mapped points of interest. See
 [regional buildings](../docs/regional-buildings.md) for placement, references, rebuild
 commands and validation. These are own-work archetypes, not replicas.
 
-### Building realism study
+### Close Ultra detail (R227)
 
-`studies/building_realism.py` and `studies/render_building_realism.gd` create a standalone
-house and town-façade comparison using the existing kit and Godot materials, with archived
-CC0 plaster and roof scans. Generated models and materials stay in ignored
-`screenshots/building-realism/`; `GALLERY` optionally writes review JPEGs elsewhere. These
-experimental models are not in the application catalogue. See the
-[comparison and reproduction steps](../docs/building-realism-study.md).
+`build.py -- --detail` exports nearby Ultra variants into
+`app/assets/models/buildings/detail/`, using the ordinary model names and footprint contract.
+`details.py` supplies glazing bars and main-roof drainage; normalized window coordinates and
+a second UV channel carry stable room variation. Tall French blocks retain their existing
+balcony/dormer geometry budget and add simulated interiors without additional glazing bars.
+The ordinary GLBs and placement manifest stay unchanged.
+
+`art/textures/building_scans.py` converts archived CC0 plaster/roof scans to neutral shared
+albedo, OpenGL normal and roughness maps, preserving the regional palette colours.
+`orqwa_world::building_details` derives close frames, sills, glazing and trim from saved shell
+surfaces only for Ultra, grouped into 64 m culling cells. The production renderer selects
+detail within 160 m, with a 20 m fade; lower presets upload the original geometry.
+See [implementation, review and reproduction](../docs/building-realism-study.md).
 
 ## Vegetation (`vegetation/`)
 

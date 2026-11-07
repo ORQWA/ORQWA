@@ -612,3 +612,9 @@ Click, R75), and a Zwift Click v2 (R77, R96).
 |---|---|
 | R225 | Refines R46 and R89 (2026-11-07): both riders wear realistic **road-racing bicycle helmets**, fitted to their heads, with longitudinal shell ribs, open recessed vents, dark foam interiors and chin straps. Use the Lazer Z1 KinetiCore as a shape reference, with a rounded rear rather than a pointed tail; keep the shell white and unbranded. The ventilation and shell thickness read from front, side and chase views, seated and standing. |
 | R226 | Refines R225 (2026-11-07): the helmet follows the Z1 KinetiCore's **vent layout** in front, side, top and rear views: ribs meeting at the fit dial at the back, a central spine inside a ring of vents, long side channels down to a low vent at the temple, recessed braces, exhausts either side of the spine and solid bands above the rim. Vent edges are rounded; the shell stays white and unbranded. Dedicated side and rear helmet close-ups show it. |
+
+## Close building detail
+
+| ID | Requirement |
+|---|---|
+| R227 | Extends R43, R89 and R101 (2026-11-07, #521): **Ultra** adds nearby building detail: glazing bars, main-roof gutters and downpipes on fitted models, plus raised frames, sills, glazing and trim on supported generated façade panels, with stable simulated curtains/blinds. Draw this detail within 160 m with a short fade; View distance overrides do not enable it on other presets or extend its range. Low, Medium and High retain their original building geometry and do not upload the extra façade meshes. Shared scanned plaster and roof materials preserve regional colours. Preset changes refresh already uploaded scenery, including when reusing a kept course, without regeneration; world inputs, model names and instance data remain valid. Materials work offline and across seasons. |

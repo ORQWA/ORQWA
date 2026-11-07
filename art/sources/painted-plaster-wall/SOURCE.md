@@ -8,4 +8,5 @@
 - Untouched 1K diffuse JPEG, OpenGL normal EXR and roughness EXR.
 - Download URLs and SHA-256 checksums: [files.json](files.json).
 
-Used only by the standalone building realism study, not shipped application assets.
+Bundled building materials (R227). `art/textures/building_scans.py` derives neutral albedo,
+OpenGL normal and roughness WebP maps offline; these originals remain untouched.

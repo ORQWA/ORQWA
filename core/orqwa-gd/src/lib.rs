@@ -3753,6 +3753,29 @@ impl OrqwaApp {
         graphics::chunk_arrays_for_season(chunk, tree_density, season)
     }
 
+    /// Uploads close building detail on Ultra without modifying the generated or kept world.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // Godot passes strings by value.
+    fn world_chunk_for_graphics(
+        &self,
+        index: i64,
+        tree_density: f64,
+        name: GString,
+        detailed: bool,
+    ) -> VarDictionary {
+        let chunk = self
+            .app
+            .as_ref()
+            .and_then(App::world)
+            .zip(usize::try_from(index).ok())
+            .and_then(|(world, index)| world.chunks.get(index));
+        let Some(chunk) = chunk else {
+            return VarDictionary::new();
+        };
+        let season = orqwa_domain::season::Season::from_name(&name.to_string()).unwrap_or_default();
+        graphics::chunk_arrays_for_graphics(chunk, tree_density, season, detailed)
+    }
+
     /// Converts small-plant transform buffers with the same seasonal rule used by courses.
     #[func]
     #[allow(clippy::needless_pass_by_value)] // Godot passes arrays and strings by value
