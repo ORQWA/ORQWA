@@ -81,16 +81,14 @@ func upload_some(world: RideWorld) -> void:
 		var chunk: Dictionary = (
 			world._benchmark.chunk_with_building_detail(density, detailed)
 			if world._benchmark != null
-			else world._orqwa.world_chunk_for_graphics(
-				index, density, world._seasons.season, detailed
-			)
+			else world._orqwa.world_chunk_for_graphics(index, density, world._seasons.season, false)
 		)
 		# The core drops old geometry as soon as another course is opened.
 		if chunk.is_empty():
 			world._chunk_count = 0
 			reset()
 			return
-		_add_chunk(world, chunk)
+		_add_chunk(world, chunk, index)
 		_uploaded[index] = true
 		_cursor += 1
 		world._next_chunk += 1
@@ -99,7 +97,7 @@ func upload_some(world: RideWorld) -> void:
 			break
 
 
-func _add_chunk(world: RideWorld, chunk: Dictionary) -> void:
+func _add_chunk(world: RideWorld, chunk: Dictionary, index: int) -> void:
 	var center: Vector3 = chunk["center"]
 	var node: Node3D = Node3D.new()
 	node.position = center
@@ -130,9 +128,11 @@ func _add_chunk(world: RideWorld, chunk: Dictionary) -> void:
 	buildings.visibility_range_end = RideWorld.DETAIL_RANGE * world._distance
 	node.add_child(buildings)
 	var detailed: bool = world._quality["building_detail"]
-	if detailed:
+	if detailed and world._benchmark != null:
 		var detail_arrays: Array = chunk.get("building_details", [])
 		BuildingDetails.add_to(node, detail_arrays)
+	elif detailed and buildings.mesh.get_surface_count() > 0:
+		world._building_detail_streaming.register(index, node, buildings.mesh.get_aabb())
 	var modelled: Array = chunk.get("modelled", [])
 	var model_range: float = world._quality["model_range"]
 	for cell: Dictionary in modelled:

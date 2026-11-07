@@ -158,8 +158,9 @@ stable second-UV seeds, glazing bars and main-roof drainage. Tall French city bl
 their geometry budget and only add the interior treatment. Use
 `art/textures/building_scans.py` for the archived plaster/roof scans; neutral albedo preserves
 regional hues. Review Low/Medium as well as Ultra, and preset changes on a loaded course.
-Generated shell detail is derived in Rust on Ultra upload, rather than stored or built in
-GDScript. See `docs/building-realism-study.md` for the production fixture and range rules.
+Generated shell detail is derived in Rust on nearby Ultra requests, rather than stored or built
+in GDScript. Stream and release it with camera movement; never allocate façade buffers for the
+whole course. See `docs/building-realism-study.md` for the production fixture and range rules.
 
 Asian buildings (`art/buildings/japanese.py`, R164) use the existing named materials and
 `japanese_house` / `japanese_castle` catalogue kinds. Keep the palette and gallery's regional

@@ -22,7 +22,11 @@ non-rectangular panels keep their existing appearance. Mapped shopfronts suppres
 ordinary ground-floor window detail behind them. Decorations follow each façade's orientation
 and are grouped on a 64 m grid for culling.
 
-Only an Ultra upload derives those extra meshes. Fitted models switch between ordinary and
+Only Ultra derives those extra meshes, on demand around the camera. Ordinary chunk uploads
+carry no extra façade buffers. The renderer requests windows within a 308 m loading margin,
+refreshes after 64 m of movement, uploads at most one detail chunk per frame and releases
+additions when their chunks leave that margin. Ride preparation waits for nearby additions;
+the whole course never retains close façade geometry. Fitted models switch between ordinary and
 detailed appearances at **160 m**, with a **20 m** fade; shell additions use the same close
 range. The range remains fixed when View distance changes. Switching to a lighter preset
 refreshes uploaded chunks and releases the detailed model cache. The offline graphics

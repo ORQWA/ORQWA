@@ -44,6 +44,20 @@ fn close_details_retain_the_saved_shell_and_match_its_window_grid() {
 }
 
 #[test]
+fn streamed_details_follow_the_view_without_changing_saved_surfaces() {
+    let mut shell = wall(0, 0.0);
+    shell.append(wall(0, 1000.0));
+    let saved = shell.clone();
+    let near = nearby_building_details(&shell, [0.0, 0.0], 100.0);
+    let far = nearby_building_details(&shell, [1000.0, 0.0], 100.0);
+    assert!(!near.is_empty() && !far.is_empty());
+    assert!(near.iter().flat_map(|m| &m.vertices).all(|p| p[0] < 100.0));
+    assert!(far.iter().flat_map(|m| &m.vertices).all(|p| p[0] > 900.0));
+    assert_eq!(shell, saved);
+    assert_eq!(nearby_building_details(&shell, [f64::NAN, 0.0], 100.0), []);
+}
+
+#[test]
 fn blanks_roofs_and_narrow_panels_do_not_receive_invented_windows() {
     for style in [1, 3, 4, 5, 7, 8, 9] {
         assert_eq!(building_details(&wall(style, 0.0)), []);

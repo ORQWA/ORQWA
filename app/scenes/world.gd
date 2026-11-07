@@ -218,6 +218,7 @@ var _benchmark: OrqwaGraphicsBenchmark
 var _chunk_count: int = 0
 var _next_chunk: int = 0
 var _streaming: WorldStreaming = WorldStreaming.new()
+var _building_detail_streaming: BuildingDetailStreaming = BuildingDetailStreaming.new()
 ## Invalidates a preparation waiting on chunks that a new course or setting replaced.
 var _chunk_revision: int = 0
 var _camera_mode: CameraMode = CameraMode.CHASE
@@ -579,6 +580,9 @@ func _process(delta: float) -> void:
 	if state.is_empty():
 		return
 	_follow_ride(state, delta)
+	if _quality["building_detail"]:
+		var at: Vector3 = _camera.global_position
+		_building_detail_streaming.update(Vector2(at.x, at.z), _orqwa.world_building_details)
 
 
 ## The rider's own avatar (R46), on a new world and whenever the active rider changes; the

@@ -24,6 +24,8 @@ model and Rust-derived shell on Medium and Ultra with fixed cameras/light. Pair 
 course views, Winter and the 160 m transition. `BUILDING_DETAIL=1` selects Ultra variants in
 `scripts/render-models.sh`; preserve the ordinary gallery too. View distance must never
 extend close details or enable them on a lower preset. Native FPS remains separate evidence.
+Also check allocated façade geometry after moving and jumping: nearby streaming must release
+far additions instead of retaining close-detail buffers for the whole course.
 
 For seasons (#350), `SEASON=Summer scripts/render-seasons.sh` in the dev container draws
 the real materials on fixed trees and meadow flowers at 700 m without course preparation.

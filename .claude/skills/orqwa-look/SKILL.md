@@ -103,7 +103,8 @@ Close building detail (R233) belongs to Ultra within 160 m, fading over 20 m. Ke
 geometry on Low–High and preserve the regional proportions/colours. Use the shared neutral
 scans across presets; inspect raised façade frames, sills, glazing bars, curtains and roof
 drainage at eye height, at the distance transition and in Winter. Derive shell additions from
-saved data at upload time so existing courses and quality switches need no regeneration.
+saved data on nearby requests so existing courses and quality switches need no regeneration.
+Release far façade buffers; a short visibility range alone does not bound course memory.
 The production fixture and acceptance limits are in `docs/building-realism-study.md`.
 
 Road appearance (R119, ADR 0031) must agree between the ridden route and surrounding ways.

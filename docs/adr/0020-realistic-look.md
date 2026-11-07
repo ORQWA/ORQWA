@@ -286,5 +286,10 @@ courses; the generated world, ordinary model names, placement manifest and store
 do not change. Preserving material names when styling imported resources allows repeated
 Ultra/lighter preset switches without losing the glass treatment.
 
+Façade buffers are requested only around the camera, refreshed after 64 m of movement and
+released outside a 308 m loading margin. Preparation includes the nearby additions; background
+uploads never build close façades for every course chunk. A visibility range alone bounded
+draw cost but retained millions of unnecessary triangles in the first native town review.
+
 Native frame-rate acceptance remains separate from software-rendered appearance and unit
 checks. See [building detail](../building-realism-study.md) for authoring and review.

@@ -44,6 +44,7 @@ func _run() -> void:
 	_check(next == 0, "the same kept course can upload with its new detail budget")
 	world.free()
 	_models()
+	_streaming()
 	if not _failed:
 		print("BUILDING DETAIL SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
@@ -107,6 +108,34 @@ func _triangles(mesh: ArrayMesh) -> int:
 	for surface: int in mesh.get_surface_count():
 		count += mesh.surface_get_array_index_len(surface) / 3
 	return count
+
+
+func _streaming() -> void:
+	var streaming: BuildingDetailStreaming = BuildingDetailStreaming.new()
+	var nearby: Node3D = Node3D.new()
+	var distant: Node3D = Node3D.new()
+	distant.position.x = 2000.0
+	var bounds: AABB = AABB(Vector3(-20, 0, -20), Vector3(40, 20, 40))
+	streaming.register(0, nearby, bounds)
+	streaming.register(1, distant, bounds)
+	var loaded: Array[int] = []
+	var loader: Callable = func(index: int, _x: float, _z: float, _radius: float) -> Array:
+		loaded.append(index)
+		return []
+	streaming.update(Vector2.ZERO, loader)
+	_check(loaded == [0], "distant course chunks never allocate façade additions")
+	_check(streaming.ready_at(Vector2.ZERO), "nearby additions are ready before riding")
+	streaming.update(Vector2(2000, 0), loader)
+	_check(loaded == [0, 1], "moving or jumping streams the new surroundings")
+	_check(nearby.get_child_count() == 0, "far additions are released")
+	streaming.update(Vector2(2001, 0), loader)
+	_check(loaded.size() == 2, "the movement margin avoids rebuilding every frame")
+	streaming.update(Vector2(2090, 0), loader)
+	_check(loaded.size() == 3, "moving beyond the margin refreshes the nearby subset")
+	streaming.reset()
+	_check(distant.get_child_count() == 0, "preset/course changes release streamed additions")
+	nearby.free()
+	distant.free()
 
 
 func _check(ok: bool, message: String) -> void:

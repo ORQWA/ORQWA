@@ -74,6 +74,8 @@ func _run() -> void:
 	for place: float in _setting("PLACES", "").split_floats(" ", false):
 		await _go_to(place)
 		await _sample("all")
+		# Nearby additions stream after the camera moves; include their allocated geometry too.
+		_print_totals()
 		root.get_texture().get_image().save_png(
 			_setting("OUT_DIR", ".").path_join("%s-%.0f.png" % [_label, place])
 		)
@@ -392,6 +394,8 @@ func _kinds() -> Dictionary:
 
 
 func _kind(geometry: GeometryInstance3D) -> String:
+	if geometry is MeshInstance3D and geometry.has_meta("building_detail"):
+		return "building_details"
 	if geometry is Label3D:
 		return "labels"
 	if geometry.has_meta("tree"):

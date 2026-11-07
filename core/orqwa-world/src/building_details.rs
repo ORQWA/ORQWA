@@ -18,12 +18,36 @@ type Rect = [f64; 4];
 /// changes nor persists the input, so kept worlds and lower-quality uploads remain unchanged.
 /// Non-rectangular panels and unsupported surface styles retain their ordinary appearance.
 #[must_use]
-#[allow(clippy::too_many_lines)] // One bounded pass over the saved façade styles and their trim.
 pub fn building_details(shell: &MeshData) -> Vec<MeshData> {
+    details(shell, None)
+}
+
+/// Derives nearby windows within `radius` metres of shell-local `(x, z)` `center`.
+#[must_use]
+pub fn nearby_building_details(shell: &MeshData, center: [f64; 2], radius: f64) -> Vec<MeshData> {
+    if !radius.is_finite() || radius <= 0.0 || center.iter().any(|n| !n.is_finite()) {
+        return Vec::new();
+    }
+    details(shell, Some((center, radius)))
+}
+
+#[allow(clippy::too_many_lines)] // One bounded pass over the saved façade styles and their trim.
+fn details(shell: &MeshData, view: Option<([f64; 2], f64)>) -> Vec<MeshData> {
     let faces = faces(shell);
     let shops: Vec<&Face> = faces.iter().filter(|face| face.style == 10).collect();
     let mut cells: BTreeMap<(i64, i64), MeshData> = BTreeMap::new();
     for face in &faces {
+        if let Some((center, radius)) = view {
+            let a = face.point(face.bounds[0], face.bounds[1], 0.0);
+            let b = face.point(face.bounds[2], face.bounds[1], 0.0);
+            let line = [b[0] - a[0], b[2] - a[2]];
+            let t = (((center[0] - a[0]) * line[0] + (center[1] - a[2]) * line[1])
+                / (line[0] * line[0] + line[1] * line[1]).max(1e-6))
+            .clamp(0.0, 1.0);
+            if (a[0] + t * line[0] - center[0]).hypot(a[2] + t * line[1] - center[1]) > radius {
+                continue;
+            }
+        }
         let mut windows = Vec::new();
         match face.style {
             0 | 2 | 11 => {
@@ -88,6 +112,11 @@ pub fn building_details(shell: &MeshData) -> Vec<MeshData> {
                 f64::midpoint(pane[1], pane[3]),
                 0.0,
             );
+            if view.is_some_and(|(center, radius)| {
+                (middle[0] - center[0]).hypot(middle[2] - center[1]) > radius
+            }) {
+                continue;
+            }
             let mesh = cells.entry(cell(middle)).or_default();
             window(mesh, face, pane);
         }
