@@ -15,7 +15,7 @@ glass shader suggests curtains, blinds and dark rooms while retaining sky reflec
 Tall French blocks keep their existing balcony/dormer geometry budget and use the interior
 shader without extra glazing bars.
 
-`orqwa_world::building_details` reconstructs raised frames, sills, glazing bars, glass and
+`orqwa_world::nearby_building_details` reconstructs raised frames, sills, glazing bars, glass and
 trim from existing saved shell panels. Plastered/timber window grids, shopfronts, office
 ribbons and individual rectangular windows are supported. Unsupported, narrow and
 non-rectangular panels keep their existing appearance. Mapped shopfronts suppress the
@@ -47,9 +47,45 @@ See [credits](CREDITS.md) and the originals' `SOURCE.md` files for provenance an
 
 The [initial house](images/building-realism/house-comparison.jpg) and
 [town study](images/building-realism/town-comparison.jpg) preserve the design review.
-Production Medium/Ultra views and full-course comparisons are recorded with the PR.
-Software renders establish appearance and geometry budgets, not native frame rate. Native
-Medium/M1 and dense-street Ultra performance remain explicit acceptance work in the roadmap.
+Production comparisons use the same cameras and light:
+
+| View | Medium | Ultra |
+|---|---|---|
+| Fitted house | [Ordinary model](images/building-integration/model-medium.jpg) | [Close model](images/building-integration/model-ultra.jpg) |
+| Generated façade | [Shell](images/building-integration/facade-medium.jpg) | [Frames, glazing and trim](images/building-integration/facade-ultra.jpg) |
+| Saved Bern course | [Street](images/building-integration/city-medium.jpg) | [Street](images/building-integration/city-ultra.jpg) |
+
+The same course also has [Low](images/building-integration/city-low.jpg) and
+[Winter](images/building-integration/city-winter.jpg) captures. The distant
+[model](images/building-integration/model-far-ultra.jpg) and
+[shell](images/building-integration/facade-far-ultra.jpg) views return to ordinary detail.
+All 72 catalogue models were reviewed on both ordinary and Ultra appearances; rebuilding the
+Ultra exports was byte-identical. The six-storey French block stays at 9,328 triangles.
+
+## Native measurement (2026-11-08)
+
+The [raw CSV](data/building-detail-m5.csv) and [metadata](data/building-detail-m5.json) record
+the CI-built `b955ac1` app on an **M5 Pro**, using Metal/Forward+ and the same saved 61-chunk
+Bern course for both builds. The baseline resource pack is `bcf38eb7`. Each paused chase-view
+sample settles for five seconds and measures three seconds, with uncapped FPS and V-Sync off.
+The viewport was 1361 × 855 logical pixels (2722 × 1710 captured pixels).
+
+| Route position | Main Ultra median | This change Ultra median | This change FPS |
+|---|---|---|---|
+| 0 m | 12.07 ms | 12.88 ms | 77.6 |
+| 100 m | 11.44 ms | 12.32 ms | 81.1 |
+| 450 m | 14.45 ms | 14.38 ms | 69.4 |
+
+Medium view/shadow primitive and draw-call counts match the baseline exactly. Both Medium
+trials are retained in the CSV: timings varied on both builds under background workload,
+so they establish no stable speedup or slowdown. Every recorded sample stayed above 60 FPS
+on this machine. These short M5 samples do **not** verify the Medium/M1 target or a long ride.
+
+The first native review exposed whole-course façade allocation. Streaming reduced retained
+façade mesh triangles from **35,083,010** to **2,574,874 / 2,578,858 / 894,656** at the three
+positions, releasing far geometry as the camera moved. This is a geometry count, not a VRAM
+byte measurement. The full container suite and all platform CI builds passed; M1 acceptance
+remains explicit work in the roadmap.
 
 ## Reproduce
 

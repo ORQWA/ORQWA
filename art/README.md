@@ -215,7 +215,7 @@ The ordinary GLBs and placement manifest stay unchanged.
 
 `art/textures/building_scans.py` converts archived CC0 plaster/roof scans to neutral shared
 albedo, OpenGL normal and roughness maps, preserving the regional palette colours.
-`orqwa_world::building_details` derives close frames, sills, glazing and trim from saved shell
+`orqwa_world::nearby_building_details` derives close frames, sills, glazing and trim from saved shell
 surfaces only for Ultra, grouped into 64 m culling cells. The production renderer selects
 detail within 160 m, with a 20 m fade; lower presets upload the original geometry.
 Nearby requests also bound allocation: camera movement refreshes the subset and releases far
