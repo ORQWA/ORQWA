@@ -99,6 +99,14 @@ Blender Python; its header shows how to run it).
 
 ## How to get it
 
+Close building detail (R233) belongs to Ultra within 160 m, fading over 20 m. Keep ordinary
+geometry on Low–High and preserve the regional proportions/colours. Use the shared neutral
+scans across presets; inspect raised façade frames, sills, glazing bars, curtains and roof
+drainage at eye height, at the distance transition and in Winter. Derive shell additions from
+saved data on nearby requests so existing courses and quality switches need no regeneration.
+Release far façade buffers; a short visibility range alone does not bound course memory.
+The production fixture and acceptance limits are in `docs/building-realism-study.md`.
+
 Road appearance (R119, ADR 0031) must agree between the ridden route and surrounding ways.
 Keep motorway carriageways separate as mapped; show shoulders and long lane dashes, narrower
 ramps, main-road centre lines and unmarked local streets and cycleways. Explicit paving wins

@@ -271,3 +271,25 @@ maps, keeping clearings and water and excluding ridden tunnels. Pointed leaf sil
 edge-biased drifts, physical scale, rain response and subpixel filtering live in the road
 material. No texture download, stored data or generated geometry changes; season selection
 remains reversible and has no effect on resistance or grip.
+
+### Nearby Ultra buildings (2026-11-07, R233)
+
+Separate close model appearances and Rust-derived façade additions are selected only by
+Ultra, within 160 m with a 20 m fade. View distance remains independent. Low–High upload
+their existing geometry; all presets share neutralized scanned plaster/roof materials and
+regional palette tints. The benchmark follows the same upload path.
+
+Extra window geometry and simulated interiors use opaque materials, avoiding transparent
+room meshes. Shell frames, sills and trim are derived from the existing saved surface
+contract and grouped on a 64 m grid. Quality changes refresh presentation, including kept
+courses; the generated world, ordinary model names, placement manifest and stored format
+do not change. Preserving material names when styling imported resources allows repeated
+Ultra/lighter preset switches without losing the glass treatment.
+
+Façade buffers are requested only around the camera, refreshed after 64 m of movement and
+released outside a 308 m loading margin. Preparation includes the nearby additions; background
+uploads never build close façades for every course chunk. A visibility range alone bounded
+draw cost but retained millions of unnecessary triangles in the first native town review.
+
+Native frame-rate acceptance remains separate from software-rendered appearance and unit
+checks. See [building detail](../building-realism-study.md) for authoring and review.

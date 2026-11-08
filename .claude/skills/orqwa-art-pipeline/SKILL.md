@@ -151,6 +151,17 @@ all maps, normal-map import on normals, and keep these six textures with their s
 
 ## Regional buildings
 
+Nearby Ultra building variants (R233) are authored with
+`art/buildings/build.py -- --detail`, into `app/assets/models/buildings/detail/`. Retain the
+ordinary GLBs, manifest, model names and dimensions. `details.py` adds normalized panes with
+stable second-UV seeds, glazing bars and main-roof drainage. Tall French city blocks keep
+their geometry budget and only add the interior treatment. Use
+`art/textures/building_scans.py` for the archived plaster/roof scans; neutral albedo preserves
+regional hues. Review Low/Medium as well as Ultra, and preset changes on a loaded course.
+Generated shell detail is derived in Rust on nearby Ultra requests, rather than stored or built
+in GDScript. Stream and release it with camera movement; never allocate façade buffers for the
+whole course. See `docs/building-realism-study.md` for the production fixture and range rules.
+
 Asian buildings (`art/buildings/japanese.py`, R164) use the existing named materials and
 `japanese_house` / `japanese_castle` catalogue kinds. Keep the palette and gallery's regional
 wall/roof colours aligned with Rust placement. Castle model tiers, first eave height and
