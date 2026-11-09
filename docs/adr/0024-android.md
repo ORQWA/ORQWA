@@ -58,7 +58,10 @@ build image. That is too much for the dev image, which every check pulls.
   - The core's log goes to Android's log (`adb logcat -s ORQWA`), at debug level while support is
     young.
   - A file picked on Android arrives as a `content://` address, which the core cannot open.
-    `PickedFile` copies it into ORQWA's folder first. Elsewhere it changes nothing.
+    `PickedFile` copies it into ORQWA's folder first. Elsewhere it changes nothing. Some pickers
+    answer an address ending in a document id (`…/document/msf:…`), which names nothing: the
+    plugin names the copy by the provider's display name, so the import still sees the file's
+    extension.
 
 ## Phase A result (2026-10-19)
 
