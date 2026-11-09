@@ -59,9 +59,15 @@ static func save(written: String, picked: String) -> bool:
 static func name_of(picked: String) -> String:
 	if not picked.begins_with("content://"):
 		return picked
-	var file_name: String = _display_name(picked)
+	return _content_name(picked, _display_name(picked))
+
+
+## What a content `address`'s file is called: the `display_name` its provider gives Android
+## when it answers one, else the address's own last part, else "picked".
+static func _content_name(address: String, display_name: String) -> String:
+	var file_name: String = display_name.get_file()
 	if file_name.is_empty():
-		file_name = picked.uri_decode().get_file()
+		file_name = address.uri_decode().get_file()
 	return file_name if not file_name.is_empty() else "picked"
 
 

@@ -323,6 +323,10 @@ func _picked_files() -> void:
 		"content://com.android.providers.media.documents/document/msf%3A1000003599"
 	)
 	_check(PickedFile.name_of(document) == "msf:1000003599", "a document id answers itself")
+	_check(
+		PickedFile._content_name(document, "Ride.gpx") == "Ride.gpx",
+		"a provider's display name names the copy"
+	)
 
 
 ## The captions of a three-column options grid whose rows show.
