@@ -21,9 +21,7 @@ func _run() -> void:
 	_check(PickedFile.name_of(address) == "Ride.gpx", "a content address shows its file name")
 	_check(PickedFile.save_path(address).ends_with("/picked/Ride.gpx"), "saved in ORQWA's folder")
 	# Off Android a document id keeps naming the copy; on Android its display name does.
-	var document: String = (
-		"content://com.android.providers.media.documents/document/msf%3A1000003599"
-	)
+	var document: String = "content://com.android.providers.media.documents/document/msf%3A1000003599"
 	_check(PickedFile.name_of(document) == "msf:1000003599", "a document id answers itself")
 	_check(
 		PickedFile._content_name(document, "Ride.gpx") == "Ride.gpx",
