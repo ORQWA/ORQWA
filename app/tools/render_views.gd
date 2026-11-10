@@ -116,11 +116,7 @@ func _run() -> void:
 		quit(1)
 		return
 	# Upload chunks while the world is hidden, instead of rendering every intermediate batch.
-	while true:
-		var next_chunk: int = world.get("_next_chunk")
-		var chunk_count: int = world.get("_chunk_count")
-		if next_chunk >= chunk_count:
-			break
+	while not world.chunks_uploaded():
 		await process_frame
 	orqwa.connect_fake_trainer(150.0, 85.0)
 	orqwa.start_ride(50.0, false, {"kind": "none"})
@@ -154,11 +150,7 @@ func _run() -> void:
 		world.set("_placed", false)
 		var season: String = OS.get_environment("SEASON")
 		world.apply_options({"time": time, "weather": weather, "camera": camera, "season": season})
-		while true:
-			var streamed: int = world.get("_next_chunk")
-			var chunks: int = world.get("_chunk_count")
-			if streamed >= chunks:
-				break
+		while not world.chunks_uploaded():
 			await process_frame
 		if spec.size() > 5 and spec[5] is Vector3:
 			# Place the rider at the requested distance before positioning a camera aside.
