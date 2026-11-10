@@ -2130,7 +2130,6 @@ impl App {
         self.used.clone()
     }
 
-    /// Generates the 3D world for `route` in the background; reports [`AppEvent::WorldReady`].
     /// Lets go of `world` in the background: deleting its store takes a while.
     fn drop_world(&mut self, world: impl Send + 'static) {
         self.letting_go.retain(|deleting| !deleting.is_finished());
@@ -2138,6 +2137,7 @@ impl App {
         self.letting_go.push(deleting);
     }
 
+    /// Generates the 3D world for `route` in the background; reports [`AppEvent::WorldReady`].
     fn generate_world(&mut self, route: Route, map: orqwa_osm::MapData) {
         if let Err(failure) = self.room_for_world(&route) {
             // Built on the next Ride, once the rider has made room.
