@@ -122,7 +122,8 @@ public class OrqwaAndroid extends GodotPlugin {
             return null;
         }
         try (Cursor cursor = activity.getContentResolver()
-                .query(Uri.parse(address), null, null, null, null)) {
+                .query(Uri.parse(address), new String[] {OpenableColumns.DISPLAY_NAME}, null,
+                        null, null)) {
             if (cursor == null || !cursor.moveToFirst()) {
                 return null;
             }

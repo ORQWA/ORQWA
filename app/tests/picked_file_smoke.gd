@@ -23,6 +23,8 @@ func _run() -> void:
 	# Off Android a document id keeps naming the copy; on Android its display name does.
 	var document: String = "content://com.android.providers.media.documents/document/msf%3A1000003599"
 	_check(PickedFile.name_of(document) == "msf:1000003599", "a document id answers itself")
+	# The Android plugin is not there headless, so the provider's answer is handed in directly;
+	# the plugin's query itself is covered only on a device.
 	_check(
 		PickedFile._content_name(document, "Ride.gpx") == "Ride.gpx",
 		"a provider's display name names the copy"
