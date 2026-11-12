@@ -968,7 +968,12 @@ summary ([ADR 0014](adr/0014-ride-analysis-data.md)). One step per analysis:
         `File.getUsableSpace`; a kept world needs none
       - [x] a ride's store safe from tidying: this ORQWA's stores are never tidied, also when
         keeping is turned off; others' go by age
-    - [ ] Godot frees far chunks
+    - [x] Godot frees far chunks
+      - [x] chunks uploaded within the upload radius, freed only beyond it plus 240 m and a
+        chunk, and read and uploaded again when the rider comes back
+      - [x] measured from the rider, or from the free camera while it flies
+      - [x] a simulated ride's jump, or the camera's return from the free camera, waits, clock
+        included, until the rider's surroundings are uploaded, and goes on by itself
     - [ ] generated ahead of the rider (#237)
   - [ ] far streets and their ground in coarser pieces (a generator change, with review renders)
 - **Exit:** a real ride on the tablet: course imported there, KICKR and Click, saved and uploaded
