@@ -353,7 +353,8 @@ pub enum AppEvent {
     },
     /// More of the 3D world being ridden was built.
     WorldGrew {
-        /// Whether the structures changed: bridges were built.
+        /// Whether bridges were built, to be added to the scene from
+        /// [`App::take_added_structures`].
         structures: bool,
         /// Whether the world is complete now.
         complete: bool,
@@ -495,11 +496,21 @@ pub enum TrainerChoice {
     Discovered(usize),
 }
 
-/// A world loaded for a ride.
+/// How the world being ridden grew since last reported.
+#[derive(Debug, Default, Clone, Copy)]
+struct Grown {
+    /// Every chunk is built.
+    complete: bool,
+}
+
+/// How often at most the scene is told of bridges built while the world is ridden.
+const BRIDGES_EVERY: Duration = Duration::from_secs(5);
+
 /// The radius for [`App::build_world`] that has every chunk finished before the world is
 /// ridden.
 pub const WHOLE_WORLD: Meters = Meters(f64::INFINITY);
 
+/// A world loaded for a ride.
 struct LoadedWorld {
     /// Its parts built whole.
     world: Arc<World>,
@@ -517,10 +528,10 @@ enum JobResult {
     Route(u64, Result<Box<Imported>, Failure>),
     Video(u64, Result<Box<(Imported, video::VideoSource)>, Failure>),
     World(u64, Box<LoadedWorld>),
-    /// The structures of the world being built, with the bridges built since it was ready.
+    /// Bridges of the world being built, built since those last handed over.
     Structures(u64, Box<orqwa_world::MeshData>),
-    /// The world being built is complete: its parts built whole, with every structure.
-    Built(u64, Box<World>),
+    /// The world being built is complete: what the world handed over at ready lacks.
+    Built(u64, Box<orqwa_world::Rest>),
     Progress(u64, LoadStage, usize, usize),
     CourseAdded(Result<PathBuf, Failure>),
     /// The loaded route was saved as this course.
@@ -795,6 +806,19 @@ pub struct App {
     chunks: Option<Arc<WorldChunks>>,
     /// How many of the chunks of the world being built were finished when last reported.
     chunks_reported: usize,
+    /// How the world being ridden grew since last reported, if it did: reported once per
+    /// update, however many chunks and bridges came in.
+    grown: Option<Grown>,
+    /// Bridges built since the scene last took them, to add rather than draw every
+    /// structure again: Wada's are 33 MB.
+    added_structures: Vec<orqwa_world::MeshData>,
+    /// When the scene was last told of bridges built, so it is told at most every
+    /// [`BRIDGES_EVERY`]: each time adds a mesh to draw.
+    bridges_reported: Option<Instant>,
+    /// How much of the device the world being built may take while it is ridden (ADR 0040).
+    pace: Option<Arc<orqwa_world::Pace>>,
+    /// Lowers the calling thread's priority, where the platform glue can.
+    lower_priority: Option<fn()>,
     /// The fingerprint of the library course whose world is being built, to keep it as once
     /// complete (R101).
     keep_as: Option<String>,
@@ -943,6 +967,11 @@ impl App {
             computer,
             world_generator: orqwa_world::GENERATOR,
             chunks_reported: 0,
+            grown: None,
+            added_structures: Vec::new(),
+            bridges_reported: None,
+            pace: None,
+            lower_priority: None,
             keep_as: None,
             world_ahead: (false, WHOLE_WORLD),
             index: Mutex::new(index),
@@ -2149,6 +2178,10 @@ impl App {
         self.world = None;
         self.keep_as = None;
         self.world_ahead = (false, WHOLE_WORLD);
+        self.grown = None;
+        self.added_structures.clear();
+        self.bridges_reported = None;
+        self.pace = None;
         if let Some(chunks) = self.chunks.take() {
             // Deleting the store it was ridden from takes a while.
             self.drop_world(chunks);
@@ -2188,6 +2221,8 @@ impl App {
         self.keep_as = keep_as;
         self.road_widths = orqwa_world::RoadWidths::new(&world.road);
         self.chunks_reported = chunks.finished_count();
+        // The scene draws the world's structures whole now.
+        self.added_structures.clear();
         self.world = Some(world);
         self.chunks = Some(chunks);
     }
@@ -2195,13 +2230,13 @@ impl App {
     /// The world being ridden is complete, its parts built whole `rest`: it gets every
     /// structure, its winter ground's mask can be made, and it is kept (R101) or, built for a
     /// prepared GPX, goes into the course library with it (R39).
-    fn world_built(&mut self, rest: World, events: &mut Vec<AppEvent>) {
+    fn world_built(&mut self, rest: orqwa_world::Rest) {
+        self.pace = None;
         let (Some(world), Some(chunks)) = (&mut self.world, &self.chunks) else {
             return;
         };
         let parts = Arc::make_mut(world);
-        // Drawn again only if bridges were built after the last ones reported.
-        let structures = parts.structures != rest.structures;
+        // The same triangles as those handed over so far, already in the scene.
         parts.structures = rest.structures;
         parts.fallback_samples = rest.fallback_samples;
         if chunks.completed() {
@@ -2209,10 +2244,7 @@ impl App {
             self.runtime
                 .spawn_blocking(move || chunks.make_snow_ground_mask(&world));
         }
-        events.push(AppEvent::WorldGrew {
-            structures,
-            complete: true,
-        });
+        self.grown.get_or_insert_default().complete = true;
         let (world, chunks) = (Arc::clone(world), Arc::clone(chunks));
         if !self.from_course {
             if let Err(error) = self.save_course() {
@@ -2226,19 +2258,66 @@ impl App {
         }
     }
 
-    /// Reports chunks of the world being ridden finished since last reported.
+    /// Reports once how the world being ridden grew since last reported: chunks finished,
+    /// every chunk built, or bridges built, those at most every [`BRIDGES_EVERY`] unless the
+    /// build hurries or the world is complete.
     fn report_growth(&mut self, events: &mut Vec<AppEvent>) {
-        let Some(chunks) = self.chunks.as_ref().filter(|chunks| !chunks.complete()) else {
-            return;
-        };
-        let finished = chunks.finished_count();
-        if finished != self.chunks_reported {
-            self.chunks_reported = finished;
-            events.push(AppEvent::WorldGrew {
-                structures: false,
-                complete: false,
-            });
+        if let Some(chunks) = self.chunks.as_ref().filter(|chunks| !chunks.complete()) {
+            let finished = chunks.finished_count();
+            if finished != self.chunks_reported {
+                self.chunks_reported = finished;
+                self.grown.get_or_insert_default();
+            }
         }
+        // Bridges are built well ahead of the rider, so they can wait to come in together:
+        // each time adds a mesh to draw. Not while the build hurries: the rider is then close
+        // behind, and a bridge held back could appear in view.
+        let complete = self.grown.is_some_and(|grown| grown.complete);
+        let hurrying = self.pace.as_ref().is_some_and(|pace| pace.hurrying());
+        let bridges = !self.added_structures.is_empty()
+            && (complete
+                || hurrying
+                || self
+                    .bridges_reported
+                    .is_none_or(|reported| reported.elapsed() >= BRIDGES_EVERY));
+        if self.grown.take().is_none() && !bridges {
+            return;
+        }
+        if bridges {
+            self.bridges_reported = Some(Instant::now());
+        }
+        events.push(AppEvent::WorldGrew {
+            structures: bridges,
+            complete,
+        });
+    }
+
+    /// Tells the world being built where the rider is, so it gives way to the ride.
+    fn pace_build(&self) {
+        if let Some(pace) = &self.pace {
+            pace.ride_at(self.riding_at());
+        }
+    }
+
+    /// Where the rider is along the route while the ride moves: not before it starts, after
+    /// it ends, or while it is paused, also when a rider who caught up waits for the world.
+    fn riding_at(&self) -> Option<Meters> {
+        self.ride
+            .as_ref()
+            .filter(|active| active.started.is_some() && !active.finished && !active.paused)
+            .map(|active| active.ride.state().distance)
+    }
+
+    /// The bridges built since last taken, while the world being ridden is built
+    /// ([`AppEvent::WorldGrew`]): [`App::world`]'s structures hold them too.
+    pub fn take_added_structures(&mut self) -> Vec<orqwa_world::MeshData> {
+        std::mem::take(&mut self.added_structures)
+    }
+
+    /// How the platform lowers a thread's priority, for building a world while it is ridden
+    /// (ADR 0040): the building threads call it as they start.
+    pub fn set_lower_priority(&mut self, lower: fn()) {
+        self.lower_priority = Some(lower);
     }
 
     /// Generates the 3D world for `route` in the background; reports [`AppEvent::WorldReady`].
@@ -2277,6 +2356,8 @@ impl App {
                 (Meters(east), Meters(north))
             });
         let keeper = self.keeper();
+        let pace = Arc::new(orqwa_world::Pace::new(radius, self.lower_priority));
+        self.pace = Some(Arc::clone(&pace));
         self.spawn_load(load, async move {
             let mut reporter = Reporter {
                 tx: tx.clone(),
@@ -2310,6 +2391,8 @@ impl App {
                 keeper.store(keep_as.as_deref().unwrap_or("ride")),
             ));
             let mut horizon = Some(orqwa_world::horizon(&route, &mut distant).await);
+            // Its tiles are not needed again, so they are not held while the chunks are built.
+            drop(distant);
             let mut keep_as = Some(keep_as);
             let sink = |index, chunk| chunks.take(index, chunk);
             let (ready_tx, structures_tx) = (tx.clone(), tx.clone());
@@ -2328,7 +2411,7 @@ impl App {
                         let loaded = LoadedWorld {
                             world: Arc::new(World {
                                 horizon: horizon.take().unwrap_or_default(),
-                                ..world.clone()
+                                ..world
                             }),
                             chunks: Arc::clone(&chunks),
                             generator: orqwa_world::GENERATOR,
@@ -2337,9 +2420,9 @@ impl App {
                         let _ = ready_tx.send(JobResult::World(load, Box::new(loaded)));
                     },
                     structures: &mut |mesh| {
-                        let mesh = Box::new(mesh.clone());
-                        let _ = structures_tx.send(JobResult::Structures(load, mesh));
+                        let _ = structures_tx.send(JobResult::Structures(load, Box::new(mesh)));
                     },
+                    pace: Some(&pace),
                 },
             )
             .await;
@@ -4032,6 +4115,7 @@ impl App {
         let mut events = Vec::new();
         self.poll_events(&mut events);
         self.report_growth(&mut events);
+        self.pace_build();
 
         if let Some(active) = &mut self.ride
             && active.started.is_some()
@@ -4277,16 +4361,14 @@ impl App {
                     events.push(AppEvent::LoadProgress { stage, done, total });
                 }
                 JobResult::World(_, loaded) => self.world_ready(*loaded, events),
-                JobResult::Structures(_, structures) => {
+                JobResult::Structures(_, bridges) => {
                     if let Some(world) = &mut self.world {
-                        Arc::make_mut(world).structures = *structures;
-                        events.push(AppEvent::WorldGrew {
-                            structures: true,
-                            complete: false,
-                        });
+                        // Kept whole too, for a scene drawn again from the world.
+                        Arc::make_mut(world).structures.append((*bridges).clone());
+                        self.added_structures.push(*bridges);
                     }
                 }
-                JobResult::Built(_, rest) => self.world_built(*rest, events),
+                JobResult::Built(_, rest) => self.world_built(*rest),
                 JobResult::CourseAdded(Ok(path)) => events.push(AppEvent::CourseAdded(path)),
                 JobResult::CourseSaved(Ok(path)) => {
                     self.saving = None;
@@ -6742,6 +6824,36 @@ mod tests {
     }
 
     #[test]
+    fn a_world_being_built_gives_way_only_while_the_ride_moves() {
+        let dir = temp_dir("gives-way");
+        let mut app = App::new(dir.join("data"), dir.join("cache")).unwrap();
+        app.load_route(write_route(&dir), true);
+        run_until(&mut app, |e| matches!(e, AppEvent::WorldReady { .. }));
+        assert_eq!(app.riding_at(), None, "no ride yet");
+        app.connect_trainer(TrainerChoice::Fake(FakeRider {
+            power: Watts(250.0),
+            cadence: Rpm(90.0),
+            heart: None,
+        }))
+        .unwrap();
+        app.start_ride(Percent(50.0), DescentMode::Coast, &GhostChoice::None)
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while app.riding_at().is_none() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(16));
+            app.update(Duration::from_millis(16));
+        }
+        assert!(app.riding_at().is_some(), "the ride never moved");
+
+        // Paused, as when a rider who caught up waits for the world: the build may take
+        // everything.
+        app.set_paused(true);
+        assert_eq!(app.riding_at(), None);
+        app.set_paused(false);
+        assert!(app.riding_at().is_some());
+    }
+
+    #[test]
     fn a_video_course_is_ridden_along_its_video_or_in_3d() {
         let dir = temp_dir("video-or-3d");
         let video = video_in(
@@ -7074,11 +7186,18 @@ mod tests {
         for &index in &plan.indices[..plan.nearby] {
             assert!(chunks.finished(index) && chunks.get(index).is_some());
         }
-        if !chunks.complete() {
-            run_until(&mut app, |e| {
-                matches!(e, AppEvent::WorldGrew { complete: true, .. })
-            });
+        // However many chunks and bridges come in between, Godot is told once per frame.
+        let deadline = Instant::now() + Duration::from_secs(120);
+        while !chunks.complete() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(16));
+            let events = app.update(Duration::from_millis(16));
+            let grew = events
+                .iter()
+                .filter(|e| matches!(e, AppEvent::WorldGrew { .. }))
+                .count();
+            assert!(grew <= 1, "{grew} reports of growth in one update");
         }
+        assert!(chunks.complete());
 
         assert_eq!(
             read_all(&chunks),

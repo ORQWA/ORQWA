@@ -39,6 +39,7 @@ use orqwa_world::MapFeature;
 
 #[cfg(target_os = "android")]
 mod android_audio;
+mod background;
 mod graphics;
 mod group;
 mod log;
@@ -193,7 +194,10 @@ impl INode for OrqwaApp {
         } else {
             // Set once per process; a second node keeps the first one's.
             let _ = tracing::subscriber::set_global_default(log::StderrLog);
-            let app = App::new(data_dir(), paths::cache_dir());
+            let app = App::new(data_dir(), paths::cache_dir()).map(|mut app| {
+                app.set_lower_priority(background::lower_this_thread);
+                app
+            });
             #[cfg(target_os = "android")]
             let app = app.map(|mut app| {
                 app.check_free_storage(std::sync::Arc::new(android_storage::free));
@@ -3852,6 +3856,19 @@ impl OrqwaApp {
             .as_ref()
             .and_then(App::world)
             .map_or_else(VarDictionary::new, |world| mesh_arrays(&world.structures))
+    }
+
+    /// The bridges built since last taken while the world being ridden is built, as mesh
+    /// arrays like `structures_mesh()`'s, to add to the scene on `world_grew`: drawing every
+    /// structure again would stall the frame.
+    #[func]
+    fn take_added_structures(&mut self) -> Array<VarDictionary> {
+        self.app.as_mut().map_or_else(Array::new, |app| {
+            app.take_added_structures()
+                .iter()
+                .map(mesh_arrays)
+                .collect()
+        })
     }
 
     /// The minimap (R70) in the rider's map style: `{background, land, lines, corridor}`, all
