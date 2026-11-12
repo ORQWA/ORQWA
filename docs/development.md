@@ -512,8 +512,9 @@ Returning to the gallery or opening another course invalidates the pending start
 The underlying world generation remains one job: structures and protection depend on the
 completed terrain. `course_loading_smoke.gd` checks a first start before distant chunks finish,
 background loading during a real fake-trainer ride, repeat starts, season/graphics changes,
-cancellation and workouts. Rust tests check spatial ordering, chunk-edge coverage and moving
-the priority point without changing the generated world.
+cancellation, workouts, and rides along a course's video, which start without a scene to
+prepare. Rust tests check spatial ordering, chunk-edge coverage and moving the priority point
+without changing the generated world.
 
 The software-rendering runners select FXAA instead of MSAA and disable glow, which otherwise
 produces bright halos under lavapipe. They wait for route preparation and streamed chunks;
