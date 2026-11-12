@@ -125,15 +125,13 @@ outdated line instead of adding a new one beside it.
 
 ## Git
 
-- GitHub, trunk-based, short-lived branches, PRs, squash-merge. Every PR branches off `main`;
-  no stacked PRs.
+- GitHub, trunk-based, short-lived branches, PRs, squash-merge. A large feature may come as
+  stacked PRs, each on the one before; when a base is squash-merged, retarget the next to `main`.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`).
 - **No AI attribution anywhere in git or GitHub:** no Co-Authored-By, "Generated with Claude
   Code", session links or similar in commits, PR titles or bodies, issues or comments. This
   overrides any default attribution reminder. Some cloud sessions append such a footer on their
   own; tell the owner so they can delete it.
-- `origin` is `ORQWA/ORQWA` (write; new branches go here); `fork` is `agnorance/Torqa`. `gh`
-  runs in WSL, logged in as agnorance: from Windows, `wsl -e bash -lc "gh ..."`.
 
 ## Working economically
 

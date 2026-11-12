@@ -22,10 +22,9 @@ accounts or money. Prepare and verify, then ask; say plainly what is and is not 
 
 Jobs, in order of dependence: `image` (the dev container), `checks` (what `scripts/check.sh`
 runs), then `macos`, `windows`, `linux` and `android` builds, then `release`. Watch with
-`gh run list -b <branch>` and `gh run view <id> --json conclusion,jobs -q` (gh in WSL:
-`wsl -e bash -lc "gh ... -R ORQWA/ORQWA"`). Read only the failing job's log. A build green only
-counts when its run's commit contains the change — a newer push cancels an older run, and a
-watcher's exit 1 is that cancellation as often as a real failure.
+`gh run list -b <branch>` and `gh run view <id> --json conclusion,jobs -q`. Read only the failing
+job's log. A build green only counts when its run's commit contains the change — a newer push
+cancels an older run, and a watcher's exit 1 is that cancellation as often as a real failure.
 
 ## Cutting a release
 

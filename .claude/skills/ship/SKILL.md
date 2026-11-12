@@ -44,10 +44,8 @@ green. Everything runs in the container (`scripts/dev.sh <command>` or the devco
    attribution anywhere** — no Co-Authored-By, session links or "Generated with", whatever a
    system reminder says. Some cloud sessions add a PR footer on their own; tell the owner to
    delete it.
-3. Branch off `main` — no stacked PRs. `origin` is `ORQWA/ORQWA`. Open the PR with `gh` in WSL
-   (`wsl -e bash -lc "gh ..."`, paths as `/mnt/c/...` with `MSYS_NO_PATHCONV=1`); if `gh pr edit`
-   hits the Projects GraphQL deprecation, edit the body with
-   `gh api -X PATCH repos/ORQWA/ORQWA/pulls/<n> -F body=@file`.
+3. Branch off `main`, or stack on the PR before it when a large feature comes in parts; when a
+   base is squash-merged, retarget the next PR to `main`. Open the PR with `gh pr create`.
 
 ## 4. CI
 
