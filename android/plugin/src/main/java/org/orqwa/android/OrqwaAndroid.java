@@ -10,9 +10,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.UserManager;
+import android.provider.OpenableColumns;
 import android.provider.Settings;
 import android.util.Rational;
 import android.view.View;
@@ -105,6 +107,31 @@ public class OrqwaAndroid extends GodotPlugin {
                 : new String[] {Manifest.permission.ACCESS_FINE_LOCATION};
         activity.requestPermissions(bluetooth, 1);
         return null;
+    }
+
+    /**
+     * The display name of a picked file, asked of its provider. Some pickers answer a
+     * `content://` address ending in a document id (`msf:…`), which names nothing, while the
+     * provider still knows the file's own name. Null where Android has none, and the address's
+     * own last part names the copy as before.
+     */
+    @UsedByGodot
+    public String pickedName(String address) {
+        Activity activity = getActivity();
+        if (activity == null) {
+            return null;
+        }
+        try (Cursor cursor = activity.getContentResolver()
+                .query(Uri.parse(address), new String[] {OpenableColumns.DISPLAY_NAME}, null,
+                        null, null)) {
+            if (cursor == null || !cursor.moveToFirst()) {
+                return null;
+            }
+            int column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            return column < 0 ? null : cursor.getString(column);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     /**

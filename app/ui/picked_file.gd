@@ -6,6 +6,9 @@ extends RefCounted
 ## written there by the core, then copied to the address. Elsewhere paths stay as they are.
 
 const COPIES: String = "user://picked"
+## ORQWA's Android plugin (ADR 0024), there only on Android: it names picked files the address
+## itself does not name.
+const ANDROID: StringName = &"OrqwaAndroid"
 
 
 ## The path to give the core for `picked`; `picked` itself if an Android file cannot be copied,
@@ -49,10 +52,29 @@ static func save(written: String, picked: String) -> bool:
 	return true
 
 
-## How to name `picked` to the rider: the file's own name rather than a content address, which
-## ends in the file's path, encoded (…%3ADownload%2FRide.gpx).
+## How to name `picked` to the rider: the file's own name rather than a content address. One
+## ending in the file's path answers itself (…%3ADownload%2FRide.gpx); one ending in a document
+## id (…/document/msf:1000003599) names nothing, and the file's extension decides what the core
+## makes of it: Android is asked for the display name first.
 static func name_of(picked: String) -> String:
 	if not picked.begins_with("content://"):
 		return picked
-	var file_name: String = picked.uri_decode().get_file()
+	return _content_name(picked, _display_name(picked))
+
+
+## What a content `address`'s file is called: the `display_name` its provider gives Android
+## when it answers one, else the address's own last part, else "picked".
+static func _content_name(address: String, display_name: String) -> String:
+	var file_name: String = display_name.get_file()
+	if file_name.is_empty():
+		file_name = address.uri_decode().get_file()
 	return file_name if not file_name.is_empty() else "picked"
+
+
+## The picked file's display name as Android knows it; "" anywhere but on Android, or when its
+## provider names nothing.
+static func _display_name(address: String) -> String:
+	if not Engine.has_singleton(ANDROID):
+		return ""
+	var named: Variant = Engine.get_singleton(ANDROID).call(&"pickedName", address)
+	return named if named is String else ""
