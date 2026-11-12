@@ -282,7 +282,8 @@ func _start_ride() -> void:
 	var options: Dictionary = _pending_ride[0]
 	var ghost: Dictionary = _pending_ride[1]
 	var revision: int = _preparation_revision
-	if not _orqwa.riding_along_video():
+	# The core knows whether a ride plays the video only once it has started.
+	if not _detail.rides_along_video():
 		var prepared: bool = await WorldPreparation.prepare(
 			_world,
 			_orqwa,

@@ -137,6 +137,11 @@ func build() -> void:
 		_on_world_ready({})
 
 
+## Whether the ride being started goes along the course's video, with no 3D scene to prepare.
+func rides_along_video() -> bool:
+	return _along_video
+
+
 ## World data is built; keep the loading page until its scene has also been prepared (R223).
 func show_scene_progress(done: int, total: int) -> void:
 	_preparing_scene = true

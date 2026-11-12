@@ -1,5 +1,6 @@
 extends SceneTree
-## R223/R224: prepare the visible start area, then ride while distant chunks stream in.
+## R223/R224: prepare the visible start area, then ride while distant chunks stream in; rides
+## along a course's video (R17) have no scene to prepare.
 
 var _failed: bool = false
 var _main: Control
@@ -25,7 +26,7 @@ func _run() -> void:
 	_start.ride_started.connect(_on_started)
 	_orqwa.set_graphics_quality("low")
 	_check(_orqwa.connect_fake_trainer(250.0, 85.0), "fake trainer connected")
-	var course: Dictionary = await _make_course()
+	var course: Dictionary = await _make_course("Scene readiness")
 	_unstarted_focus()
 	# Reopen from the file so the first-start check cannot reuse the fixture's generated data.
 	var path: String = course["path"]
@@ -59,6 +60,7 @@ func _run() -> void:
 	await _changed_options()
 	await _cancelled_start(course)
 	await _workout(course)
+	await _along_video()
 	_main.free()
 	await process_frame
 	if not _failed:
@@ -156,6 +158,29 @@ func _workout(course: Dictionary) -> void:
 	_back_home()
 
 
+## Chosen with "Along the video", the ride starts at once with the video instead of a world.
+func _along_video() -> void:
+	var course: Dictionary = await _make_course("Video readiness")
+	var path: String = course["path"]
+	_orqwa.open_course(path)
+	await _wait_until(_orqwa.has_route, "video fixture reopened")
+	_start.call("_open_course", course)
+	await _wait_until(func() -> bool: return not _detail._loading_route, "video course opened")
+	# A course never ridden in 3D keeps no world to fall back on.
+	_check(_orqwa.world_chunk_count() == 0, "the video course has no world")
+	var video: String = ProjectSettings.globalize_path("res://../core/fixtures/av1-8bit.mp4")
+	var length: float = course["length_m"]
+	var marks: PackedVector2Array = PackedVector2Array([Vector2(0.0, 0.0), Vector2(length, 2.0)])
+	_check(_orqwa.add_video(video, marks), "the course gets a video")
+	_world.set_process(false)
+	_detail.call("_ride", true)
+	await _wait_until(func() -> bool: return _starts == 6, "a ride along the video starts")
+	_check(_orqwa.riding_along_video(), "the started ride plays the video")
+	_check(not _world.visible, "the 3D world stays hidden behind the video")
+	_back_home()
+	_world.set_process(true)
+
+
 func _still_loading(what: String) -> void:
 	var history_size: int = _orqwa.history().size()
 	await create_timer(0.1).timeout
@@ -168,6 +193,8 @@ func _still_loading(what: String) -> void:
 func _on_started(options: Dictionary) -> void:
 	_starts += 1
 	if options.has("workout") and not options.get("on_course", false):
+		return
+	if _orqwa.riding_along_video():
 		return
 	_check(_world._streaming.nearby_ready(), "the first ride frame has its visible surroundings")
 	var terrain: Node3D = _world.get_node("Terrain")
@@ -182,12 +209,12 @@ func _back_home() -> void:
 	_main.call("_back_home")
 
 
-func _make_course() -> Dictionary:
-	var path: String = OS.get_user_data_dir().path_join("scene-readiness.gpx")
+func _make_course(name: String) -> Dictionary:
+	var path: String = OS.get_user_data_dir().path_join(name.to_lower().replace(" ", "-") + ".gpx")
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(
 		(
-			'<gpx><trk><name>Scene readiness</name><trkseg><trkpt lat="46" lon="7">'
+			'<gpx><trk><name>%s</name><trkseg><trkpt lat="46" lon="7">' % name
 			+ '<ele>500</ele></trkpt><trkpt lat="46.108" lon="7"><ele>520</ele></trkpt>'
 			+ "</trkseg></trk></gpx>"
 		)
