@@ -372,6 +372,7 @@ pub async fn generate<M: ElevationModel>(
         ready: &mut |parts, _| world = parts,
         structures: &mut |_| {},
         pace: None,
+        written: &[],
     };
     let rest = generate_into(route, model, map, progress, &sink, whole).await;
     world.structures = rest.structures;
@@ -405,6 +406,11 @@ pub struct Ahead<'a> {
     pub structures: &'a mut (dyn FnMut(MeshData) + Send),
     /// How much of the device the build may take meanwhile; `None`: all of it.
     pub pace: Option<&'a Pace>,
+    /// The chunks a build of the same world stopped before had finished, by index (ADR 0040,
+    /// 2d step 4b): not given to the sink again. Those whose neighbours or bridges are still
+    /// to be finished are built again in memory for their ground and pavement; the rest are
+    /// not built at all.
+    pub written: &'a [bool],
 }
 
 /// What the world handed over when its ride could begin lacks once every chunk is built.
@@ -422,9 +428,9 @@ pub struct Rest {
 /// once, several at a time on the cores `ahead`'s pace leaves it: those `ahead` asks for
 /// first. The world is handed to `ahead` without its chunks and horizon, also when it asks for
 /// every chunk first, and what it lacks then is returned; both are the same whatever `ahead`
-/// asks for.
+/// asks for, and whichever chunks it says were [written](Ahead::written) before.
 /// `progress` counts the chunks built of those needed first until `ahead` is told it has
-/// them, then of all.
+/// them, then of all to build.
 #[allow(clippy::too_many_lines)] // the preparation, then one pass over the chunks
 pub async fn generate_into<M: ElevationModel>(
     route: &Route,
@@ -518,9 +524,14 @@ pub async fn generate_into<M: ElevationModel>(
     let cells: Vec<(i32, i32)> = reached.keys().copied().collect();
     let centres: Vec<[f32; 3]> = cells.iter().map(|&cell| stages::centre(cell)).collect();
     let mut stages = stages::Stages::new(cells, urban.pavement(), &pieces);
+    let to_build = stages.resume(ahead.written);
     let plan = chunk_plan(&centres, ahead.at.0, ahead.at.1, ahead.radius);
     let needed = stages.needed(&plan.indices[..plan.nearby]);
-    let first = needed.iter().filter(|&&n| n).count();
+    let first = needed
+        .iter()
+        .zip(&to_build)
+        .filter(|&(&n, &b)| n && b)
+        .count();
     // Again once the whole-route preparation is done, so its memory can be told from the
     // chunks'.
     progress(0, first);
@@ -530,10 +541,12 @@ pub async fn generate_into<M: ElevationModel>(
     let mut order = build_order(
         reached
             .into_iter()
-            .zip(&needed)
-            .map(|((cell, reach), &needed)| (cell, reach, needed)),
+            .zip(needed.iter().zip(&to_build))
+            .filter(|(_, (_, build))| **build)
+            .map(|((cell, reach), (&needed, _))| (cell, reach, needed)),
         from,
     );
+    let total = order.len();
     let Ahead {
         ready,
         structures: grew,
@@ -562,7 +575,20 @@ pub async fn generate_into<M: ElevationModel>(
         .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, NonZeroUsize::get));
     let mut built = 0;
     let mut fallback_samples = 0;
-    while built < order.len() {
+    loop {
+        // Everything needed first is built once `first` chunks are: it comes first in order.
+        // A build taking up what a stopped one wrote may have none of it to build again.
+        if built >= first
+            && let Some(ready) = ready.take()
+        {
+            world.structures = structures::join(so_far(&tunnels, stages.bridges()));
+            world.fallback_samples = fallback_samples;
+            mark_handed(&mut handed, stages.bridges());
+            ready(std::mem::take(&mut world), &centres);
+        }
+        if built >= order.len() {
+            break;
+        }
         // A turn waits until the world is handed over: until then the chunks it needs first
         // come first.
         if ready.is_none()
@@ -603,15 +629,7 @@ pub async fn generate_into<M: ElevationModel>(
         stages.finish(workers, &counted);
         let bridges = stages.build_bridges(&pieces, &below);
         stages.drop_unneeded();
-        // Everything needed first is built once `first` chunks are: it comes first in order.
-        if built >= first
-            && let Some(ready) = ready.take()
-        {
-            world.structures = structures::join(so_far(&tunnels, stages.bridges()));
-            world.fallback_samples = fallback_samples;
-            mark_handed(&mut handed, stages.bridges());
-            ready(std::mem::take(&mut world), &centres);
-        } else if ready.is_none() && bridges > 0 {
+        if ready.is_none() && bridges > 0 {
             let new = stages
                 .bridges()
                 .iter()
@@ -622,6 +640,13 @@ pub async fn generate_into<M: ElevationModel>(
         }
     }
     debug_assert!(stages.done(), "a chunk or bridge was left waiting");
+    // Those not built again count their samples without elevation data as when first built.
+    for (index, &(cx, cn)) in stages.cells().iter().enumerate() {
+        if !to_build[index] {
+            let elevations = HeightGrid::elevations(cx, cn, &projection, model).await;
+            fallback_samples += elevations.iter().filter(|e| e.is_none()).count();
+        }
+    }
     // All are joined in the pieces' order, however they were built.
     let rest = Rest {
         structures: structures::join(
@@ -632,11 +657,6 @@ pub async fn generate_into<M: ElevationModel>(
         ),
         fallback_samples,
     };
-    if let Some(ready) = ready {
-        // A world without chunks.
-        world.structures.clone_from(&rest.structures);
-        ready(world, &centres);
-    }
     if fallback_samples > 0 {
         warn!(
             samples = fallback_samples,

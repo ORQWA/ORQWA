@@ -264,7 +264,8 @@ impl App {
                 .as_deref()
                 .and_then(|fingerprint| self.keeper().kept.size_of(fingerprint))
                 .unwrap_or(0);
-            self.room(length, freed).map_err(AppError::Reported)?;
+            self.room_giving_way(length, freed)
+                .map_err(AppError::Reported)?;
         }
         if let Some(fingerprint) = &fingerprint
             && let Err(error) = self.keeper().kept.remove(fingerprint)
@@ -300,17 +301,31 @@ impl App {
         if self.free_storage.is_none() {
             return Ok(());
         }
-        // One that can't be read is built again, so it takes room like any other.
-        let kept = self
+        let fingerprint = self
             .course
             .as_deref()
+            .and_then(|course| course::fingerprint(course).ok());
+        // One that can't be read is built again, so it takes room like any other.
+        let kept = fingerprint
+            .as_deref()
             .filter(|_| self.keeps_worlds())
-            .and_then(|course| course::fingerprint(course).ok())
-            .is_some_and(|fingerprint| self.keeper().kept.generator(&fingerprint).is_some());
+            .is_some_and(|fingerprint| self.keeper().kept.generator(fingerprint).is_some());
         if kept {
             return Ok(());
         }
-        self.room(route.length(), 0)
+        self.room_giving_way(route.length(), 0)
+    }
+
+    /// [`room`](Self::room), the store a stopped build left giving way if short: it is not
+    /// among the kept worlds the rider can delete, and the room it takes would otherwise refuse
+    /// a ride that had room before its build was stopped. The check waits for it to be deleted.
+    /// Left by the same course's build, the world is then built afresh.
+    fn room_giving_way(&mut self, length: Meters, freed: u64) -> Result<(), Failure> {
+        let room = self.room(length, freed);
+        if room.is_err() && self.forget_any_stopped() {
+            return self.room(length, freed);
+        }
+        room
     }
 
     /// Whether the cache has room for the store of the world of a route `length` long, once
