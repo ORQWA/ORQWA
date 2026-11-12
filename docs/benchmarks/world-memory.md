@@ -21,8 +21,9 @@ by part and by distance from the ridden road.
 
 ## Where the memory goes
 
-Before the chunks: the route, the map, the elevations and the course map take 170 MB. Building
-the chunks takes it to 4.8 GB; the whole-world passes after them (barriers against pavement,
+Before the world: the route, the map, the elevations and the course map take 170 MB. The
+world's whole-route preparation and the chunks take it to 4.8 GB (the preparation alone is
+measured below, under *Built chunk by chunk*); the whole-world passes after them (barriers against pavement,
 bridges) to the peak.
 
 The world, by part (MB):
@@ -72,6 +73,47 @@ position differ in normal or texture coordinate.
   `f64`, over 600 MB here). Bridges are now built first, so every barrier is known, and only
   the pavement in the cells their checks reach is gathered: the same answers, from a small
   fraction of the triangles.
+
+## Built chunk by chunk
+
+2026-11-10, same container (8 cores, so 32 chunks a batch), release build. Each chunk is now
+finished once its neighbours are built and handed on (`orqwa_world::generate_into`, ADR 0040's
+step 2a); `generate` collects them into the same world. `world_memory <route.gpx> <cache>
+--stream` builds a GPX route that way without the app and keeps only each chunk's hash. Wada's
+route is the course's `route.gpx`, read offline from the cache the course was unpacked into.
+
+| | Whole world | Streamed |
+|---|---:|---:|
+| Kirchenfeldbrücke, peak | 1.64 GB | 1.34 GB |
+| Bielersee, peak | 1.43 GB | 1.00 GB |
+| Oberalp, peak | 1.41 GB | 0.73 GB |
+| **Wada, peak** | **4.78 GB** | **2.18 GB** |
+| Wada, generating | 98 s | 100 s |
+
+**The worlds are unchanged:** on all four courses the world's checksum is what it was before
+the change (Wada as a course: `a6a04ff670d2c2de`), in a debug build too, where a chunk or
+bridge reaching for ground or pavement it doesn't hold stops the build. A streamed build gives
+the same chunk checksum as a whole one; both run the new code, so that shows only that
+streaming drops nothing. The whole world's peak is lower than #541's 5.18 GB because the
+pavement gathered for every barrier at once, and every chunk's barriers, are no longer held
+together at the end.
+
+**Where Wada's streamed peak goes.** The import (map and route) leaves 78 MB resident. Once
+the whole-route preparation is done, before the first chunk, the process holds **1.16 GB**:
+about 1.08 GB for the preparation (streets, the urban network, buildings and the rest of what
+every chunk is built from, with the terrain tiles it read). The 170 MB "before the chunks"
+above is the app's report before that preparation starts. The chunks around the build front
+then take it to 1.71 GB after the first 32, 2.01 GB after 64, and 2.18 GB at most. ADR 0040
+counts the preparation among the small parts; on Wada it alone is above R240's 1 GB for the
+core while building, so it needs measuring by part, and shrinking, before that figure holds.
+
+**What bounds the chunks held.** A chunk waits, whole, until all its neighbours are built, and
+its ground and pavement stay until they are finished. Along one leg of a route that is a few
+rows of chunks around the build front, and the batch adds `4 × cores` chunks (128 on 32 cores).
+Where a later leg's corridor runs alongside an earlier one (out and back in a parallel valley,
+stacked switchbacks, laps a few kilometres apart), the earlier leg's chunks on that side wait
+for the later leg: chunks held then grow with the length of that seam. No build order avoids
+it.
 
 ## Still to do
 
