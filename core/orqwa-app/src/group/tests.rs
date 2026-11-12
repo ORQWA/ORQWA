@@ -153,7 +153,17 @@ fn independent_failures_keep_retry_state_and_each_occurrence_is_reported_once() 
 }
 #[track_caller]
 fn wait(host: &mut App, peer: &mut App, condition: impl Fn(&App, &App) -> bool) {
-    let until = Instant::now() + Duration::from_secs(20);
+    wait_up_to(Duration::from_secs(20), host, peer, condition);
+}
+
+/// [`wait`] for up to `limit`.
+fn wait_up_to(
+    limit: Duration,
+    host: &mut App,
+    peer: &mut App,
+    condition: impl Fn(&App, &App) -> bool,
+) {
+    let until = Instant::now() + limit;
     while Instant::now() < until {
         host.update(Duration::from_millis(16));
         peer.update(Duration::from_millis(16));
@@ -2076,6 +2086,37 @@ fn library(to: &Directory) -> Vec<PathBuf> {
         .collect();
     files.sort();
     files
+}
+
+#[test]
+fn a_rider_is_ready_once_the_surroundings_of_the_groups_start_are_built() {
+    // ADR 0040, 2d: Ready means the whole-route preparation is done and the chunks the scene
+    // draws around the group's start are finished; the rest is built while the group rides.
+    let from = Directory::new();
+    let idle_directory = Directory::new();
+    let mut host = from.app();
+    let mut idle = idle_directory.app();
+    host.set_group_upload_radius(Meters(0.0));
+    host.group_open(None, options()).unwrap();
+    wait(&mut host, &mut idle, |h, _| !h.group().invite.is_empty());
+    host.group_select(Some(sample_course()), None).unwrap();
+    // An unoptimized build of a real course's surroundings, as `run_until` allows for.
+    wait_up_to(Duration::from_secs(120), &mut host, &mut idle, |h, _| {
+        h.group().prepared
+    });
+
+    let chunks = host.world_chunks().expect("ridden from its store");
+    assert!(!chunks.complete(), "the rest is still being built");
+    let (east, north) = host.ride_start_position(false).unwrap();
+    let plan = orqwa_world::chunk_plan(chunks.centres(), Meters(east), Meters(north), Meters(0.0));
+    assert!(plan.nearby > 0);
+    for &index in &plan.indices[..plan.nearby] {
+        assert!(
+            chunks.finished(index),
+            "chunk {index} at the start not finished"
+        );
+    }
+    host.group_leave();
 }
 
 #[test]
