@@ -590,6 +590,109 @@ fn a_rider_whose_connection_is_lost_rejoins_by_themselves_and_takes_up_the_group
     host.group_leave();
 }
 
+/// Ends the peer's connection to the group mid-ride, as when its seat is given up after
+/// five minutes without a connection, and has the peer join again with a fresh reply.
+/// Returns the seat it had.
+fn join_again(host: &mut App, peer: &mut App) -> u8 {
+    assert!(
+        !peer.group_can_rejoin(),
+        "a connected friend has nothing to join again"
+    );
+    let seat = peer.group().me;
+    host.group_remove(seat).unwrap();
+    wait(host, peer, |_, p| p.group().phase == Phase::Ended);
+    assert!(peer.group_can_rejoin());
+    assert!(
+        !host.group_can_rejoin(),
+        "the organizer has no invitation to join with"
+    );
+    assert!(peer.ride.is_some(), "the ride goes on alone");
+    peer.group_rejoin().unwrap();
+    wait(host, peer, |_, p| !p.group().reply.is_empty());
+    assert!(peer.group_rides_alone(), "{}", peer.group().phase.key());
+    host.group_admit(&peer.group().reply).unwrap();
+    seat
+}
+
+#[test]
+fn a_friend_whose_connection_ended_joins_again_and_rides_on_where_they_are() {
+    let from = Directory::new();
+    let to = Directory::new();
+    let mut host = from.app();
+    let mut peer = to.app();
+    start_shared_workout(&mut host, &mut peer);
+    wait(&mut host, &mut peer, |h, p| {
+        p.group().phase == Phase::Riding && h.group_view().riders.len() == 1
+    });
+    let seat = join_again(&mut host, &mut peer);
+    let alone = peer.ride_state().unwrap();
+    wait(&mut host, &mut peer, |h, p| {
+        !p.group_rides_alone()
+            && h.group_view().riders.len() == 1
+            && p.group_view().riders.len() == 1
+    });
+    assert_eq!(peer.group().me, seat, "the friend has their old seat back");
+    let state = peer.ride_state().unwrap();
+    assert!(
+        state.elapsed > alone.elapsed && state.distance.0 >= alone.distance.0,
+        "the ride was taken up, not started again"
+    );
+    assert!(!peer.group_waits_for_ride());
+    // The group's workout clock holds the ride again: the organizer pauses for everyone.
+    host.group_workout_pause(true).unwrap();
+    wait(&mut host, &mut peer, |_, p| {
+        p.ride_state().unwrap().workout.unwrap().paused
+    });
+    peer.group_leave();
+    host.group_leave();
+}
+
+#[test]
+fn a_friend_joining_again_while_the_group_rides_something_else_rides_on_alone() {
+    let from = Directory::new();
+    let to = Directory::new();
+    let mut host = from.app();
+    let mut peer = to.app();
+    start_shared_workout(&mut host, &mut peer);
+    wait(&mut host, &mut peer, |_, p| {
+        p.group().phase == Phase::Riding
+    });
+    host.group_remove(peer.group().me).unwrap();
+    wait(&mut host, &mut peer, |_, p| p.group().phase == Phase::Ended);
+    // Meanwhile the group ends its workout and chooses another one.
+    host.group_end_activity().unwrap();
+    wait(&mut host, &mut peer, |h, _| {
+        h.ride.is_none() && h.group().phase == Phase::Waiting
+    });
+    host.group_select(None, Some("builtin:sweet-spot-3x10"))
+        .unwrap();
+    wait(&mut host, &mut peer, |h, _| h.group().prepared);
+    let workout = peer.ride_state().unwrap().workout.unwrap();
+    peer.group_rejoin().unwrap();
+    wait(&mut host, &mut peer, |_, p| !p.group().reply.is_empty());
+    host.group_admit(&peer.group().reply).unwrap();
+    wait(&mut host, &mut peer, |_, p| p.group_waits_for_ride());
+    for _ in 0..30 {
+        host.update(Duration::from_millis(16));
+        peer.update(Duration::from_millis(16));
+    }
+    let state = peer.ride_state().expect("the ride goes on");
+    assert!(peer.group_rides_alone() && peer.group_waits_for_ride());
+    assert!(
+        !peer.group().prepared,
+        "nothing is prepared while the ride goes on"
+    );
+    // Recovery ramps gently; the group's sweet spot plan would set another step's power.
+    let own = state.workout.unwrap();
+    assert_eq!(own.progress.unwrap().step, workout.progress.unwrap().step);
+    assert!(
+        (own.target_power.unwrap().0 - workout.target_power.unwrap().0).abs() < 2.0,
+        "the ride keeps its own workout"
+    );
+    peer.group_leave();
+    host.group_leave();
+}
+
 #[test]
 fn changing_devices_restarts_voice_with_the_microphone_as_it_was() {
     let from = Directory::new();
@@ -1246,7 +1349,9 @@ fn assistance_fixture() -> (Directory, App, Snapshot, Instant) {
         },
         now,
     ));
-    app.group.as_mut().unwrap().effect_at = now;
+    let group = app.group.as_mut().unwrap();
+    group.effect_at = now;
+    group.launched = true;
     (directory, app, snapshot, now)
 }
 
