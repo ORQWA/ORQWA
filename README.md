@@ -105,3 +105,10 @@ decisions: [docs/adr/](docs/adr/); third-party assets: [docs/CREDITS.md](docs/CR
 the Godot engine, FFmpeg, every Rust crate, and others' models and data. The video-course
 screenshot shows a frame of a CC BY-NC-SA 4.0 video and is under that licence (see
 [docs/CREDITS.md](docs/CREDITS.md)).
+
+## Trademarks
+
+ORQWA is an independent project. It is not affiliated with or endorsed by Zwift, Strava,
+intervals.icu, Garmin, Tacx, Wahoo, Shimano, Elite, TrainerRoad, Nextcloud or any other company
+or product named in this repository or the usage wiki. All names and trademarks belong to their
+owners.
