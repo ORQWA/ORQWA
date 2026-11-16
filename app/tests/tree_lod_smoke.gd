@@ -35,16 +35,18 @@ func _low_in_place() -> void:
 	root.add_child(world)
 	world.apply_quality("ultra", {"tree_density": "low"})
 	var terrain: Node3D = world.get_node("Terrain")
+	var streaming: WorldStreaming = world.get("_streaming")
 	var chunk: Node3D = Node3D.new()
 	terrain.add_child(chunk)
+	streaming._uploaded[0] = chunk
 	var buffer: PackedFloat32Array = [1, 0, 0, 5, 0, 1, 0, 0, 0, 0, 1, 5, 1, 1, 1, 1]
 	VegetationModels.add_to(chunk, "conifer_tall", buffer, 1200, 600)
 	var tree: GeometryInstance3D = chunk.get_child(0)
-	world.set("_next_chunk", 1)
 	# Density stays 12.5% and every preset batches alike: Low takes coarser levels in place.
 	world.apply_quality("low")
-	var next_chunk: int = world.get("_next_chunk")
-	_check(terrain.get_child_count() == 1 and next_chunk == 1, "Low keeps uploaded batches")
+	_check(
+		terrain.get_child_count() == 1 and streaming.uploaded() == 1, "Low keeps uploaded batches"
+	)
 	_check(tree.lod_bias < 1.0, "Low takes uploaded trees' coarser levels sooner")
 	world.apply_quality("ultra", {"tree_density": "low"})
 	_check(tree.lod_bias == 1.0, "other presets keep trees' full detail nearby")

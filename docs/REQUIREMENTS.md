@@ -675,6 +675,12 @@ Click, R75), and a Zwift Click v2 (R77, R96).
 |---|---|
 | R239 | Refines R187 and R238 (2026-11-09): ORQWA automatically chooses the first eligible connected friend and requests fallback consent in the lobby, before selecting an activity or marking ready. The organizer can override the choice. A decline, timeout or departure moves to another eligible friend without repeatedly asking someone who declined or timed out; obsolete replies cannot approve a later request. Acceptance and the selected membership persist across activities, with no new prompt at ride start. Standby connections are prepared only while riding. If the original organizer unexpectedly leaves and the fallback takes over during a ride, the new organizer still automatically chooses and asks a replacement fallback during that ride. |
 
+## Course worlds within a tablet's memory
+
+| ID | Requirement |
+|---|---|
+| R240 | Refines R101, R223 and R224 (2026-11-10, #542), superseding R224's "course world data generation still finishes before scene uploads": long, densely mapped courses build and ride on tablets with about 6 GB of RAM ([ADR 0040](adr/0040-world-residency.md)). **Memory:** *Wada – Ōtarumi Pass* (57 km, Japan), where ORQWA was ended for low memory at about 2.5 GB, builds and is ridden end to end on a Galaxy Tab S7 without a low-memory kill, with ORQWA's peak, counting swap, below 1.5 GB. In the dev container, the core's peak while building Wada stays below 1 GB, and while riding it stays below 500 MB. Riding a lower graphics preset needs less memory. **Storage:** while a course is open, its world is kept in the cache directory even when courses are not kept ready to ride (10 to 25 MB per kilometre, about 1.1 GB for Wada), and deleted when the course is closed unless it is kept. On Android, a course whose world doesn't fit in the free storage isn't started, and the rider is told how much room it needs. **Start:** the first ride of a course starts once the surroundings of the rider's start are built. The rest is built while riding. On the Tab S7, frame time stays within 10 % of the same ride with the world already built. A solo rider who reaches parts not yet built is paused automatically with the loading page, and the ride goes on by itself when they are ready. In a group ride nobody is paused, and the scenery appears around the road. With **Keep courses ready to ride** on, a world left unfinished when the ride ends is finished in the background while ORQWA stays open and no other ride runs, and kept (R101). **Identity:** worlds come out byte for byte as before on the same platform. |
+
 ## Gradient colours in the elevation profile
 
 | ID | Requirement |
@@ -721,3 +727,21 @@ Click, R75), and a Zwift Click v2 (R77, R96).
 | R250 | Extends R186 and R248 (2026-11-15, #536): when the network under a friend's ORQWA changes (another Wi-Fi, a cable, a new address), ORQWA notices **within seconds** rather than after the connection's 30 s timeout, starts reconnecting at once and says that reconnecting cannot work from the changed network: the page offers **Join again** at once, and no **Reconnect now**. Join again is offered **while reconnecting** too, not only once the group connection has ended. The organizer adds the new reply as any, also while ORQWA still counts that friend as connected: a reply from them with new addresses ends the old connection and holds the friend's place, so they get **their seat back**. Where the organizer's network lets the friend's new address in, they are back in their held seat before the organizer adds anything. The same reply added again, or one from where the friend already connects, still says it was added already. |
 | R251 | Refines R187 (2026-11-15): a fallback organizer whose own connection drops does **not** take over: after the organizer has been unreachable for half a minute, it takes over only when the friends it still reaches all lost the organizer too, or the organizer left for good. A fallback that reaches nobody lost its own network, and once back it rides on in the group under the same organizer. |
 | R252 | Refines R237 and R238 (2026-11-15, #556): once the organizer has shared a course or workout, **Cancel** stands beside **Start group ride** before the countdown too, while friends still download or build the ride or are not yet ready. It withdraws the shared activity for everyone: their downloads and world building stop, and everyone is back in the lobby, connected and with voice, to share the same or another activity. Friends cannot withdraw it. During the countdown Cancel replaces Start as before. |
+
+## Workout targets without a course
+
+| ID | Requirement |
+|---|---|
+| R253 | Refines R236 (2026-11-16): a workout ridden **on its own**, solo or as a group, shows its targets at the **top of the right column**, where a course's map and elevation profile would be; the metrics on the left keep their full height. A workout **on a course** keeps its targets below the metrics on the left, so the map, profile, climb and Riders still fit without scrolling. |
+
+## Safe Android course preparation
+
+| ID | Requirement |
+|---|---|
+| R254 | Refines R100 (2026-11-16): on Android, a 3D world that cannot be stored, before or during its build, stops building and reports a storage error instead of holding the unstored chunks in RAM. A ride already started pauses locally, releases trainer resistance and preserves its recording for **Finish & save**; it stays paused until ended. Reopening the course after restoring storage retries preparation. Starting another build or a ride that stops background building waits without blocking the interface until the stopped workers have released their preparation and chunk buffers. |
+| R255 | Extends R100 and R254 (2026-11-16): before preparing a course in 3D on Android, compare its estimated generation and resident scene memory with the phone or tablet's **current available system memory**, preserving headroom for Android. Account for map complexity, viewing distance and concurrent generation, rather than only the course's length or file size. Read memory again after cancelled workers release their buffers. Refuse preparation with the estimated need and available memory when short, and refuse it explicitly if memory cannot be read. Kept worlds still need a rendering-memory check. Recheck memory during generation and before further scene uploads; when short, stop preparing, pause only the local 3D ride, release trainer resistance, preserve its recording for **Finish & save**, and require the course to be reopened to retry. |
+
+R255 clarification (2026-11-16): show memory in decimal **GB**, separating the course's
+estimated additional need, usable memory after Android's reserve, and the reserve. Count
+only additional allocations after the free-memory snapshot, and use the selected graphics
+residency even when generation finishes the whole course before riding.
