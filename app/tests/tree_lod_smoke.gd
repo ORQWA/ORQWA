@@ -135,6 +135,19 @@ func _batches() -> void:
 	for record: PackedFloat32Array in expected:
 		_check(found.has(record), "placement and colour retained across batch boundaries")
 	parent.free()
+	# Ferns have no coarser levels, but a tablet still draws them cheaper in cells.
+	var ferns: Node3D = Node3D.new()
+	VegetationModels.add_to(ferns, "fern_upright", buffer, 1200, 390, 0.5)
+	_check(ferns.get_child_count() == 3, "small plants in different 160 m cells are batched apart")
+	var ferns_found: int = 0
+	for child: Node in ferns.get_children():
+		var placed: MultiMeshInstance3D = child as MultiMeshInstance3D
+		_check(not placed.has_meta("tree"), "small plants are not taken for trees")
+		_check(placed.visibility_range_end == 390, "small plants keep their own range")
+		_check(placed.lod_bias == 1.0, "the tree LOD bias leaves small plants alone")
+		ferns_found += placed.multimesh.instance_count
+	_check(ferns_found == expected.size(), "batching retains every small plant")
+	ferns.free()
 
 
 func _triangles(mesh: ArrayMesh) -> int:
