@@ -109,7 +109,8 @@ stay as they are for now.
 
 Every preset now batches small plants on the same grid as trees. The grid runs every 160 m
 from the chunk's centre, where plants are placed, so a chunk has 4 × 4 batches whose outer
-ones are 80 m wide. Same base, each build measured twice (ranges are the two runs):
+ones are 80 m wide. Same base, each build measured twice: a range gives the two runs, a single
+value means they agreed to within 0.1 ms.
 
 | GPU ms | 2 km | 9 km | 16 km |
 |---|---:|---:|---:|
@@ -122,8 +123,8 @@ evener grid, gave the trees fewer, larger batches whose far levels took over lat
 cost 16 → 20 ms at 16 km, cancelling the gain, so the grid stays as it was. Render CPU is
 unchanged (3.9–4.8 ms). On High at 1920 × 1080 on an RTX 5080, GPU time went from
 4.6 / 3.1 / 4.1 to 4.4 / 3.0 / 3.8 ms with the same render CPU and 2–3 % more draw calls, so the
-stronger presets lose nothing. Native renders of Low before and after
-differ only by the leaf shadows moving in the wind:
+stronger presets lose nothing. Native renders of Low before and after differ only by the leaf
+shadows moving in the wind:
 
 | Before | After |
 |---|---|
