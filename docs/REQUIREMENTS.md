@@ -236,8 +236,8 @@ levels, and Low takes them sooner; on the Galaxy Tab S7 this costs about 1 ms of
 7–14 ms of GPU time per frame. Population, placement and kept worlds are unchanged.
 
 Rendering implementation note (2026-11-16, R43, #542): bushes, ferns and rocks are batched in
-the same 160 m cells on every preset; on the Galaxy Tab S7 this saves 2–3 ms of GPU time per
-frame with the same plants at the same range.
+the same 160 m cells as trees on every preset; on the Galaxy Tab S7 this saves about 2–3 ms of
+GPU time per frame in forest and nothing in open country, with the same plants and ranges.
 
 ## Workouts & overlay
 

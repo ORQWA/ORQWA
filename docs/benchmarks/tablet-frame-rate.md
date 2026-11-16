@@ -86,7 +86,9 @@ crowns:
 ## Small plants in 160 m cells
 
 Bushes, ferns and rocks were still batched by 480 m chunk. Probes on the tree-cells build
-(without the terrain fix, so frames are slower; GPU ms saved at 2 / 9 / 16 km):
+(without the terrain fix, so frames are slower; GPU ms saved at 2 / 9 / 16 km; each row is
+its own sample, so rows that overlap differ by the run's spread of about ±1 ms, and the probe
+and the build tables below are separate runs):
 
 | Change | Saved |
 |---|---:|
@@ -105,17 +107,23 @@ cost less at the same range, though more of them stay in view and shorter ranges
 the cost is not distance alone. The remaining shadow savings all change the look, so shadows
 stay as they are for now.
 
-Every preset now batches small plants in 160 m cells as it does trees. Same base, two runs of
-the change:
+Every preset now batches small plants on the same grid as trees. The grid runs every 160 m
+from the chunk's centre, where plants are placed, so a chunk has 4 × 4 batches whose outer
+ones are 80 m wide. Same base, each build measured twice (ranges are the two runs):
 
 | GPU ms | 2 km | 9 km | 16 km |
 |---|---:|---:|---:|
-| trees in 160 m cells | 89.4 | 84.0 | 96.3 |
-| + small plants in 160 m cells | 87.8 | 83.5–84.5 | 93.1 |
-| small plants' own cost, before → after | 7.1 → 3.3 | 0.7 → 0.4 | 8.4 → 5.0 |
+| trees in 160 m cells | 89.4–91.3 | 83.3–84.0 | 96.1–96.3 |
+| + small plants in the same cells | 87.8 | 83.5–84.5 | 93.1 |
+| … with nine whole 160 m cells per chunk instead, trees too | 89.0 | 83.3–83.4 | 96.6 |
 
-Render CPU is unchanged (4.1–4.8 ms). Native renders of Low before and after differ only by
-the leaf shadows moving in the wind:
+That is about 2–3 ms per frame in forest and nothing in open country. Nine whole cells, an
+evener grid, gave the trees fewer, larger batches whose far levels took over later: trees
+cost 16 → 20 ms at 16 km, cancelling the gain, so the grid stays as it was. Render CPU is
+unchanged (3.9–4.8 ms). On High at 1920 × 1080 on an RTX 5080, GPU time went from
+4.6 / 3.1 / 4.1 to 4.4 / 3.0 / 3.8 ms with the same render CPU and 2–3 % more draw calls, so the
+stronger presets lose nothing. Native renders of Low before and after
+differ only by the leaf shadows moving in the wind:
 
 | Before | After |
 |---|---|

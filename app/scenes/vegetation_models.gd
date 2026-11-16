@@ -19,8 +19,8 @@ const LOOKS: Dictionary[String, Array] = {
 ## batch from its closest point, so in a whole 480 m chunk one close tree kept every tree at full
 ## detail. Low too: on the Galaxy Tab S7 the far levels' fewer, larger cards save 5–10 ms of GPU
 ## time per frame for about 1 ms of render CPU. Ferns and bushes have no coarser levels, yet in
-## cells they cost that tablet 2–3 ms less at the same range, which shorter ranges did not
-## (docs/benchmarks/tablet-frame-rate.md).
+## cells they save that tablet about 2–3 ms per frame in forest (nothing in open country) at the
+## same range, which shorter ranges did not (docs/benchmarks/tablet-frame-rate.md).
 const CELL_M: float = 160.0
 
 static var _materials: Dictionary[String, ShaderMaterial] = {}
@@ -40,6 +40,9 @@ static func add_to(
 		return
 	var cells: Dictionary[Vector2i, PackedFloat32Array] = {}
 	for offset: int in range(0, buffer.size(), 16):
+		# Plants sit relative to the chunk's centre, so a 480 m chunk has 4 × 4 cells, 80 m wide
+		# at its edges. Nine whole cells drew the tablet's trees slower: their far levels took
+		# over later (docs/benchmarks/tablet-frame-rate.md).
 		var key: Vector2i = Vector2i(
 			floori(buffer[offset + 3] / CELL_M), floori(buffer[offset + 11] / CELL_M)
 		)
