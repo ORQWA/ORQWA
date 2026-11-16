@@ -88,12 +88,14 @@ const FREE_TURN: float = 1.2
 const JUMP_M: float = 50.0
 ## Graphics presets (R43): what each turns on. Medium holds 60 fps on a base M1; `distance`
 ## scales terrain and details; trees have their own range and uploaded density (R108).
+## `tree_lod_bias` below 1 takes trees' coarser levels sooner: on Low it saves a tablet GPU
+## 2–4 ms per frame.
 ## MSAA stays at 2×; 4× previously caused bright distant pixels to spread through bloom.
 const QUALITY: Dictionary[String, Dictionary] = {
 	"low":
 	{
 		"tree_density": 0.125,
-		"tree_cell": 480.0,
+		"tree_lod_bias": 0.5,
 		"tree_range": 600.0,
 		"model_range": 200.0,
 		"grass_range": 0.0,
@@ -114,7 +116,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	"medium":
 	{
 		"tree_density": 0.25,
-		"tree_cell": 160.0,
+		"tree_lod_bias": 1.0,
 		"tree_range": 1200.0,
 		"model_range": 400.0,
 		"grass_range": 60.0,
@@ -135,7 +137,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	"high":
 	{
 		"tree_density": 0.5,
-		"tree_cell": 160.0,
+		"tree_lod_bias": 1.0,
 		"tree_range": 2200.0,
 		"model_range": 600.0,
 		"grass_range": 120.0,
@@ -156,7 +158,7 @@ const QUALITY: Dictionary[String, Dictionary] = {
 	"ultra":
 	{
 		"tree_density": 1.0,
-		"tree_cell": 160.0,
+		"tree_lod_bias": 1.0,
 		"tree_range": 3240.0,
 		"model_range": 900.0,
 		"grass_range": 180.0,
@@ -388,7 +390,6 @@ func apply_conditions(time_of_day: String, weather: String) -> void:
 ## the preset).
 func apply_quality(name: String, options: Dictionary = {}) -> void:
 	var previous_density: float = _quality["tree_density"]
-	var previous_cell: float = _quality["tree_cell"]
 	var preset: Dictionary = QUALITY.get(name, QUALITY["medium"])
 	_quality = preset.duplicate()
 	_apply_options_over_preset(options)
@@ -428,7 +429,7 @@ func apply_quality(name: String, options: Dictionary = {}) -> void:
 	var tree_density: float = _quality["tree_density"]
 	TerrainMaterial.set_tree_density(_terrain_material, tree_density)
 	# A course may already be uploaded when settings change before the next ride.
-	if previous_density != _quality["tree_density"] or previous_cell != _quality["tree_cell"]:
+	if previous_density != _quality["tree_density"]:
 		WorldPreparation.restart(self)
 	var fps_limit: String = options.get("fps_limit", "auto")
 	Engine.max_fps = 60
@@ -878,6 +879,7 @@ func _set_distance(factor: float) -> void:
 			var tree_range: float = _quality["tree_range"]
 			geometry.visibility_range_end = tree_range
 			geometry.visibility_range_end_margin = minf(tree_range * 0.15, 300.0)
+			geometry.lod_bias = _quality["tree_lod_bias"]
 		elif geometry.visibility_range_end > 0.0 and not geometry.has_meta("fixed_range"):
 			geometry.visibility_range_end *= change
 	_camera.far = maxf(VISIBILITY_RANGE * factor * 1.6, HORIZON_RANGE)

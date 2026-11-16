@@ -109,25 +109,25 @@ func _batches() -> void:
 		]
 		expected.append(record)
 		buffer.append_array(record)
-	for cell_m: float in [160.0, 480.0]:
-		var parent: Node3D = Node3D.new()
-		VegetationModels.add_to(parent, "conifer_tall", buffer, 1200, 600, cell_m)
-		var found: Array[PackedFloat32Array] = []
-		for child: Node in parent.get_children():
-			var placed: MultiMeshInstance3D = child as MultiMeshInstance3D
-			_check(placed.has_meta("tree"), "batched trees retain their range metadata")
-			_check(placed.visibility_range_end == 1200, "tree range remains independent of LOD")
-			# The dummy renderer retains bulk buffers but not per-instance GPU readbacks.
-			var uploaded: PackedFloat32Array = placed.multimesh.buffer
-			_check(uploaded.size() == placed.multimesh.instance_count * 16, "complete records")
-			for index: int in placed.multimesh.instance_count:
-				found.append(uploaded.slice(index * 16, (index + 1) * 16))
-		_check(found.size() == expected.size(), "batching retains every tree")
-		for record: PackedFloat32Array in expected:
-			_check(found.has(record), "placement and colour retained across batch boundaries")
-		if cell_m == 480:
-			_check(parent.get_child_count() == 1, "Low keeps its original draw-call budget")
-		parent.free()
+	# Every preset, Low too: one close tree must not keep a whole chunk at full detail.
+	var parent: Node3D = Node3D.new()
+	VegetationModels.add_to(parent, "conifer_tall", buffer, 1200, 600, 0.5)
+	_check(parent.get_child_count() == 3, "trees in different 160 m cells are batched apart")
+	var found: Array[PackedFloat32Array] = []
+	for child: Node in parent.get_children():
+		var placed: MultiMeshInstance3D = child as MultiMeshInstance3D
+		_check(placed.has_meta("tree"), "batched trees retain their range metadata")
+		_check(placed.visibility_range_end == 1200, "tree range remains independent of LOD")
+		_check(placed.lod_bias == 0.5, "a preset's tree LOD bias reaches every batch")
+		# The dummy renderer retains bulk buffers but not per-instance GPU readbacks.
+		var uploaded: PackedFloat32Array = placed.multimesh.buffer
+		_check(uploaded.size() == placed.multimesh.instance_count * 16, "complete records")
+		for index: int in placed.multimesh.instance_count:
+			found.append(uploaded.slice(index * 16, (index + 1) * 16))
+	_check(found.size() == expected.size(), "batching retains every tree")
+	for record: PackedFloat32Array in expected:
+		_check(found.has(record), "placement and colour retained across batch boundaries")
+	parent.free()
 
 
 func _triangles(mesh: ArrayMesh) -> int:
