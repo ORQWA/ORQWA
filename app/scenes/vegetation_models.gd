@@ -15,16 +15,14 @@ const LOOKS: Dictionary[String, Array] = {
 	"frond": ["vegetation", 2, "", 1.0, 1.0, 0.12],
 	"rock": ["vegetation", 3, "rock", 1.6, 1.0, 0.0],
 }
-
-static var _materials: Dictionary[String, ShaderMaterial] = {}
-static var _meshes: Dictionary[String, Mesh] = {}
-
-
 ## Trees are batched in cells of this size (metres): Godot chooses one level of detail per batch
 ## from its closest point, so in a whole 480 m chunk one close tree kept every tree at full
 ## detail. Low too: on the Galaxy Tab S7 the far levels' fewer, larger cards save 5–10 ms of GPU
 ## time per frame for about 1 ms of render CPU (docs/benchmarks/tablet-frame-rate.md).
 const TREE_CELL_M: float = 160.0
+
+static var _materials: Dictionary[String, ShaderMaterial] = {}
+static var _meshes: Dictionary[String, Mesh] = {}
 
 
 ## One model's uploaded plants of a chunk, trees in cells of `TREE_CELL_M`.
