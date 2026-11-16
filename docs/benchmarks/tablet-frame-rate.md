@@ -13,9 +13,9 @@ Mobile renderer, Low preset. Issue #542.
   sample after settling. Each run started with the tablet cooled to ≤ 31 °C (AP sensor).
 - Numbers are GPU milliseconds per frame. The tablet is GPU-bound (render CPU 2–7 ms), and
   Android paces frames to whole refreshes, so GPU time is the measure, not fps.
-- A screen stream may have been running on the tablet during part of the session. The main
-  build matched the previous night's run within 2 ms, but repeat before relying on single
-  figures.
+- Repeated with no screen stream on the tablet: every whole-frame figure below came out
+  within 2.2 ms of the first run (main 101.9 / 89.8 / 115.2, terrain 92.9 / 73.3 / 102.2,
+  terrain + sky 88.1 / 67.2 / 97.5).
 
 ## Whole frame
 
@@ -30,10 +30,10 @@ Mobile renderer, Low preset. Issue #542.
 | GPU ms | main | terrain | terrain + sky |
 |---|---:|---:|---:|
 | terrain, 2 / 9 / 16 km | 23 / 42 / 33 | 13 / 26 / 23 | 18 / 33 / 28 |
-| sky (flat colour instead), 2 / 9 km | 12 / 11 | 13 / 8 | 6 / 2 |
+| sky (flat colour instead), 2 / 9 / 16 km | 12 / 11 / 11 | 13 / 8 / 9 | 6 / 2 / 3 |
 | sky lighting redrawn as clouds drift | ~1 | ~1 | 0 |
 | trees, 2 / 16 km | 18 / 27 | 12 / 28 | 19 / 29 |
-| small plants, 2 / 16 km | 6 / 8 | 3 / 7 | 7 / – |
+| small plants, 2 / 16 km | 6 / 8 | 3 / 7 | 7 / 8 |
 
 The "without it" figures shift when another part gets cheaper (a tiler's costs overlap), so
 read them as the size of each part, not as savings that add up.
