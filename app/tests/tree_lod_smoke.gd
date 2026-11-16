@@ -23,14 +23,14 @@ func _run() -> void:
 	for name: String in TREES:
 		_model(name)
 	_batches()
-	_rebatch()
+	_low_in_place()
 	await _ground()
 	if not _failed:
 		print("TREE LOD SMOKE TEST PASSED")
 	quit(1 if _failed else 0)
 
 
-func _rebatch() -> void:
+func _low_in_place() -> void:
 	var world: RideWorld = (load("res://scenes/world.tscn") as PackedScene).instantiate()
 	root.add_child(world)
 	world.apply_quality("ultra", {"tree_density": "low"})

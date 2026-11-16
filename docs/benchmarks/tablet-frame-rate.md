@@ -72,7 +72,7 @@ measured as above:
 | terrain layers + sky passes | 88.1 | 67.2 | 97.5 |
 | + trees in 160 m cells on Low | 80.3 | 66.8 | 84.1 |
 
-Trees now cost 12 / 16 ms at 2 / 16 km (was 20 / 29). Render CPU rose from 3.1–3.5 to
+Trees now cost 12 / 16 ms at 2 / 16 km (was 19 / 29, frame minus frame without trees). Render CPU rose from 3.1–3.5 to
 4.0–4.6 ms (285 instead of 176 draw calls at 2 km), far below the GPU time. Native renders of
 Low before and after differ in ≤ 1.8 % of pixels, in distant crowns:
 

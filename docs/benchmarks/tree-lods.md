@@ -33,7 +33,8 @@ and grass, with the remaining effects Auto. Other rows use their complete preset
 The forest population, graphics choices and camera were unchanged within each comparison.
 [Raw figures](tree-lods.csv) include median frame time and draw calls.
 
-Low first kept its chunk-sized batching to keep its draw-call count. Since 2026-11-16 it uses
+Low first kept its chunk-sized batching to keep its draw-call count; the Low row above and its
+draw calls in the CSV predate the change below. Since 2026-11-16 it uses
 the same 160 m batches, with a tree LOD bias of 0.5: on the Galaxy Tab S7 that saved 7–14 ms of
 GPU time per frame for about 1 ms of render CPU
 ([tablet frame rate](tablet-frame-rate.md#trees-in-160-m-cells-on-low)).
