@@ -83,8 +83,48 @@ crowns:
 | ![Lake from above, before](../images/low-tree-cells/lake-drone-before.jpg) | ![Lake from above, after](../images/low-tree-cells/lake-drone-after.jpg) |
 | ![Climb, before](../images/low-tree-cells/climb-chase-before.jpg) | ![Climb, after](../images/low-tree-cells/climb-chase-after.jpg) |
 
+## Small plants in 160 m cells
+
+Bushes, ferns and rocks were still batched by 480 m chunk. Probes on the tree-cells build
+(without the terrain fix, so frames are slower; GPU ms saved at 2 / 9 / 16 km):
+
+| Change | Saved |
+|---|---:|
+| sun shadows off | 10 / 3.5 / 11 |
+| nothing casts shadows (the shadow map's own pass) | 7.6 / 1.5 / 8.5 |
+| … small plants or trees alone cast none | 4 / 0.3 / 4 and 2 / 0.3 / 3.7 |
+| one shadow split, 1024 atlas or 120 m reach | 3.4 / 0.6 / 3.3, ≤ 1.7, ≤ 0.5 |
+| hard shadow filter | 0 (already hard on Android) |
+| small plants hidden | 7.5 / 0.7 / 6.2 |
+| … ferns alone | 7.1 / 0.6 / 6.4 |
+| small plants in 160 m cells | 3.7 / 0.5 / 3.8 |
+| small plants' range 250 or 150 m, in chunks or cells | ≤ 0.5 |
+
+Ferns are nearly all of the small plants' cost. They have no coarser levels, yet in cells they
+cost less at the same range, though more of them stay in view and shorter ranges save nothing:
+the cost is not distance alone. The remaining shadow savings all change the look, so shadows
+stay as they are for now.
+
+Every preset now batches small plants in 160 m cells as it does trees. Same base, two runs of
+the change:
+
+| GPU ms | 2 km | 9 km | 16 km |
+|---|---:|---:|---:|
+| trees in 160 m cells | 89.4 | 84.0 | 96.3 |
+| + small plants in 160 m cells | 87.8 | 83.5–84.5 | 93.1 |
+| small plants' own cost, before → after | 7.1 → 3.3 | 0.7 → 0.4 | 8.4 → 5.0 |
+
+Render CPU is unchanged (4.1–4.8 ms). Native renders of Low before and after differ only by
+the leaf shadows moving in the wind:
+
+| Before | After |
+|---|---|
+| ![Forest floor, before](../images/plant-cells/forest-floor-before.jpg) | ![Forest floor, after](../images/plant-cells/forest-floor-after.jpg) |
+| ![Hairpin, before](../images/plant-cells/hairpin-chase-before.jpg) | ![Hairpin, after](../images/plant-cells/hairpin-chase-after.jpg) |
+| ![Forest road in autumn, before](../images/plant-cells/autumn-forest-road-before.jpg) | ![Forest road in autumn, after](../images/plant-cells/autumn-forest-road-after.jpg) |
+
 ## What is left
 
-Terrain (~20–30 ms), sun shadows (~15–20 ms), trees (~12–16 ms, mostly the cut-out cards'
-overdraw), small plants (~8 ms) and the ~27 ms floor of a frame with no 3D world (interface,
-post-processing).
+Terrain (~20–30 ms), sun shadows (~10 ms, of which ~8 ms the shadow map's pass), trees
+(~12–16 ms, mostly the cut-out cards' overdraw), small plants (~3–5 ms) and the ~27 ms floor
+of a frame with no 3D world (interface, post-processing).
