@@ -396,6 +396,18 @@ route's excerpts, Brienz's 2,625 unmapped roofs are all pitched (its 12 mapped a
 around Biel's centre the guessed roofs follow the mapped by size: sheds 74 % flat as mapped,
 houses 23 % (12 % mapped), blocks 53 % (61 %), the largest 82 % (78 %). Generator 51.
 
+## Amendment 2026-11-19: storeys like the neighbours'
+
+Storeys work the same way (`neighbours::like_neighbours`). A building with neither storeys
+nor a height mapped had its kind's: houses one to three, blocks, hotels and offices three to
+six. It now takes as many as the buildings mapped around it with `building:levels` have,
+those of its size first, if it has storeys of windows (sheds, halls and churches keep their
+walls). Storeys spread over a dozen counts where roofs come in three forms, so they take more
+mapped buildings: 12 of its size or 30 of any, against 8 and 10 for roofs. Around Biel's
+centre (783 mapped of 7,154) the guessed storeys follow the mapped by size: houses 3 as
+mapped, buildings of 200–600 m² 4 as mapped, the largest 4 as mapped; Brienz, with 15 mapped
+within 5 km, keeps its kinds' own. Generator 52.
+
 ## Consequences
 
 - No world, course or network change in this step: the census reads a download the rider

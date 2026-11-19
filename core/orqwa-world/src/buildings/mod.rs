@@ -262,8 +262,11 @@ pub(crate) struct Plot<'a> {
     /// Whether it is a piece of a building the road or a street runs through.
     pub(crate) cut: passage::Cut,
     /// The roof the roofs mapped around it suggest, where the map gives it none
-    /// (`neighbours::roofs_like_neighbours`).
+    /// (`neighbours::like_neighbours`).
     pub(crate) roof: Option<RoofShape>,
+    /// The storeys the buildings mapped around it suggest, where the map gives it neither
+    /// storeys nor a height (`neighbours::like_neighbours`).
+    pub(crate) storeys: Option<u8>,
 }
 
 impl Plot<'_> {
@@ -656,7 +659,7 @@ pub(crate) fn add(chunk: &mut ChunkBuildings, plot: &Plot, heights: &HeightGrid,
     let design = (!special).then(|| {
         design(
             kind,
-            (plot.building, plot.roof),
+            (plot.building, plot.roof, plot.storeys),
             rect.is_some(),
             tropical,
             plot.region,
@@ -1171,7 +1174,7 @@ struct Trim {
 /// heat.
 fn design(
     kind: Kind,
-    (building, neighbours): (&Building, Option<RoofShape>),
+    (building, roof, storeys): (&Building, Option<RoofShape>, Option<u8>),
     rectangular: bool,
     tropical: bool,
     region: Region,
@@ -1201,13 +1204,23 @@ fn design(
         // `church`, `castle` and `lighthouse` build those; none get here.
         Kind::Hall | Kind::Church | Kind::Castle | Kind::Lighthouse => recipe.hall(),
     };
-    let design = mapped(design, building);
+    let mut design = mapped(design, building);
     // Where the map gives no roof, the roofs mapped around it say what this one is like; a
     // canopy stays a roof on posts.
-    match neighbours.filter(|_| kind != Kind::Canopy) {
-        Some(roof) if building.shape.and_then(|s| s.roof).is_none() => with_roof(design, roof),
-        _ => design,
+    if let Some(roof) = roof.filter(|_| kind != Kind::Canopy)
+        && building.shape.and_then(|s| s.roof).is_none()
+    {
+        design = with_roof(design, roof);
     }
+    // So do the storeys mapped around a building with storeys of windows; sheds and halls
+    // keep their walls.
+    if let Some(count) = storeys.filter(|_| design.windows)
+        && building.levels.is_none()
+        && building.height.is_none()
+    {
+        design.walls = self::storeys(f64::from(count));
+    }
+    design
 }
 
 /// What the map says of a building's roof and walls goes before what its recipe chose
@@ -3092,6 +3105,7 @@ mod tests {
             drawn: Drawn::Whole,
             cut: passage::Cut::Whole,
             roof: None,
+            storeys: None,
         }
     }
 
@@ -3151,7 +3165,7 @@ mod tests {
             }
             let design = design(
                 Kind::House,
-                (&building, None),
+                (&building, None, None),
                 true,
                 false,
                 Region::Asia,
@@ -3194,7 +3208,7 @@ mod tests {
             }
             let design = design(
                 Kind::House,
-                (&building, None),
+                (&building, None, None),
                 true,
                 false,
                 Region::Nordic,
@@ -3234,7 +3248,7 @@ mod tests {
             assert_eq!(kind(&plot, 600.0, 1500.0, &Dice(id)), Kind::House);
             let design = design(
                 Kind::House,
-                (&building, None),
+                (&building, None, None),
                 true,
                 false,
                 Region::France,
@@ -3261,7 +3275,7 @@ mod tests {
 
         let design = design(
             Kind::Block,
-            (&building, None),
+            (&building, None, None),
             true,
             false,
             Region::France,
@@ -3571,7 +3585,7 @@ mod tests {
             .map(|id| {
                 design(
                     Kind::House,
-                    (&untagged(id), None),
+                    (&untagged(id), None, None),
                     true,
                     true,
                     Region::Generic,
@@ -3598,7 +3612,7 @@ mod tests {
             .map(|id| {
                 design(
                     Kind::House,
-                    (&untagged(id), None),
+                    (&untagged(id), None, None),
                     true,
                     false,
                     Region::Generic,

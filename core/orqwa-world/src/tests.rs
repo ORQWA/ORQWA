@@ -4415,6 +4415,58 @@ async fn buildings_whose_roof_is_not_mapped_take_their_neighbours_roofs() {
 }
 
 #[tokio::test]
+async fn buildings_whose_storeys_are_not_mapped_take_their_neighbours_storeys() {
+    // A village of 32 houses mapped with two storeys, and an apartment block whose storeys
+    // the map leaves out: blocks have four to six, but this one is as low as the village.
+    let mut buildings: Vec<Building> = (0..32_i32)
+        .map(|i| Building {
+            id: 800 + i64::from(i),
+            outline: rectangle(
+                40.0 + f64::from(i % 8) * 20.0,
+                300.0 + f64::from(i / 8) * 30.0,
+                5.0,
+                4.0,
+            ),
+            height: None,
+            levels: Some(2.0),
+            color: None,
+            min_height: None,
+            in_parts: false,
+            kind: None,
+            shape: None,
+        })
+        .collect();
+    buildings.push(Building {
+        id: 900,
+        outline: rectangle(100.0, 520.0, 12.0, 8.0),
+        height: None,
+        levels: None,
+        color: None,
+        min_height: None,
+        in_parts: false,
+        kind: Some(orqwa_osm::BuildingKind::Apartments),
+        shape: None,
+    });
+    let world = world(&MapData {
+        buildings,
+        ..MapData::default()
+    })
+    .await;
+
+    let block = building_faces(&world, (100.0, 520.0), 15.0);
+    assert!(!block.is_empty(), "the block is gone");
+    // Two storeys and their roof stay below the walls alone of the four to six a block has
+    // (12.4 m and more above its floor).
+    let floor = slope_at(100.0);
+    let top = highest(&block);
+    assert!(
+        top < floor + 11.5,
+        "the block stands {} m above its floor",
+        top - floor
+    );
+}
+
+#[tokio::test]
 async fn buildings_raised_over_the_road_span_it_whole() {
     // A bridge between two buildings, mapped from 5 m up to 8 m, across the road.
     let world = world(&MapData {

@@ -566,7 +566,7 @@ physically based materials and light, restyled group by group.
     line, and what still stands on it or a street is cut along it, with passages over them
   - [x] Roofs like the neighbours' (R264): a building without a mapped roof takes the roofs
     mapped around it, those of buildings its size first
-  - [ ] Storeys like the neighbours': from the buildings around that map their levels
+  - [x] Storeys like the neighbours' (R265): from the buildings around that map their levels
   - [ ] Regional parts (Nordic, French, Japanese windows), parts on gables and lower storeys
   - [ ] ~~National data (GWR, swissBUILDINGS3D, lidar surface models) where the map is thin~~ —
     dropped 2026-11-19: buildings come from the map and our rules (ADR 0041)

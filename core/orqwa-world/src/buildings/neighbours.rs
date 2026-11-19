@@ -1,8 +1,9 @@
-//! Roofs like the neighbours'. Few buildings have their roof mapped (6–8 % in Switzerland and
-//! its neighbours, ADR 0041), but enough do for a town's or a village's roofs to show: around
-//! Biel's centre most mapped roofs are flat, around Brienz none is. A building whose roof the
-//! map leaves out takes one as the mapped roofs around it go, those of buildings its size
-//! first; where too few are mapped nearby, its kind's own roof stays.
+//! Roofs and storeys like the neighbours'. Few buildings have their roof or their storeys
+//! mapped (6–8 % in Switzerland and its neighbours, ADR 0041), but enough do for a town's or a
+//! village's buildings to show: around Biel's centre most mapped roofs are flat, around
+//! Brienz none is. A building the map says neither of takes them as the buildings mapped
+//! around it have them, those of its own size first; where too few are mapped nearby, its
+//! kind's own stay.
 
 use std::collections::HashMap;
 
@@ -11,24 +12,28 @@ use orqwa_osm::RoofShape;
 use super::shape::{centroid, signed_area};
 use super::{Dice, Drawn, Plot, Point};
 
-/// Mapped roofs are looked for within the first of these distances (m) that has enough of
-/// buildings the same size...
+/// Mapped buildings are looked for within the first of these distances (m) that has enough of
+/// the same size: a town builds its houses, blocks and sheds differently...
 const REACHES: [f64; 4] = [1000.0, 2000.0, 3000.0, 5000.0];
-/// ...this many: a town builds its houses, blocks and sheds differently.
-const ENOUGH_ALIKE: u32 = 8;
-/// Short of that within the furthest, buildings of other sizes count too, less the more they
-/// differ (`ALIKE`), if there are this many mapped roofs at all; else none is guessed.
-const ENOUGH: u32 = 10;
-/// Footprint areas (m²) dividing the sizes of building whose roofs are told apart: sheds and
-/// garages, houses, large houses, blocks and halls.
+/// ...this many of them, and short of that within the furthest, this many of any size, which
+/// count less the more their size differs (`ALIKE`); else nothing is guessed. Roofs come in
+/// three forms, which a few show...
+const ENOUGH_ROOFS: Enough = (8, 10);
+/// ...storeys in a dozen counts, which take more.
+const ENOUGH_STOREYS: Enough = (12, 30);
+/// Footprint areas (m²) dividing the sizes of building told apart: sheds and garages,
+/// houses, large houses, blocks and halls.
 const SIZES: [f64; 4] = [60.0, 200.0, 600.0, 1500.0];
-/// How much a mapped roof counts for a building as many sizes apart.
+/// How many mapped buildings of the same size and of any size are enough.
+type Enough = (u32, u32);
+/// How much a mapped building counts for one as many sizes apart.
 const ALIKE: [u32; 3] = [4, 2, 1];
-/// Cells of the index of mapped roofs, and of the mixes worked out once for all the
+/// Cells of the index of mapped buildings, and of the mixes worked out once for all the
 /// buildings in one.
 const CELL: f64 = 250.0;
 
-/// The mapped roofs in each cell: where, the size of building and the form.
+/// The mapped buildings in each cell: where, their size and what they are (a roof form, a
+/// number of storeys).
 type Mapped = HashMap<(i64, i64), Vec<(Point, usize, usize)>>;
 /// A cell and a size of building.
 type Key = ((i64, i64), usize);
@@ -36,70 +41,122 @@ type Key = ((i64, i64), usize);
 /// Roofs told apart: flat, gabled (as gambrel and lean-to roofs are drawn) and hipped (as the
 /// other pitched ones are).
 const FORMS: [RoofShape; 3] = [RoofShape::Flat, RoofShape::Gabled, RoofShape::Hipped];
+/// Storeys told apart, from one: more are counted as the most.
+const STOREYS: usize = 12;
 
-/// Gives each plot whose roof the map leaves out the roof of its neighbours (`Plot::roof`).
-pub(crate) fn roofs_like_neighbours(plots: &mut [Plot]) {
+/// Gives each plot whose roof the map leaves out the roof of its neighbours (`Plot::roof`),
+/// and each whose storeys and height it leaves out their storeys (`Plot::storeys`).
+pub(crate) fn like_neighbours(plots: &mut [Plot]) {
+    let roof = |p: &Plot| p.building.shape.and_then(|s| s.roof);
+    let mapped = index(plots, |p| roof(p).map(form));
+    guess::<3>(
+        plots,
+        (&mapped, ENOUGH_ROOFS),
+        |p| roof(p).is_none(),
+        |plot, counts| {
+            plot.roof = Some(FORMS[pick(&counts, &Dice(plot.building.id), 77)]);
+        },
+    );
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // clamped to a few
+    let storeys = |p: &Plot| {
+        p.building
+            .levels
+            .map(|n| (n.round().clamp(1.0, 12.0) as usize) - 1)
+    };
+    let mapped = index(plots, storeys);
+    let unmapped = |p: &Plot| p.building.levels.is_none() && p.building.height.is_none();
+    guess::<STOREYS>(
+        plots,
+        (&mapped, ENOUGH_STOREYS),
+        unmapped,
+        |plot, counts| {
+            #[allow(clippy::cast_possible_truncation)] // at most `STOREYS`
+            let count = pick(&counts, &Dice(plot.building.id), 78) as u8 + 1;
+            plot.storeys = Some(count);
+        },
+    );
+}
+
+/// The plots for which `what` says what they are, by cell.
+fn index(plots: &[Plot], what: impl Fn(&Plot) -> Option<usize>) -> Mapped {
     let mut mapped: Mapped = HashMap::new();
     for plot in plots.iter().filter(|p| drawn(p)) {
-        if let Some(form) = plot.building.shape.and_then(|s| s.roof).map(form) {
+        if let Some(value) = what(plot) {
             let at = centroid(&plot.footprint);
-            let entry = (at, size(&plot.footprint), form);
+            let entry = (at, size(&plot.footprint), value);
             mapped.entry(cell(at)).or_default().push(entry);
         }
     }
+    mapped
+}
+
+/// Sets (`set`) what the plots `unknown` says the map leaves out from the mix of the `mapped`
+/// around them, where `enough` are.
+fn guess<const N: usize>(
+    plots: &mut [Plot],
+    (mapped, enough): (&Mapped, Enough),
+    unknown: impl Fn(&Plot) -> bool,
+    mut set: impl FnMut(&mut Plot, [u32; N]),
+) {
     if mapped.is_empty() {
         return;
     }
-    let mut mixes: HashMap<Key, Option<[u32; 3]>> = HashMap::new();
+    let mut mixes: HashMap<Key, Option<[u32; N]>> = HashMap::new();
     for plot in plots.iter_mut() {
-        if !drawn(plot) || plot.building.shape.and_then(|s| s.roof).is_some() {
+        if !drawn(plot) || !unknown(plot) {
             continue;
         }
-        let at = centroid(&plot.footprint);
-        let key = (cell(at), size(&plot.footprint));
-        let mix = *mixes.entry(key).or_insert_with(|| mix(&mapped, key));
-        plot.roof = mix.map(|counts| pick(counts, &Dice(plot.building.id)));
+        let key = (cell(centroid(&plot.footprint)), size(&plot.footprint));
+        if let Some(counts) = *mixes
+            .entry(key)
+            .or_insert_with(|| mix((mapped, enough), key))
+        {
+            set(plot, counts);
+        }
     }
 }
 
-/// Whether a plot is drawn as a building of its own, whose roof shows.
+/// Whether a plot is drawn as a building of its own, whose roof and storeys show.
 fn drawn(plot: &Plot) -> bool {
     matches!(plot.drawn, Drawn::Whole | Drawn::Part(_)) && !plot.church && plot.landmark.is_none()
 }
 
-/// The roofs mapped around the middle of a cell: those of buildings of `size` within the first
-/// reach that has enough of them, else those of all sizes within the furthest, counted by how
-/// alike their size is; none if too few are mapped there. Whole counts, so the mix comes out
-/// the same whatever order the roofs are found in.
-fn mix(mapped: &Mapped, ((x, y), size): Key) -> Option<[u32; 3]> {
+/// What the buildings mapped around the middle of a cell are: those of `size` within the
+/// first reach that has enough of them, else those of all sizes within the furthest, counted
+/// by how alike their size is; nothing if too few are mapped there. Whole counts, so the mix
+/// comes out the same whatever order the buildings are found in.
+fn mix<const N: usize>(
+    (mapped, (alike, any)): (&Mapped, Enough),
+    ((x, y), size): Key,
+) -> Option<[u32; N]> {
     #[allow(clippy::cast_precision_loss)] // cell numbers of local metres
     let middle = ((x as f64 + 0.5) * CELL, (y as f64 + 0.5) * CELL);
-    let mut by_size = [[0_u32; 3]; SIZES.len() + 1];
+    let mut by_size = [[0_u32; N]; SIZES.len() + 1];
     for reach in REACHES {
         #[allow(clippy::cast_possible_truncation)] // a few cells
         let span = (reach / CELL).ceil() as i64 + 1;
-        by_size = [[0; 3]; SIZES.len() + 1];
+        by_size = [[0; N]; SIZES.len() + 1];
         for cx in x - span..=x + span {
             for cy in y - span..=y + span {
-                for &(at, other, form) in mapped.get(&(cx, cy)).into_iter().flatten() {
+                for &(at, other, what) in mapped.get(&(cx, cy)).into_iter().flatten() {
                     if (at.0 - middle.0).hypot(at.1 - middle.1) <= reach {
-                        by_size[other][form] += 1;
+                        by_size[other][what.min(N - 1)] += 1;
                     }
                 }
             }
         }
-        if by_size[size].iter().sum::<u32>() >= ENOUGH_ALIKE {
+        if by_size[size].iter().sum::<u32>() >= alike {
             return Some(by_size[size]);
         }
     }
     let found: u32 = by_size.iter().flatten().sum();
-    if found < ENOUGH {
+    if found < any {
         return None;
     }
-    let mut counts = [0_u32; 3];
-    for (other, forms) in by_size.iter().enumerate() {
+    let mut counts = [0_u32; N];
+    for (other, found) in by_size.iter().enumerate() {
         if let Some(&weight) = ALIKE.get(other.abs_diff(size)) {
-            for (count, n) in counts.iter_mut().zip(forms) {
+            for (count, n) in counts.iter_mut().zip(found) {
                 *count += weight * n;
             }
         }
@@ -107,17 +164,18 @@ fn mix(mapped: &Mapped, ((x, y), size): Key) -> Option<[u32; 3]> {
     (counts.iter().sum::<u32>() > 0).then_some(counts)
 }
 
-/// A roof picked from a mix, the same for the same building every time.
-fn pick(counts: [u32; 3], dice: &Dice) -> RoofShape {
+/// An entry picked from a mix as often as it counts, the same for the same building every
+/// time; `salt` keeps the picks of different things apart.
+fn pick(counts: &[u32], dice: &Dice, salt: i64) -> usize {
     let total: u32 = counts.iter().sum();
-    let mut left = dice.roll(77) * f64::from(total);
-    for (form, count) in FORMS.iter().zip(counts) {
+    let mut left = dice.roll(salt) * f64::from(total);
+    for (i, &count) in counts.iter().enumerate() {
         left -= f64::from(count);
         if left < 0.0 {
-            return *form;
+            return i;
         }
     }
-    FORMS[counts.iter().rposition(|&c| c > 0).unwrap_or(1)]
+    counts.iter().rposition(|&c| c > 0).unwrap_or(0)
 }
 
 /// Which of `FORMS` a mapped roof counts as.
@@ -191,6 +249,7 @@ mod tests {
             drawn: Drawn::Whole,
             cut: Cut::Whole,
             roof: None,
+            storeys: None,
         }
     }
 
@@ -212,7 +271,7 @@ mod tests {
             })
             .chain(unknown.iter().map(|b| plot(b, (180.0, 600.0), side)))
             .collect();
-        roofs_like_neighbours(&mut plots);
+        like_neighbours(&mut plots);
         plots[mapped.len()..].iter().map(|p| p.roof).collect()
     }
 
@@ -282,6 +341,46 @@ mod tests {
     fn too_few_mapped_roofs_leave_the_kinds_own() {
         let few = vec![(RoofShape::Flat, 12.0); 6];
         assert!(guesses(&few, 20, 12.0).iter().all(Option::is_none));
+    }
+
+    /// The storeys guessed for `count` unmapped houses among 25 mapped with `levels`; the
+    /// unmapped ones have `height` mapped, if given.
+    #[allow(clippy::cast_possible_wrap, clippy::cast_precision_loss)] // a few test buildings
+    fn storeys(levels: &[f64], count: i64, height: Option<f64>) -> Vec<Option<u8>> {
+        let known: Vec<Building> = (0..25)
+            .map(|i| Building {
+                levels: Some(levels[i % levels.len()]),
+                ..building(1000 + i as i64, None)
+            })
+            .collect();
+        let unknown: Vec<Building> = (0..count)
+            .map(|id| Building {
+                height,
+                ..building(id, None)
+            })
+            .collect();
+        let mut plots: Vec<Plot> = known
+            .iter()
+            .enumerate()
+            .map(|(i, b)| plot(b, ((i % 10) as f64 * 40.0, (i / 10) as f64 * 40.0), 12.0))
+            .chain(unknown.iter().map(|b| plot(b, (180.0, 600.0), 12.0)))
+            .collect();
+        like_neighbours(&mut plots);
+        plots[25..].iter().map(|p| p.storeys).collect()
+    }
+
+    #[test]
+    fn buildings_take_the_storeys_mapped_around_them() {
+        assert!(storeys(&[2.0], 50, None).iter().all(|s| *s == Some(2)));
+        let mixed = storeys(&[2.0, 5.0], 400, None);
+        let five = mixed.iter().filter(|s| **s == Some(5)).count();
+        assert!(
+            (150..=250).contains(&five),
+            "{five} of 400 with five storeys"
+        );
+        assert!(mixed.iter().all(|s| matches!(s, Some(2 | 5))));
+        // A height the map gives stays the building's own.
+        assert!(storeys(&[2.0], 10, Some(15.0)).iter().all(Option::is_none));
     }
 
     #[test]
