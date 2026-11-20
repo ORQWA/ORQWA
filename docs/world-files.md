@@ -60,7 +60,7 @@ of a section centred on [e, n, h] lies at east `e + x`, north `n − z` and elev
   "environment": {
     "sun": { "elevation_deg": 32, "azimuth_deg": 235, "colour": [1.0, 0.95, 0.86], "energy": 1.5 },
     "ambient": { "colour": [0.62, 0.72, 0.86], "energy": 0.8 },
-    "sky": { "kind": "gradient", "zenith": [0.24, 0.42, 0.72], "horizon": [0.74, 0.82, 0.9], "clouds": 0.2 },
+    "sky": { "kind": "atmosphere", "clouds": 0.3, "overcast": 0.0 },
     "fog": { "colour": [0.74, 0.8, 0.88], "density": 0.00012 }
   },
   "sections": [
@@ -120,8 +120,9 @@ not to need thousands of them.
 
 ### Assets and `instances` files
 
-An asset is a model placed many times. Its levels of detail switch by the distance from the
-camera to each copy, like those of a section. An `instances` file places assets within its
+An asset is a model placed many times: each of its `.glb` files holds one mesh (of any number
+of primitives and materials), placed at the origin. Its levels of detail switch by the distance
+from the camera to the section the copies are in. An `instances` file places assets within its
 section, in little-endian binary:
 
 ```
@@ -134,7 +135,8 @@ then per group:
   flags             u32, bit 0: each copy carries a tint
   count × copy      12 f32: the 3 × 4 matrix [r00 r01 r02 x  r10 r11 r12 y  r20 r21 r22 z],
                     row by row, in the section's glTF frame;
-                    then, with the tint flag, 4 f32: an sRGB multiplier and alpha
+                    then, with the tint flag, 4 f32: an sRGB multiplier and alpha,
+                    applied to every material of the asset
 ```
 
 Matrices may rotate and scale but not shear. A file ends after its last group.
@@ -170,7 +172,7 @@ The world's light is the author's. ORQWA's time of day, weather and seasons do n
 |---|---|
 | `sun` | `elevation_deg` (−10 to 90), `azimuth_deg` (clockwise from north), `colour`, `energy` (0–16). |
 | `ambient` | `colour`, `energy` (0–16): light from the sky, before the sky's own. |
-| `sky` | Either `{"kind": "gradient", "zenith", "horizon", "clouds"}`: ORQWA's sky in these colours, `clouds` from 0 (none) to 1 (overcast); or `{"kind": "panorama", "image": "sky/<name>.png", "energy"}`: an equirectangular image the sky and its reflections come from. |
+| `sky` | Either `{"kind": "atmosphere", "clouds", "overcast"}`: ORQWA's sky, the atmosphere lit by the world's sun, `clouds` its cover from 0 (none) to 1 (closed) and `overcast` how grey it is, from 0 (fair, the default) to 1; or `{"kind": "panorama", "image": "sky/<name>.png", "energy"}`: an equirectangular image the sky and its reflections come from. |
 | `fog` | Optional: `colour` and `density` (per metre, 0 to 0.01). |
 
 ## glTF content
@@ -214,7 +216,8 @@ lays up to eight tiling detail layers over the base colour near the camera:
   blue and alpha channels weigh layers 0–3 and 4–7.
 - `layers`: 1–8 layers, each an `albedo` texture, an optional `normal` texture, a `roughness`
   (0–1) and the size in metres one repeat of its textures covers. Layers repeat in the
-  horizontal plane of the world, so the ground needs no texture coordinates for them.
+  horizontal plane of the world, and on steep ground also from the side, so the ground needs no
+  texture coordinates for them and cliffs do not stretch them.
 - Near the camera, the albedo is the base colour times each layer's albedo divided by its
   average colour, blended by the weights and by `strength` (0–1). From `fade_m[0]` to
   `fade_m[1]` metres the layers fade out, leaving the base colour.
@@ -233,8 +236,8 @@ are stored, routes and `instances` files deflated.
 - Importing checks the whole file against this specification and copies it into `worlds/` in
   the data directory. Each route is a ride in the library.
 - Riding reads the file as it is. ORQWA builds nothing, downloads nothing and never changes or
-  deletes the file; only the rider deletes it. Textures are compressed for the GPU on the first
-  ride and kept in the cache, which may be cleared at any time.
+  deletes the file; only the rider deletes it. Textures are drawn uncompressed with mipmaps
+  ORQWA makes as it loads them: keep them as small as the view allows.
 - Rides on a world's route are saved and compared like rides on courses. Records and ghosts
   belong to the route's line: a new version of the world with the same line keeps them.
 - ORQWA offers no export of world files, and their routes cannot be chosen for group rides.
