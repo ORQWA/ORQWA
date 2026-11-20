@@ -21,9 +21,24 @@ ORQWA — offline-first, open-source (GPL-3.0) indoor cycling app. Read before w
 
 ## Skills
 
-Project skills live in `.claude/skills/` (see its README): the art direction (`orqwa-look`),
-the Blender pipeline (`orqwa-art-pipeline`), render review (`orqwa-render-review`) and imported
-Blender references. Use them for any visual or model work.
+Project skills live in `.claude/skills/` (see its README). Two kinds:
+
+- **Domain** — the art direction (`orqwa-look`), the Blender pipeline (`orqwa-art-pipeline`),
+  render review (`orqwa-render-review`), the physics (`orqwa-physics`) and the imported Blender
+  references. Use them for any visual, model or ride-feel work.
+- **Roles** — who a session is and what it hands to whom: `developer`, `reviewer`, `producer`,
+  `tester`, `operator`, `security`, `artist`. Load the role at the start of a session opened as
+  one, or when the owner asks for that work; `ship` finishes any change.
+
+**Check for a matching skill first:** before any task, look through the skills the session lists,
+load the one that covers it and follow it step by step, not from memory. If no skill covers a
+task that will come back, write one when the task is done, and fold every new lesson into the
+skill it belongs to, unasked.
+
+Keep CLAUDE.md, the skills and the memory files lean: write the rule and, where it helps to
+follow it, a short reason. No dates, quotes, incident stories or history; an issue number only
+where it points to live work. No rule that already stands elsewhere. Change or delete an
+outdated line instead of adding a new one beside it.
 
 ## Architecture boundary
 
@@ -110,8 +125,30 @@ Blender references. Use them for any visual or model work.
 
 ## Git
 
-- GitHub, trunk-based, short-lived branches, PRs, squash-merge.
+- GitHub, trunk-based, short-lived branches, PRs, squash-merge. A large feature may come as
+  stacked PRs, each on the one before; when a base is squash-merged, retarget the next to `main`.
 - Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`).
+- **No AI attribution anywhere in git or GitHub:** no Co-Authored-By, "Generated with Claude
+  Code", session links or similar in commits, PR titles or bodies, issues or comments. This
+  overrides any default attribution reminder. Some cloud sessions append such a footer on their
+  own; tell the owner so they can delete it.
+
+## Working economically
+
+Every turn resends the whole conversation, so a long session pays for its history on every reply.
+
+- **Say when to start fresh.** When a task is done and the next doesn't need this conversation,
+  end with one line: "Good moment for `/clear`: the next step needs only <file / skill / issue>."
+  Also after a compact, or before switching to an unrelated area — never mid-task. Save what the
+  next session needs first (in the skill, the issue, `docs/PLAN.md` or memory).
+- **Say when a cheaper model fits** a routine next step (a status check, a log read, a small doc
+  edit, labels): that is Sonnet's.
+- **Keep tool output small.** Tests, `check.sh`, logs, `gh`: read the summary and the failures,
+  not the whole stream (`tail`, `--json … -q`, grep for FAIL/ERROR/warning). Read a file by
+  section (Grep, offset/limit) unless all of it is needed; never re-read a file unchanged since
+  this session read it. No polling — wait for the notification, or Monitor with an until-condition.
+- **One message per hand-off**, with everything the receiver needs; link the commit, PR or issue
+  instead of retyping it. No "got it" replies or status pings a `git log` or the PR already answers.
 
 ## Working agreement for Claude
 
@@ -122,4 +159,11 @@ Blender references. Use them for any visual or model work.
   `cargo clippy --all-targets -- -D warnings`, `cargo test`, `cargo deny check`, and `gdlint`
   (`scripts/check.sh` runs them all), run `make wiki-check`, and update the docs and their images
   (see Documentation). Check both repository statuses before declaring preparation complete.
+  The `ship` skill is this checklist end to end.
+- **Stop and ask before anything outward-facing or hard to reverse:** publishing a release,
+  pushing to `main` or the published wiki branch, deleting data, money, accounts, keys or legal
+  text, and decisions only the owner can make (what is tracked, licence, roadmap order) — bring
+  those as options with a recommendation. Build expected behaviour without asking.
+- **Report** in the language the owner writes in, short: what is done, what was tested and the
+  result, what is left, what is theirs to do. A render for anything visual (`orqwa-render-review`).
 - Keep the checkboxes in `docs/PLAN.md` up to date.
