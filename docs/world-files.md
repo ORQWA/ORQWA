@@ -120,7 +120,8 @@ empty list means unknown; routes of a world with `origin.located: false` must om
 use an empty list. Existing format-1 files without this metadata still open.
 
 World-file routes appear under the library's **World** type, separately from generated **3D**
-and **Video** courses. `preview.png` keeps its aspect ratio, with rounded image corners.
+and **Video** courses. Their cards carry a **World** pill beside the name, matching the
+**Video** pill. `preview.png` keeps its aspect ratio, with rounded image corners.
 
 ### Sections and levels of detail
 

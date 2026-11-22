@@ -1266,6 +1266,7 @@ the format and riding it; the realistic Lake Biel world is built in a private re
 - [x] A test world made by a script; the usage guide in the wiki
 - [x] World type filter and grouping; author-supplied countries per route for offline cards,
   country search and filtering; rounded covers at any aspect ratio (R270)
+- [x] World pill beside the course name, matching the Video pill (R271)
 - [ ] Stage 2 (private repository): Twann – Chasseral around Lake Biel from swisstopo data
 - [ ] Stage 3: an editor; `.oqc` courses as a starting point
 - **Exit:** a rider imports a world file and rides each of its routes offline, as authored
