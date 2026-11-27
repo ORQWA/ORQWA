@@ -2,9 +2,9 @@
 
 Version 1.0, 2026-11-27
 
-Thank you for contributing to ORQWA (the "Project"). This Agreement records the rights you give
-Marco Boss (GitHub: @bossm8, the "Maintainer") in your Contributions. You keep the copyright in your
-Contributions and every right not granted below.
+Thank you for contributing to ORQWA (the "Project"). This Agreement records the rights You give
+Marco Boss (GitHub: @bossm8, the "Maintainer") in Your Contributions. You keep the copyright in
+Your Contributions and every right not granted below.
 
 ## 1. Definitions
 
@@ -17,14 +17,17 @@ It excludes material You clearly mark in writing as "Not a Contribution".
 
 ## 2. Copyright license
 
-You grant the Maintainer, and recipients of software the Maintainer distributes, a perpetual,
-worldwide, non-exclusive, no-charge, royalty-free, irrevocable license to reproduce, prepare
-derivative works of, publicly display, publicly perform, sublicense and distribute Your
-Contributions and derivative works of them.
+You grant the Maintainer a perpetual, worldwide, non-exclusive, no-charge, royalty-free,
+irrevocable license to reproduce, prepare derivative works of, publicly display, publicly
+perform, sublicense and distribute Your Contributions and derivative works of them.
 
-This license includes the right to distribute Your Contributions under any license or licenses,
-including licenses other than the Project's current license (GPL-3.0), and to add permissions or
-exceptions to a license, for example to allow distribution through app stores.
+Subject to the open-source commitment in section 4, the Maintainer may distribute Your
+Contributions and derivative works of them under any license or combination of licenses, and may
+add permissions or exceptions to a license, including for app-store distribution. The Maintainer
+may transfer this license under section 5.
+
+Recipients receive copyright permissions under the license or licenses that accompany the copy
+they receive.
 
 ## 3. Patent license
 
@@ -68,8 +71,8 @@ of any kind, and You need not support them.
 
 You accept this Agreement in one of two ways:
 
-- by signing it through the CLA Assistant check on your pull request; or
-- by posting this comment, with your full name, on a pull request or issue in the ORQWA
+- by signing it through the CLA Assistant check on Your pull request; or
+- by posting this comment, with Your full name, on a pull request or issue in the ORQWA
   repository:
 
   > I, [full name], have read the ORQWA Contributor License Agreement, version 1.0, and accept
