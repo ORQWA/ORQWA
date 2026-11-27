@@ -1,7 +1,7 @@
 # ORQWA Individual Contributor License Agreement
 
 Thank you for contributing to ORQWA (the "Project"). This Agreement records the rights you give
-Marco Boss (the "Maintainer") in your Contributions. You keep the copyright in your
+Marco Boss (GitHub: @bossm8, the "Maintainer") in your Contributions. You keep the copyright in your
 Contributions and every right not granted below.
 
 ## 1. Definitions
@@ -66,4 +66,3 @@ of any kind, and You need not support them.
 
 You accept this Agreement by signing it through the CLA Assistant check on your first pull
 request, or by commenting on a pull request or issue: "I have read the ORQWA CLA and accept it
-for all my past and future contributions."
