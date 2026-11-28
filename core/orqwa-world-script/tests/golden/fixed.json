@@ -145,8 +145,8 @@
       "anchor": {
        "body": "team"
       },
-      "back_m": 12.0,
-      "up_m": 4.0
+      "lift_m": 0.0,
+      "size": 1.8
      }
     },
     "ui": [
@@ -324,8 +324,8 @@
       "anchor": {
        "body": "team"
       },
-      "back_m": 12.0,
-      "up_m": 4.0
+      "lift_m": 0.0,
+      "size": 1.8
      }
     },
     "ui": [

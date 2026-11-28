@@ -255,7 +255,7 @@ pub struct Scene {
     pub lines: Vec<Line>,
     /// Whether ORQWA's own rider is shown, per slot; shown when not given.
     pub riders: Vec<RiderShown>,
-    /// Where the camera would like to be; the rider's own choice comes first.
+    /// What the camera follows, if not the rider.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub camera: Option<Camera>,
 }
@@ -365,19 +365,19 @@ pub struct RiderShown {
     pub shown: bool,
 }
 
-/// Where the camera would like to be.
+/// What the ride's camera follows. ORQWA's camera keeps its modes and the rider's controls
+/// (chase, first person, drone; round, nearer, further) and only follows this instead of the
+/// rider.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Camera {
-    /// What it follows.
+    /// Where it follows.
     pub anchor: Anchor,
-    /// How far behind, metres.
-    pub back_m: f64,
-    /// How far up, metres.
-    pub up_m: f64,
-    /// How far above the anchor it looks, metres: the height of what it follows.
+    /// How far above the anchor what it follows is, metres.
+    pub lift_m: f64,
+    /// How big that is, as a factor on a rider: the camera stands off as much further.
     #[serde(default = "one")]
-    pub aim_up_m: f64,
+    pub size: f64,
 }
 
 kinds!(
