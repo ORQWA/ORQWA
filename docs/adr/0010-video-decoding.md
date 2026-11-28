@@ -145,9 +145,12 @@ Upstream rav1d packages the missing header (`src/arm/asm-offsets.h`) from commit
 is tracked upstream in rav1d#1506.
 
 - **`core/Cargo.toml` patches `rav1d` to that commit** (`[patch.crates-io]`), and `core/deny.toml`
-  allows that one Git repository. It is the same project, licence and code ORQWA already used,
-  only a newer commit: no dependency is added. With the first crates.io release after 1.1.0 the
-  patch and the `allow-git` entry go again.
+  allows that one Git repository. It is the same project and licence ORQWA already used, at a
+  newer commit. 1.1.1 depends on `av-data` 0.4.4 (MIT), which brings `byte-slice-cast` 1.2.3
+  and `num-rational` 0.4.2 (both MIT or Apache-2.0) into the app and moves `strum` from 0.26 to
+  0.27. `core/about.toml` credits rav1d through its licence file, since a Git checkout holds the
+  whole dav1d tree. With the first crates.io release after 1.1.0 the patch, the `allow-git`
+  entry and that clarification go again (#695).
 - **aarch64 builds turn on `asm`** (Android, Linux arm64, Apple silicon), together with the
   dotprod, i8mm and SVE2 kernels, upstream's defaults. The C compiler assembles them (the NDK's
   clang on Android), so no tool is added. rav1d checks at runtime which of these extensions the
@@ -162,6 +165,7 @@ is tracked upstream in rav1d#1506.
   0.18 s; the case of #383. Pixel 8a (Tensor G3, with i8mm and SVE2): 7–15 → 23–50 fps, with
   repeated runs of one binary that far apart, so not reliably above 30 fps there. Leaving SVE2
   out made no difference that stood out from that spread. All `orqwa-video` tests pass on both
-  devices with the assembly.
+  devices with the assembly. On Apple silicon and Linux arm64 the assembly is only built by CI,
+  which does not run the `orqwa-video` tests there; it was not measured on either.
 - MediaCodec stays the long-term follow-up above, for phones like the Pixel where the assembly
   alone is not enough.

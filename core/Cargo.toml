@@ -82,7 +82,7 @@ zip = { version = "9.7.0", default-features = false, features = ["deflate-flate2
 # The rav1d 1.1.0 package leaves out the header its ARM assembly needs, so on Android, ARM Linux
 # and Apple silicon AV1 decoded in pure Rust, too slowly for 720p (#383). Upstream packages it
 # from this commit on (rav1d#1509) but has not released it yet: back to crates.io with the first
-# release after 1.1.0 (ADR 0010).
+# release after 1.1.0 (ADR 0010, #695).
 [patch.crates-io]
 rav1d = { git = "https://github.com/memorysafety/rav1d", rev = "0ce8cc12a03c0013c14448d6e91da1125d8ecf87" }
 

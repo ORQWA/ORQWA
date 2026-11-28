@@ -48,5 +48,5 @@ allow-wildcard-paths = true
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-# rav1d until a release packages its ARM assembly header (core/Cargo.toml, ADR 0010).
+# rav1d until a release packages its ARM assembly header (core/Cargo.toml, ADR 0010, #695).
 allow-git = ["https://github.com/memorysafety/rav1d"]
