@@ -173,6 +173,12 @@ pub enum Kind {
     WorldName,
     /// Routes of worlds cannot be ridden in group rides.
     WorldGroup,
+    /// Could not save the segment.
+    SaveSegment,
+    /// %s does not follow this course.
+    SegmentRoute,
+    /// The ride is saved, but its segment times could not be saved to %s.
+    SaveSegmentTimes,
 }
 impl Kind {
     /// Unformatted English gettext key; translate before substituting arguments.
@@ -286,6 +292,11 @@ impl Kind {
             }
             Self::WorldName => "A world's routes keep the names their author gave them.",
             Self::WorldGroup => "Routes of worlds cannot be ridden in group rides.",
+            Self::SaveSegment => "Could not save the segment.",
+            Self::SegmentRoute => "%s does not follow this course.",
+            Self::SaveSegmentTimes => {
+                "The ride is saved, but its segment times could not be saved to %s."
+            }
             Self::MemoryPressure => {
                 "Android reports low memory (%s available). Close other apps or lower View distance, then reopen the course."
             }

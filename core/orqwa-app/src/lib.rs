@@ -29,6 +29,7 @@ pub mod moments;
 pub mod paths;
 pub mod remote;
 mod resuming;
+pub mod segments;
 mod traffic;
 pub mod updates;
 pub mod uploads;
@@ -71,7 +72,7 @@ use orqwa_storage::course::{self, CourseCountry, Manifest};
 use orqwa_storage::index::HistoryIndex;
 use orqwa_storage::profiles::{self, DeviceRole, StoredProfile};
 pub use orqwa_storage::profiles::{GraphicsQuality, OverlayWindow, RideVolumes};
-use orqwa_storage::rides::{self, ClimbTime, RideRecord};
+use orqwa_storage::rides::{self, ClimbTime, RideRecord, SegmentTime};
 use orqwa_terrain::{Terrain, TileSource};
 pub use orqwa_video::Frame;
 use orqwa_video::Video;
@@ -277,6 +278,8 @@ pub struct HistoryEntry {
     pub route_record: bool,
     /// Per entry of [`RideRecord::climbs`]: whether it is the rider's fastest time there.
     pub climb_records: Vec<bool>,
+    /// Per entry of [`RideRecord::segments`]: whether it is the rider's fastest time there.
+    pub segment_records: Vec<bool>,
     /// The durations of [`RECORD_DURATIONS`](orqwa_domain::recording::RECORD_DURATIONS) over
     /// which this ride holds the rider's best power (R62).
     pub power_records: Vec<Duration>,
@@ -289,6 +292,8 @@ pub struct RouteRecords {
     pub route: Option<Duration>,
     /// Fastest time per climb, in the order of [`Route::climbs`].
     pub climbs: Vec<Option<Duration>>,
+    /// The rider's own segments of the route with their fastest times (R302).
+    pub segments: Vec<segments::SegmentBest>,
     /// Whether the rider has ridden the route before, finished or not.
     pub ridden: bool,
 }
@@ -636,6 +641,16 @@ struct ActiveRide {
     records: RouteRecords,
     /// The next climb whose top has not been reached.
     next_climb: usize,
+    /// Per entry of `records.segments`: timed, or passed before it could be.
+    segments_done: Vec<bool>,
+    /// Per entry of `records.segments`: the rider was told it is coming.
+    segments_told: Vec<bool>,
+    /// The segments timed so far, as told: the ride saves these rather than measuring its
+    /// samples again, which would bridge a jump.
+    segment_times: Vec<SegmentTime>,
+    /// The first sample since the last jump: segments are timed from there, as the samples
+    /// before it lie on another stretch of the course.
+    segments_from: usize,
     milestones: moments::Milestones,
     peaks: moments::PowerPeaks,
     steps: moments::StepsHeld,
@@ -2936,6 +2951,7 @@ impl App {
         };
         active.ride.jump_to(distance);
         active.simulated = true;
+        active.segments_from = active.ride.samples().len();
         // Climbs passed by jumping are not timed; the next one counts from where it starts.
         let distance = active.ride.state().distance;
         active.milestones.skip_to(distance);
@@ -2944,6 +2960,14 @@ impl App {
             .iter()
             .position(|c| c.start.0 >= distance.0)
             .unwrap_or(climbs.len());
+        for (record, done) in active
+            .records
+            .segments
+            .iter()
+            .zip(&mut active.segments_done)
+        {
+            *done |= record.segment.start_m < distance.0;
+        }
         true
     }
 
@@ -3729,6 +3753,7 @@ impl App {
             .map(|(course, _)| moments::Moment::FirstRide {
                 course: course.clone(),
             });
+        let segments_done = segments::passed(&records.segments, ride.entry_distance());
         self.ride = Some(ActiveRide {
             ride,
             name,
@@ -3738,6 +3763,10 @@ impl App {
             finished: false,
             records,
             next_climb: 0,
+            segments_told: vec![false; segments_done.len()],
+            segment_times: Vec::new(),
+            segments_from: 0,
+            segments_done,
             milestones,
             peaks,
             steps: moments::StepsHeld::new(self.profile.profile.ftp),
@@ -3852,7 +3881,7 @@ impl App {
     }
 
     fn save_ride(&mut self, remember: bool) -> Vec<AppEvent> {
-        let Some(active) = self.ride.take() else {
+        let Some(mut active) = self.ride.take() else {
             return Vec::new();
         };
         let Some(start) = active.started else {
@@ -3861,6 +3890,8 @@ impl App {
         if active.ride.samples().is_empty() {
             return Vec::new();
         }
+        // A segment ending on the last sample, should the rider stop before the ride ticks again.
+        segments::timed(&mut active, false);
         let path = profiles::rides_dir(&self.data_dir, &self.profile.id)
             .join(paths::activity_file_name(start));
         let unplaced: Vec<orqwa_domain::recording::Sample>;
@@ -3886,12 +3917,16 @@ impl App {
                     .and_then(|()| std::fs::write(&path, fit))
                     .map_err(|e| Failure::new(Kind::SaveFile, e).arg(path.display()))
             });
+        let mut lost_times = None;
         if saved.is_ok() {
             let route = active.ride.route();
             let finished = active.ride.is_finished();
             // A simulated ride's times are not real: like a ride known only from its FIT file,
             // it counts towards no records; neither does a workout without a route.
             let real = !active.simulated;
+            // Assisted rides keep their power, but their times set no records either.
+            let counts = real && !active.assisted;
+            let entry = active.ride.entry_distance();
             let record = RideRecord {
                 route: active
                     .name
@@ -3910,28 +3945,8 @@ impl App {
                     })
                     .and_then(|route| effort(samples, Meters(0.0), route.length()))
                     .map(|e| e.elapsed),
-                climbs: route
-                    .map_or(&[][..], Route::climbs)
-                    .iter()
-                    .filter(|_| real && !active.assisted)
-                    .filter_map(|c| {
-                        (c.start.0 >= active.ride.entry_distance().0)
-                            .then(|| {
-                                effort(
-                                    samples,
-                                    Meters(c.start.0 - active.ride.entry_distance().0),
-                                    Meters(c.end.0 - active.ride.entry_distance().0),
-                                )
-                            })
-                            .flatten()
-                            .map(|e| ClimbTime {
-                                start: c.start,
-                                end: c.end,
-                                elapsed: e.elapsed,
-                                avg_power: e.avg_power,
-                            })
-                    })
-                    .collect(),
+                climbs: climb_times(route, samples, entry, counts),
+                segments: active.segment_times.clone(),
                 name: None,
                 ftp_estimate: active.ride.ftp_estimate(),
                 rider_mass: Some(self.profile.profile.rider_mass),
@@ -3944,6 +3959,13 @@ impl App {
             if let Err(error) = rides::save(&path, &record) {
                 warn!(%error, "cannot save ride metadata");
             }
+            // Nothing rebuilds these, so the rider hears of it.
+            if let Err(error) = rides::save_segments(&path, &record.segments) {
+                lost_times = Some(
+                    Failure::new(Kind::SaveSegmentTimes, error)
+                        .arg(rides::segments_path(&path).display()),
+                );
+            }
         }
         let progress = if saved.is_ok() {
             self.save_ride_continuation(&active, &path, remember)
@@ -3954,6 +3976,7 @@ impl App {
             Ok(()) => AppEvent::RideSaved(path),
             Err(message) => AppEvent::Error(message),
         }];
+        events.extend(lost_times.map(AppEvent::Error));
         events.extend(progress.err().map(AppEvent::Error));
         events
     }
@@ -3998,6 +4021,14 @@ impl App {
         let records = self.ride_records();
         let all: Vec<&RideRecord> = records.iter().map(|(_, r)| r).collect();
         let power_bests = analysis::record_powers(all.iter().copied());
+        let definitions: Vec<orqwa_storage::segments::Segment> = all
+            .iter()
+            .filter_map(|r| r.route_key.as_deref())
+            .collect::<std::collections::BTreeSet<&str>>()
+            .into_iter()
+            .flat_map(|key| self.stored_segments(key))
+            .collect();
+        let segment_bests = segments::best_by_key(all.iter().copied(), &definitions);
         records
             .iter()
             .map(|(fit, record)| {
@@ -4024,6 +4055,15 @@ impl App {
                         .map(|climb| {
                             !record.assisted
                                 && Some(climb.elapsed) == best_climb_time(&same_route, climb)
+                        })
+                        .collect(),
+                    segment_records: record
+                        .segments
+                        .iter()
+                        .map(|time| {
+                            !record.assisted
+                                && !record.simulated
+                                && segment_bests.get(&time.key()) == Some(&time.elapsed)
                         })
                         .collect(),
                     power_records: analysis::power_records(record, &power_bests),
@@ -4082,6 +4122,12 @@ impl App {
                     };
                     best_climb_time(&same_route, &probe)
                 })
+                .collect(),
+            // A segment to check may lie elsewhere on the course as prepared now.
+            segments: self
+                .segment_bests(route, &same_route)
+                .into_iter()
+                .filter(|s| s.confirmed)
                 .collect(),
         }
     }
@@ -4396,7 +4442,7 @@ impl App {
         rides::save(fit, &record).map_err(storage)
     }
 
-    /// Deletes a ride: its FIT file and metadata.
+    /// Deletes a ride: its FIT file, metadata and segment times.
     ///
     /// # Errors
     /// [`AppError::Reported`] if the FIT file cannot be removed.
@@ -4405,6 +4451,7 @@ impl App {
             AppError::Reported(Failure::new(Kind::DeleteFile, e).arg(fit.display()))
         })?;
         let _ = std::fs::remove_file(rides::metadata_path(fit));
+        let _ = std::fs::remove_file(rides::segments_path(fit));
         self.restore_discarded_continuation(fit)?;
         Ok(())
     }
@@ -4441,6 +4488,7 @@ impl App {
             route_key: None,
             route_time: None,
             climbs: Vec::new(),
+            segments: Vec::new(),
             name: None,
             ftp_estimate: None,
             rider_mass: None,
@@ -4571,6 +4619,13 @@ impl App {
                 )));
                 active.next_climb += 1;
             }
+            let real = !active.simulated && !active.assisted;
+            events.extend(
+                segments::timed(active, real)
+                    .into_iter()
+                    .chain(segments::heralded(active))
+                    .map(AppEvent::Moment),
+            );
             // The finish is the summary's to tell (R113).
             if active.ride.is_finished() {
                 // A shared last-step skip can finish before another ERG update reaches the trainer.
@@ -5166,6 +5221,34 @@ async fn with_detail(
 #[allow(clippy::cast_possible_truncation)] // metres in a course fit f32 easily
 fn thin(points: &[(f64, f64)]) -> Vec<[f32; 2]> {
     points.iter().map(|&(a, b)| [a as f32, b as f32]).collect()
+}
+
+/// A ride's times on the route's climbs it rode from their foot, from its samples, which count
+/// from where it entered the route at `entry`; none unless the ride `counts` for records.
+fn climb_times(
+    route: Option<&Route>,
+    samples: &[Sample],
+    entry: Meters,
+    counts: bool,
+) -> Vec<ClimbTime> {
+    route
+        .map_or(&[][..], Route::climbs)
+        .iter()
+        .filter(|c| counts && c.start.0 >= entry.0)
+        .filter_map(|c| {
+            effort(
+                samples,
+                Meters(c.start.0 - entry.0),
+                Meters(c.end.0 - entry.0),
+            )
+            .map(|e| ClimbTime {
+                start: c.start,
+                end: c.end,
+                elapsed: e.elapsed,
+                avg_power: e.avg_power,
+            })
+        })
+        .collect()
 }
 
 /// The fastest time on `climb` among `records`.
@@ -6444,6 +6527,7 @@ mod tests {
             route_key: Some("0123456789abcdef".to_owned()),
             route_time: Some(Duration::from_mins(10)),
             climbs: Vec::new(),
+            segments: Vec::new(),
             name: Some("Before the update".to_owned()),
             ftp_estimate: None,
             rider_mass: None,
@@ -7738,7 +7822,7 @@ mod tests {
     }
 
     /// 300 m flat, 600 m at 6 %, 300 m flat, due north.
-    fn write_climb_route(dir: &std::path::Path) -> PathBuf {
+    pub(crate) fn write_climb_route(dir: &std::path::Path) -> PathBuf {
         let mut xml = String::from("<gpx><trk><name>Hill</name><trkseg>");
         for i in 0..=120 {
             let lat = 46.0 + f64::from(i) * 10.0 / 111_195.0;
@@ -7755,7 +7839,7 @@ mod tests {
     }
 
     /// Rides the loaded route with the fake trainer in fast-forward and saves it.
-    fn ride_to_the_finish(app: &mut App, ghost: &GhostChoice) -> Vec<AppEvent> {
+    pub(crate) fn ride_to_the_finish(app: &mut App, ghost: &GhostChoice) -> Vec<AppEvent> {
         app.connect_trainer(TrainerChoice::Fake(FakeRider {
             power: Watts(400.0),
             cadence: Rpm(90.0),

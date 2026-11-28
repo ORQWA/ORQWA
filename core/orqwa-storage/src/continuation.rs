@@ -29,6 +29,30 @@ impl Point {
 }
 
 fn path(data: &Path, rider: &str, route: &str) -> io::Result<PathBuf> {
+    rider_route_file(data, rider, "continuations", route)
+}
+
+/// The file in `folder` of `rider`'s profile kept for the route `route`, refusing identities
+/// that would lead out of it.
+pub(crate) fn rider_route_file(
+    data: &Path,
+    rider: &str,
+    folder: &str,
+    route: &str,
+) -> io::Result<PathBuf> {
+    let mut path = rider_route_dir(data, rider, folder, route)?.into_os_string();
+    path.push(".json");
+    Ok(PathBuf::from(path))
+}
+
+/// The directory in `folder` of `rider`'s profile kept for the route `route`, refusing
+/// identities that would lead out of it.
+pub(crate) fn rider_route_dir(
+    data: &Path,
+    rider: &str,
+    folder: &str,
+    route: &str,
+) -> io::Result<PathBuf> {
     if [rider, route].iter().any(|part| {
         let mut components = Path::new(part).components();
         part.contains(['/', '\\'])
@@ -39,12 +63,12 @@ fn path(data: &Path, rider: &str, route: &str) -> io::Result<PathBuf> {
     }) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "invalid continuation identity",
+            "invalid rider or route identity",
         ));
     }
     Ok(crate::profiles::profile_dir(data, rider)
-        .join("continuations")
-        .join(format!("{route}.json")))
+        .join(folder)
+        .join(route))
 }
 
 /// Reads one rider's point. Missing files have no point; malformed files report an error.

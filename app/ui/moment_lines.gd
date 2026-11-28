@@ -27,6 +27,30 @@ const LINES: Dictionary[String, Array] = {
 		],
 		"Climb {n} in {time}, a personal record by {gain}.",
 	],
+	"segment_done":
+	[
+		[
+			"{name} is done in {time}. Nicely ridden!",
+			"That's {name} behind you, in {time}!",
+		],
+		"{name} in {time}.",
+	],
+	"segment_record":
+	[
+		[
+			"{time} on {name} is your fastest yet!",
+			"You've never ridden {name} faster, {gain} quicker than your best!",
+		],
+		"{name} in {time}, a personal record by {gain}.",
+	],
+	"segment_ahead":
+	[
+		[
+			"{name} starts in {distance}, get ready!",
+			"{name} is coming up in {distance}. Time to wind it up!",
+		],
+		"{name} starts in {distance}.",
+	],
 	"halfway":
 	[
 		[
@@ -153,12 +177,15 @@ static func _kind(moment: Dictionary) -> String:
 ## The figure a card shows large for `moment`, e.g. "14:02" or "25 km"; empty for none.
 static func figure(moment: Dictionary, imperial: bool) -> String:
 	match moment.get("kind", ""):
-		"climb_topped", "climb_record":
+		"climb_topped", "climb_record", "segment_done", "segment_record":
 			var elapsed: float = moment["elapsed_s"]
 			return UiTheme.duration(elapsed)
 		"halfway", "distance":
 			var meters: float = moment["distance_m"]
 			return distance(meters, imperial)
+		"segment_ahead":
+			var ahead: float = moment["distance_m"]
+			return approach(ahead, imperial)
 		"one_to_go":
 			return _one(imperial)
 		"power_peak", "step_held":
@@ -178,6 +205,29 @@ static func distance(meters: float, imperial: bool) -> String:
 	if is_equal_approx(rounded, roundf(rounded)):
 		return "%d %s" % [roundi(rounded), unit]
 	return "%.1f %s" % [rounded, unit]
+
+
+## A heads-up's `[figure, line]` afresh for `MomentCard.tell`, with `left` the metres to go
+## now; none once there. It keeps one line for the whole countdown, not a new one each frame.
+static func countdown(
+	moment: Dictionary, voice: String, imperial: bool, left: Callable
+) -> Callable:
+	var seed: int = randi() % 1024
+	return func() -> PackedStringArray:
+		var meters: float = left.call()
+		if meters <= 0.0:
+			return PackedStringArray()
+		var now: Dictionary = moment.duplicate()
+		now["distance_m"] = meters
+		return PackedStringArray([figure(now, imperial), line(now, voice, imperial, seed)])
+
+
+## How far a segment's start is, to the nearest 10 m or 10 ft: the rider is moving, so more
+## precision would only be wrong by the time it is read.
+static func approach(meters: float, imperial: bool) -> String:
+	if imperial:
+		return "%d ft" % maxi(10, roundi(meters / METERS_PER_FOOT / 10.0) * 10)
+	return "%d m" % maxi(10, roundi(meters / 10.0) * 10)
 
 
 ## A power record's duration: "5 s", "20 min", "1 h".
@@ -217,7 +267,8 @@ static func _values(moment: Dictionary, imperial: bool) -> Dictionary:
 		values["grade"] = "%.1f %%" % grade
 	if moment.has("distance_m"):
 		var meters: float = moment["distance_m"]
-		values["distance"] = distance(meters, imperial)
+		var ahead: bool = moment.get("kind", "") == "segment_ahead"
+		values["distance"] = approach(meters, imperial) if ahead else distance(meters, imperial)
 	if moment.has("power_w"):
 		var power: float = moment["power_w"]
 		values["power"] = "%d W" % roundi(power)
@@ -230,4 +281,6 @@ static func _values(moment: Dictionary, imperial: bool) -> Dictionary:
 		values["planned"] = moment["planned"]
 	if moment.has("course"):
 		values["course"] = moment["course"]
+	if moment.has("name"):
+		values["name"] = moment["name"]
 	return values

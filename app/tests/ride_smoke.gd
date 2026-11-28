@@ -70,10 +70,29 @@ func _run() -> void:
 	var first_countries: Variant = first.get("countries")
 	_check(first_countries is Array, "the courses list their countries: %s" % first)
 
+	_segments()
+
 	_check(_orqwa.connect_fake_trainer(250.0, 90.0), "fake trainer connected")
 	_check(_orqwa.start_ride(50.0, false, {"kind": "none"}), "ride started")
 	await create_timer(2.0).timeout
 	var state: Dictionary = _orqwa.ride_state()
+	# On the segment from the start, timed on the HUD (R302).
+	var on_segment: Variant = state.get("segment")
+	var segment_state: Dictionary = on_segment if on_segment is Dictionary else {}
+	var segment_name: String = segment_state.get("name", "")
+	var reached: bool = segment_state.get("ahead_m", 0.0) == null
+	_check(segment_name == "Smoke sprint" and reached, "on the segment: %s" % segment_state)
+	var panel: SegmentPanel = SegmentPanel.new()
+	root.add_child(panel)
+	panel.show_segment(on_segment)
+	_check(panel.visible, "the segment's panel shows")
+	panel.show_segment(null)
+	_check(not panel.visible, "and hides away from segments")
+	panel.free()
+	for sprint: Dictionary in _orqwa.segments():
+		var sprint_id: String = sprint["id"]
+		_check(_orqwa.remove_segment(sprint_id), "segment removed")
+	_check(_orqwa.segments().is_empty(), "no segments left")
 	var distance_m: float = state.get("distance_m", 0.0)
 	var power: float = state.get("power", 0.0)
 	_check(distance_m > 0.5, "rider moves: %s" % state)
@@ -435,6 +454,189 @@ func _wait_for(sig: Signal) -> Array:
 		received[0], "signal %s within %ss (failure: %s)" % [sig.get_name(), TIMEOUT_S, _failure]
 	)
 	return result
+
+
+## The rider marks a segment of the loaded course on its page (R302): typed in or clicked on
+## the profile, listed with its length, renamed, and only saved when long enough to time.
+func _segments() -> void:
+	var list: SegmentList = SegmentList.new()
+	list.bind(_orqwa)
+	root.add_child(list)
+	# Left by an interrupted run: the rider's data outlives it.
+	for left: Dictionary in _orqwa.segments():
+		var left_id: String = left["id"]
+		_orqwa.remove_segment(left_id)
+	var marked: Array = []
+	list.changed.connect(func(segments: Array) -> void: marked.assign(segments))
+	list.show_segments(400.0)
+	_check(list.visible and marked.is_empty(), "no segments yet: %s" % [marked])
+	var form: Control = list.get("_form")
+	var save: Button = list.get("_save")
+	var field: LineEdit = list.get("_name")
+	var actions: HBoxContainer = list.get("_actions")
+	var add: Button = actions.get_child(0)
+	add.pressed.emit()
+	_check(form.visible and save.disabled, "a new segment waits for its name")
+	field.text = "Smoke"
+	field.text_changed.emit(field.text)
+	list.pick(100.0)
+	list.pick(120.0)
+	_check(save.disabled, "20 m is too short to time")
+	list.pick(0.0)
+	list.pick(300.0)
+	_check(not save.disabled, "the profile's clicks set its ends")
+	_drag_on_profile(list)
+	save.pressed.emit()
+	var first: Dictionary = marked[0] if marked.size() == 1 else {}
+	var length: float = first.get("length_m", 0.0)
+	var id: String = first.get("id", "")
+	_check(
+		not form.visible and is_equal_approx(length, 300.0), "the segment is listed: %s" % [marked]
+	)
+	_check(_orqwa.save_segment(id, "Smoke sprint", 0.0, 300.0), "renamed")
+	# Renamed in miles, which the fields show to a hundredth (0.19 mi), it stays where it was.
+	list.set("_imperial", true)
+	list.call("_open_form", id, "Smoke sprint", 0.0, 300.0)
+	field.text = "Smoke sprint, miles"
+	field.text_changed.emit(field.text)
+	save.pressed.emit()
+	var renamed: Dictionary = _orqwa.segments()[0]
+	var renamed_name: String = renamed.get("name", "")
+	var renamed_end: float = renamed.get("end_m", 0.0)
+	_check(
+		renamed_name == "Smoke sprint, miles" and is_equal_approx(renamed_end, 300.0),
+		"not moved by the miles: %s" % [renamed]
+	)
+	list.set("_imperial", false)
+	_check(_orqwa.save_segment(id, "Smoke sprint", 0.0, 300.0), "renamed back")
+	# A course prepared differently since: the row asks to check the ends, the form says why.
+	var listed_now: Dictionary = _orqwa.segments()[0]
+	var to_check: Dictionary = listed_now.duplicate()
+	var set_here: bool = to_check.get("confirmed", false)
+	_check(set_here, "set on this course: %s" % [to_check])
+	to_check["confirmed"] = false
+	var row: HBoxContainer = list.call("_row", to_check)
+	var asks: Array[Button] = []
+	for child: Node in row.get_children():
+		if child is Button and (child as Button).text == "Check ends":
+			asks.append(child)
+	_check(asks.size() == 1, "the row asks to check its ends")
+	var note: Label = list.get("_check_note")
+	if asks.size() == 1:
+		asks[0].pressed.emit()
+	_check(form.visible and note.visible, "the form says why")
+	list.call("_close_form")
+	row.free()
+	add.pressed.emit()
+	_check(not note.visible, "no note for a new segment")
+	list.call("_close_form")
+	# Listed, but not drawn on the profile or the maps until checked: it would not be timed.
+	to_check["id"] = "tocheck"
+	list.call("_list", [listed_now, to_check])
+	var drawn_ids: Array = marked.map(func(s: Dictionary) -> String: return s["id"])
+	_check(drawn_ids == [id], "only the checked one is drawn: %s" % [drawn_ids])
+	_check(SegmentList.drawn([to_check]).is_empty(), "none drawn on the ride")
+	list.call("_refresh")
+	# The maps draw its stretch of road: due north from the start for 300 m.
+	var listed: Dictionary = _orqwa.segments()[0]
+	var stretch: PackedVector2Array = listed.get("track", PackedVector2Array())
+	var ends_ok: bool = (
+		stretch.size() >= 2
+		and stretch[0].length() < 2.0
+		and stretch[stretch.size() - 1].distance_to(Vector2(0.0, 300.0)) < 2.0
+	)
+	_check(ends_ok, "the stretch for the maps: %s" % stretch)
+	_check(not _orqwa.save_segment("", "Elsewhere", 300.0, 900.0), "not beyond the finish")
+	_check(not _failure.is_empty(), "the refusal is reported")
+	_failure = ""
+	_check(_orqwa.segments().size() == 1, "one segment: %s" % [_orqwa.segments()])
+	list.free()
+
+
+## A drag across the course page's profile marks the stretch, either way, following the
+## pointer; it stays, and its ends or middle drag on until saved (R304). A press released where
+## it went down stays a click (R302). Leaves 0–300 m marked. 1 px is 1 m here.
+func _drag_on_profile(list: SegmentList) -> void:
+	var profile: ElevationProfile = ElevationProfile.new()
+	root.add_child(profile)
+	profile.size = Vector2(400.0, 60.0)
+	profile.set_profile(PackedVector2Array([Vector2(0.0, 500.0), Vector2(400.0, 520.0)]))
+	profile.jumpable = true
+	profile.stretchable = true
+	profile.jump_requested.connect(list.pick)
+	profile.stretch_picked.connect(list.pick_stretch)
+	list.draft_changed.connect(profile.set_draft)
+	list.pick_stretch(0.0, 300.0)
+	_check(_draft(profile).is_equal_approx(Vector2(0.0, 300.0)), "the form's ends show")
+	# Outside it, a press starts a new stretch.
+	_press(profile, 350.0, true)
+	_move(profile, 353.0)
+	_check(_ends(list).is_equal_approx(Vector2(0.0, 300.0)), "a twitch is no drag")
+	_move(profile, 380.0)
+	_check(_ends(list).is_equal_approx(Vector2(350.0, 380.0)), "the ends follow the drag")
+	_press(profile, 390.0, false)
+	_check(_ends(list).is_equal_approx(Vector2(350.0, 390.0)), "released: %s" % _ends(list))
+	_check(_draft(profile).is_equal_approx(Vector2(350.0, 390.0)), "it stays once released")
+	# Its start, taken near it, drags on its own…
+	_press(profile, 352.0, true)
+	_move(profile, 200.0)
+	_press(profile, 200.0, false)
+	_check(_ends(list).is_equal_approx(Vector2(200.0, 390.0)), "start moved: %s" % _ends(list))
+	# …its middle moves all of it, and no further than the course's start.
+	_press(profile, 300.0, true)
+	_move(profile, 250.0)
+	_press(profile, 250.0, false)
+	_check(_ends(list).is_equal_approx(Vector2(150.0, 340.0)), "shifted: %s" % _ends(list))
+	_press(profile, 200.0, true)
+	_move(profile, 0.0)
+	_press(profile, 0.0, false)
+	_check(_ends(list).is_equal_approx(Vector2(0.0, 190.0)), "at the start: %s" % _ends(list))
+	# A new one dragged backwards from beyond it.
+	_press(profile, 300.0, true)
+	_move(profile, 0.0)
+	_press(profile, 0.0, false)
+	_check(_ends(list).is_equal_approx(Vector2(0.0, 300.0)), "dragged back: %s" % _ends(list))
+	var clicked: Array[float] = []
+	profile.jump_requested.connect(func(at: float) -> void: clicked.append(at))
+	_press(profile, 200.0, true)
+	_check(clicked.is_empty(), "a click goes out once released")
+	_press(profile, 201.0, false)
+	_check(
+		clicked.size() == 1 and is_equal_approx(clicked[0], 200.0),
+		"a click on release: %s" % [clicked]
+	)
+	# The click was the start; put it back for the rest.
+	list.pick_stretch(0.0, 300.0)
+	profile.stretchable = false
+	_check(_draft(profile) == Vector2(-1.0, -1.0), "gone once the form closes")
+	profile.free()
+
+
+## The stretch the profile shows as marked; `(-1, -1)` when none.
+func _draft(profile: ElevationProfile) -> Vector2:
+	var draft: Array[float] = profile.get("_draft")
+	return Vector2(draft[0], draft[1]) if draft.size() == 2 else Vector2(-1.0, -1.0)
+
+
+## The marked segment's ends in metres, as its form shows them.
+func _ends(list: SegmentList) -> Vector2:
+	var start: SpinBox = list.get("_start")
+	var end: SpinBox = list.get("_end")
+	return Vector2(start.value, end.value) * 1000.0
+
+
+func _press(profile: ElevationProfile, x: float, down: bool) -> void:
+	var button: InputEventMouseButton = InputEventMouseButton.new()
+	button.button_index = MOUSE_BUTTON_LEFT
+	button.pressed = down
+	button.position = Vector2(x, 30.0)
+	profile.call("_gui_input", button)
+
+
+func _move(profile: ElevationProfile, x: float) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = Vector2(x, 30.0)
+	profile.call("_gui_input", motion)
 
 
 func _write_route(path: String) -> void:

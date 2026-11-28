@@ -1,10 +1,11 @@
 class_name CourseDetail
 extends HBoxContainer
 ## One course (R40): name, key figures with the rider's estimated time (R66), path card,
-## elevation profile with climbs and the rider's records on it, next to the ride options (R48)
-## and who to race (R20) → Ride. The pencil beside the name renames the course and adds, aligns
-## or removes its video (R17); the bin beside it deletes the course. Opening the page loads
-## only the route, a spinner turning until it is in; the 3D world is built once Ride is pressed.
+## elevation profile with climbs and the rider's records on it and their own segments (R302),
+## next to the ride options (R48) and who to race (R20) → Ride. The pencil beside the name
+## renames the course and adds, aligns or removes its video (R17); the bin beside it deletes the
+## course. Opening the page loads only the route, a spinner turning until it is in; the 3D world
+## is built once Ride is pressed.
 
 signal back_requested
 ## Ride was pressed with `options` (`RideOptions.options()`) against `ghost` (`GhostPicker`).
@@ -35,6 +36,7 @@ var _figures: VBoxContainer = VBoxContainer.new()
 var _path_card: PathCard = PathCard.new()
 var _profile: ElevationProfile = ElevationProfile.new()
 var _records: Label = Label.new()
+var _segments: SegmentList = SegmentList.new()
 var _options: RideOptions = RideOptions.new()
 var _ghost: GhostPicker = GhostPicker.new()
 var _ride_button: Button = Button.new()
@@ -68,6 +70,7 @@ var _estimated_flat_descents: bool = false
 func bind(orqwa: OrqwaApp) -> void:
 	_orqwa = orqwa
 	_options.bind(orqwa)
+	_segments.bind(orqwa)
 	_orqwa.route_loaded.connect(_on_route_loaded)
 	_orqwa.loading_progress.connect(_on_loading_progress)
 	_orqwa.world_ready.connect(_on_world_ready)
@@ -94,6 +97,9 @@ func open(course: Dictionary) -> void:
 	_profile.gradient_colours = _orqwa.profile().get("gradient_colours", false)
 	_profile.set_profile(profile)
 	_profile.set_climbs([])
+	_profile.set_segments([])
+	_path_card.set_segments([], Rect2())
+	_segments.clear()
 	_records.text = ""
 	_status.text = ""
 	# The rider's own default difficulty (#175); the ride's settings may change it later.
@@ -247,6 +253,12 @@ func _init() -> void:
 	left.add_child(_profile)
 	_records.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	left.add_child(_records)
+	_segments.changed.connect(_on_segments_changed)
+	_segments.picking_changed.connect(_on_segment_picking)
+	_profile.jump_requested.connect(_segments.pick)
+	_profile.stretch_picked.connect(_segments.pick_stretch)
+	_segments.draft_changed.connect(_profile.set_draft)
+	left.add_child(_segments)
 	var left_scroll: ScrollContainer = UiTheme.scrolling(left)
 	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_scroll.size_flags_stretch_ratio = COURSE_SHARE
@@ -471,25 +483,47 @@ func _show_route() -> void:
 	var climb_list: Array = climbs.get("climbs", [])
 	_profile.set_climbs(climb_list)
 	_profile.gradient_colours = _orqwa.profile().get("gradient_colours", false)
-	_profile.set_profile(_orqwa.elevation_profile(600))
+	var profile: PackedVector2Array = _orqwa.elevation_profile(600)
+	_profile.set_profile(profile)
 	_show_continuation()
 	var lines: PackedStringArray = PackedStringArray()
 	if climbs.get("route_best_s") != null:
 		var best: float = climbs["route_best_s"]
 		lines.append(tr("Your best time on this route: %s") % UiTheme.duration(best))
+	var imperial: bool = _orqwa.profile().get("units", "metric") == "imperial"
 	for climb: Dictionary in climb_list:
 		var category: String = climb["category"]
-		var length_km: float = climb["length_m"] / 1000.0
+		var length_m: float = climb["length_m"]
 		var grade: float = climb["grade"]
-		var line: String = tr("%s %.1f km at %.1f %%") % [tr(category), length_km, grade]
+		var line: String = (
+			tr("%s %.1f mi at %.1f %%") % [tr(category), length_m / 1609.344, grade]
+			if imperial
+			else tr("%s %.1f km at %.1f %%") % [tr(category), length_m / 1000.0, grade]
+		)
 		if climb["best_s"] != null:
 			var climb_best: float = climb["best_s"]
 			line += " " + tr("(best %s)") % UiTheme.duration(climb_best)
 		lines.append(line)
 	_records.text = "\n".join(lines)
+	_segments.show_segments(profile[profile.size() - 1].x if not profile.is_empty() else 0.0)
 	var ftp: float = _orqwa.profile().get("ftp_w", 200.0)
 	_ghost.configure(_orqwa.has_personal_best(), ftp)
 	_keep_preview()
+
+
+## The profile and the map mark the segments listed, but for those to check.
+func _on_segments_changed(segments: Array) -> void:
+	_profile.set_segments(segments)
+	var frame: Rect2 = _orqwa.course_position(0.0).get("frame", Rect2())
+	_path_card.set_segments(segments, frame)
+
+
+## While a segment is marked, a drag across the profile or two clicks on it set its ends.
+func _on_segment_picking(picking: bool) -> void:
+	_profile.jumpable = picking
+	_profile.stretchable = picking
+	if picking:
+		_profile.tooltip_text = _segments.profile_hint()
 
 
 func _on_loading_progress(step: String, unit: String, done: int, total: int) -> void:

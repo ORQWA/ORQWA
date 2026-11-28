@@ -76,6 +76,9 @@ msgstr "%s  ·  Anstieg %d von %d"
 msgid "%s %.1f km at %.1f %%"
 msgstr "%s %.1f km bei %.1f %% Steigung"
 
+msgid "%s %.1f mi at %.1f %%"
+msgstr "%s %.1f mi bei %.1f %% Steigung"
+
 msgid "%s (copy)"
 msgstr "%s (Kopie)"
 
@@ -2963,6 +2966,9 @@ msgstr "Gruppenfahrt mit Unterstützung"
 msgid "Assisted group ride · speed records excluded"
 msgstr "Gruppenfahrt mit Unterstützung · keine Geschwindigkeitsrekorde"
 
+msgid "Simulated ride · no records"
+msgstr "Simulierte Fahrt · keine Rekorde"
+
 msgid "Assisted rides count for training, but do not set speed records."
 msgstr "Fahrten mit Unterstützung zählen für dein Training, aber nicht für Geschwindigkeitsrekorde."
 
@@ -3480,6 +3486,123 @@ msgstr "Der verfügbare Arbeitsspeicher von Android konnte nicht geprüft werden
 
 msgid "Android reports low memory (%s available). Close other apps or lower View distance, then reopen the course."
 msgstr "Android meldet zu wenig Arbeitsspeicher (%s verfügbar). Schließe andere Apps oder reduziere die Sichtweite und öffne die Strecke erneut."
+
+msgid "Segments"
+msgstr "Segmente"
+
+msgid "Add segment"
+msgstr "Segment hinzufügen"
+
+msgid "From GPX…"
+msgstr "Aus GPX …"
+
+msgid "A GPX track of the stretch, such as a segment exported elsewhere"
+msgstr "Ein GPX-Track des Abschnitts, etwa ein anderswo exportiertes Segment"
+
+msgid "Segment name"
+msgstr "Name des Segments"
+
+msgid "From"
+msgstr "Von"
+
+msgid "To"
+msgstr "Bis"
+
+msgid "Drag across the profile to mark a segment, or click its start and end."
+msgstr "Ziehe im Profil über die Strecke, um ein Segment zu markieren, oder klicke auf Start und Ende."
+
+msgid "Drag either end or the middle to adjust it."
+msgstr "Ziehe an einem Ende oder in der Mitte, um es anzupassen."
+
+msgid "from %s"
+msgstr "ab %s"
+
+msgid "best %s"
+msgstr "Bestzeit %s"
+
+msgid "Rename or move the segment"
+msgstr "Segment umbenennen oder verschieben"
+
+msgid "Check ends"
+msgstr "Enden prüfen"
+
+msgid "The course is prepared differently now."
+msgstr "Die Strecke ist jetzt anders aufbereitet."
+
+msgid "Not timed until checked."
+msgstr "Bis zur Prüfung wird keine Zeit gemessen."
+
+msgid "Check that the segment starts and ends where it did, then save."
+msgstr "Prüfe, ob das Segment noch dort beginnt und endet, wo es war, und speichere es dann."
+
+msgid "It is timed again, and its times so far still count."
+msgstr "Danach wird es wieder gemessen, und seine bisherigen Zeiten zählen weiter."
+
+msgid "Remove the segment; its times stay with the rides"
+msgstr "Segment entfernen; seine Zeiten bleiben bei den Fahrten"
+
+msgid "A segment is at least %s long."
+msgstr "Ein Segment ist mindestens %s lang."
+
+msgid "Segment  ·  %s"
+msgstr "Segment  ·  %s"
+
+msgid "Starts in %s"
+msgstr "Beginnt in %s"
+
+msgid "Best %s"
+msgstr "Bestzeit %s"
+
+msgid "%s · %s to go"
+msgstr "%s · noch %s"
+
+msgid "First time on it"
+msgstr "Zum ersten Mal hier"
+
+msgid "{name} is done in {time}. Nicely ridden!"
+msgstr "{name} geschafft in {time}. Schön gefahren!"
+
+msgid "That's {name} behind you, in {time}!"
+msgstr "{name} liegt hinter dir, in {time}!"
+
+msgid "{name} in {time}."
+msgstr "{name} in {time}."
+
+msgid "{time} on {name} is your fastest yet!"
+msgstr "{time} auf {name}, so schnell warst du da noch nie!"
+
+msgid "You've never ridden {name} faster, {gain} quicker than your best!"
+msgstr "So schnell bist du {name} noch nie gefahren, {gain} schneller als deine Bestzeit!"
+
+msgid "{name} in {time}, a personal record by {gain}."
+msgstr "{name} in {time}, persönliche Bestzeit um {gain}."
+
+msgid "{name} starts in {distance}, get ready!"
+msgstr "{name} beginnt in {distance}, mach dich bereit!"
+
+msgid "{name} is coming up in {distance}. Time to wind it up!"
+msgstr "In {distance} kommt {name}. Zeit, Tempo aufzunehmen!"
+
+msgid "{name} starts in {distance}."
+msgstr "{name} beginnt in {distance}."
+
+msgid "%s  ·  %.1f km from km %.1f"
+msgstr "%s  ·  %.1f km ab km %.1f"
+
+msgid "Could not save the segment."
+msgstr "Das Segment konnte nicht gespeichert werden."
+
+msgid "The ride is saved, but its segment times could not be saved to %s."
+msgstr "Die Fahrt ist gespeichert, ihre Segmentzeiten konnten aber nicht unter %s gespeichert werden."
+
+msgid "%s does not follow this course."
+msgstr "%s folgt dieser Strecke nicht."
+
+msgid "Climb %d  ·  %.1f mi from mi %.1f"
+msgstr "Anstieg %d  ·  %.1f mi ab mi %.1f"
+
+msgid "%s  ·  %.1f mi from mi %.1f"
+msgstr "%s  ·  %.1f mi ab mi %.1f"
 
 msgid "Camera round to the left"
 msgstr "Kamera nach links schwenken"

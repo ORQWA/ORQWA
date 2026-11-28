@@ -192,6 +192,10 @@ const COMMIT: &str = env!("ORQWA_COMMIT");
 /// The branch the build script found (see `build.rs`).
 const BRANCH: &str = env!("ORQWA_BRANCH");
 
+/// As finely as the maps draw the whole route (`track(2000)` in the app), so a segment's
+/// stretch lies on its road.
+const MAP_POINTS: usize = 2000;
+
 /// `main@90b74ef`; the commit alone without a branch, and nothing without a commit, as a
 /// branch alone does not tell which build it is.
 fn build_name(branch: &str, commit: &str) -> String {
@@ -1223,8 +1227,9 @@ impl OrqwaApp {
     /// The active rider's rides, newest first: `[{path, route, name, start_unix_s, elapsed_s,
     /// distance_m, elevation_gain_m, avg_speed_kmh, avg_power, max_power, normalized_power,
     /// intensity_factor, training_stress, work_kj, avg_cadence, avg_heart_rate,
-    /// max_heart_rate, route_time_s, route_record, ftp_estimate_w, climbs, power_curve,
-    /// power_records, uploads}]`; values the ride did not record are `null`, and
+    /// max_heart_rate, route_time_s, route_record, assisted, simulated, ftp_estimate_w, climbs,
+    /// segments, power_curve, power_records, uploads}]`; values the ride did not record are
+    /// `null`, and
     /// `ftp_estimate_w` for all but FTP tests (R22). `power_curve` holds `(duration s, W)`
     /// points of the ride's best power, `power_records` the durations in seconds over which it
     /// is the rider's best (R62). `uploads` has the page of the ride's activity by platform id
@@ -1259,8 +1264,10 @@ impl OrqwaApp {
                     "route_time_s" => &optional(entry.record.route_time.map(|t| t.as_secs_f64())),
                     "route_record" => entry.route_record,
                     "assisted" => entry.record.assisted,
+                    "simulated" => entry.record.simulated,
                     "ftp_estimate_w" => &optional(entry.record.ftp_estimate.map(|w| w.0)),
                     "climbs" => &climb_times(&entry),
+                    "segments" => &segment_times(&entry),
                     "power_curve" => &entry
                         .record
                         .analysis
@@ -3464,8 +3471,10 @@ impl OrqwaApp {
     /// The ride state: `{elapsed_s, distance_m, speed_kmh, power, cadence, heart_rate,
     /// watts_per_kg, power_zone, heart_rate_zone, metrics, metric_zones, workout}`, and on a
     /// route also
-    /// `{remaining_m, grade, elevation_m, x, y, rider_x, rider_y, heading, curvature, ghost, climb}`; sensor
-    /// values and what derives from them are `null` when unknown. Empty when not riding.
+    /// `{remaining_m, grade, elevation_m, x, y, rider_x, rider_y, heading, curvature, ghost, climb,
+    /// segment}`; sensor values and what derives from them are `null` when unknown. Empty when
+    /// not riding. `segment` is the rider's own segment they are on or coming up to (R302):
+    /// `{name, length_m, ahead_m, ridden_m, elapsed_s, best_s}`, `ahead_m` `null` once on it.
     /// `workout` is `{target_power_w, target_heart_rate, intensity_pct, paused, progress}` in a
     /// workout, else `null`: the power `null` in a free step, the heart rate `null` but in a
     /// heart-rate hold, the intensity the share of the planned powers asked for, and
@@ -3565,21 +3574,12 @@ impl OrqwaApp {
                     }
                     .to_variant()
                 }),
-                "climb" => &app.current_climb().map_or_else(Variant::nil, |c| {
-                    let count = i64::try_from(route.climbs().len()).unwrap_or(0);
-                    vdict! {
-                        "index" => i64::try_from(c.index).unwrap_or(0),
-                        "count" => count,
-                        "category" => c.climb.category.label(),
-                        "length_m" => c.climb.length().0,
-                        "ridden_m" => c.ridden.0,
-                        "remaining_ascent_m" => c.remaining_ascent.0,
-                        "grade" => c.climb.average_grade.0,
-                        "elapsed_s" => c.elapsed.as_secs_f64(),
-                        "best_s" => &optional(c.best.map(|b| b.as_secs_f64())),
-                    }
-                    .to_variant()
-                }),
+                "climb" => &app
+                    .current_climb()
+                    .map_or_else(Variant::nil, |c| climb_state(&c, route.climbs().len())),
+                "segment" => &app
+                    .current_segment()
+                    .map_or_else(Variant::nil, |s| segment_state(&s)),
             },
             true,
         );
@@ -3682,6 +3682,92 @@ impl OrqwaApp {
             Err(error) => {
                 self.report_failure(&Failure::from(error));
                 PackedStringArray::new()
+            }
+        }
+    }
+
+    /// The active rider's segments of the loaded course (R302), as added: `[{id, name, start_m,
+    /// end_m, length_m, best_s, confirmed, track}]`; `best_s` is `null` before a ride on it,
+    /// `confirmed` false once the course comes out differently, until the rider checks its ends
+    /// with `save_segment`, and `track` is its stretch of road on the grid of `track()`, for
+    /// the maps.
+    #[func]
+    fn segments(&self) -> VarArray {
+        let mut array = VarArray::new();
+        let Some(app) = &self.app else {
+            return array;
+        };
+        let Some(route) = app.route() else {
+            return array;
+        };
+        for entry in app.segments() {
+            let s = &entry.segment;
+            let track: PackedVector2Array =
+                view::track_between(route, Meters(s.start_m), Meters(s.end_m), MAP_POINTS)
+                    .into_iter()
+                    .map(|(east, north)| vector2(east, north))
+                    .collect();
+            array.push(
+                &vdict! {
+                    "id" => s.id.as_str(),
+                    "name" => s.name.as_str(),
+                    "start_m" => s.start_m,
+                    "end_m" => s.end_m,
+                    "length_m" => s.end_m - s.start_m,
+                    "best_s" => &entry
+                        .best
+                        .map_or_else(Variant::nil, |b| b.as_secs_f64().to_variant()),
+                    "confirmed" => entry.confirmed,
+                    "track" => &track,
+                }
+                .to_variant(),
+            );
+        }
+        array
+    }
+
+    /// Adds a segment of the loaded course named `name` from `start_m` to `end_m`, or with an
+    /// `id`, changes that one instead (which also confirms its ends); false with the failure
+    /// reported.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn save_segment(&mut self, id: GString, name: GString, start_m: f64, end_m: f64) -> bool {
+        let (id, name) = (id.to_string(), name.to_string());
+        let (start, end) = (Meters(start_m), Meters(end_m));
+        self.command(|app| {
+            if id.is_empty() {
+                app.add_segment(&name, start, end).map(|_| ())
+            } else {
+                app.change_segment(&id, &name, start, end)
+            }
+        })
+    }
+
+    /// Removes the segment `id` of the loaded course; its times stay with the rides.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn remove_segment(&mut self, id: GString) -> bool {
+        let id = id.to_string();
+        self.command(|app| app.remove_segment(&id))
+    }
+
+    /// Where the GPX track at `path` lies on the loaded course: `{name, start_m, end_m}`, a
+    /// segment to add; empty with the failure reported if it does not follow the course.
+    #[func]
+    #[allow(clippy::needless_pass_by_value)] // #[func] parameters are passed by value from Godot
+    fn segment_from_gpx(&mut self, path: GString) -> VarDictionary {
+        let Some(app) = self.app.as_ref() else {
+            return VarDictionary::new();
+        };
+        match app.segment_from_gpx(&PathBuf::from(path.to_string())) {
+            Ok((name, start, end)) => vdict! {
+                "name" => name.as_str(),
+                "start_m" => start.0,
+                "end_m" => end.0,
+            },
+            Err(error) => {
+                self.report_failure(&Failure::from(error));
+                VarDictionary::new()
             }
         }
     }
@@ -5051,6 +5137,60 @@ fn climb_times(entry: &orqwa_app::HistoryEntry) -> VarArray {
     array
 }
 
+/// The climb the rider is on, of `count` on the route, as `ride_state()["climb"]` gives it.
+fn climb_state(c: &orqwa_app::ClimbProgress, count: usize) -> Variant {
+    let optional = |value: Option<f64>| value.map_or_else(Variant::nil, |v| v.to_variant());
+    vdict! {
+        "index" => i64::try_from(c.index).unwrap_or(0),
+        "count" => i64::try_from(count).unwrap_or(0),
+        "category" => c.climb.category.label(),
+        "length_m" => c.climb.length().0,
+        "ridden_m" => c.ridden.0,
+        "remaining_ascent_m" => c.remaining_ascent.0,
+        "grade" => c.climb.average_grade.0,
+        "elapsed_s" => c.elapsed.as_secs_f64(),
+        "best_s" => &optional(c.best.map(|b| b.as_secs_f64())),
+    }
+    .to_variant()
+}
+
+/// The segment the rider is on or coming up to, as `ride_state()["segment"]` gives it.
+fn segment_state(s: &orqwa_app::segments::SegmentProgress) -> Variant {
+    let optional = |value: Option<f64>| value.map_or_else(Variant::nil, |v| v.to_variant());
+    vdict! {
+        "name" => s.segment.name.as_str(),
+        "length_m" => s.segment.end_m - s.segment.start_m,
+        "ahead_m" => &optional(s.ahead.map(|a| a.0)),
+        "ridden_m" => s.ridden.0,
+        "elapsed_s" => s.elapsed.as_secs_f64(),
+        "best_s" => &optional(s.best.map(|b| b.as_secs_f64())),
+    }
+    .to_variant()
+}
+
+/// A history entry's times on the rider's segments (R302): `[{name, start_m, length_m, time_s,
+/// avg_power, record}]`.
+fn segment_times(entry: &orqwa_app::HistoryEntry) -> VarArray {
+    let mut array = VarArray::new();
+    for (segment, record) in entry.record.segments.iter().zip(&entry.segment_records) {
+        let power = segment
+            .avg_power
+            .map_or_else(Variant::nil, |p| p.0.to_variant());
+        array.push(
+            &vdict! {
+                "name" => segment.name.as_str(),
+                "start_m" => segment.start.0,
+                "length_m" => segment.end.0 - segment.start.0,
+                "time_s" => segment.elapsed.as_secs_f64(),
+                "avg_power" => &power,
+                "record" => *record,
+            }
+            .to_variant(),
+        );
+    }
+    array
+}
+
 /// The page of a ride's activity, by platform id.
 fn uploads_dict(entry: &orqwa_app::HistoryEntry) -> VarDictionary {
     let mut dict = VarDictionary::new();
@@ -5354,7 +5494,9 @@ fn voice_of(data: &VarDictionary) -> Voice {
 /// A moment of a ride (R124) as `{kind, …}`: `climb_topped {index, elapsed_s, grade_pct}`,
 /// `climb_record {index, elapsed_s, gain_s}`, `halfway {distance_m}`, `one_to_go`,
 /// `distance {distance_m}`, `power_peak {duration_s, power_w}`, `step_held {index, power_w}`,
-/// `first_ride {course}`, `streak {rides}` or `week_plan {rides, planned}`; `index` counts climbs from 0, as `climbs()` does.
+/// `first_ride {course}`, `streak {rides}`, `week_plan {rides, planned}`, `segment_done {name,
+/// elapsed_s}`, `segment_record {name, elapsed_s, gain_s}` or `segment_ahead {name,
+/// distance_m}`; `index` counts climbs from 0, as `climbs()` does.
 fn moment_dict(moment: &Moment) -> VarDictionary {
     let index = |i: usize| i64::try_from(i).unwrap_or(0);
     match *moment {
@@ -5391,6 +5533,26 @@ fn moment_dict(moment: &Moment) -> VarDictionary {
             "index" => index(i),
             "elapsed_s" => elapsed.as_secs_f64(),
             "gain_s" => gain.as_secs_f64(),
+        },
+        Moment::SegmentDone { ref name, elapsed } => vdict! {
+            "kind" => "segment_done",
+            "name" => name.as_str(),
+            "elapsed_s" => elapsed.as_secs_f64(),
+        },
+        Moment::SegmentRecord {
+            ref name,
+            elapsed,
+            gain,
+        } => vdict! {
+            "kind" => "segment_record",
+            "name" => name.as_str(),
+            "elapsed_s" => elapsed.as_secs_f64(),
+            "gain_s" => gain.as_secs_f64(),
+        },
+        Moment::SegmentAhead { ref name, distance } => vdict! {
+            "kind" => "segment_ahead",
+            "name" => name.as_str(),
+            "distance_m" => distance.0,
         },
         Moment::Halfway { distance } => vdict! {
             "kind" => "halfway",

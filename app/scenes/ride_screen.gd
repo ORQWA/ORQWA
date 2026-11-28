@@ -28,8 +28,6 @@ const OFFER_BOTTOM: float = 96.0
 ## long, a lower preset is suggested once per ride.
 const FRAME_BUDGET_S: float = 1.0 / 60.0 * 1.15
 const SLOW_FOR_S: float = 10.0
-## Speeds of a simulated ride (#53).
-const KM_PER_MILE: float = 1.609344
 const METERS_PER_FOOT: float = 0.3048
 ## How often the workout chart is redrawn: samples come once a second.
 const CHART_EVERY_S: float = 1.0
@@ -46,15 +44,16 @@ var _settings_for_pause: bool = false
 var _options: Dictionary = {}
 var _sound: RideSound = RideSound.new()
 var _imperial: bool = false
-var _climb_panel: PanelContainer = PanelContainer.new()
-var _climb_title: Label = UiTheme.caption("")
-var _climb_left: Label = UiTheme.value(14)
+var _climb_panel: ClimbPanel = ClimbPanel.new()
+var _segment_panel: SegmentPanel = SegmentPanel.new()
 var _ghost_panel: PanelContainer = PanelContainer.new()
 var _ghost_name: Label = UiTheme.caption("")
 var _ghost_gap: Label = UiTheme.value(20)
 var _group_riders: GroupRidersPanel = GroupRidersPanel.new()
 var _assistance: GroupAssistance = GroupAssistance.new()
 var _finished: bool = false
+## How far along the route the rider is, as of this frame.
+var _position_m: float = 0.0
 var _saved: bool = false
 var _toast_left: float = 0.0
 ## The moments of the ride (R124).
@@ -166,10 +165,14 @@ func begin(options: Dictionary) -> void:
 	var climb_info: Dictionary = _orqwa.climbs()
 	var climbs: Array = climb_info.get("climbs", [])
 	_profile.set_climbs(climbs)
+	var segments: Array = SegmentList.drawn(_orqwa.segments())
+	_profile.set_segments(segments)
+	_minimap.set_segments(segments)
 	_climb_panel.hide()
+	_segment_panel.hide()
 	_ghost_panel.hide()
-	_imperial = rider.get("units", "metric") == "imperial"
-	_hud.imperial = _imperial
+	var units: String = rider.get("units", "metric")
+	_set_imperial(units == "imperial")
 	_hud.show_layout(_orqwa.hud_layout(not _workout.is_empty()))
 	if not _orqwa.trainer_connected():
 		_show_toast(tr("Waiting for the trainer…"))
@@ -196,7 +199,8 @@ func _ready() -> void:
 	_build_backdrop()
 	_workout_panel.hide()
 	($HudColumn as VBoxContainer).add_child(_workout_panel)
-	_build_climb_panel()
+	(%RightColumn as VBoxContainer).add_child(_climb_panel)
+	(%RightColumn as VBoxContainer).add_child(_segment_panel)
 	(%RightColumn as VBoxContainer).add_child(_group_riders)
 	_build_ghost_panel()
 	resized.connect(_request_navigation_layout)
@@ -320,6 +324,7 @@ func _process(delta: float) -> void:
 	_show_assistance(state)
 	if state.is_empty():
 		return
+	_position_m = state.get("position_m", _position_m)
 	var peers: Array = state.get("peers", [])
 	_group_riders.show_riders(peers, _imperial)
 	_minimap.set_group_riders(peers)
@@ -355,7 +360,8 @@ func _process(delta: float) -> void:
 	else:
 		_profile_info.text = "%d m  ·  %+.1f %%" % [roundi(elevation), grade]
 	_minimap.set_rider(Vector2(x_m, y_m), heading)
-	_show_climb(state["climb"])
+	_climb_panel.show_climb(state["climb"])
+	_segment_panel.show_segment(state["segment"])
 	_show_ghost(state["ghost"])
 	_profile.set_rider_distance(distance_m)
 
@@ -520,8 +526,8 @@ func _on_profile_changed(profile: Dictionary) -> void:
 		return
 	var language: String = profile.get("language", "")
 	ProfileTab.apply_language(language)
-	_imperial = profile.get("units", "metric") == "imperial"
-	_hud.imperial = _imperial
+	var units: String = profile.get("units", "metric")
+	_set_imperial(units == "imperial")
 	_hud.show_layout(_orqwa.hud_layout(not _workout.is_empty()))
 	if profile.get("map_style") != before.get("map_style"):
 		_minimap.set_map(_orqwa.minimap_mesh())
@@ -654,47 +660,12 @@ func _show_ghost(ghost: Variant) -> void:
 	_ghost_panel.show()
 
 
-func _build_climb_panel() -> void:
-	var rows: VBoxContainer = VBoxContainer.new()
-	rows.add_theme_constant_override("separation", 2)
-	rows.add_child(_climb_title)
-	rows.add_child(_climb_left)
-	var style: StyleBoxFlat = UiTheme.panel()
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	_climb_panel.add_theme_stylebox_override("panel", style)
-	_climb_panel.add_child(rows)
-	_climb_panel.hide()
-	(%RightColumn as VBoxContainer).add_child(_climb_panel)
-
-
-## Progress on the climb the rider is on (`ride_state()["climb"]`), hidden between climbs.
-func _show_climb(climb: Variant) -> void:
-	if climb == null:
-		_climb_panel.hide()
-		return
-	var info: Dictionary = climb
-	var index: int = info["index"]
-	var count: int = info["count"]
-	var category: String = info["category"]
-	var left_m: float = info["length_m"] - info["ridden_m"]
-	var grade: float = info["grade"]
-	var ascent_m: float = info["remaining_ascent_m"]
-	_climb_title.text = (tr("%s  ·  climb %d of %d") % [tr(category).to_upper(), index + 1, count])
-	var color: Color = UiTheme.CLIMB_COLORS.get(category, UiTheme.MUTED)
-	_climb_title.add_theme_color_override("font_color", color)
-	var left: String = (
-		"%.2fmi" % (left_m / 1000.0 / KM_PER_MILE)
-		if _imperial
-		else ("%.1fkm" % (left_m / 1000.0) if left_m >= 1000.0 else "%dm" % roundi(left_m))
-	)
-	var ascent: String = (
-		tr("%sft ascent") % roundi(ascent_m / METERS_PER_FOOT)
-		if _imperial
-		else tr("%sm ascent") % roundi(ascent_m)
-	)
-	_climb_left.text = tr("%s · %s · %.1f%% to go") % [ascent, left, grade]
-	_climb_panel.show()
+## Metric or imperial figures everywhere on the ride's screen.
+func _set_imperial(imperial: bool) -> void:
+	_imperial = imperial
+	_hud.imperial = imperial
+	_climb_panel.imperial = imperial
+	_segment_panel.imperial = imperial
 
 
 func _request_navigation_layout() -> void:
@@ -735,17 +706,45 @@ func _fit_navigation() -> void:
 ## Tells of a moment of the ride (R124) in the rider's voice; not at all with the voice off.
 func _on_moment(moment: Dictionary) -> void:
 	var voice: String = _orqwa.profile().get("voice", "casual")
+	if moment.get("kind", "") == "segment_ahead":
+		_tell_segment_ahead(moment, voice)
+		return
 	var line: String = "" if voice == "off" else MomentLines.line(moment, voice, _imperial)
 	_tell(MomentLines.figure(moment, _imperial), line)
 
 
-## On a card in `accent`, or as `bar` (else `line`) in the overlay's: a moment or connection (R249).
-func _tell(figure: String, line: String, accent := UiTheme.ACCENT, bar := "") -> void:
+## A heads-up of a segment in its colour, with the chime but nothing to celebrate yet (R303):
+## its distance counts down while the card shows, and the card goes once the rider is there.
+func _tell_segment_ahead(moment: Dictionary, voice: String) -> void:
+	if voice == "off":
+		return
+	var told: float = moment["distance_m"]
+	# Where the rider is now: the frame's position may still be the last ride's.
+	var at: float = _orqwa.ride_state().get("position_m", _position_m)
+	var start_m: float = at + told
+	_position_m = at
+	var left: Callable = func() -> float: return start_m - _position_m
+	var live: Callable = MomentLines.countdown(moment, voice, _imperial, left)
+	var first: PackedStringArray = live.call()
+	if first.size() == 2:
+		_tell(first[0], first[1], UiTheme.SEGMENT_COLOR, "", true, live)
+
+
+## On a card in `accent`, or as `bar` (else `line`) in the overlay's: a moment, connection
+## (R249) or `heads_up` of what is coming, counting down by `live` (see `MomentCard.tell`).
+func _tell(
+	figure: String,
+	line: String,
+	accent := UiTheme.ACCENT,
+	bar := "",
+	heads_up := false,
+	live := Callable()
+) -> void:
 	if visible and not _finished and not line.is_empty() and is_overlay():
 		_overlay_hud.tell(line if bar.is_empty() else bar)
 		_play_chime()
 	elif visible and not _finished:
-		_moment_card.tell(figure, line, accent)
+		_moment_card.tell(figure, line, accent, heads_up, live)
 
 
 func _build_group_window() -> void:
