@@ -843,13 +843,16 @@ func _follow_ride(state: Dictionary, delta: float) -> void:
 
 	if _free:
 		return
-	var target: Transform3D = _view.target(
-		_camera_mode, _rider.transform, delta if _placed else INF
-	)
+	# A world's script may have the camera follow something else than the rider; the rider's
+	# camera modes and controls stay as they are (R302).
 	var hint: Variant = _world_script.camera_hint()
-	if hint != null and _camera_mode == CameraMode.CHASE:
+	var followed: Transform3D = _rider.transform
+	var size: float = 1.0
+	if hint != null:
 		var where: Dictionary = hint
-		target = _hinted_camera(where)
+		followed = _followed(where)
+		size = where.get("size", 1.0)
+	var target: Transform3D = _view.target(_camera_mode, followed, delta if _placed else INF, size)
 	# First person is fixed to the head; smoothing its position would trail behind the rider.
 	if _placed and _camera_mode != CameraMode.FIRST_PERSON:
 		var camera_weight: float = 1.0 - exp(-delta * CAMERA_SMOOTHING)
@@ -976,19 +979,15 @@ func _place_ghost(ghost: Variant, delta: float) -> void:
 	_ghost.show()
 
 
-## Where a world's script would like the chase camera (R302): behind and above its anchor,
-## looking at what it follows there.
-static func _hinted_camera(hint: Dictionary) -> Transform3D:
+## What a world's script has the camera follow (R302): its anchor on the road, lifted, facing
+## along the road.
+static func _followed(hint: Dictionary) -> Transform3D:
 	var x: float = hint["x"]
 	var y: float = hint["y"]
 	var elevation: float = hint["elevation_m"]
 	var heading: float = hint["heading"]
-	var back: float = hint["back_m"]
-	var up: float = hint["up_m"]
-	var aim: float = hint.get("aim_up_m", 1.0)
-	var anchor: Vector3 = Vector3(x, elevation, -y)
-	var eye: Vector3 = anchor + Basis(Vector3.UP, -heading) * Vector3(0.0, up, back)
-	return Transform3D(Basis.IDENTITY, eye).looking_at(anchor + Vector3.UP * aim, Vector3.UP)
+	var lift: float = hint.get("lift_m", 0.0)
+	return Transform3D(Basis(Vector3.UP, -heading), Vector3(x, elevation + lift, -y))
 
 
 ## Eases a lean towards `target` over a moment, at once after a jump.

@@ -86,8 +86,9 @@ func face_ahead() -> void:
 
 
 ## The camera for `mode` (`RideWorld.CameraMode`) and a rider at `rider`, `delta` seconds after
-## the last; a long `delta` takes it straight to the side and distance.
-func target(mode: int, rider: Transform3D, delta: float) -> Transform3D:
+## the last; a long `delta` takes it straight to the side and distance. Something `size` times a
+## rider (a world's team) has chase and drone stand as much further off.
+func target(mode: int, rider: Transform3D, delta: float, size: float = 1.0) -> Transform3D:
 	var forward: Vector3 = -rider.basis.z
 	var flat_forward: Vector3 = Vector3(forward.x, 0.0, forward.z).normalized()
 	var origin: Vector3 = rider.origin
@@ -108,7 +109,7 @@ func target(mode: int, rider: Transform3D, delta: float) -> Transform3D:
 	var right: Vector3 = flat_forward.cross(Vector3.UP)
 	var away: Vector3 = -flat_forward * cos(_orbit) + right * sin(_orbit)
 	var drone: bool = mode == RideWorld.CameraMode.DRONE
-	var stand_off: Vector2 = (Vector2(28.0, 20.0) if drone else Vector2(6.5, 2.6)) * _reach
+	var stand_off: Vector2 = (Vector2(28.0, 20.0) if drone else Vector2(6.5, 2.6)) * _reach * size
 	var eye: Vector3 = origin + away * stand_off.x + Vector3.UP * stand_off.y
 	# From behind the camera looks down the road; from a side or the front, at the rider.
 	var look_at: Vector3 = (

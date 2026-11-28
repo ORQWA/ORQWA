@@ -9,7 +9,7 @@ use orqwa_world_api::Anchor;
 /// `{answers, stopped, output, poses, camera, models}`: `answers` counts the script's answers,
 /// `output` is the last one as JSON (`docs/world-files.md`), `poses` one `{x, y, elevation_m,
 /// heading}` (or `null`, not placed) per `output.scene.nodes` entry, `camera` the hint's anchor
-/// pose with `back_m`, `up_m` and `aim_up_m` (or `null`), `models` the script's model files by
+/// pose with `lift_m` and `size` (or `null`), `models` the script's model files by
 /// name; `stopped` says why the script stopped, empty while it runs. `null` without a script.
 pub(super) fn state(app: &App, local: f64) -> Variant {
     let Some(driver) = app.world_script() else {
@@ -37,9 +37,19 @@ pub(super) fn state(app: &App, local: f64) -> Variant {
     }
     let camera = output.scene.camera.as_ref().and_then(|camera| {
         let mut at = pose(&camera.anchor)?;
-        at.set("back_m", camera.back_m);
-        at.set("up_m", camera.up_m);
-        at.set("aim_up_m", camera.aim_up_m);
+        // Within reason, whatever the script asks: the camera stays near what it follows.
+        let lift = if camera.lift_m.is_finite() {
+            camera.lift_m.clamp(-10.0, 500.0)
+        } else {
+            0.0
+        };
+        let size = if camera.size.is_finite() {
+            camera.size.clamp(0.5, 6.0)
+        } else {
+            1.0
+        };
+        at.set("lift_m", lift);
+        at.set("size", size);
         Some(at)
     });
     let camera = camera
