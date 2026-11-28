@@ -201,6 +201,7 @@ the work, within its limits.
   output up to 64 KiB, `state` included. Log lines are kept to 16 per tick of 1 KiB each. A
   trap, running out of fuel, or output that is not as described here stops the module for the
   rest of the ride; the ride goes on as if the world had no script, and ORQWA says so.
+- ORQWA asks the module every 0.1 s of riding and carries out its last answer in between.
 
 #### Input
 
@@ -281,10 +282,10 @@ On each rider's own device, whatever the module asks:
 
 | | |
 |---|---|
-| Grade | Within what ORQWA sends on a road, scaled by the rider's difficulty setting. |
-| Power | At most twice the rider's FTP, and what the trainer can do. |
+| Grade | −20 % to +25 %, as on real roads, then scaled by the rider's difficulty setting like a road's. |
+| Power | At most twice the rider's FTP, and what the trainer can do; the road if ORQWA has no FTP for the rider. |
 | Resistance | 0–100 % of the trainer's range. |
-| Changes | No more often than ORQWA sends them on a road. Pausing and stopping always win. |
+| Changes | No more often than ORQWA sends them on a road, except a change of request, which is sent at once. Pausing and stopping always win. |
 | Bodies | `mass_kg` 0–500, `rolling` and `air` 0.5–3, `speed_mps` 0–30. |
 
 These change only for safety, recorded in ADR 0044.

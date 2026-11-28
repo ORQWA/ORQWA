@@ -11,9 +11,14 @@ publish.workspace = true
 orqwa-domain.workspace = true
 orqwa-physics.workspace = true
 orqwa-routes.workspace = true
+orqwa-world-api.workspace = true
+orqwa-world-script.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 orqwa-devices.workspace = true
+wasmi = { workspace = true, features = ["wat"] }
 tokio = { workspace = true, features = ["rt", "macros", "time", "test-util"] }
 
 [lints]

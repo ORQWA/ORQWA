@@ -13,6 +13,7 @@ pub mod ftp_estimate;
 pub mod ghost;
 pub mod group;
 pub mod workout;
+pub mod world;
 
 use std::time::Duration;
 
@@ -25,6 +26,7 @@ use orqwa_physics::{
 };
 use orqwa_routes::{Route, RoutePosition};
 use workout::{Workout, WorkoutControl, WorkoutState};
+use world::{Moment, Movement, WorldDriver};
 
 /// Trainers need time to change resistance; more frequent updates only add traffic.
 const CONTROL_INTERVAL: Duration = Duration::from_secs(1);
@@ -133,7 +135,7 @@ impl Readings {
 }
 
 /// A ride along a route, or a workout on a flat road without one.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Ride {
     route: Option<Route>,
     workout: Option<WorkoutControl>,
@@ -153,6 +155,8 @@ pub struct Ride {
     last_control: Option<(TrainerControl, Duration)>,
     /// The virtual gear (index from 0), with virtual gears.
     gear: usize,
+    /// The world's script, on a world that has one (R302).
+    world: Option<WorldDriver>,
 }
 
 impl Ride {
@@ -197,6 +201,29 @@ impl Ride {
             next_sample: Duration::ZERO,
             last_control: None,
             gear: config.gears.map_or(0, |gears| gears.neutral()),
+            world: None,
+        }
+    }
+
+    /// Runs a world's script in the ride (R302): it decides how the rider moves and what the
+    /// trainer is asked for, within ORQWA's limits ([`world`]), until it stops.
+    #[must_use]
+    pub fn with_world_script(mut self, driver: WorldDriver) -> Self {
+        self.world = Some(driver);
+        self.last_control = None;
+        self
+    }
+
+    /// The world's script, if the ride runs one.
+    #[must_use]
+    pub fn world(&self) -> Option<&WorldDriver> {
+        self.world.as_ref()
+    }
+
+    /// The rider pressed World action; the script hears of it on its next tick.
+    pub fn world_action(&mut self) {
+        if let Some(world) = &mut self.world {
+            world.action();
         }
     }
 
@@ -278,12 +305,22 @@ impl Ride {
             self.next_sample += SAMPLE_INTERVAL;
         }
 
+        self.ask_world(dt);
         let grade = self.group_effect.grade(self.road_grade());
-        let setup = self.group_effect.setup(self.config.setup);
+        let movement = self.world.as_ref().map(WorldDriver::movement);
+        let setup = movement
+            .unwrap_or_default()
+            .setup(self.group_effect.setup(self.config.setup));
         let power = self.telemetry.power.unwrap_or(Watts(0.0));
-        let covered = self
-            .motion
-            .step(&setup, power, grade, MetersPerSecond(0.0), dt);
+        let covered = match movement {
+            Some(Movement::Scripted(speed)) => {
+                self.motion = orqwa_physics::Motion::moving_at(speed);
+                Meters(speed.0 * dt.as_secs_f64())
+            }
+            _ => self
+                .motion
+                .step(&setup, power, grade, MetersPerSecond(0.0), dt),
+        };
         self.distance = Meters(self.distance.0 + covered.0);
         if let Some(route) = &self.route {
             self.distance = Meters(self.distance.0.min(route.length().0));
@@ -298,6 +335,26 @@ impl Ride {
             return None;
         }
         self.control_update()
+    }
+
+    fn ask_world(&mut self, dt: Duration) {
+        let Some(world) = &mut self.world else {
+            return;
+        };
+        let before = world.request();
+        let now = Moment {
+            elapsed: self.elapsed,
+            distance: self.distance.0,
+            speed: self.motion.speed(),
+            power: self.telemetry.power,
+            cadence: self.telemetry.cadence.map(|c| c.0),
+            mass: self.config.setup.mass,
+        };
+        // A changed request is sent at once: the script's moment, a take-off or a start, is
+        // now, not at the next regular update.
+        if world.update(dt, now, self.route.as_ref()) && world.request() != before {
+            self.last_control = None;
+        }
     }
 
     /// Has the trainer told its gradient or power again on the next tick: after a pause it
@@ -579,14 +636,30 @@ impl Ride {
             TrainerControl::Resistance(Percent(0.0))
         } else if let Some(power) = self.workout.as_ref().and_then(WorkoutControl::power) {
             TrainerControl::TargetPower(power)
+        } else if let Some(control) = self.world.as_ref().and_then(|world| {
+            world::control(
+                world.request(),
+                world.movement().setup(self.config.setup),
+                self.config.difficulty,
+            )
+        }) {
+            match (control, self.config.gears) {
+                (TrainerControl::Simulation(road), Some(gears)) => {
+                    TrainerControl::Simulation(gears.in_gear(road, self.gear))
+                }
+                (control, _) => control,
+            }
         } else {
             let grade = trainer_grade(
                 self.group_effect.grade(self.road_grade()),
                 self.config.difficulty,
             );
             let road = self
-                .group_effect
-                .setup(self.config.setup)
+                .world
+                .as_ref()
+                .map(WorldDriver::movement)
+                .unwrap_or_default()
+                .setup(self.group_effect.setup(self.config.setup))
                 .simulation_parameters(grade);
             TrainerControl::Simulation(match self.config.gears {
                 Some(gears) => gears.in_gear(road, self.gear),

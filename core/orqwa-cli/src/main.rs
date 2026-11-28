@@ -108,6 +108,9 @@ enum Command {
         #[arg(long)]
         trust: Option<PathBuf>,
     },
+    /// Run a world's script headless with a simulated rider, printing what it asks for
+    /// (ADR 0044).
+    WorldScriptRun(worlds::ScriptRunArgs),
     // The maintainers' tools for world files (ADR 0043) work in every build but stay out of
     // the help: riders have no use for them.
     /// Seal a folder holding a world's `world.json` and the parts it names into a signed world
@@ -302,6 +305,7 @@ async fn main() -> Result<()> {
         Command::BuildingCensus { pbf } => building_census(pbf).await,
         Command::Workout { workout, ftp } => workout_info(&workout, Watts(ftp)),
         Command::WorldCheck { file, trust } => worlds::check(&file, trust.as_deref()),
+        Command::WorldScriptRun(args) => worlds::script_run(&args),
         Command::WorldSeal(args) => worlds::seal(&args),
         Command::WorldShare { folder } => worlds::share(&folder),
         Command::KeyNew { out } => worlds::key_new(&out),

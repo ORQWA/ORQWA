@@ -178,3 +178,130 @@ pub fn check(file: &Path, extra_root: Option<&Path>) -> Result<()> {
     println!("valid, checked in {:.1} s", started.elapsed().as_secs_f64());
     Ok(())
 }
+
+/// Run a world's script headless, as a ride would, with simulated riders (ADR 0044): for world
+/// authors to see what it asks for.
+#[derive(Args)]
+pub struct ScriptRunArgs {
+    /// The world file.
+    file: PathBuf,
+    /// The route to ride; the world's first if not given.
+    #[arg(long)]
+    route: Option<String>,
+    /// The rider's steady power, watts.
+    #[arg(long, default_value_t = 200.0)]
+    power: f64,
+    /// The rider's FTP, watts.
+    #[arg(long, default_value_t = 250.0)]
+    ftp: f64,
+    /// How long to ride, seconds.
+    #[arg(long, default_value_t = 600)]
+    seconds: u32,
+    /// Press World action at these seconds.
+    #[arg(long, value_delimiter = ',')]
+    actions: Vec<u32>,
+    /// Print what the script answers every tick, not only once a second.
+    #[arg(long)]
+    trace: bool,
+    /// Also trust this root (`*.pub.json`), for roots not yet built into ORQWA.
+    #[arg(long)]
+    trust: Option<PathBuf>,
+}
+
+/// Rides `args.file`'s route with its script, printing each second what happened.
+pub fn script_run(args: &ScriptRunArgs) -> Result<()> {
+    use orqwa_domain::telemetry::Telemetry;
+    use orqwa_domain::units::{Rpm, Watts};
+    use orqwa_session::world::{WorldDriver, WorldRider};
+    use orqwa_session::{Ride, RideConfig};
+
+    let trust = trust(args.trust.as_deref())?;
+    let file = WorldFile::open(&args.file, &trust)
+        .with_context(|| format!("{} is not a valid world file", args.file.display()))?;
+    let description = file.description();
+    let script = description
+        .script()?
+        .context("this world has no script this ORQWA runs")?;
+    let module = file.module()?.context("this world has no script")?;
+    let script =
+        orqwa_world_script::WorldScript::load(&module, script.api).map_err(anyhow::Error::msg)?;
+    let id = args
+        .route
+        .clone()
+        .or_else(|| description.routes.first().map(|r| r.id.clone()))
+        .context("the world has no route")?;
+    let points = file.route(&id)?;
+    let origin = description.origin;
+    let route = orqwa_routes::Route::from_world(
+        Some(id.clone()),
+        (origin.lat, origin.lon),
+        &points
+            .points
+            .iter()
+            .map(|p| orqwa_routes::WorldPoint {
+                east: p.east,
+                north: p.north,
+                elevation: p.elevation,
+                surface: match p.surface {
+                    world::Surface::Ground => orqwa_routes::Surface::Ground,
+                    world::Surface::Bridge => orqwa_routes::Surface::Bridge,
+                    world::Surface::Tunnel => orqwa_routes::Surface::Tunnel,
+                },
+            })
+            .collect::<Vec<_>>(),
+    )?;
+    let config = description
+        .script()?
+        .map(|s| s.config.clone())
+        .unwrap_or_default();
+    let rider = WorldRider {
+        name: "Rider".into(),
+        ftp: Watts(args.ftp),
+    };
+    let mut ride = Ride::new(route, RideConfig::default())
+        .with_world_script(WorldDriver::new(script, config, &id, rider));
+    ride.on_telemetry(&Telemetry {
+        power: Some(Watts(args.power)),
+        cadence: Some(Rpm(90.0)),
+        ..Telemetry::default()
+    });
+    let tick = orqwa_session::world::TICK;
+    let per_second = 1_000 / u32::try_from(tick.as_millis()).unwrap_or(100);
+    for step in 0..args.seconds * per_second {
+        if step % per_second == 0 && args.actions.contains(&(step / per_second)) {
+            ride.world_action();
+        }
+        let control = ride.tick(tick);
+        if !(args.trace || step % per_second == 0 || control.is_some()) {
+            continue;
+        }
+        let state = ride.state();
+        let world = ride.world().context("the script was dropped")?;
+        println!(
+            "{:7.1} s {:8.1} m {:5.1} km/h {:?} trainer {:?}",
+            state.elapsed.as_secs_f64(),
+            state.distance.0,
+            state.speed.as_kilometers_per_hour(),
+            world.movement(),
+            control,
+        );
+        if args.trace {
+            println!("  {}", serde_json::to_string(world.output())?);
+        }
+        if let Some(stopped) = world.stopped() {
+            println!("the script stopped: {stopped}");
+            break;
+        }
+        if ride.is_finished() {
+            break;
+        }
+    }
+    let world = ride.world().context("the script was dropped")?;
+    for (key, value) in world.values() {
+        println!("result {key}: {value}");
+    }
+    for (at, mark) in world.marks() {
+        println!("mark {} at {:.1} s", mark.name, at.as_secs_f64());
+    }
+    Ok(())
+}

@@ -2090,6 +2090,7 @@ dependencies = [
  "orqwa-voice",
  "orqwa-workouts",
  "orqwa-world",
+ "orqwa-world-script",
  "serde",
  "serde_json",
  "tokio",
@@ -2215,7 +2216,12 @@ dependencies = [
  "orqwa-domain",
  "orqwa-physics",
  "orqwa-routes",
+ "orqwa-world-api",
+ "orqwa-world-script",
+ "serde_json",
  "tokio",
+ "tracing",
+ "wasmi",
 ]
 
 [[package]]

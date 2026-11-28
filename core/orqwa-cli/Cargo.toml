@@ -31,6 +31,7 @@ orqwa-terrain.workspace = true
 orqwa-video.workspace = true
 orqwa-workouts.workspace = true
 orqwa-world.workspace = true
+orqwa-world-script.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 serde.workspace = true
