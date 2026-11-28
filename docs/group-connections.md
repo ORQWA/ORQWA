@@ -38,6 +38,12 @@ A connection counts as lost after 30 s without packets (keep-alive every 10 s), 
 stalled side closes it with the *reconnect* close code, so neither side takes it for a goodbye
 (#434).
 
+A friend's ORQWA that stops for less than those 30 s (frozen, briefly asleep, overloaded)
+keeps its connection (R303, #698). The organizer's controls from that time, five workout
+clocks and a latency report a second, then arrive together: the friend's reader waits for
+them to be handled and lets QUIC flow control hold back the rest, and the limit of 64 controls
+a second has room for a backlog of 8 a second for the full 30 s.
+
 - The organizer **holds the seat for five minutes** (`RECONNECT_WINDOW`) and sends to the
   rider's last address every two seconds. The countdown waits while anyone is away.
 - The friend tries every five seconds for **five minutes and 30 s** (`RECONNECT_TRYING`: the

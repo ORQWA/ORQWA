@@ -844,3 +844,9 @@ residency even when generation finishes the whole course before riding.
 | ID | Requirement |
 |---|---|
 | R301 | Extends R86 and R276 (2026-11-27, #684): riders can assign **Camera round to the left**, **Camera round to the right**, **Camera nearer** and **Camera further away** to phone remote buttons. Each press works like the corresponding button on the ride's camera bar, including in first person and when the ride bar is folded. Camera controls act only while the ride shows a 3D world. Existing assignments are preserved. |
+
+## Group rides through a stalled computer
+
+| ID | Requirement |
+|---|---|
+| R303 | Refines R186 (2026-11-28, #698): a friend whose ORQWA **stops for a while**, for less than the connection's 30 s timeout (the process frozen, the computer briefly asleep or overloaded), **rides on over the same connection**, as after the same time without network: the organizer keeps them in the group and nobody is told. Everything the organizer sent meanwhile arrives at once when ORQWA runs again and is taken in, not mistaken for a flood. A longer stop is a lost connection, reconnected as R186 says. |
