@@ -4,7 +4,7 @@ description = "The documents a world script and ORQWA exchange each tick (ADR 00
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
+license = "MIT OR Apache-2.0"
 publish.workspace = true
 
 [dependencies]

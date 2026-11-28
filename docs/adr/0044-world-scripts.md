@@ -170,8 +170,9 @@ scene, the screen and the results.
 - `wasmi` becomes a dependency, subject to approval under the dependency rules.
 - The API is a promise kept for good. It is kept small, and every addition is made with that in
   mind.
-- Two crates are added: one for the documents' types, which scripts may use as well, and one
-  for the runtime. `orqwa-cli` gains a command that runs a world's script headless with
+- Two crates are added: one for the documents' types, and one for the runtime. The types
+  (`orqwa-world-api`) are licensed `MIT OR Apache-2.0`, not GPL, so world authors may use them
+  in worlds they sell; the runtime and the rest of ORQWA stay GPL-3.0. `orqwa-cli` gains a command that runs a world's script headless with
   simulated riders, for world authors.
 - Models a script places may have skins and animations. The rest of a world's glTF stays
   static, as ADR 0042 sets out.
