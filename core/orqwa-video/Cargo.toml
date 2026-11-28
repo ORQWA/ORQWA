@@ -18,6 +18,12 @@ thiserror.workspace = true
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 rav1d = { workspace = true, features = ["asm"] }
 
+# rav1d's ARM assembly (assembled by the C compiler, the NDK's on Android): without it a phone or
+# tablet decodes 720p slower than it plays (#383). The dotprod, i8mm and SVE2 kernels only run
+# on cores that report those extensions.
+[target.'cfg(target_arch = "aarch64")'.dependencies]
+rav1d = { workspace = true, features = ["asm", "asm_arm64_dotprod", "asm_arm64_i8mm", "asm_arm64_sve2"] }
+
 [features]
 # Test videos for other crates' tests.
 testing = []

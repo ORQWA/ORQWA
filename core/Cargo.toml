@@ -57,8 +57,8 @@ png = "0.18.1"
 # Protocol Buffers for OpenStreetMap's PBF files; already in use under mvt-reader.
 prost = "0.14.4"
 quick-xml = "0.42.0"
-# Without its assembly here: the 1.1.0 package leaves out the headers its ARM assembly needs.
-# orqwa-video turns it on for x86_64, whose assembly the package has (ADR 0010).
+# Without its assembly here: orqwa-video turns it on for x86_64 and aarch64 (ADR 0010). Comes
+# from Git for now, see [patch.crates-io] below.
 rav1d = { version = "1.1.0", default-features = false, features = ["bitdepth_8", "bitdepth_16"] }
 reqwest = "0.13.5"
 rustls = { version = "0.23.46", default-features = false, features = ["aws_lc_rs", "std"] }
@@ -78,6 +78,13 @@ toml = "1.1.6"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 zip = { version = "9.7.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+# The rav1d 1.1.0 package leaves out the header its ARM assembly needs, so on Android, ARM Linux
+# and Apple silicon AV1 decoded in pure Rust, too slowly for 720p (#383). Upstream packages it
+# from this commit on (rav1d#1509) but has not released it yet: back to crates.io with the first
+# release after 1.1.0 (ADR 0010, #695).
+[patch.crates-io]
+rav1d = { git = "https://github.com/memorysafety/rav1d", rev = "0ce8cc12a03c0013c14448d6e91da1125d8ecf87" }
 
 # Tests build synthetic worlds: optimized they run several times faster, debug assertions
 # still on. Line tables keep the backtraces readable without the full debug info's size.

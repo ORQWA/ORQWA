@@ -26,3 +26,10 @@ targets = [
 ignore-build-dependencies = true
 ignore-dev-dependencies = true
 private = { ignore = true }
+
+# rav1d comes from Git until a release after 1.1.0 ships (ADR 0010, #695). A Git checkout holds the
+# whole dav1d tree, whose every build and assembly file would be credited on its own; the
+# licence file says the same once.
+[rav1d.clarify]
+license = "BSD-2-Clause"
+git = [{ path = "COPYING", checksum = "6477f5c0674c89dc9251708a442343449bcb9c14b969b09286eb61d0640b284a" }]

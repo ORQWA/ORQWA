@@ -296,7 +296,7 @@ Built in rideable steps:
   fades out when slow, switchable per ride
 - [x] Ride options that apply to video courses only (no camera, time of day, weather)
 - [x] A video course keeps its own copy of the video beside it, so it outlives the imported
-  file (#165); AV1 decoded fast enough for real time on x86_64 (rav1d's assembly)
+  file (#165); AV1 decoded fast enough for real time on x86_64 and ARM (rav1d's assembly, #383)
 - [x] Smooth playback: the footage's GPS matched onto the route's line rather than its points
   10 m apart (1 Hz GPS gave each 10 m one, two or three seconds of video) and evened out over
   5 s; frames decoded ahead of the ride, so the blend never waits for one (AV1 on Apple
