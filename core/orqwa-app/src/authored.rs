@@ -120,7 +120,12 @@ impl Authored {
         rider: orqwa_session::world::WorldRider,
     ) -> Option<orqwa_session::world::WorldDriver> {
         let loaded = (|| {
-            let Some(script) = self.file.description().script().map_err(|e| e.to_string())? else {
+            let Some(script) = self
+                .file
+                .description()
+                .script()
+                .map_err(|e| e.to_string())?
+            else {
                 return Ok(None);
             };
             let module = self.file.module().map_err(|e| e.to_string())?;

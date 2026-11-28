@@ -29,7 +29,11 @@ pub(super) fn state(app: &App, local: f64) -> Variant {
     };
     let mut poses = VarArray::new();
     for node in &output.scene.nodes {
-        poses.push(&pose(&node.anchor).as_ref().map_or_else(Variant::nil, ToGodot::to_variant));
+        poses.push(
+            &pose(&node.anchor)
+                .as_ref()
+                .map_or_else(Variant::nil, ToGodot::to_variant),
+        );
     }
     let camera = output.scene.camera.as_ref().and_then(|camera| {
         let mut at = pose(&camera.anchor)?;
@@ -37,7 +41,9 @@ pub(super) fn state(app: &App, local: f64) -> Variant {
         at.set("up_m", camera.up_m);
         Some(at)
     });
-    let camera = camera.as_ref().map_or_else(Variant::nil, ToGodot::to_variant);
+    let camera = camera
+        .as_ref()
+        .map_or_else(Variant::nil, ToGodot::to_variant);
     let mut models = VarDictionary::new();
     for (name, file) in app.world_script_models() {
         models.set(name.as_str(), file.as_str());

@@ -1234,7 +1234,9 @@ impl WorldFile {
     /// [`WorldError`] if it is no such file, cannot be read, or is not an image.
     pub fn extension_image(&self, name: &str) -> Result<Vec<u8>, WorldError> {
         if self.part(name) != Some(Part::Extension) {
-            return Err(invalid(format!("{name}: not a file of the world's extensions")));
+            return Err(invalid(format!(
+                "{name}: not a file of the world's extensions"
+            )));
         }
         let bytes = self.read(name)?;
         image(&mut bytes.as_slice(), false).map_err(|e| prefixed(name, e))?;
