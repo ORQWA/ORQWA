@@ -43,7 +43,9 @@ the Apache Individual CLA, before their first pull request is merged. It:
 CLA Assistant (cla-assistant.io) asks for signatures on pull requests; it is a hosted GitHub
 app and adds nothing to the build. Its signature store also records acceptances made by
 comment. Bot accounts (`github-actions[bot]`, `devin-ai-integration[bot]`) are on its
-allowlist; the person who directed a bot signs for its commits.
+allowlist, and so is Claude's co-author credit (`noreply@anthropic.com`) if CLA Assistant checks
+co-authors, since that email has no GitHub account that could sign. The person who directed a
+bot or coding agent signs for its commits.
 
 ## Consequences
 
