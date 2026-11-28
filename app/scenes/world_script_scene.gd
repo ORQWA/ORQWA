@@ -106,7 +106,7 @@ func _read_answer(info: Dictionary) -> void:
 	var riders: Array = scene.get("riders", [])
 	for rider: Dictionary in riders:
 		if not rider.get("shown", true):
-			_hidden_riders[int(rider.get("slot", 0))] = true
+			_hidden_riders[int(WorldPanels.number(rider.get("slot")))] = true
 	var models: Dictionary = info["models"]
 	var wanted: Dictionary[String, bool] = {}
 	for node: Dictionary in _nodes:
@@ -179,13 +179,15 @@ static func _transform(node: Dictionary, pose: Dictionary) -> Transform3D:
 	var elevation: float = pose["elevation_m"]
 	var yaw: Basis = Basis(Vector3.UP, -heading)
 	var offset: Array = node.get("offset_m", [0.0, 0.0, 0.0])
-	var local: Vector3 = Vector3(float(offset[0]), float(offset[1]), -float(offset[2]))
+	var local: Vector3 = Vector3(
+		WorldPanels.number(offset[0]), WorldPanels.number(offset[1]), -WorldPanels.number(offset[2])
+	)
 	var angles: Array = node.get("rotation_deg", [0.0, 0.0, 0.0])
 	var turned: Basis = Basis.from_euler(
 		Vector3(
-			deg_to_rad(float(angles[0])),
-			-deg_to_rad(float(angles[1])),
-			deg_to_rad(float(angles[2]))
+			deg_to_rad(WorldPanels.number(angles[0])),
+			-deg_to_rad(WorldPanels.number(angles[1])),
+			deg_to_rad(WorldPanels.number(angles[2]))
 		)
 	)
 	var size: float = node.get("scale", 1.0)
@@ -212,9 +214,9 @@ static func _play(placed: Node3D, clip: Variant) -> void:
 	if phase != null:
 		var length: float = player.get_animation(clip_name).length
 		player.speed_scale = 0.0
-		player.seek(clampf(float(phase), 0.0, 1.0) * length, true)
+		player.seek(clampf(WorldPanels.number(phase), 0.0, 1.0) * length, true)
 	else:
-		player.speed_scale = float(info.get("rate", 1.0))
+		player.speed_scale = WorldPanels.number(info.get("rate"), 1.0)
 
 
 func _draw_lines(transforms: Dictionary[String, Transform3D]) -> void:
@@ -241,4 +243,11 @@ static func _line_point(end: Dictionary, transforms: Dictionary[String, Transfor
 	if not transforms.has(id):
 		return NOWHERE
 	var point: Array = end.get("point", [0.0, 0.0, 0.0])
-	return transforms[id] * Vector3(float(point[0]), float(point[1]), -float(point[2]))
+	return (
+		transforms[id]
+		* Vector3(
+			WorldPanels.number(point[0]),
+			WorldPanels.number(point[1]),
+			-WorldPanels.number(point[2])
+		)
+	)

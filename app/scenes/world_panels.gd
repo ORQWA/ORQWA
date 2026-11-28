@@ -118,7 +118,7 @@ func _drop(id: String) -> void:
 ## Shows `panel` to this rider, replacing the one of its id.
 func _show_panel(panel: Dictionary) -> void:
 	var to: Variant = panel.get("to", "all")
-	if to is float and int(to) != 0:
+	if to is not String and int(WorldPanels.number(to)) != 0:
 		return
 	var id: String = panel.get("id", "")
 	var place: String = panel.get("slot", "")
@@ -139,7 +139,7 @@ func _show_panel(panel: Dictionary) -> void:
 	_shown[id] = box
 	var seconds: Variant = panel.get("seconds")
 	if seconds != null:
-		_until[id] = _clock + float(seconds)
+		_until[id] = _clock + WorldPanels.number(seconds)
 
 
 func _item(item: Dictionary) -> Control:
@@ -151,11 +151,11 @@ func _item(item: Dictionary) -> Control:
 			return _text(label, emphasis)
 		"value":
 			var unit: String = item.get("unit", "")
-			var decimals: int = int(item.get("decimals", 0))
-			var shown: String = _value(float(item.get("value", 0.0)), unit, decimals)
+			var decimals: int = int(WorldPanels.number(item.get("decimals")))
+			var shown: String = _value(WorldPanels.number(item.get("value")), unit, decimals)
 			return _text(("%s  %s" % [label, shown]) if not label.is_empty() else shown, true)
 		"bar":
-			return _bar(label, float(item.get("value", 0.0)))
+			return _bar(label, WorldPanels.number(item.get("value")))
 		"grid":
 			return _grid(item)
 		"image":
@@ -219,7 +219,7 @@ func _grid(item: Dictionary) -> GridContainer:
 			if column < row.size():
 				var text: Dictionary = row[column]
 				cell.text = WorldPanels.pick(text)
-			if highlight != null and int(highlight) == index:
+			if highlight != null and int(WorldPanels.number(highlight)) == index:
 				cell.add_theme_color_override("font_color", UiTheme.ACCENT)
 			grid.add_child(cell)
 	return grid
@@ -271,6 +271,14 @@ func _take_images() -> void:
 				var texture_rect: TextureRect = rect as TextureRect
 				if texture_rect.get_meta("file", "") == file:
 					texture_rect.texture = _images[file]
+
+
+## A number from a JSON value, or `default` if it is none.
+static func number(value: Variant, default: float = 0.0) -> float:
+	if value is float or value is int:
+		var known: float = value
+		return known
+	return default
 
 
 ## The text of `text` (language code → text) for the rider's language: theirs, its language
