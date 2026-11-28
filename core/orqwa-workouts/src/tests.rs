@@ -397,3 +397,18 @@ fn saved_workouts_replace_only_their_own_zwo_file() {
         "only files of the library"
     );
 }
+
+#[test]
+fn a_workout_kept_in_another_file_reads_as_its_own_file_would() {
+    let dir = temp_dir("bytes");
+    let xml = r#"<workout_file><name>Climb</name><workout><SteadyState Duration="600" Power="0.9"/></workout></workout_file>"#;
+    let path = dir.join("climb.zwo");
+    std::fs::write(&path, xml).unwrap();
+    let kept = Path::new("ext/ORQWA_workouts/climb.zwo");
+    assert_eq!(
+        parse_bytes(xml.as_bytes(), kept).unwrap(),
+        parse_file(&path).unwrap()
+    );
+    assert!(parse_bytes(xml.as_bytes(), Path::new("climb.txt")).is_err());
+    std::fs::remove_dir_all(dir).unwrap();
+}

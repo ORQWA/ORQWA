@@ -1336,7 +1336,7 @@ each world ([world-files.md](world-files.md#orqwa_script)).
 - [x] App: loading a world's script for its rides; `ride_state()["world"]`; Godot: script
   models, nodes, lines and clips; screen panels; camera hint; World action
 - [ ] Group rides on worlds that allow them: one host-run script, one group message
-- [ ] Bundled workouts in the library
+- [x] Bundled workouts in the library
 - **Exit:** a world's script runs on a released ORQWA, solo and in a group, without a change to
   ORQWA for that world
 

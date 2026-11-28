@@ -147,6 +147,35 @@ impl Authored {
             .flatten()
     }
 
+    /// The workouts the world brings (`ORQWA_workouts`), each with an id of its own: those
+    /// ORQWA cannot read are left out (and logged).
+    #[must_use]
+    pub fn workouts(&self) -> Vec<orqwa_workouts::Entry> {
+        let description = self.file.description();
+        let Ok(Some(workouts)) = description.workouts() else {
+            return Vec::new();
+        };
+        workouts
+            .files
+            .iter()
+            .filter_map(|&file| {
+                let plan = self
+                    .file
+                    .workout(file)
+                    .map_err(|e| e.to_string())
+                    .and_then(|bytes| {
+                        orqwa_workouts::parse_bytes(&bytes, Path::new(file)).map_err(|e| e.0)
+                    })
+                    .inspect_err(|error| warn!(%error, "a world's workout is left out"))
+                    .ok()?;
+                Some(orqwa_workouts::Entry {
+                    id: format!("{WORLD_WORKOUT}{}/{file}", description.id),
+                    plan,
+                })
+            })
+            .collect()
+    }
+
     /// The files of the models the world's script places, by the names it uses.
     #[must_use]
     pub fn script_models(&self) -> Vec<(String, String)> {
@@ -230,6 +259,9 @@ pub fn open(which: &WorldRoute) -> Result<Opened, String> {
         name,
     ))
 }
+
+/// The ids of workouts a world brings start with this, then the world's id and the file.
+pub const WORLD_WORKOUT: &str = "world:";
 
 /// The route `id` of an open world file: as authored, the road's width at each of its points,
 /// and its name in the library.

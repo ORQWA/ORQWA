@@ -3576,7 +3576,16 @@ impl App {
                 &self.data_dir,
             )))
             .chain(self.shared_workouts())
+            .chain(self.world_workouts())
             .collect()
+    }
+
+    /// The workouts the loaded world brings (R305), offered with its routes.
+    fn world_workouts(&self) -> Vec<orqwa_workouts::Entry> {
+        self.authored
+            .as_ref()
+            .map(|authored| authored.workouts())
+            .unwrap_or_default()
     }
 
     /// Adds a workout file (ZWO, ERG, MRC or FIT) to the library; returns its id.
@@ -3631,6 +3640,7 @@ impl App {
         if let Some(entry) = self
             .shared_workouts()
             .into_iter()
+            .chain(self.world_workouts())
             .find(|entry| entry.id == id)
         {
             return Ok(Workout::Structured {

@@ -53,11 +53,34 @@ pub fn extensions() -> Vec<&'static str> {
 /// # Errors
 /// [`WorkoutFileError`] if it cannot be read or is no workout ORQWA understands.
 pub fn parse_file(path: &Path) -> Result<Plan, WorkoutFileError> {
+    parser_for(path)?;
+    let bytes = std::fs::read(path)
+        .map_err(|e| WorkoutFileError(format!("cannot read {}: {e}", path.display())))?;
+    parse_bytes(&bytes, path)
+}
+
+/// Reads a workout from `bytes`, by the extension of `path`, which names it: for workouts kept
+/// elsewhere than a file of their own, such as in a world file (`ORQWA_workouts`).
+///
+/// # Errors
+/// [`WorkoutFileError`] if it is no workout ORQWA understands.
+pub fn parse_bytes(bytes: &[u8], path: &Path) -> Result<Plan, WorkoutFileError> {
+    let parser = parser_for(path)?;
+    let name = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    parser
+        .parse(bytes, &name)
+        .map_err(|e| WorkoutFileError(format!("{}: {e}", path.display())))
+}
+
+fn parser_for(path: &Path) -> Result<&'static dyn WorkoutParser, WorkoutFileError> {
     let extension = path
         .extension()
         .map(|e| e.to_string_lossy().to_ascii_lowercase())
         .unwrap_or_default();
-    let parser = parsers()
+    parsers()
         .into_iter()
         .find(|parser| parser.extensions().contains(&extension.as_str()))
         .ok_or_else(|| {
@@ -66,16 +89,7 @@ pub fn parse_file(path: &Path) -> Result<Plan, WorkoutFileError> {
                 path.display(),
                 extensions().join(", ")
             ))
-        })?;
-    let bytes = std::fs::read(path)
-        .map_err(|e| WorkoutFileError(format!("cannot read {}: {e}", path.display())))?;
-    let name = path
-        .file_stem()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    parser
-        .parse(&bytes, &name)
-        .map_err(|e| WorkoutFileError(format!("{}: {e}", path.display())))
+        })
 }
 
 /// A workout to choose from.
