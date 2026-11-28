@@ -1,6 +1,6 @@
 # ORQWA Individual Contributor License Agreement
 
-Version 1.0, 2026-11-27
+Version 1.0, 2026-11-28
 
 Thank you for contributing to ORQWA (the "Project"). This Agreement records the rights You give
 Marco Boss (GitHub: @bossm8, the "Maintainer") in Your Contributions. You keep the copyright in
@@ -16,7 +16,7 @@ request, a patch or any other way. **This includes every Contribution You made b
 this Agreement.** It excludes:
 
 - material You clearly mark in writing as "Not a Contribution"; and
-- Third-Party Material (section 6).
+- Third-Party Material (section 5).
 
 Material posted only to report or discuss something, such as logs, screenshots, route files or
 ideas in an issue or comment, is not a Contribution unless You submit it for inclusion.
@@ -24,17 +24,12 @@ ideas in an issue or comment, is not a Contribution unless You submit it for inc
 ## 2. Copyright license
 
 You grant the Maintainer a perpetual, worldwide, non-exclusive, no-charge, royalty-free,
-irrevocable license to reproduce, prepare derivative works of, publicly display, publicly
-perform, sublicense and distribute Your Contributions and derivative works of them.
+irrevocable license to reproduce, modify, publicly display, publicly perform, sublicense and
+distribute Your Contributions and derivative works of them under version 3 of the GNU General
+Public License or any later version, with or without additional permissions under its section 7.
 
-Subject to the open-source commitment in section 4, the Maintainer may distribute Your
-Contributions and derivative works of them under any license or combination of licenses,
-including licenses that are not open source, offered alongside the open-source one, and may add
-permissions or exceptions to a license, including for app-store distribution. The Maintainer
-may transfer this license only as section 5 allows.
-
-Recipients receive copyright permissions under the license or licenses that accompany the copy
-they receive.
+The Maintainer may add, modify or remove such permissions, including for app-store distribution
+or combination with separately licensed components, without obtaining further consent from You.
 
 ## 3. Patent license
 
@@ -42,26 +37,16 @@ You grant the Maintainer, and recipients of software the Maintainer distributes,
 worldwide, non-exclusive, no-charge, royalty-free, irrevocable patent license to make, have made,
 use, sell, offer to sell, import and otherwise transfer Your Contributions. It covers only the
 patent claims You can license that are necessarily infringed by Your Contribution alone or by
-its combination with the Project. If anyone starts patent litigation claiming that the Project
-or a Contribution infringes a patent, every patent license they received under this Agreement
-for that work ends on the date the litigation is filed.
+its combination with the Project to which it was submitted. If anyone starts patent litigation
+claiming that the Project or a Contribution infringes a patent, every patent license they
+received under this Agreement for that work ends on the date the litigation is filed.
 
-## 4. Open-source commitment
-
-In return, the Maintainer agrees that every version of the Project that includes Your
-Contributions will also be published in source form, at no charge, under version 3 of the GNU
-General Public License or, at the Maintainer's choice, a later version of it, with or without
-additional permissions under its section 7, at the same time as that version is distributed in
-any other way. The Maintainer may offer other licenses as well, but will not make the Project
-available only under other terms.
-
-## 5. Transfer
+## 4. Transfer
 
 The Maintainer may transfer the rights under this Agreement only to a successor maintainer or a
-legal entity that continues the Project, and only together with the obligations, including the
-commitment in section 4, which bind whoever receives them.
+legal entity that continues the Project, and only under the same terms.
 
-## 6. Your representations
+## 5. Your representations
 
 You represent that:
 
@@ -80,7 +65,7 @@ own license; this Agreement grants nothing in it.
 
 You will tell the Maintainer if any of these representations stop being true.
 
-## 7. No warranty
+## 6. No warranty
 
 Unless required by law, You provide Your Contributions "as is", without warranties or conditions
 of any kind, and You need not support them.

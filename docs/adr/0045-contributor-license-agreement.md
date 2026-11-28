@@ -8,9 +8,9 @@
 ORQWA is GPL-3.0. The maintainer wants to distribute it through app stores, whose terms add
 restrictions that GPL-3.0 section 10 forbids. GPL-3.0 section 7 allows an additional permission
 to cover this, but only the copyright holders can grant it, and several people have contributed
-code under plain GPL-3.0 with no agreement beyond it. Every later licensing change, such as an
-app store exception or a license for a trainer maker's integration, would mean finding every
-contributor again, which gets harder as the project grows.
+code under plain GPL-3.0 with no agreement beyond it. Every later permission, such as an app
+store exception or one for a trainer maker's integration, would mean finding every contributor
+again, which gets harder as the project grows.
 
 Options considered:
 
@@ -19,8 +19,11 @@ Options considered:
 - **DCO (`Signed-off-by`).** Confirms where code comes from but grants no right to relicense.
 - **CONTRIBUTING note covering only the app store exception.** Solves today's need; the next
   change starts over.
-- **CLA with a license grant.** Contributors keep their copyright and grant a broad license that
-  includes relicensing.
+- **CLA with a broad license grant.** Contributors keep their copyright and allow relicensing
+  under any terms. More than ORQWA needs, and it puts off contributors who want their work to
+  stay GPL.
+- **CLA limited to the GPL.** Contributors keep their copyright and allow the maintainer to
+  distribute their work under GPL-3.0 or later with additional permissions under its section 7.
 - **CLA with copyright assignment.** Gives the most control and puts off the most contributors.
 
 ## Decision
@@ -30,15 +33,15 @@ the Apache Individual CLA, before their first pull request is merged. It:
 
 - covers past contributions as well, so existing contributors sign once instead of agreeing to
   each change;
-- lets the maintainer relicense and add exceptions;
-- commits the maintainer to publish every version as source under GPL-3.0 or later, with or
-  without section 7 permissions, at the same time as any other release. A permissive license
+- lets the maintainer add, change or remove GPL section 7 permissions, such as an app store
+  exception, without asking again;
+- allows nothing beyond the GPL, version 3 or later: section 7 permissions only loosen its
+  terms, so every version stays GPL and ORQWA cannot become closed source. A permissive license
   was ruled out because it would let anyone release a closed fork;
-- allows other licenses, including non-open-source ones, alongside the GPL;
 - leaves third-party material under its own license;
 - accepts work made with AI tools when the contributor directed and reviewed it;
-- can be transferred only together with its obligations, to a successor maintainer or a legal
-  entity that continues the Project.
+- can be transferred, under the same terms, only to a successor maintainer or a legal entity
+  that continues the Project.
 
 CLA Assistant (cla-assistant.io) asks for signatures on pull requests; it is a hosted GitHub
 app and adds nothing to the build. Its signature store also records acceptances made by
@@ -58,6 +61,6 @@ bot or coding agent signs for its commits.
   store question. That change also updates the SPDX expression (`GPL-3.0-only` in
   `core/Cargo.toml`).
 - The grant is to one person. If the maintainer can no longer act and has not transferred it,
-  nobody can relicense. Forming a legal entity or naming a successor avoids this.
+  nobody can add or change permissions. Forming a legal entity or naming a successor avoids this.
 - The CLA names no governing law. A lawyer's review of `CLA.md` comes before the first
   signature, since version 1.0 is hard to change once signed.
