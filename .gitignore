@@ -25,3 +25,6 @@ __pycache__/
 
 # Worlds built by art/worlds scripts before packing
 art/worlds/build/
+
+# Local secrets (e.g. MAPILLARY_TOKEN); never commit them.
+.env

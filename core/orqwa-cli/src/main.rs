@@ -3,6 +3,7 @@
 mod devices;
 mod free_ride;
 mod gear_check;
+mod imagery;
 mod net_ping;
 mod network;
 mod recorded_ride;
@@ -68,6 +69,10 @@ enum Command {
     GearCheck(Box<gear_check::GearCheckArgs>),
     /// Show length, climbing and elevation source of a GPX route.
     Route(RouteArgs),
+    /// Measure how much Mapillary street imagery a route has: images within the corridor,
+    /// coverage on each side and requests per kilometre (R307, ADR 0046). The token comes from
+    /// `MAPILLARY_TOKEN`.
+    ImageryScan(imagery::ImageryScanArgs),
     /// Check how a video keeps up on this machine, played against the clock as a ride is.
     Video {
         /// The video file.
@@ -297,6 +302,7 @@ async fn main() -> Result<()> {
         Command::Ride(args) => ride(*args).await,
         Command::GearCheck(args) => gear_check(&args).await,
         Command::Route(args) => route_info(&args).await,
+        Command::ImageryScan(args) => imagery::scan(&args).await,
         Command::Video { file, seconds } => video_check(&file, seconds),
         Command::Detail { pbf, out, region } => detail(pbf, out, region).await,
         Command::BuildingCensus { pbf } => building_census(pbf).await,
