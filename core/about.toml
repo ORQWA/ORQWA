@@ -32,4 +32,4 @@ private = { ignore = true }
 # licence file says the same once.
 [rav1d.clarify]
 license = "BSD-2-Clause"
-git =[{ path = "COPYING", checksum = "6477f5c0674c89dc9251708a442343449bcb9c14b969b09286eb61d0640b284a" }]
+git = [{ path = "COPYING", checksum = "6477f5c0674c89dc9251708a442343449bcb9c14b969b09286eb61d0640b284a" }]
