@@ -2,7 +2,8 @@ class_name WorldPanels
 extends Control
 ## The panels a world's script shows on screen (R302): text, values, bars, grids and images,
 ## in ORQWA's own style and places (`top`, `side`, `centre`, `bottom`). The world gives the
-## content; how it looks is ORQWA's.
+## content; how it looks is ORQWA's. It follows the ride of the screen it is on, and takes
+## World action (W) for the script.
 
 const METERS_PER_MILE: float = 1609.344
 const METERS_PER_FOOT: float = 0.3048
@@ -48,6 +49,31 @@ func _init() -> void:
 
 
 ## Shows `world` (`ride_state()["world"]`, or `null` without a script).
+func _process(delta: float) -> void:
+	var screen: Node = get_parent()
+	var app: OrqwaApp = screen.get("_orqwa") if screen != null else null
+	if app == null:
+		return
+	var finished: bool = screen.get("_finished")
+	imperial = screen.get("_imperial")
+	var riding: bool = is_visible_in_tree() and not finished
+	var state: Dictionary = app.ride_state() if riding else {}
+	show_world(state.get("world"), delta, app)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo or key.keycode != KEY_W:
+		return
+	var screen: Node = get_parent()
+	var finished: bool = screen.get("_finished") if screen != null else true
+	if _orqwa == null or finished or not is_visible_in_tree():
+		return
+	# World action (R302): what it does is the world's script's to decide.
+	_orqwa.world_action()
+	get_viewport().set_input_as_handled()
+
+
 func show_world(world: Variant, delta: float, orqwa: OrqwaApp) -> void:
 	_orqwa = orqwa
 	_clock += delta

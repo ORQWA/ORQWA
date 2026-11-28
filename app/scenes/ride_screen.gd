@@ -78,7 +78,6 @@ var _jumps: RideJumps = RideJumps.new()
 ## The workout being ridden (`WorkoutsTab.workout()`), empty on a plain ride.
 var _workout: Dictionary = {}
 var _workout_panel: WorkoutPanel = WorkoutPanel.new()
-## What a world's script shows on screen (R302).
 var _world_panels: WorldPanels = WorldPanels.new()
 ## A workout on its own: no world behind the screen, a chart instead of map and profile.
 var _backdrop: ColorRect = ColorRect.new()
@@ -294,9 +293,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_step_intensity(1 if key.keycode == KEY_I else -1)
 	elif key.keycode == KEY_N:
 		_skip_step()
-	elif key.keycode == KEY_W and not _finished:
-		# World action (R302): what it does is the world's script's to decide.
-		_orqwa.world_action()
 	elif _simulating and key.keycode in [KEY_EQUAL, KEY_PLUS, KEY_KP_ADD]:
 		_step_time_scale(1)
 	elif _simulating and key.keycode in [KEY_MINUS, KEY_KP_SUBTRACT]:
@@ -319,14 +315,11 @@ func _process(delta: float) -> void:
 			_toast.hide()
 	if not visible or _finished:
 		_assistance.hide()
-		_world_panels.show_world(null, delta, _orqwa)
 		return
 	_jumps.update()
 	_watch_frame_time(delta)
 	var state: Dictionary = _orqwa.ride_state()
 	_show_assistance(state)
-	_world_panels.imperial = _imperial
-	_world_panels.show_world(state.get("world"), delta, _orqwa)
 	if state.is_empty():
 		return
 	var peers: Array = state.get("peers", [])
