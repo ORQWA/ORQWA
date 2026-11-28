@@ -1,6 +1,6 @@
 # ADR 0046 — Street imagery from Mapillary
 
-- Status: proposed (step 1 of 6: the source and what a world may keep)
+- Status: proposed (step 2 of 6: the client and the scan)
 - Date: 2026-11-28
 - Requirements: R307, R3, R33, R89, R101
 - Supersedes: the imagery source of R18 (dropped 2026-10-15), which stays dropped for Google
@@ -84,6 +84,27 @@ Each step is its own PR:
 5. The app: the setting, the token, progress and cancel, and the offline fallback.
 6. The course-file extension, its attribution in the manifest and About, and the wiki's server
    list and usage guide.
+
+## Measurements
+
+`orqwa-cli imagery-scan <route>` in the dev container (2026-11-28), corridor 30 m, one
+Mapillary token:
+
+| Course | Length | Cells | Requests | Images within 30 m | Coverage | Requests per km |
+|---|---:|---:|---:|---:|---:|---:|
+| Bielersee | 7.1 km | 24 | 24 | 3,451 | 99 % (left 98 %, right 98 %) | 3.4 |
+| London cycleway | 0.9 km | 3 | 3 | 1,154 | 81 % (left 51 %, right 77 %) | 3.4 |
+| Oberalp | 33.2 km | 87 | 78 | 6,214 | 69 % (left 54 %, right 42 %) | 2.3 |
+
+A 0.005° cell is about 550 m, so a course costs 2–4 requests per kilometre, and a second scan
+of the same corridor makes none: every cell it needs is already cached. Coverage is the share
+of route samples 10 m apart with an image within 30 m and 25 m along; the alpine route shows
+the expected gap where the pass road has fewer photographs, and the city lane shows the other
+side photographed more often than the left.
+
+The Oberalp scan first stopped at the source's rate limit after nine cells and finished on the
+next run; the cache kept what had arrived. Pacing across a long corridor belongs with the
+extractor, not the measurement.
 
 ## Consequences
 

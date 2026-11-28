@@ -1329,7 +1329,7 @@ so a world keeps only the facts they show. Off by default, the rider's own token
 network in the ride path (R3).
 
 - [x] ADR 0046: Mapillary as the source, facts not pixels, the optional world extension
-- [ ] `StreetImagery` trait, the Mapillary metadata client and its cache; `orqwa-cli
+- [x] `StreetImagery` trait, the Mapillary metadata client and its cache; `orqwa-cli
   imagery-scan` measuring coverage and requests per kilometre
 - [ ] Thumbnails, decoding and the fact extractor (the decoder crate agreed first)
 - [ ] Facades, storeys and street-level detail in the world; generator bump and render review
