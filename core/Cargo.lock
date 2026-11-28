@@ -2057,6 +2057,7 @@ dependencies = [
  "orqwa-app",
  "orqwa-devices",
  "orqwa-domain",
+ "orqwa-imagery",
  "orqwa-licence",
  "orqwa-net",
  "orqwa-osm",
@@ -2109,6 +2110,17 @@ dependencies = [
  "orqwa-world",
  "rustls-platform-verifier",
  "tracing",
+]
+
+[[package]]
+name = "orqwa-imagery"
+version = "0.7.0"
+dependencies = [
+ "orqwa-domain",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

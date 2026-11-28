@@ -3,6 +3,7 @@
 pub mod battery;
 pub mod calendar;
 pub mod files;
+pub mod imagery;
 pub mod profile;
 pub mod recording;
 pub mod season;

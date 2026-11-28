@@ -22,6 +22,7 @@ orqwa-domain.workspace = true
 orqwa-net.workspace = true
 orqwa-voice.workspace = true
 orqwa-devices.workspace = true
+orqwa-imagery.workspace = true
 orqwa-osm.workspace = true
 orqwa-physics.workspace = true
 orqwa-routes.workspace = true
