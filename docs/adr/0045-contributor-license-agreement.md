@@ -1,4 +1,4 @@
-# ADR 0044 — Contributor License Agreement
+# ADR 0045 — Contributor License Agreement
 
 - Status: proposed
 - Date: 2026-11-27
@@ -31,18 +31,31 @@ the Apache Individual CLA, before their first pull request is merged. It:
 - covers past contributions as well, so existing contributors sign once instead of agreeing to
   each change;
 - lets the maintainer relicense and add exceptions;
-- commits the maintainer to keep every version available under an OSI- or FSF-approved license,
-  so ORQWA cannot become closed source only;
-- can be transferred to a successor maintainer or a legal entity.
+- commits the maintainer to publish every version as source under GPL-3.0 or later, with or
+  without section 7 permissions, at the same time as any other release. A permissive license
+  was ruled out because it would let anyone release a closed fork;
+- allows other licenses, including non-open-source ones, alongside the GPL;
+- leaves third-party material under its own license;
+- accepts work made with AI tools when the contributor directed and reviewed it;
+- can be transferred only together with its obligations, to a successor maintainer or a legal
+  entity that continues the Project.
 
 CLA Assistant (cla-assistant.io) asks for signatures on pull requests; it is a hosted GitHub
-app and adds nothing to the build.
+app and adds nothing to the build. Its signature store also records acceptances made by
+comment. Bot accounts (`github-actions[bot]`, `devin-ai-integration[bot]`) are on its
+allowlist; the person who directed a bot signs for its commits.
 
 ## Consequences
 
 - Existing contributors are asked to accept the CLA. Code from anyone who does not accept stays
   plain GPL-3.0 and is rewritten before any licensing change relies on it.
-- First-time contributors take one extra click.
+- First-time contributors sign once, with their full name.
 - The app store exception becomes a separate, later change to `LICENSE` once the CLA covers
-  all code, and only for code ORQWA owns: third-party GPL-only dependencies would still need
-  checking.
+  all code, and only for code ORQWA owns. Third-party dependencies still need checking: GPL-only
+  ones, and FFmpeg, which is LGPL here (ADR 0010) and whose relinking requirement is its own app
+  store question. That change also updates the SPDX expression (`GPL-3.0-only` in
+  `core/Cargo.toml`).
+- The grant is to one person. If the maintainer can no longer act and has not transferred it,
+  nobody can relicense. Forming a legal entity or naming a successor avoids this.
+- The CLA names no governing law. A lawyer's review of `CLA.md` comes before the first
+  signature, since version 1.0 is hard to change once signed.
