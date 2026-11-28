@@ -64,14 +64,10 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
   FTMS and Tacx controls behind one boundary in `orqwa-devices`; Bluetooth owns transport,
   notifications and reconnection ([ADR 0028](adr/0028-tacx-bluetooth.md)).
   Ride modes are separate Godot views: the 3D world and the video view.
-- **FTMS**: service `0x1826`, Indoor Bike Data `0x2AD2`, Control Point `0x2AD9`
-  (Request Control `0x00`, Set Target Resistance `0x04`, Set Target Power `0x05`,
-  Set Indoor Bike Simulation `0x11`). Heart rate: `0x180D` / `0x2A37`.
-  Grade updates throttled to ~1–2 Hz.
-- **Tacx FE-C over BLE**: the NEO 2 Smart's UART service `6e40fec1…`, notifications
-  `…fec2…`, controls `…fec3…`; ANT-framed FE-C pages over Bluetooth. Simulation alternates
-  wind and track pages at four writes per second; ERG and resistance repeat the latest target.
-  No ANT+ transport. FTMS is preferred when both services exist. Confirmed on a NEO 2 Smart (R110).
+- **Trainers**: FTMS (`0x1826`) and Tacx FE-C over Bluetooth behind `TrainerDriver`, with
+  slope simulation, ERG, resistance and reconnection. Supported models, protocol details and
+  hardware checks are in [docs/trainers.md](trainers.md). Grade updates are throttled to
+  ~1–2 Hz. Heart rate: `0x180D` / `0x2A37`.
 - **Physics**: `P·η = v·(m·g·(Crr·cosθ + sinθ) + ½·ρ·CdA·v_rel²) + m·v·dv/dt`, integrated per
   tick. The trainer receives `grade × difficulty` (descents per R15).
 - **Elevation**: Mapterhorn terrain tiles with AWS fallback, cached on disk
@@ -154,6 +150,11 @@ scripts/                   container helpers: checks, builds (GDExtension, FFmpe
 - [x] Tacx FE-C over Bluetooth driver (R110, ADR 0028): NEO 2 Smart discovery, power/cadence/
   speed, SIM / ERG / resistance, latest control restored after reconnection; protocol tests
 - [x] NEO 2 Smart discovery, readings, control modes and reconnection confirmed on hardware
+- [x] Cycplus R200 (R302, [trainer support](trainers.md)): FTMS discovery by its name where
+  services are omitted, power/cadence/speed, SIM / ERG / resistance and reconnection; a recorded
+  R200 notification and control responses are tests
+- [ ] Cycplus R200 hardware check (R302): discovery, readings, SIM, ERG, resistance and
+  reconnection on the trainer; the BC2's native gear notifications stay out of scope for now
 - [x] Fake trainer
 - [x] `orqwa-cli scan` / `orqwa-cli ride`
 - [x] macOS CLI artifact from CI

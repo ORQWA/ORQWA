@@ -844,3 +844,9 @@ residency even when generation finishes the whole course before riding.
 | ID | Requirement |
 |---|---|
 | R301 | Extends R86 and R276 (2026-11-27, #684): riders can assign **Camera round to the left**, **Camera round to the right**, **Camera nearer** and **Camera further away** to phone remote buttons. Each press works like the corresponding button on the ride's camera bar, including in first person and when the ride bar is folded. Camera controls act only while the ride shows a 3D world. Existing assignments are preserved. |
+
+## Trainer compatibility
+
+| ID | Requirement |
+|---|---|
+| R302 | Extends R5 and R6 (2026-11-28): the **Cycplus R200** smart trainer connects through the existing **FTMS** driver, with power, cadence and speed readings, slope simulation, ERG target power, fixed resistance and reconnection. Discovery recognizes it by its advertised name `R200 <serial>` where a platform leaves service UUIDs out of the advertisement. Its protocol handling is tested with a recorded R200 notification and control response; hardware validation is pending. The optional BC2 shifter's proprietary native gear notifications are not used yet. [Trainer support](trainers.md) records the model and its status. |

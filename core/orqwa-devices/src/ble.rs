@@ -20,6 +20,7 @@ use tracing::{debug, info, trace, warn};
 
 use crate::battery;
 use crate::cycling_power;
+use crate::cycplus;
 use crate::di2;
 use crate::ftms::{self, ControlResult, ResistanceRange};
 use crate::handle::{DeviceError, DeviceEvent, DeviceHandle, DriverChannels};
@@ -131,7 +132,7 @@ impl Bluetooth {
                 .or(properties.advertisement_name.clone())
                 .unwrap_or_else(|| "Unnamed device".to_owned());
             // Trainers often offer the Cycling Power Service too: they stay trainers.
-            let (kind, model, side) = if is_trainer(&properties) {
+            let (kind, model, side) = if is_trainer(&properties, &name) {
                 (DeviceKind::Trainer, None, None)
             } else if properties
                 .services
@@ -905,10 +906,13 @@ impl Driver {
     }
 }
 
-fn is_trainer(properties: &PeripheralProperties) -> bool {
-    properties.services.iter().any(|service| {
-        *service == uuid_from_u16(ftms::SERVICE) || service.to_string() == tacx::SERVICE
-    })
+fn is_trainer(properties: &PeripheralProperties, name: &str) -> bool {
+    // Some platforms leave service UUIDs out of the advertisement, which the R200's name
+    // makes up for (R302).
+    cycplus::is_r200(name)
+        || properties.services.iter().any(|service| {
+            *service == uuid_from_u16(ftms::SERVICE) || service.to_string() == tacx::SERVICE
+        })
 }
 
 /// Looks a device up again by its identifier after it dropped. The Bluetooth stack may have
@@ -988,11 +992,19 @@ mod tests {
             ],
             ..PeripheralProperties::default()
         };
-        assert!(is_trainer(&properties));
+        assert!(is_trainer(&properties, "NEO 2 Smart"));
         properties.services = vec![uuid_from_u16(ftms::SERVICE)];
-        assert!(is_trainer(&properties));
+        assert!(is_trainer(&properties, "KICKR CORE 2"));
         properties.services = vec![uuid_from_u16(cycling_power::SERVICE)];
-        assert!(!is_trainer(&properties));
+        assert!(!is_trainer(&properties, "Assioma"));
+    }
+
+    /// The R200 is an FTMS trainer whose services some stacks leave out of the advertisement.
+    #[test]
+    fn an_r200_is_a_trainer_by_its_name_when_its_services_are_not_advertised() {
+        let properties = PeripheralProperties::default();
+        assert!(is_trainer(&properties, "R200 31260"));
+        assert!(!is_trainer(&properties, "R200"));
     }
 
     fn characteristic(service: &str, uuid: &str) -> Characteristic {

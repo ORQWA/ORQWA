@@ -10,6 +10,7 @@ pub mod battery;
 pub mod ble;
 mod bytes;
 pub mod cycling_power;
+pub mod cycplus;
 pub mod di2;
 pub mod fake;
 pub mod ftms;
