@@ -54,7 +54,10 @@ fn a_module_reaches_nothing_but_the_log() {
         r#"(import "orqwa_v1" "memory" (memory 1))"#,
     ] {
         let error = run(&module_with(import, "")).unwrap_err();
-        assert!(matches!(error, ScriptError::Refused(_)), "{import}: {error}");
+        assert!(
+            matches!(error, ScriptError::Refused(_)),
+            "{import}: {error}"
+        );
     }
     let logging = module_with(
         r#"(import "orqwa_v1" "log" (func $log (param i32 i32)))"#,
@@ -112,7 +115,10 @@ fn a_script_for_an_api_this_orqwa_does_not_have_is_refused() {
 #[test]
 fn a_module_that_traps_or_runs_too_long_is_stopped_for_the_ride() {
     let mut script = WorldScript::load(module("(unreachable)").as_bytes(), 1).unwrap();
-    assert!(matches!(script.tick(&input()), Err(ScriptError::Trapped(_))));
+    assert!(matches!(
+        script.tick(&input()),
+        Err(ScriptError::Trapped(_))
+    ));
     assert!(script.stopped());
     assert_eq!(script.tick(&input()), Err(ScriptError::Stopped));
 
@@ -123,9 +129,8 @@ fn a_module_that_traps_or_runs_too_long_is_stopped_for_the_ride() {
 #[test]
 fn a_module_cannot_grow_beyond_its_memory() {
     // 300 pages are more than 16 MiB: growing fails, and this module then traps.
-    let greedy = module(
-        "(if (i32.eq (memory.grow (i32.const 300)) (i32.const -1)) (then (unreachable)))",
-    );
+    let greedy =
+        module("(if (i32.eq (memory.grow (i32.const 300)) (i32.const -1)) (then (unreachable)))");
     assert!(matches!(run(&greedy), Err(ScriptError::Trapped(_))));
     let modest = module("(drop (memory.grow (i32.const 100)))");
     assert!(run(&modest).is_ok());

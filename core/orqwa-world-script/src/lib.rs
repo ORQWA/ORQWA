@@ -99,7 +99,12 @@ fn compile(engine: &Engine, wasm: &[u8]) -> Result<Module, ScriptError> {
             )));
         }
     }
-    let export = |name: &str| module.exports().find(|e| e.name() == name).map(|e| e.ty().clone());
+    let export = |name: &str| {
+        module
+            .exports()
+            .find(|e| e.name() == name)
+            .map(|e| e.ty().clone())
+    };
     let function = |name: &str, params: &[ValType], results: &[ValType]| {
         matches!(export(name), Some(ExternType::Func(ty))
             if ty.params() == params && ty.results() == results)
@@ -237,8 +242,12 @@ impl WorldScript {
         };
         self.ticks += 1;
         self.store.set_fuel(fuel).map_err(|e| trapped(&e))?;
-        let length = i32::try_from(bytes.len()).map_err(|_| ScriptError::Trapped("input too large".into()))?;
-        let at = self.alloc.call(&mut self.store, length).map_err(|e| trapped(&e))?;
+        let length = i32::try_from(bytes.len())
+            .map_err(|_| ScriptError::Trapped("input too large".into()))?;
+        let at = self
+            .alloc
+            .call(&mut self.store, length)
+            .map_err(|e| trapped(&e))?;
         let start = usize::try_from(at).map_err(|_| bad("alloc returned a negative address"))?;
         self.memory
             .write(&mut self.store, start, &bytes)

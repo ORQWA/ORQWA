@@ -539,18 +539,38 @@ impl Output {
             bodies: self
                 .bodies
                 .iter()
-                .filter_map(|b| resolve(b, |b| b.kind != BodyKind::Unknown, |b| b.fallback.as_deref()))
-                .map(|b| Body { fallback: None, ..b.clone() })
+                .filter_map(|b| {
+                    resolve(
+                        b,
+                        |b| b.kind != BodyKind::Unknown,
+                        |b| b.fallback.as_deref(),
+                    )
+                })
+                .map(|b| Body {
+                    fallback: None,
+                    ..b.clone()
+                })
                 .collect(),
             trainer: self
                 .trainer
                 .iter()
                 .map(|t| {
-                    resolve(t, |t| t.kind != TrainerKind::Unknown, |t| t.fallback.as_deref())
-                        .map_or_else(
-                            || TrainerRequest { slot: t.slot, kind: TrainerKind::Road, ..TrainerRequest::default() },
-                            |t| TrainerRequest { fallback: None, ..t.clone() },
-                        )
+                    resolve(
+                        t,
+                        |t| t.kind != TrainerKind::Unknown,
+                        |t| t.fallback.as_deref(),
+                    )
+                    .map_or_else(
+                        || TrainerRequest {
+                            slot: t.slot,
+                            kind: TrainerKind::Road,
+                            ..TrainerRequest::default()
+                        },
+                        |t| TrainerRequest {
+                            fallback: None,
+                            ..t.clone()
+                        },
+                    )
                 })
                 .collect(),
             scene: Scene {
@@ -559,13 +579,19 @@ impl Output {
                     .nodes
                     .iter()
                     .filter_map(|n| resolve(n, |n| n.anchor.is_known(), |n| n.fallback.as_deref()))
-                    .map(|n| Node { fallback: None, ..n.clone() })
+                    .map(|n| Node {
+                        fallback: None,
+                        ..n.clone()
+                    })
                     .collect(),
                 lines: self
                     .scene
                     .lines
                     .iter()
-                    .map(|l| Line { fallback: None, ..l.clone() })
+                    .map(|l| Line {
+                        fallback: None,
+                        ..l.clone()
+                    })
                     .collect(),
                 riders: self.scene.riders.clone(),
                 camera: self.scene.camera.clone().filter(|c| c.anchor.is_known()),
@@ -573,14 +599,23 @@ impl Output {
             ui: self
                 .ui
                 .iter()
-                .filter_map(|p| resolve(p, |p| p.slot != PanelSlot::Unknown, |p| p.fallback.as_deref()))
+                .filter_map(|p| {
+                    resolve(
+                        p,
+                        |p| p.slot != PanelSlot::Unknown,
+                        |p| p.fallback.as_deref(),
+                    )
+                })
                 .map(|p| Panel {
                     fallback: None,
                     items: p
                         .items
                         .iter()
                         .filter_map(|i| resolve(i, item_known, |i| i.fallback.as_deref()))
-                        .map(|i| Item { fallback: None, ..i.clone() })
+                        .map(|i| Item {
+                            fallback: None,
+                            ..i.clone()
+                        })
                         .collect(),
                     ..p.clone()
                 })

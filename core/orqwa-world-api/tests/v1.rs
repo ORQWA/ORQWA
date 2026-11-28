@@ -8,7 +8,9 @@ use orqwa_world_api::{Body, FEATURES, Input, Node, Output, TrainerKind};
 use serde_json::Value;
 
 fn snapshot(name: &str) -> Value {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/v1").join(name);
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/v1")
+        .join(name);
     serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
 }
 
@@ -19,9 +21,7 @@ fn keeps(snapshot: &Value, now: &Value, at: &str) {
         (Value::Object(before), Value::Object(after)) => {
             for (key, value) in before {
                 let field = format!("{at}.{key}");
-                let now = after
-                    .get(key)
-                    .unwrap_or_else(|| panic!("{field} is gone"));
+                let now = after.get(key).unwrap_or_else(|| panic!("{field} is gone"));
                 keeps(value, now, &field);
             }
         }
@@ -83,7 +83,10 @@ fn fields_and_kinds_a_later_api_adds_are_read_without_error() {
     )
     .unwrap();
     let resolved = output.resolved();
-    assert!(resolved.bodies.is_empty(), "riders stay on their own bodies");
+    assert!(
+        resolved.bodies.is_empty(),
+        "riders stay on their own bodies"
+    );
     assert_eq!(resolved.trainer[0].kind, TrainerKind::Road);
     assert!(resolved.ui.is_empty());
 }
