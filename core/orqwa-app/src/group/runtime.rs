@@ -789,7 +789,7 @@ async fn run_inner(
                 Some(LobbyEvent::Selection(selection)) => {
                     if snapshot.start.is_some() {continue;}
                     if snapshot.selection.as_ref().is_some_and(|s|s.revision==selection.revision) {continue;}
-                    let retained=snapshot.prepared && snapshot.selection.as_ref().is_some_and(|s|s.course==selection.course&&s.workout==selection.workout);
+                    let retained=snapshot.prepared && snapshot.selection.as_ref().is_some_and(|s|s.course==selection.course&&s.workout==selection.workout&&s.world==selection.world);
                     snapshot.assistance=selection.assistance;
                     if retained && jobs.is_empty() {
                         snapshot.selection=Some(selection);snapshot.ready.fill(false);snapshot.preparation.fill(None);snapshot.phase=Phase::Ready;continue;
@@ -1110,11 +1110,16 @@ async fn chosen(
     revision: u64,
 ) -> Result<SharedActivity, String> {
     let mut name = String::new();
-    let (course_id, course_key) = if let Some(path) = &course {
-        // Worlds are not shared from ORQWA (R285).
-        if crate::authored::WorldRoute::parse(path).is_some() {
-            return Err(crate::failure::Kind::WorldGroup.message().to_owned());
-        }
+    let mut world = None;
+    let (course_id, course_key) = if let Some(which) =
+        course.as_deref().and_then(crate::authored::WorldRoute::parse)
+    {
+        // A world is never sent: each rider rides their own copy, if the world allows (R305).
+        let (route_name, reference) = world_route(which).await?;
+        name = route_name;
+        world = Some(reference);
+        (None, None)
+    } else if let Some(path) = &course {
         let file = path.clone();
         let (manifest, key) = tokio::task::spawn_blocking(move || {
             let manifest = orqwa_storage::course::shared::validate(&file)?;
@@ -1150,12 +1155,14 @@ async fn chosen(
         name.pop();
     }
     let selection = Selection {
+        world: None,
         revision,
         name,
         course: course_id,
         course_key,
         workout: workout_id,
         assistance: Assistance::default(),
+        world,
     };
     selection.validate().map_err(|e| e.to_string())?;
     Ok(SharedActivity {
@@ -1165,6 +1172,67 @@ async fn chosen(
     })
 }
 
+/// The world route `which` as a group rides it: its name, and what names it for the others —
+/// only if the world's signed `ORQWA_group` allows group rides (R305).
+async fn world_route(
+    which: crate::authored::WorldRoute,
+) -> Result<(String, orqwa_net::activity::WorldRef), String> {
+    tokio::task::spawn_blocking(move || {
+        let (description, manifest) =
+            orqwa_storage::world::signed_identity(&which.file, &crate::authored::trust())
+                .map_err(|e| e.to_string())?;
+        let allowed = description
+            .group()
+            .map_err(|e| e.to_string())?
+            .is_some_and(|group| group.allowed);
+        let entry = description.route(&which.route).filter(|_| allowed).ok_or_else(|| {
+            crate::failure::Kind::WorldGroup.message().to_owned()
+        })?;
+        Ok((
+            entry.name.clone(),
+            orqwa_net::activity::WorldRef {
+                world: description.id.clone(),
+                manifest,
+                route: which.route,
+            },
+        ))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// The rider's own copy of the world the group rides, in its version: worlds are never sent
+/// (R305).
+fn own_world(data: &Path, world: &orqwa_net::activity::WorldRef) -> Option<PathBuf> {
+    let mut files: Vec<PathBuf> = std::fs::read_dir(data.join(orqwa_storage::worlds::DIR))
+        .ok()?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case(orqwa_storage::world::EXTENSION))
+        })
+        .collect();
+    files.sort();
+    let file = files.into_iter().find(|file| {
+        orqwa_storage::world::signed_identity(file, &crate::authored::trust()).is_ok_and(
+            |(description, manifest)| {
+                description.id == world.world
+                    && manifest == world.manifest
+                    && description.route(&world.route).is_some()
+                    && description.group().ok().flatten().is_some_and(|g| g.allowed)
+            },
+        )
+    })?;
+    Some(
+        crate::authored::WorldRoute {
+            file,
+            route: world.route.clone(),
+        }
+        .path(),
+    )
+}
+
 async fn download(
     connection: &orqwa_net::link::Connection,
     selection: &Selection,
@@ -1172,6 +1240,14 @@ async fn download(
     progress: &watch::Sender<content::Progress>,
 ) -> Result<(Option<PathBuf>, Option<PathBuf>), String> {
     let mut files = [None, None];
+    if let Some(world) = selection.world.clone() {
+        let data = data.to_owned();
+        let found = tokio::task::spawn_blocking(move || own_world(&data, &world))
+            .await
+            .map_err(|e| e.to_string())?;
+        files[0] =
+            Some(found.ok_or_else(|| crate::failure::Kind::WorldMissing.message().to_owned())?);
+    }
     for (index, id) in [selection.course, selection.workout]
         .into_iter()
         .enumerate()

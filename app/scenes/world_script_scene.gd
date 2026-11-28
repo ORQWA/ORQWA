@@ -55,6 +55,11 @@ func rider_shown(slot: int = 0) -> bool:
 	return not _hidden_riders.has(slot)
 
 
+## The slots whose ORQWA rider the script hides.
+func hidden_riders() -> Dictionary[int, bool]:
+	return _hidden_riders.duplicate()
+
+
 ## The script's camera hint: `{x, y, elevation_m, heading, back_m, up_m}`, or `null`.
 func camera_hint() -> Variant:
 	return _camera

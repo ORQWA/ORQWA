@@ -839,7 +839,8 @@ func _follow_ride(state: Dictionary, delta: float) -> void:
 	_rider.transform = Transform3D(yaw * pitch, position)
 	_place_ghost(state["ghost"], delta)
 	_world_script.show_world(state.get("world"), _orqwa)
-	_avatar.visible = _world_script.rider_shown()
+	_avatar.visible = _world_script.rider_shown(_orqwa.world_slot())
+	_group_riders.hidden = _world_script.hidden_riders()
 
 	if _free:
 		return

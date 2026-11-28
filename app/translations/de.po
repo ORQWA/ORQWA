@@ -610,8 +610,11 @@ msgstr "%s konnte nicht importiert werden."
 msgid "A world's routes keep the names their author gave them."
 msgstr "Die Routen einer Welt behalten die Namen, die ihnen ihr Autor gegeben hat."
 
-msgid "Routes of worlds cannot be ridden in group rides."
-msgstr "Routen von Welten können nicht in Gruppenfahrten gefahren werden."
+msgid "This world cannot be ridden in group rides."
+msgstr "Diese Welt kann nicht in Gruppenfahrten gefahren werden."
+
+msgid "Every rider needs this world to ride it together. Import it, in the version the organizer has, then join again."
+msgstr "Alle brauchen diese Welt, um sie gemeinsam zu fahren. Importiere sie in der Version, die der Organisator hat, und tritt dann erneut bei."
 
 msgid "Could not import the workout."
 msgstr "Das Training konnte nicht importiert werden."

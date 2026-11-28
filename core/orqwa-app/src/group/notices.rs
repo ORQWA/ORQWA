@@ -211,6 +211,7 @@ mod tests {
             name: name.into(),
             mass: Kilograms(83.0),
             weight: Kilograms(75.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: Avatar::default(),
         }
     }

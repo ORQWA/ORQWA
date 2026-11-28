@@ -1571,6 +1571,10 @@ msgstr ""
 msgid "Every ride you planned this week is done, all {planned} of them!"
 msgstr ""
 
+#: core/orqwa-app/src/failure.rs
+msgid "Every rider needs this world to ride it together. Import it, in the version the organizer has, then join again."
+msgstr ""
+
 #: app/ui/group_next_step.gd
 msgid "Everyone is ready"
 msgstr ""
@@ -3275,10 +3279,6 @@ msgstr ""
 msgid "Route"
 msgstr ""
 
-#: core/orqwa-app/src/failure.rs
-msgid "Routes of worlds cannot be ridden in group rides."
-msgstr ""
-
 #: app/scenes/courses_tab.gd
 msgid "Routes, videos, courses and worlds"
 msgstr ""
@@ -3857,6 +3857,10 @@ msgstr ""
 
 #: core/orqwa-app/src/failure.rs
 msgid "This video follows its GPS data and does not need manual synchronization."
+msgstr ""
+
+#: core/orqwa-app/src/failure.rs
+msgid "This world cannot be ridden in group rides."
 msgstr ""
 
 #: app/ui/ui_theme.gd

@@ -664,15 +664,18 @@ mod tests {
             name: "Original".into(),
             mass: Kilograms(83.0),
             weight: Kilograms(70.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: orqwa_domain::profile::Avatar::Female,
         });
         roster[3] = Some(Rider {
             name: "Successor".into(),
             mass: Kilograms(75.0),
             weight: Kilograms(70.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: orqwa_domain::profile::Avatar::Female,
         });
         let selection = Selection {
+            world: None,
             revision: 7,
             name: "Ride".into(),
             course: None,

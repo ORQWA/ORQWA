@@ -3,7 +3,7 @@
 - Status: proposed
 - Date: 2026-11-28
 - Amends: [ADR 0042](0042-world-files.md), [ADR 0043](0043-signed-licensed-worlds.md), R285
-- Requirements: R302–R305
+- Requirements: R302–R306
 
 ## Context
 
@@ -149,10 +149,18 @@ other than an addition, and tests of every fallback.
   `ORQWA_group` allows it, for at most the riders it names (never more than ORQWA's group
   limit). Every rider needs the same world: the same id, version and manifest. ORQWA still
   offers no export of world files; each rider has their own copy.
-- The **host runs the script**, for everyone. Its outputs reach the other riders in one
-  generic, versioned group message, and their world actions reach the host the same way. The
-  others show what the host sends and apply its trainer requests **through their own clamps**,
-  so a host cannot ask more of another rider's trainer than that rider's own ORQWA would.
+- **Every rider's ORQWA runs the script**, with the whole group in its input: each rider's
+  slot, name, power, cadence, mass and FTP, and where they are, from the states the group
+  already shares. Riders see the same within the group's latency, and nothing depends on the
+  host: no new message is sent during the ride, and each rider's trainer is asked only by their
+  own ORQWA, within its own limits.
+- To that end the group's roster carries each rider's **FTP**, as it carries their weight. It
+  goes only to the riders in the group and is never shown to them.
+- A body carrying several riders moves, on every rider's ORQWA, by their summed power against
+  their summed mass, and closes on where its riders' ORQWAs have it, so it stays one body.
+- The group selects a world's route by the world's id, the hash of its signed manifest and the
+  route's id. A rider without that world, in that version, cannot join the ride and is told so.
+- The group protocol's version goes up: riders on earlier ORQWA versions cannot join.
 - A world without `ORQWA_group` cannot be ridden as a group, as before.
 
 ### Bundled workouts

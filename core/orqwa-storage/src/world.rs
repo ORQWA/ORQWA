@@ -899,6 +899,22 @@ pub fn read_description(path: &Path, trust: &Trust) -> Result<Description, World
     Ok(signed(&mut open_zip(path)?, Some(trust))?.description)
 }
 
+/// A world's description and the SHA-512 of its signed manifest, once its signature holds:
+/// what names this exact version of the world, e.g. for riders of a group to find that each
+/// has the same (R305).
+///
+/// # Errors
+/// As [`read_description`].
+pub fn signed_identity(path: &Path, trust: &Trust) -> Result<(Description, [u8; 64]), WorldError> {
+    let mut zip = open_zip(path)?;
+    let description = signed(&mut zip, Some(trust))?.description;
+    let manifest = read_named(&mut zip, MANIFEST, MAX_MANIFEST_BYTES)?;
+    let digest = sha512(&manifest)
+        .try_into()
+        .map_err(|_| invalid("the manifest's hash is not SHA-512"))?;
+    Ok((description, digest))
+}
+
 /// Checks a whole world file against the format (R282, R295): its signature, its archive, its
 /// description and every part it names, each read to its last byte and compared with its
 /// signed hash. Run on a worker: it reads gigabytes.

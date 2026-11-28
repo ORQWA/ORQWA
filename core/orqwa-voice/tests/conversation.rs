@@ -203,6 +203,7 @@ async fn host() -> HostLobby {
             name: "Host".into(),
             mass: Kilograms(83.0),
             weight: Kilograms(70.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: orqwa_domain::profile::Avatar::Female,
         },
     )
@@ -219,6 +220,7 @@ async fn join(host: &HostLobby, name: &str) -> JoinerLobby {
             name: name.into(),
             mass: Kilograms(83.0),
             weight: Kilograms(70.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: orqwa_domain::profile::Avatar::Female,
         },
     )

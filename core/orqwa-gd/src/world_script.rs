@@ -20,8 +20,8 @@ pub(super) fn state(app: &App, local: f64) -> Variant {
     let pose = |anchor: &Anchor| -> Option<VarDictionary> {
         let distance = match (&anchor.body, anchor.slot, anchor.route_m) {
             (Some(body), None, None) => driver.body_distance(body, local),
-            // In a ride on one's own, the only rider is slot 0.
-            (None, Some(0), None) => Some(local),
+            // This rider, or another of the group where the group shows them (R305).
+            (None, Some(slot), None) => driver.slot_distance(slot, local),
             (None, None, Some(at)) if at.is_finite() => Some(at),
             _ => None,
         };

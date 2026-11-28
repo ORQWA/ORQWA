@@ -3588,6 +3588,15 @@ impl OrqwaApp {
         dict
     }
 
+    /// This rider's slot in the ride: 0 alone, theirs in a group (R305).
+    #[func]
+    fn world_slot(&self) -> i64 {
+        self.app
+            .as_ref()
+            .and_then(|app| app.world_script())
+            .map_or(0, |driver| i64::from(driver.slot()))
+    }
+
     /// The rider pressed World action (R302): the world's script hears of it next tick.
     #[func]
     fn world_action(&mut self) {

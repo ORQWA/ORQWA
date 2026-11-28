@@ -65,14 +65,19 @@ pub struct Rider {
     pub weight: Kilograms,
     /// How the rider looks on the bike in the others' worlds (#423).
     pub avatar: Avatar,
+    /// The rider's FTP, for a world's script to treat every rider alike (R305); 0 if unknown.
+    /// Shared only with the group, and never shown.
+    pub ftp: orqwa_domain::units::Watts,
 }
 impl Rider {
     pub(crate) fn validate(&self) -> Result<(), LobbyError> {
-        let finite = self.mass.0.is_finite() && self.weight.0.is_finite();
+        let finite =
+            self.mass.0.is_finite() && self.weight.0.is_finite() && self.ftp.0.is_finite();
         if !valid_name(&self.name)
             || !finite
             || !(20.0..=300.0).contains(&self.mass.0)
             || !(20.0..=self.mass.0).contains(&self.weight.0)
+            || !(0.0..=2500.0).contains(&self.ftp.0)
         {
             return Err(LobbyError::Protocol);
         }
@@ -2587,6 +2592,7 @@ mod tests {
         let mut first = join(&host, "First").await;
         host.select(SharedActivity {
             selection: Selection {
+                world: None,
                 revision: 1,
                 name: "Together".into(),
                 course: None,
@@ -2736,6 +2742,7 @@ mod tests {
             Err(LobbyError::Activity(_))
         ));
         let selection = Selection {
+            world: None,
             revision: 1,
             name: "Together".into(),
             course: None,
@@ -2861,6 +2868,7 @@ mod tests {
         let workout = path.join("changed.oqw");
         std::fs::write(&workout, b"changed workout").unwrap();
         let selection = Selection {
+            world: None,
             revision: 1,
             name: "Together".into(),
             course: Some(ContentId::of(ContentKind::Course, b"selected course").unwrap()),
@@ -2972,6 +2980,7 @@ mod tests {
         let source = Source::open(&file, ContentKind::Course).await.unwrap();
         host.select(SharedActivity {
             selection: Selection {
+                world: None,
                 revision: 1,
                 name: "Balmberg".into(),
                 course: Some(source.id()),
@@ -3051,6 +3060,7 @@ mod tests {
         )
         .unwrap();
         let selection = Selection {
+            world: None,
             revision: 1,
             name: "Together".into(),
             course: None,
@@ -3454,6 +3464,7 @@ mod tests {
             name: name.into(),
             mass: Kilograms(83.0),
             weight: Kilograms(75.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: Avatar::Female,
         }
     }

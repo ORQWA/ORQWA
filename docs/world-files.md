@@ -299,9 +299,12 @@ These change only for safety, recorded in ADR 0044.
 - `allowed`: whether the world's routes may be chosen for a group ride. Without this extension
   they may not.
 - `max_riders`: optional, 2 to ORQWA's group limit, which it also defaults to.
-- Every rider in the group needs the same world: the same `id`, `version` and manifest. The host
-  runs `ORQWA_script` for everyone; the others show what it sends, through their own
+- Every rider in the group needs the same world: the same `id`, `version` and signed manifest.
+  Each rider's ORQWA runs `ORQWA_script` with every rider of the group in its input, slots
+  as in the group, and applies only its own rider's trainer request, through its own
   [limits](#limits-orqwa-applies).
+- A driven body carrying several riders moves by their summed power against their summed mass
+  on every rider's ORQWA, and closes on where its riders' ORQWAs have it.
 
 ### `ORQWA_workouts`
 

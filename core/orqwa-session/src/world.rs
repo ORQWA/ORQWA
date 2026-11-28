@@ -35,8 +35,54 @@ pub const RESISTANCE_FACTORS: (f64, f64) = (0.5, 3.0);
 pub const MAX_SCRIPTED_SPEED: MetersPerSecond = MetersPerSecond(30.0);
 /// The most samples of the route a script is given; longer routes are sampled more coarsely.
 const MAX_ROUTE_SAMPLES: f64 = 10_000.0;
-/// The id of a rider's own body, as the script sees it.
-const OWN_BODY: &str = "own";
+/// How quickly a body carrying several riders closes on where its riders' ORQWAs have it:
+/// each rider's ORQWA moves it by the same summed power, so they differ only by the group's
+/// latency (R305).
+const TOGETHER_S: f64 = 2.0;
+
+/// The id of a rider's own body, as every rider's script sees it.
+fn own_body(slot: u8) -> String {
+    format!("own-{slot}")
+}
+
+/// The share of the way to its riders' mean distance a body carrying several closes in `dt`.
+#[must_use]
+pub fn together_rate(dt: Duration) -> f64 {
+    (dt.as_secs_f64() / TOGETHER_S).min(1.0)
+}
+
+/// Another rider of the group, as the group's states show them (R305).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Mate {
+    /// Their slot.
+    pub slot: u8,
+    /// Their name.
+    pub name: String,
+    /// Their power.
+    pub power: Watts,
+    /// Their cadence, revolutions per minute.
+    pub cadence: f64,
+    /// Rider and bike.
+    pub mass: Kilograms,
+    /// Their FTP; 0 if unknown.
+    pub ftp: Watts,
+    /// Where they are along the route.
+    pub distance: f64,
+    /// How fast they move.
+    pub speed: MetersPerSecond,
+}
+
+/// What a body carrying this rider and others adds: the others' power and mass, and where its
+/// riders have it on average.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Load {
+    /// The other riders' summed power.
+    pub power: Watts,
+    /// Their summed mass.
+    pub mass: Kilograms,
+    /// The mean distance of every rider it carries, this one included.
+    pub together: f64,
+}
 
 /// What the ride knows of the rider for the script: what the API may tell it (R303).
 #[derive(Debug, Clone, PartialEq)]
@@ -220,6 +266,10 @@ pub struct WorldDriver {
     /// Bodies carrying no local rider (a pacer, a marker): where they are and how fast they
     /// go. A scripted one moves at its speed from the route's start; a driven one has no power.
     others: BTreeMap<String, (f64, f64)>,
+    /// This rider's slot: 0 alone, theirs in a group.
+    slot: u8,
+    /// The group's other riders, as last seen.
+    team: Vec<Mate>,
 }
 
 impl WorldDriver {
@@ -242,12 +292,21 @@ impl WorldDriver {
             stopped: None,
             answers: 0,
             others: BTreeMap::new(),
+            slot: 0,
+            team: Vec::new(),
         }
     }
 
     /// The rider pressed World action.
     pub fn action(&mut self) {
         self.actions = self.actions.saturating_add(1);
+    }
+
+    /// Rides in a group (R305): this rider's slot, and the others as the group's states show
+    /// them now. Every rider's ORQWA runs the script with the same riders.
+    pub fn set_team(&mut self, slot: u8, team: Vec<Mate>) {
+        self.slot = slot;
+        self.team = team;
     }
 
     /// The rider changed their profile during the ride.
@@ -278,34 +337,51 @@ impl WorldDriver {
             route: route
                 .filter(|_| first)
                 .map(|route| route_shape(route, &self.route_id)),
-            riders: vec![Rider {
-                slot: 0,
+            riders: std::iter::once(Rider {
+                slot: self.slot,
                 name: self.rider.name.clone(),
                 power_w: now.power.map_or(0.0, |p| p.0),
                 cadence_rpm: now.cadence.unwrap_or(0.0),
                 mass_kg: now.mass.0,
                 ftp_w: self.rider.ftp.0,
                 connected: now.power.is_some(),
-                body: self.body_id().to_owned(),
-            }],
+                body: self.body_of(self.slot),
+            })
+            .chain(self.team.iter().map(|mate| Rider {
+                slot: mate.slot,
+                name: mate.name.clone(),
+                power_w: mate.power.0,
+                cadence_rpm: mate.cadence,
+                mass_kg: mate.mass.0,
+                ftp_w: mate.ftp.0,
+                connected: true,
+                body: self.body_of(mate.slot),
+            }))
+            .collect(),
             bodies: std::iter::once(BodyState {
-                id: self.body_id().to_owned(),
+                id: self.body_of(self.slot),
                 distance_m: now.distance,
                 speed_mps: now.speed.0,
             })
             .chain(
-                self.others
+                self.team
                     .iter()
-                    .map(|(id, &(distance, speed))| BodyState {
-                        id: id.clone(),
-                        distance_m: distance,
-                        speed_mps: speed,
+                    .filter(|mate| self.carrier(mate.slot).is_none())
+                    .map(|mate| BodyState {
+                        id: own_body(mate.slot),
+                        distance_m: mate.distance,
+                        speed_mps: mate.speed.0,
                     }),
             )
+            .chain(self.others.iter().map(|(id, &(distance, speed))| BodyState {
+                id: id.clone(),
+                distance_m: distance,
+                speed_mps: speed,
+            }))
             .collect(),
             actions: (self.actions > 0)
                 .then_some(Action {
-                    slot: 0,
+                    slot: self.slot,
                     count: self.actions,
                 })
                 .into_iter()
@@ -322,37 +398,95 @@ impl WorldDriver {
         true
     }
 
-    fn body_id(&self) -> &str {
+    /// The body of the last answer carrying `slot`, if one does.
+    fn carrier(&self, slot: u8) -> Option<&orqwa_world_api::Body> {
         self.output
             .bodies
             .iter()
-            .find(|body| body.riders.contains(&0))
-            .map_or(OWN_BODY, |body| body.id.as_str())
+            .find(|body| body.riders.contains(&slot))
+    }
+
+    /// The id of the body `slot` moves with: one of the script's, or their own.
+    fn body_of(&self, slot: u8) -> String {
+        self.carrier(slot)
+            .map_or_else(|| own_body(slot), |body| body.id.clone())
+    }
+
+    /// What the body carrying this rider adds of the group's other riders, if it carries any.
+    #[must_use]
+    pub fn load(&self, local: f64) -> Option<Load> {
+        let body = self.carrier(self.slot)?;
+        let carried: Vec<&Mate> = self
+            .team
+            .iter()
+            .filter(|mate| body.riders.contains(&mate.slot))
+            .collect();
+        if carried.is_empty() {
+            return None;
+        }
+        #[allow(clippy::cast_precision_loss)] // at most eight riders
+        let riders = (carried.len() + 1) as f64;
+        Some(Load {
+            power: Watts(carried.iter().map(|m| m.power.0.max(0.0)).sum()),
+            mass: Kilograms(carried.iter().map(|m| m.mass.0).sum()),
+            together: (local + carried.iter().map(|m| m.distance).sum::<f64>()) / riders,
+        })
+    }
+
+    /// This rider's slot: 0 alone, theirs in a group.
+    #[must_use]
+    pub fn slot(&self) -> u8 {
+        self.slot
+    }
+
+    /// Where the rider in `slot` is: this one at `local`, another as the group shows them.
+    #[must_use]
+    pub fn slot_distance(&self, slot: u8, local: f64) -> Option<f64> {
+        if slot == self.slot {
+            return Some(local);
+        }
+        self.team
+            .iter()
+            .find(|mate| mate.slot == slot)
+            .map(|mate| mate.distance)
     }
 
     fn apply(&mut self, output: &Output, at: Duration) {
+        let me = self.slot;
         self.movement = output
             .bodies
             .iter()
-            .find(|body| body.riders.contains(&0))
+            .find(|body| body.riders.contains(&me))
             .map_or_else(Movement::default, movement);
         self.request = output
             .trainer
             .iter()
-            .find(|request| request.slot == 0)
+            .find(|request| request.slot == me)
             .map_or(Request::Road, |request| {
                 Request::limited(request, self.rider.ftp)
             });
         let others: BTreeMap<String, (f64, f64)> = output
             .bodies
             .iter()
-            .filter(|body| !body.riders.contains(&0))
+            .filter(|body| !body.riders.contains(&me))
             .map(|body| {
                 let speed = match movement(body) {
                     Movement::Scripted(speed) => speed.0,
                     Movement::Driven { .. } => 0.0,
                 };
-                let distance = self.others.get(&body.id).map_or(0.0, |&(d, _)| d);
+                // A body carrying others of the group is where they are.
+                let carried: Vec<f64> = self
+                    .team
+                    .iter()
+                    .filter(|mate| body.riders.contains(&mate.slot))
+                    .map(|mate| mate.distance)
+                    .collect();
+                #[allow(clippy::cast_precision_loss)] // at most eight riders
+                let distance = if carried.is_empty() {
+                    self.others.get(&body.id).map_or(0.0, |&(d, _)| d)
+                } else {
+                    carried.iter().sum::<f64>() / carried.len() as f64
+                };
                 (body.id.clone(), (distance, speed))
             })
             .collect();
@@ -405,8 +539,11 @@ impl WorldDriver {
     /// carrying no local rider.
     #[must_use]
     pub fn body_distance(&self, id: &str, local: f64) -> Option<f64> {
-        if id == self.body_id() {
+        if id == self.body_of(self.slot) {
             return Some(local);
+        }
+        if let Some(mate) = self.team.iter().find(|mate| own_body(mate.slot) == id) {
+            return Some(mate.distance);
         }
         self.others.get(id).map(|&(distance, _)| distance)
     }

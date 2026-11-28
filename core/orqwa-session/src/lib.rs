@@ -221,6 +221,14 @@ impl Ride {
         self.world.as_deref()
     }
 
+    /// Rides the world's script in a group (R305): this rider's slot and the others as the
+    /// group's states show them now.
+    pub fn set_world_team(&mut self, slot: u8, team: Vec<world::Mate>) {
+        if let Some(world) = &mut self.world {
+            world.set_team(slot, team);
+        }
+    }
+
     /// The rider pressed World action; the script hears of it on its next tick.
     pub fn world_action(&mut self) {
         if let Some(world) = &mut self.world {
@@ -309,10 +317,19 @@ impl Ride {
         self.ask_world(dt);
         let grade = self.group_effect.grade(self.road_grade());
         let movement = self.world.as_deref().map(WorldDriver::movement);
-        let setup = movement
+        let mut setup = movement
             .unwrap_or_default()
             .setup(self.group_effect.setup(self.config.setup));
-        let power = self.telemetry.power.unwrap_or(Watts(0.0));
+        let mut power = self.telemetry.power.unwrap_or(Watts(0.0));
+        // A body carrying others of the group moves by everyone's power (R305).
+        let load = self
+            .world
+            .as_deref()
+            .and_then(|world| world.load(self.distance.0));
+        if let (Some(load), Some(Movement::Driven { .. })) = (load, movement) {
+            setup.mass = orqwa_domain::units::Kilograms(setup.mass.0 + load.mass.0);
+            power = Watts(power.0 + load.power.0);
+        }
         let covered = match movement {
             Some(Movement::Scripted(speed)) => {
                 self.motion = orqwa_physics::Motion::moving_at(speed);
@@ -323,6 +340,11 @@ impl Ride {
                 .step(&setup, power, grade, MetersPerSecond(0.0), dt),
         };
         self.distance = Meters(self.distance.0 + covered.0);
+        // Every rider's ORQWA moves it alike; it closes on where the others have it.
+        if let Some(load) = load {
+            let gap = load.together - self.distance.0;
+            self.distance = Meters(self.distance.0 + gap * world::together_rate(dt));
+        }
         if let Some(route) = &self.route {
             self.distance = Meters(self.distance.0.min(route.length().0));
         }

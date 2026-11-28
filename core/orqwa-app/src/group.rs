@@ -47,6 +47,8 @@ pub struct GroupRider {
     pub weight: Kilograms,
     /// How the rider looks on the bike (#423).
     pub avatar: Avatar,
+    /// Their FTP, for a world's script (R305); 0 if unknown.
+    pub ftp: Watts,
     /// Smoothed course distance.
     pub distance: Meters,
     /// Peer virtual speed.
@@ -65,12 +67,20 @@ pub struct GroupRider {
 pub(crate) struct Activity {
     course: Option<CourseKey>,
     workout: Option<ContentId>,
+    /// A world's route: its signed manifest's hash and the route's id, padded.
+    world: Option<([u8; 64], [u8; 64])>,
 }
 impl Activity {
     fn of(selection: &Selection) -> Self {
         Self {
             course: selection.course_key,
             workout: selection.workout,
+            world: selection.world.as_ref().map(|world| {
+                let mut route = [0; 64];
+                let id = world.route.as_bytes();
+                route[..id.len().min(64)].copy_from_slice(&id[..id.len().min(64)]);
+                (world.manifest, route)
+            }),
         }
     }
 }
@@ -761,6 +771,7 @@ impl App {
                 mass: Kilograms(rider.rider_mass.0 + rider.bike_mass.0),
                 weight: rider.rider_mass,
                 avatar: rider.avatar,
+                ftp: rider.ftp,
             },
             data: self.data_dir.clone(),
             temporary: self.cache_dir.join(format!("group-{:x?}", token.0)),
@@ -1076,6 +1087,7 @@ impl App {
                     mass: rider.mass,
                     weight: rider.weight,
                     avatar: rider.avatar,
+                    ftp: rider.ftp,
                     distance: peer.distance,
                     speed: peer.speed,
                     power: peer.power,
@@ -1746,6 +1758,26 @@ impl App {
                 .map_or(elapsed, |local| local.state.at);
             let mut current = group.peers.current_at(now, elapsed, local_at);
             current[usize::from(snapshot.me)] = None;
+            // A world's script sees the whole group, as every rider's ORQWA does (R305).
+            let mates = current
+                .iter()
+                .enumerate()
+                .filter_map(|(id, peer)| {
+                    let peer = peer.as_ref()?;
+                    let rider = snapshot.roster[id].as_ref()?;
+                    Some(orqwa_session::world::Mate {
+                        slot: u8::try_from(id).ok()?,
+                        name: rider.name.clone(),
+                        power: peer.power,
+                        cadence: peer.cadence.0,
+                        mass: rider.mass,
+                        ftp: rider.ftp,
+                        distance: peer.distance.0,
+                        speed: peer.speed,
+                    })
+                })
+                .collect();
+            active.ride.set_world_team(snapshot.me, mates);
             let request = orqwa_session::group::assistance_request(
                 &current,
                 state.distance,

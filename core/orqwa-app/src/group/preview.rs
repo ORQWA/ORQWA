@@ -28,7 +28,13 @@ impl Choice {
 
 /// The preview of `choice`, reading its course file: blocking.
 pub(super) fn build(choice: &Choice) -> Result<Preview, String> {
-    let course = choice.course.as_deref().map(course_preview).transpose()?;
+    // A world's route is the world's: friends see its name when it is chosen, not before.
+    let course = choice
+        .course
+        .as_deref()
+        .filter(|path| crate::authored::WorldRoute::parse(path).is_none())
+        .map(course_preview)
+        .transpose()?;
     // Friends see the workout's steps; its cues would only make it take longer to arrive.
     let workout = choice.plan.clone().map(|plan| Plan {
         cues: Vec::new(),

@@ -94,6 +94,7 @@ fn rider(bytes: &mut Vec<u8>, rider: &Rider) -> Result<(), LobbyError> {
     bytes.extend_from_slice(rider.name.as_bytes());
     bytes.extend_from_slice(&rider.mass.0.to_be_bytes());
     bytes.extend_from_slice(&rider.weight.0.to_be_bytes());
+    bytes.extend_from_slice(&rider.ftp.0.to_be_bytes());
     bytes.push(match rider.avatar {
         Avatar::Female => 0,
         Avatar::Male => 1,
@@ -288,6 +289,7 @@ impl Reader<'_> {
             name: name.into(),
             mass: orqwa_domain::units::Kilograms(f64::from_be_bytes(self.take()?)),
             weight: orqwa_domain::units::Kilograms(f64::from_be_bytes(self.take()?)),
+            ftp: orqwa_domain::units::Watts(f64::from_be_bytes(self.take()?)),
             avatar: match self.byte()? {
                 0 => Avatar::Female,
                 1 => Avatar::Male,
@@ -627,6 +629,7 @@ mod tests {
             name: "Anna".into(),
             mass: Kilograms(83.0),
             weight: Kilograms(74.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: Avatar::Male,
         };
         let valid = encode(&Message::Hello(RouteHash([1; 32]), who.clone())).unwrap();
@@ -637,8 +640,13 @@ mod tests {
         let mut extra = valid.clone();
         extra.push(0);
         assert!(decode(&extra).is_err());
-        // Mass, then weight, then the avatar end a rider.
-        let (mass_at, weight_at, avatar_at) = (valid.len() - 17, valid.len() - 9, valid.len() - 1);
+        // Mass, weight, FTP, then the avatar end a rider.
+        let (mass_at, weight_at, ftp_at, avatar_at) = (
+            valid.len() - 25,
+            valid.len() - 17,
+            valid.len() - 9,
+            valid.len() - 1,
+        );
         for mass in [f64::NAN, f64::INFINITY, -1.0, 1000.0, 70.0] {
             let mut invalid = valid.clone();
             invalid[mass_at..weight_at].copy_from_slice(&mass.to_be_bytes());
@@ -647,8 +655,13 @@ mod tests {
         // A weight above the rider-plus-bicycle mass is as invalid as one out of range.
         for weight in [f64::NAN, f64::INFINITY, 10.0, 90.0] {
             let mut invalid = valid.clone();
-            invalid[weight_at..avatar_at].copy_from_slice(&weight.to_be_bytes());
+            invalid[weight_at..ftp_at].copy_from_slice(&weight.to_be_bytes());
             assert!(decode(&invalid).is_err(), "weight {weight}");
+        }
+        for ftp in [f64::NAN, f64::INFINITY, -1.0, 3000.0] {
+            let mut invalid = valid.clone();
+            invalid[ftp_at..avatar_at].copy_from_slice(&ftp.to_be_bytes());
+            assert!(decode(&invalid).is_err(), "ftp {ftp}");
         }
         let mut unknown = valid.clone();
         unknown[avatar_at] = 2;
@@ -666,8 +679,8 @@ mod tests {
         .unwrap();
         assert!(decode(&welcome).is_ok());
         let mut duplicate = welcome;
-        // The second rider's slot, after the first's id, name, mass, weight and avatar.
-        duplicate[52] = 0;
+        // The second rider's slot, after the first's id, name, mass, weight, FTP and avatar.
+        duplicate[60] = 0;
         assert!(decode(&duplicate).is_err());
         assert!(decode(&vec![0; MAX_FRAME + 1]).is_err());
         assert!(decode(&[crate::code::VERSION, 5, 0, 1, 0, 0]).is_err());

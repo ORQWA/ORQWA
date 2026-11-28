@@ -8,6 +8,8 @@ var winter_clothing: bool = false:
 		winter_clothing = value
 		for avatar: GroupRiderAvatar in _avatars.values():
 			avatar.winter_clothing = value
+## Riders a world's script shows otherwise, by id: their avatars are hidden (R305).
+var hidden: Dictionary[int, bool] = {}
 var _avatars: Dictionary[int, GroupRiderAvatar] = {}
 var _visibility: GroupNameplateVisibility
 var _visibility_camera: Camera3D
@@ -46,6 +48,7 @@ func show_riders(peers: Array, delta: float) -> void:
 			_avatars[id] = avatar
 			add_child(avatar)
 		avatar.show_state(peer, delta)
+		avatar.visible = not hidden.has(id)
 	for id: int in _avatars.keys():
 		if not current.has(id):
 			var avatar: GroupRiderAvatar = _avatars[id]

@@ -145,6 +145,7 @@ pub fn seeds() -> Vec<(&'static str, Vec<u8>)> {
         name: "Anna".into(),
         mass: Kilograms(80.0),
         weight: Kilograms(70.0),
+        ftp: orqwa_domain::units::Watts(250.0),
         avatar: orqwa_domain::profile::Avatar::Female,
     };
     let anna = RiderId::new(1).expect("valid rider");
@@ -276,6 +277,7 @@ fn latency_seed() -> [Option<Duration>; crate::state::MAX_RIDERS] {
 
 fn selection_seed() -> Selection {
     Selection {
+        world: None,
         revision: 1,
         name: "Col du Galibier".into(),
         course: Some(ContentId::new(ContentKind::Course, 4096, [5; 32]).expect("course")),

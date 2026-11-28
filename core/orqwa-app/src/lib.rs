@@ -3723,9 +3723,10 @@ impl App {
             .continuation_undo
             .lock()
             .unwrap_or_else(PoisonError::into_inner) = None;
-        // A world's script runs in rides on its route (R302); in a group only as R305 allows.
+        // A world's script runs in rides on its route (R302), in a group too when the world
+        // allows group rides: only then can its route be chosen for one (R305).
         let ride = match self.authored.as_ref() {
-            Some(authored) if ride.route().is_some() && self.group.is_none() => {
+            Some(authored) if ride.route().is_some() => {
                 let rider = orqwa_session::world::WorldRider {
                     name: self.profile.profile.name.clone(),
                     ftp: self.profile.profile.ftp,

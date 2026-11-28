@@ -144,6 +144,7 @@ async fn with_devices(
         mass: Kilograms(args.mass),
         weight: Kilograms(args.weight),
         avatar: orqwa_domain::profile::Avatar::default(),
+        ftp: orqwa_domain::units::Watts(0.0),
     };
     let mut group = if let Some(code) = &args.join {
         let invite = Invite::from_code(code, options.gather.policy)?;

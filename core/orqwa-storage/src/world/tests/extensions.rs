@@ -268,3 +268,19 @@ fn a_folder_with_a_script_seals_each_file_once() {
     std::fs::remove_file(out).unwrap();
     std::fs::remove_dir_all(folder).unwrap();
 }
+
+#[test]
+fn a_world_is_known_by_its_id_and_signed_manifest() {
+    let path = archive(&featured(|_| {}));
+    let (description, manifest) = signed_identity(&path, &trust()).unwrap();
+    assert_eq!(description.id, super::description()["id"]);
+    assert_eq!(signed_identity(&path, &trust()).unwrap().1, manifest);
+    // Another version of the same world is another manifest.
+    let other = archive(&featured(|d| d["version"] = json!("2")));
+    assert_ne!(signed_identity(&other, &trust()).unwrap().1, manifest);
+    let unsigned = unsigned_archive(&entries());
+    assert!(signed_identity(&unsigned, &trust()).is_err());
+    for file in [path, other, unsigned] {
+        std::fs::remove_file(file).unwrap();
+    }
+}

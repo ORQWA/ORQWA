@@ -21,6 +21,7 @@ fn roster_ping_uses_each_friends_organizer_link_and_hides_unavailable_readings()
             name: format!("Rider {id}"),
             mass: Kilograms(83.0),
             weight: Kilograms(75.0),
+            ftp: orqwa_domain::units::Watts(250.0),
             avatar: Avatar::Female,
         });
     }
@@ -220,6 +221,7 @@ fn buffered_group_positions_never_replace_live_telemetry_recording_or_assistance
         name: "Local".into(),
         mass: Kilograms(83.0),
         weight: Kilograms(75.0),
+        ftp: orqwa_domain::units::Watts(250.0),
         avatar: Avatar::Female,
     });
     snapshot.generations[0] = 1;
@@ -816,12 +818,14 @@ fn a_rider_reconnecting_keeps_the_start_and_an_organizer_change_waiting() {
         name: "Anna".into(),
         mass: Kilograms(80.0),
         weight: Kilograms(70.0),
+        ftp: orqwa_domain::units::Watts(250.0),
         avatar: Avatar::Female,
     };
     let mut lobby = Snapshot {
         host: true,
         prepared: true,
         selection: Some(Selection {
+            world: None,
             revision: 1,
             name: "Workout".into(),
             course: None,
@@ -1479,6 +1483,7 @@ fn assistance_fixture() -> (Directory, App, Snapshot, Instant) {
         name: "Organizer".into(),
         mass: Kilograms(83.0),
         weight: Kilograms(75.0),
+        ftp: orqwa_domain::units::Watts(250.0),
         avatar: Avatar::Female,
     });
     snapshot.generations[0] = 1;

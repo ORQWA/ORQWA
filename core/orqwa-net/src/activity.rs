@@ -13,8 +13,8 @@ pub const MAX_COURSE_BYTES: u64 = 512 * 1024 * 1024;
 /// Largest encoded structured workout: 1 MiB.
 pub const MAX_WORKOUT_BYTES: u64 = 1024 * 1024;
 /// Maximum selection payload, independent of the lobby's existing control framing.
-pub const MAX_SELECTION_BYTES: usize = 256;
-const VERSION: u8 = 2;
+pub const MAX_SELECTION_BYTES: usize = 512;
+const VERSION: u8 = 3;
 
 /// Whether content is a portable course archive or a normalized structured workout.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -159,6 +159,30 @@ impl Default for Assistance {
     }
 }
 
+/// A route of a world file every rider has their own copy of (R305): world files are never sent
+/// to the group. A rider rides it only with the same world, by its id and signed manifest.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorldRef {
+    /// The world's id, a UUID as `world.json` writes it.
+    pub world: String,
+    /// SHA-512 of the world's signed `manifest.json`: the same version, byte for byte.
+    pub manifest: [u8; 64],
+    /// The route's id in the world.
+    pub route: String,
+}
+
+impl WorldRef {
+    fn valid(&self) -> bool {
+        self.world.len() == 36
+            && self.world.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-')
+            && (1..=64).contains(&self.route.len())
+            && self
+                .route
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+    }
+}
+
 /// One host-selected course, workout, or workout on a course.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Selection {
@@ -174,6 +198,8 @@ pub struct Selection {
     pub workout: Option<ContentId>,
     /// Shared rules, frozen together with this selection at countdown.
     pub assistance: Assistance,
+    /// A world's route instead of a course, if the world allows group rides (R305).
+    pub world: Option<WorldRef>,
 }
 impl Selection {
     /// Checks kinds, revision, name and the requirement to select at least one activity.
@@ -183,7 +209,9 @@ impl Selection {
     pub fn validate(&self) -> Result<(), ActivityError> {
         if self.revision == 0
             || !valid_name(&self.name)
-            || (self.course.is_none() && self.workout.is_none())
+            || (self.course.is_none() && self.workout.is_none() && self.world.is_none())
+            || (self.world.is_some() && self.course.is_some())
+            || self.world.as_ref().is_some_and(|world| !world.valid())
             || self.course.is_some() != self.course_key.is_some()
             || self.course.is_some_and(|id| id.kind != ContentKind::Course)
             || self
@@ -215,6 +243,13 @@ impl Selection {
         out.push(u8::from(self.workout.is_some()));
         if let Some(id) = self.workout {
             id.write(&mut out);
+        }
+        out.push(u8::from(self.world.is_some()));
+        if let Some(world) = &self.world {
+            out.extend_from_slice(world.world.as_bytes());
+            out.extend_from_slice(&world.manifest);
+            out.push(u8::try_from(world.route.len()).map_err(|_| ActivityError::Invalid)?);
+            out.extend_from_slice(world.route.as_bytes());
         }
         Ok(out)
     }
@@ -249,6 +284,21 @@ impl Selection {
             1 => Some(ContentId::read(&mut input)?),
             _ => return Err(ActivityError::Invalid),
         };
+        let world = match input.byte()? {
+            0 => None,
+            1 => {
+                let id: [u8; 36] = input.take()?;
+                let world = String::from_utf8(id.to_vec()).map_err(|_| ActivityError::Invalid)?;
+                let manifest: [u8; 64] = input.take()?;
+                let route = input.string(64)?;
+                Some(WorldRef {
+                    world,
+                    manifest,
+                    route,
+                })
+            }
+            _ => return Err(ActivityError::Invalid),
+        };
         let selection = Self {
             revision,
             name,
@@ -259,6 +309,7 @@ impl Selection {
                 drafting: flags & 1 != 0,
                 keep_together: flags & 2 != 0,
             },
+            world,
         };
         if !input.0.is_empty() {
             return Err(ActivityError::Invalid);
@@ -471,6 +522,7 @@ mod tests {
     use super::*;
     fn selection(revision: u64) -> Selection {
         Selection {
+            world: None,
             revision,
             name: "Twann – Chasseral".into(),
             course: Some(ContentId::of(ContentKind::Course, b"course").unwrap()),
@@ -514,6 +566,38 @@ mod tests {
         assert!(ContentId::new(ContentKind::Course, MAX_COURSE_BYTES + 1, [1; 32]).is_err());
         assert!(ContentId::new(ContentKind::Workout, 0, [1; 32]).is_err());
     }
+    #[test]
+    fn a_world_route_is_named_by_its_world_and_signed_manifest_not_sent() {
+        let world = WorldRef {
+            world: "c4777742-06ab-42f5-a8d2-d5b847b40740".into(),
+            manifest: [7; 64],
+            route: "valley-loop".into(),
+        };
+        let mut ride = selection(1);
+        ride.course = None;
+        ride.course_key = None;
+        ride.world = Some(world.clone());
+        let bytes = ride.encode().unwrap();
+        assert!(bytes.len() <= MAX_SELECTION_BYTES);
+        assert_eq!(Selection::decode(&bytes), Ok(ride.clone()));
+        for end in 0..bytes.len() {
+            assert!(Selection::decode(&bytes[..end]).is_err());
+        }
+        // A world route is the ride's course: never both.
+        let mut both = selection(1);
+        both.world = Some(world.clone());
+        assert!(both.encode().is_err());
+        for (id, route) in [("not-a-uuid", "valley-loop"), (world.world.as_str(), "Valley Loop")] {
+            let mut bad = ride.clone();
+            bad.world = Some(WorldRef {
+                world: id.into(),
+                manifest: [7; 64],
+                route: route.into(),
+            });
+            assert!(bad.encode().is_err(), "{id} {route}");
+        }
+    }
+
     #[test]
     fn selection_revisions_and_membership_generations_gate_start() {
         let mut lobby = ActivityLobby::default();
