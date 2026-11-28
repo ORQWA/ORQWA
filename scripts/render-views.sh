@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 # Renders the standard views (app/tools/render_views.gd: fixed shots on the fixture routes) into
-# screenshots/views/ with software Vulkan, to compare a visual change before and after (ADR 0011).
+# screenshots/views/, on the GPU when the container has one and with software Vulkan otherwise,
+# to compare a visual change before and after (ADR 0011).
 # Runs inside the dev container: scripts/dev.sh scripts/render-views.sh
 # VIEWS="village-chase lake-drone" renders only some; OUT_DIR changes the folder, QUALITY the
 # graphics preset (medium by default). GPX=<file> with SHOTS="name:distance:camera ..." renders
@@ -11,9 +12,20 @@
 set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
+# A real GPU renders on the host's display; software Vulkan wants a virtual one and FXAA
+# without MSAA or glow.
+if [ -e /dev/dri/renderD128 ] && [ -n "${DISPLAY:-}" ]; then
+    hardware=1
+    software="${ORQWA_RENDER_SOFTWARE:-0}"
+else
+    hardware=0
+    software="${ORQWA_RENDER_SOFTWARE:-1}"
+fi
 out="${OUT_DIR:-$root/screenshots/views}"
 mkdir -p "$out"
-"$root/scripts/build-gdext.sh" debug >/dev/null
+# A release extension builds a world several times faster than a debug one; GDEXT_PROFILE=debug
+# is for worlds sealed with the development keys (ADR 0043).
+"$root/scripts/build-gdext.sh" "${GDEXT_PROFILE:-release}" >/dev/null
 godot --headless --path "$root/app" --import >/dev/null 2>&1 || true
 # A script that does not compile leaves Godot waiting for the world forever: find out now.
 errors="$(godot --headless --path "$root/app" --check-only -s res://tools/render_views.gd 2>&1 \
@@ -31,12 +43,25 @@ fi
 if [ -n "${COURSE:-}" ]; then
     routes="$(realpath "$COURSE")"
 fi
+# One run of the renderer, on the host's display or under a virtual one.
+capture() {
+    if [ "$hardware" = 1 ]; then
+        timeout "${RENDER_TIMEOUT:-1800}" godot --path "$root/app" --rendering-driver vulkan \
+            --resolution 1280x720 -s res://tools/render_views.gd 2>&1
+    else
+        xvfb-run -a -s "-screen 0 1600x900x24" timeout "${RENDER_TIMEOUT:-1800}" godot \
+            --path "$root/app" --rendering-driver vulkan --resolution 1280x720 \
+            -s res://tools/render_views.gd 2>&1
+    fi
+}
 for route in $routes; do
     # A script error leaves Godot waiting for the world forever, hence the timeout. World files
     # render slowly in software (minutes a shot in a village): RENDER_TIMEOUT raises it.
-    output="$(ROUTE="$route" OUT_DIR="$out" ORQWA_RENDER_SOFTWARE=1 timeout "${RENDER_TIMEOUT:-1800}" xvfb-run -a -s "-screen 0 1600x900x24" \
-        godot --path "$root/app" --rendering-driver vulkan --resolution 1280x720 \
-        -s res://tools/render_views.gd 2>&1)" || status=1
+    ROUTE="$route"
+    OUT_DIR="$out"
+    ORQWA_RENDER_SOFTWARE="$software"
+    export ROUTE OUT_DIR ORQWA_RENDER_SOFTWARE
+    output="$(capture)" || status=1
     echo "$output" | grep -E "^saved" || true
     if echo "$output" | grep -q "SCRIPT ERROR\|SHADER ERROR"; then
         echo "$output" | grep -A3 "SCRIPT ERROR\|SHADER ERROR" >&2
