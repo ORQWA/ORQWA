@@ -28,6 +28,8 @@ case "${1:-}" in
     --check)
         if ! cmp -s "$generated" "$notices"; then
             echo "core/orqwa-app/notices/crates.txt is out of date: run scripts/notices.sh" >&2
+            # What would change, for a change made without the dev container at hand.
+            diff -u "$notices" "$generated" >&2 || true
             exit 1
         fi
         ;;
@@ -55,6 +57,7 @@ PY
 if [ "${1:-}" = --check ]; then
     if ! cmp -s "$generated" "$notices"; then
         echo 'CLI voice licences are out of date: run scripts/notices.sh' >&2
+        diff -u "$notices" "$generated" >&2 || true
         exit 1
     fi
 else
