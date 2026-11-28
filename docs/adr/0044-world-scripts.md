@@ -76,7 +76,7 @@ not know them asks for an update, as for any required extension.
   outputs. The only function ORQWA gives the module is `log`, in the import module `orqwa_v1`.
 - **In**: the time since the last tick and the ride's time; the host's API version and the
   features it offers; the world's configuration for the script; the route's shape; each
-  rider's slot, name, power, cadence, mass, FTP and connection, and the body they move with;
+  rider's slot, name, power, cadence, mass, FTP, look and connection, and the body they move with;
   each body's distance and speed; the riders' presses of a generic **world action** input; and
   the state the script returned on the previous tick.
 - **Out**, six primitives:
@@ -101,8 +101,8 @@ not know them asks for an update, as for any required extension.
 
 - **No access beyond the ride.** The module can reach only what ORQWA hands it. It has no
   files, network, clock, devices, processes or operating system, and no data from other worlds
-  or from the rider's profile beyond FTP, mass, name and slot. **The API will never offer
-  these.** When a world is opened, a module that imports anything outside the host's API, or
+  or from the rider's profile beyond FTP, mass, name, slot and look (the rider they chose to be
+  shown as, which the group already sees). **The API will never offer these.** When a world is opened, a module that imports anything outside the host's API, or
   that uses WebAssembly features outside the accepted set, is refused.
 - **Limits.** Each tick has a fuel budget; memory and the size of input, output and state are
   capped. A module that traps, runs out of fuel or returns output ORQWA cannot read is stopped

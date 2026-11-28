@@ -29,6 +29,7 @@
    "cadence_rpm": 88.0,
    "mass_kg": 72.0,
    "ftp_w": 250.0,
+   "look": "female",
    "connected": true,
    "body": "r0"
   }

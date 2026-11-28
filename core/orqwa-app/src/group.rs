@@ -1919,6 +1919,7 @@ fn world_mates(
                 cadence: peer.cadence.0,
                 mass: rider.mass,
                 ftp: rider.ftp,
+                look: rider.avatar,
                 distance: peer.distance.0,
                 speed: peer.speed,
             })

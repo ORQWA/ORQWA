@@ -37,6 +37,7 @@ pub const FEATURES: &[&str] = &[
     "record.values",
     "record.marks",
     "input.actions",
+    "rider.look",
 ];
 
 /// A rider's stable place in the ride, from 0.
@@ -108,6 +109,10 @@ pub struct Rider {
     pub mass_kg: f64,
     /// Their FTP, watts.
     pub ftp_w: f64,
+    /// How they chose to look in ORQWA's world, the rider on the bike: `"female"` or `"male"`
+    /// (feature `rider.look`). Empty when unknown; a later ORQWA may add others, which a script
+    /// treats as it treats an empty one.
+    pub look: String,
     /// Whether their data is current.
     pub connected: bool,
     /// The body they move with.

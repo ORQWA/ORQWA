@@ -1338,6 +1338,7 @@ each world ([world-files.md](world-files.md#orqwa_script)).
 - [x] Group rides on worlds that allow them: the world chosen by id and signed manifest,
   every rider's ORQWA running the script with the whole group, FTP in the roster (R306)
 - [x] Bundled workouts in the library
+- [x] Each rider's look in the script's input, so a world can show matching figures (R307)
 - **Exit:** a world's script runs on a released ORQWA, solo and in a group, without a change to
   ORQWA for that world
 

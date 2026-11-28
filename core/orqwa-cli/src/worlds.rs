@@ -194,6 +194,9 @@ pub struct ScriptRunArgs {
     /// The rider's FTP, watts.
     #[arg(long, default_value_t = 250.0)]
     ftp: f64,
+    /// How the rider looks: the rider on the bike, `female` or `male`.
+    #[arg(long, default_value = "female", value_parser = ["female", "male"])]
+    look: String,
     /// How long to ride, seconds.
     #[arg(long, default_value_t = 600)]
     seconds: u32,
@@ -257,6 +260,11 @@ pub fn script_run(args: &ScriptRunArgs) -> Result<()> {
     let rider = WorldRider {
         name: "Rider".into(),
         ftp: Watts(args.ftp),
+        look: if args.look == "male" {
+            orqwa_domain::profile::Avatar::Male
+        } else {
+            orqwa_domain::profile::Avatar::Female
+        },
     };
     let mut ride = Ride::new(route, RideConfig::default())
         .with_world_script(WorldDriver::new(script, config, &id, rider));

@@ -47,6 +47,7 @@ fn rider() -> WorldRider {
     WorldRider {
         name: "Ana".into(),
         ftp: Watts(250.0),
+        look: orqwa_domain::profile::Avatar::Female,
     }
 }
 
@@ -225,6 +226,7 @@ fn mate(slot: u8, distance: f64) -> super::Mate {
         cadence: 90.0,
         mass: orqwa_domain::units::Kilograms(80.0),
         ftp: Watts(240.0),
+        look: orqwa_domain::profile::Avatar::Male,
         distance,
         speed: orqwa_domain::units::MetersPerSecond(8.0),
     }
@@ -262,4 +264,24 @@ async fn in_a_group_the_script_answers_for_this_riders_slot() {
         ride.world().unwrap().request(),
         Request::Power(Watts(180.0))
     );
+}
+
+#[tokio::test]
+async fn the_script_sees_how_every_rider_chose_to_look() {
+    let mut driver = WorldDriver::new(answering(&json!({})), Value::Null, "loop", rider());
+    driver.set_team(1, vec![mate(0, 0.0)]);
+    let now = super::Moment {
+        elapsed: Duration::ZERO,
+        distance: 0.0,
+        speed: orqwa_domain::units::MetersPerSecond(0.0),
+        power: None,
+        cadence: None,
+        mass: orqwa_domain::units::Kilograms(80.0),
+    };
+    let looks: Vec<(u8, String)> = driver
+        .riders(&now)
+        .into_iter()
+        .map(|r| (r.slot, r.look))
+        .collect();
+    assert_eq!(looks, [(1, "female".to_owned()), (0, "male".to_owned())]);
 }

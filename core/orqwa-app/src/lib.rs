@@ -3730,6 +3730,7 @@ impl App {
                 let rider = orqwa_session::world::WorldRider {
                     name: self.profile.profile.name.clone(),
                     ftp: self.profile.profile.ftp,
+                    look: self.profile.profile.avatar,
                 };
                 match authored.script_driver(rider) {
                     Some(driver) => ride.with_world_script(driver),

@@ -211,7 +211,8 @@ the work, within its limits.
   "route": { "id": "loop", "length_m": 20480.0, "step_m": 10.0,
              "grade": [0.012, 0.015], "elevation_m": [410.2, 410.4] },
   "riders": [ { "slot": 0, "name": "Ana", "power_w": 231.0, "cadence_rpm": 88.0,
-                "mass_kg": 72.0, "ftp_w": 250.0, "connected": true, "body": "r0" } ],
+                "mass_kg": 72.0, "ftp_w": 250.0, "look": "female", "connected": true,
+                "body": "r0" } ],
   "bodies": [ { "id": "r0", "distance_m": 1520.4, "speed_mps": 8.31 } ],
   "actions": [ { "slot": 0, "count": 1 } ],
   "state": null }
@@ -223,6 +224,9 @@ the work, within its limits.
   tick, and again only if it changes; the module keeps what it needs. The first tick may also
   use five times the usual fuel.
 - `slot` is a rider's stable place in the ride, from 0. A rider who leaves is no longer listed.
+- `look` is how the rider chose to be shown, the rider on the bike: `"female"` or `"male"`
+  (feature `rider.look`), so a world can show its own figure to match. It is empty when
+  unknown; a later ORQWA may add values, which a module treats as an empty one.
 - `actions` counts each rider's presses of **World action** since the last tick.
 - `state` is what the module returned in the previous tick's output, `null` at first.
 

@@ -8,6 +8,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+use orqwa_domain::profile::Avatar;
 use orqwa_domain::telemetry::TrainerControl;
 use orqwa_domain::units::{GradePercent, Kilograms, MetersPerSecond, Percent, Watts};
 use orqwa_physics::RiderSetup;
@@ -66,6 +67,8 @@ pub struct Mate {
     pub mass: Kilograms,
     /// Their FTP; 0 if unknown.
     pub ftp: Watts,
+    /// How they chose to look.
+    pub look: Avatar,
     /// Where they are along the route.
     pub distance: f64,
     /// How fast they move.
@@ -91,6 +94,17 @@ pub struct WorldRider {
     pub name: String,
     /// Their FTP.
     pub ftp: Watts,
+    /// How they chose to look.
+    pub look: Avatar,
+}
+
+/// A rider's look as the API names it.
+fn look(avatar: Avatar) -> String {
+    match avatar {
+        Avatar::Female => "female",
+        Avatar::Male => "male",
+    }
+    .to_owned()
 }
 
 /// How the rider moves, as the script set it.
@@ -337,27 +351,7 @@ impl WorldDriver {
             route: route
                 .filter(|_| first)
                 .map(|route| route_shape(route, &self.route_id)),
-            riders: std::iter::once(Rider {
-                slot: self.slot,
-                name: self.rider.name.clone(),
-                power_w: now.power.map_or(0.0, |p| p.0),
-                cadence_rpm: now.cadence.unwrap_or(0.0),
-                mass_kg: now.mass.0,
-                ftp_w: self.rider.ftp.0,
-                connected: now.power.is_some(),
-                body: self.body_of(self.slot),
-            })
-            .chain(self.team.iter().map(|mate| Rider {
-                slot: mate.slot,
-                name: mate.name.clone(),
-                power_w: mate.power.0,
-                cadence_rpm: mate.cadence,
-                mass_kg: mate.mass.0,
-                ftp_w: mate.ftp.0,
-                connected: true,
-                body: self.body_of(mate.slot),
-            }))
-            .collect(),
+            riders: self.riders(&now),
             bodies: std::iter::once(BodyState {
                 id: self.body_of(self.slot),
                 distance_m: now.distance,
@@ -400,6 +394,33 @@ impl WorldDriver {
             Err(error) => self.stop(error),
         }
         true
+    }
+
+    /// The riders as the script sees them: this one, then the group's others.
+    fn riders(&self, now: &Moment) -> Vec<Rider> {
+        std::iter::once(Rider {
+            slot: self.slot,
+            name: self.rider.name.clone(),
+            power_w: now.power.map_or(0.0, |p| p.0),
+            cadence_rpm: now.cadence.unwrap_or(0.0),
+            mass_kg: now.mass.0,
+            ftp_w: self.rider.ftp.0,
+            look: look(self.rider.look),
+            connected: now.power.is_some(),
+            body: self.body_of(self.slot),
+        })
+        .chain(self.team.iter().map(|mate| Rider {
+            slot: mate.slot,
+            name: mate.name.clone(),
+            power_w: mate.power.0,
+            cadence_rpm: mate.cadence,
+            mass_kg: mate.mass.0,
+            ftp_w: mate.ftp.0,
+            look: look(mate.look),
+            connected: true,
+            body: self.body_of(mate.slot),
+        }))
+        .collect()
     }
 
     /// The body of the last answer carrying `slot`, if one does.
