@@ -389,6 +389,14 @@ impl Connection {
         matches!(self.0.quic.close_reason(), Some(quinn::ConnectionError::ApplicationClosed(close)) if close.error_code == VarInt::from_u32(0))
     }
 
+    /// This side closed the connection, as removing a rider does: nothing failed.
+    pub(crate) fn closed_locally(&self) -> bool {
+        matches!(
+            self.0.quic.close_reason(),
+            Some(quinn::ConnectionError::LocallyClosed)
+        )
+    }
+
     pub(crate) fn failure(&self) -> LinkError {
         match self.0.quic.close_reason() {
             Some(quinn::ConnectionError::TimedOut) => LinkError::IdleTimeout,

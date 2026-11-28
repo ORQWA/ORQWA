@@ -7,7 +7,7 @@ use orqwa_domain::workout::Plan;
 use orqwa_net::activity::{Assistance, ContentId, ContentKind, CourseKey, Selection};
 use orqwa_net::code::{Invite, Reply};
 use orqwa_net::content::{self, Source};
-use orqwa_net::link::{ConnectOptions, Credential, Host, Joiner};
+use orqwa_net::link::{ConnectOptions, Credential, Ending, Host, Joiner};
 use orqwa_net::lobby::{
     HostLobby, JoinerLobby, LobbyEvent, RideProgress, Rider, SharedActivity, Stage,
 };
@@ -821,8 +821,9 @@ async fn run_inner(
                 Some(LobbyEvent::Expired(name)) => {snapshot.admitting = snapshot.admitting.saturating_sub(1); snapshot.refuse(Refusal::Unreached); snapshot.refused = name;}
                 Some(LobbyEvent::Failed {peer,error,operation}) => snapshot.report(Kind::GroupRide,format!("{operation} (rider {peer:?}): {error}")),
                 // Recorded before a takeover is tried, which may fail and end the group too (#536).
+                // A removed rider has no group left to take over or wait for (#697, #700).
                 Some(LobbyEvent::HostLeft)|None => {if let Session::Join(l) = &session {snapshot.ending = l.ending();}
-                    if !handover.lost() {end(snapshot);updates.send_replace(snapshot.clone());return Ok(());}}
+                    if snapshot.ending == Ending::Removed || !handover.lost() {end(snapshot);updates.send_replace(snapshot.clone());return Ok(());}}
             },
             event = handover.next() => {
                 match handover.event(&session,snapshot,event) {
