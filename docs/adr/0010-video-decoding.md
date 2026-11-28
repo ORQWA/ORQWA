@@ -137,3 +137,31 @@ not help.
   long-term one — the follow-up this ADR has carried since the start (PLAN Phase 5, VideoToolbox
   on macOS, MediaCodec on Android). Until one of these lands, #383 stays open; the player's
   decode-ahead (above) is what keeps ARM playback as smooth as it currently is.
+
+## Amendment (2026-11-28): rav1d's ARM assembly from upstream Git (#383)
+
+Upstream rav1d packages the missing header (`src/arm/asm-offsets.h`) from commit `0ce8cc12` on
+(rav1d#1509, 2026-10-27), as version 1.1.1, but has not published it to crates.io; the release
+is tracked upstream in rav1d#1506.
+
+- **`core/Cargo.toml` patches `rav1d` to that commit** (`[patch.crates-io]`), and `core/deny.toml`
+  allows that one Git repository. It is the same project, licence and code ORQWA already used,
+  only a newer commit: no dependency is added. With the first crates.io release after 1.1.0 the
+  patch and the `allow-git` entry go again.
+- **aarch64 builds turn on `asm`** (Android, Linux arm64, Apple silicon), together with the
+  dotprod, i8mm and SVE2 kernels, upstream's defaults. The C compiler assembles them (the NDK's
+  clang on Android), so no tool is added. rav1d checks at runtime which of these extensions the
+  core has, so they cost nothing on older cores.
+- The ARM assembly addresses rav1d's tables PC-relative like the x86 one, so the GDExtension
+  now links with `-Bsymbolic` on Android and ARM Linux too (`orqwa-gd/build.rs`, see the
+  2026-10-08 amendment); without it `ld.lld` refuses the library.
+- 1.1.1 needs Rust 1.85, well below ORQWA's minimum, and keeps the C interface `orqwa-video` calls.
+- Measured with `a_real_video_keeps_up_with_the_clock` on a 720p, 30 fps AV1 route video, the
+  test binary cross-built for Android. Galaxy Tab S7 (Snapdragon 865): **10.2 → 62.5 fps**
+  straight decoding, and played at the clock 5 → 174–182 frames in 8 s, longest wait 5.55 s →
+  0.18 s; the case of #383. Pixel 8a (Tensor G3, with i8mm and SVE2): 7–15 → 23–50 fps, with
+  repeated runs of one binary that far apart, so not reliably above 30 fps there. Leaving SVE2
+  out made no difference that stood out from that spread. All `orqwa-video` tests pass on both
+  devices with the assembly.
+- MediaCodec stays the long-term follow-up above, for phones like the Pixel where the assembly
+  alone is not enough.
