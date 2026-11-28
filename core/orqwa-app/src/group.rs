@@ -569,6 +569,9 @@ impl Snapshot {
             && self.handover == Handover::Idle
             // Everyone must take part in the change, so nobody may be reconnecting (#434).
             && !self.away.contains(&true)
+            // A friend still connecting on an added reply would knock at an organizer that
+            // no longer exists, as the new one never admitted them (#699).
+            && self.admitting == 0
             && self.workout_clock_known()
             && self
                 .roster

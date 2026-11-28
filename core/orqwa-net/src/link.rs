@@ -549,6 +549,22 @@ impl Connection {
     }
 }
 
+/// Counts the added replies whose riders have not connected yet, for the lobby's owner.
+pub(crate) struct Waiting(Arc<Shared>);
+impl Waiting {
+    /// Pending admissions of newcomers: a held seat's is the reconnecting rider's (#434), and
+    /// one that connected, expired or was sealed no longer waits, however its connection
+    /// then fared (#699).
+    pub(crate) fn count(&self) -> usize {
+        let now = Instant::now();
+        self.0
+            .admissions()
+            .values()
+            .filter(|a| a.state == AdmissionState::Pending && !a.held && a.expires > now)
+            .count()
+    }
+}
+
 /// Closes a host's endpoints telling every rider the organizer ended the group (#536):
 /// before its connections close one by one as their tasks stop, without a reason.
 pub(crate) struct Ender(Vec<Endpoint>);
@@ -804,6 +820,11 @@ impl Host {
             }
         });
         Ok(Added::Waiting)
+    }
+
+    /// How many added replies still wait for their rider, kept by the lobby that owns this host.
+    pub(crate) fn waiting(&self) -> Waiting {
+        Waiting(self.shared.clone())
     }
 
     /// What ends the group for every rider at once, kept by the lobby that owns this host.
@@ -1503,6 +1524,63 @@ mod tests {
         let peer = joined(&mut host).await;
         assert!(peer.admission_deadline() >= admitted + opts.window);
         drop((client, peer));
+        host.close().await;
+    }
+
+    #[tokio::test]
+    async fn an_added_reply_stops_waiting_once_its_rider_connects_even_if_the_connection_fails() {
+        // #699: what the organizer's owner counts must not depend on the lobby hello.
+        let mut opts = options();
+        opts.window = Duration::from_secs(10);
+        opts.reply = Duration::from_secs(10);
+        let mut host = Host::open("Anna", "Galibier", route(), &opts)
+            .await
+            .unwrap();
+        let waiting = host.waiting();
+        let joiner = Joiner::open("Rider", host.invite().clone(), route(), &opts)
+            .await
+            .unwrap();
+        assert_eq!(waiting.count(), 0);
+        host.admit(joiner.reply()).unwrap();
+        assert_eq!(waiting.count(), 1, "the friend is still connecting");
+        let client = joiner.connect().await.unwrap();
+        let peer = joined(&mut host).await;
+        drop((client, peer));
+        assert_eq!(
+            waiting.count(),
+            0,
+            "no hello follows, and nothing waits any more"
+        );
+        host.close().await;
+    }
+
+    #[tokio::test]
+    async fn a_sealed_or_expired_reply_no_longer_waits() {
+        let mut opts = options();
+        opts.window = Duration::from_millis(300);
+        let mut host = Host::open("Anna", "Galibier", route(), &opts)
+            .await
+            .unwrap();
+        let waiting = host.waiting();
+        let gone = Joiner::open("Gone", host.invite().clone(), route(), &opts)
+            .await
+            .unwrap();
+        host.admit(gone.reply()).unwrap();
+        assert_eq!(waiting.count(), 1);
+        tokio::time::sleep(Duration::from_millis(400)).await;
+        assert_eq!(waiting.count(), 0, "its window ran out");
+        host.close().await;
+        let opts = options();
+        let mut host = Host::open("Anna", "Galibier", route(), &opts)
+            .await
+            .unwrap();
+        let waiting = host.waiting();
+        let late = Joiner::open("Late", host.invite().clone(), route(), &opts)
+            .await
+            .unwrap();
+        host.admit(late.reply()).unwrap();
+        host.seal();
+        assert_eq!(waiting.count(), 0, "the start stopped it");
         host.close().await;
     }
 

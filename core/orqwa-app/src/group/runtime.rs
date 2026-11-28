@@ -553,7 +553,7 @@ async fn run_inner(
                             if let Ok(reply) = Reply::from_code(&text,policy) {
                                 match l.admit(&reply).await {
                                     // A friend whose seat is still held comes back by reconnecting, not as a newcomer (#536).
-                                    Ok(added) => {if added == orqwa_net::link::Added::Waiting {snapshot.admitting = snapshot.admitting.saturating_add(1);} Ok(())}
+                                    Ok(_) => {snapshot.admitting = l.connecting(); Ok(())}
                                     Err(error) => refusal(&error).map_or_else(|| Err(error.to_string()), |refused| {snapshot.refuse(refused); Ok(())}),
                                 }
                             } else {snapshot.refuse(Refusal::Invalid); Ok(())}
@@ -755,7 +755,7 @@ async fn run_inner(
                     if snapshot.handover==super::Handover::Committing {continue;}
                     if handover.busy() && handover.fail(&session,snapshot) {end(snapshot);return Ok(());}
                     let index=usize::from(id.value());
-                    snapshot.admitting = snapshot.admitting.saturating_sub(1);
+                    if let Session::Host(lobby) = &session {snapshot.admitting = lobby.connecting();}
                     snapshot.generations[index]=snapshot.generations[index].checked_add(1).ok_or("Rider membership exhausted.")?;
                     snapshot.roster[index] = Some(rider); snapshot.ready[index] = false;snapshot.states[index]=None; snapshot.latencies[index]=None;
                     handover.membership(&session,snapshot);
@@ -818,7 +818,7 @@ async fn run_inner(
                 }
                 Some(LobbyEvent::Workout(clock)) => {snapshot.workout_clock = Some(clock);}
                 Some(LobbyEvent::State {id,state}) => {snapshot.states[usize::from(id.value())] = Some((state,std::time::Instant::now()));}
-                Some(LobbyEvent::Expired(name)) => {snapshot.admitting = snapshot.admitting.saturating_sub(1); snapshot.refuse(Refusal::Unreached); snapshot.refused = name;}
+                Some(LobbyEvent::Expired(name)) => {if let Session::Host(lobby) = &session {snapshot.admitting = lobby.connecting();} snapshot.refuse(Refusal::Unreached); snapshot.refused = name;}
                 Some(LobbyEvent::Failed {peer,error,operation}) => snapshot.report(Kind::GroupRide,format!("{operation} (rider {peer:?}): {error}")),
                 // Recorded before a takeover is tried, which may fail and end the group too (#536).
                 Some(LobbyEvent::HostLeft)|None => {if let Session::Join(l) = &session {snapshot.ending = l.ending();}
@@ -914,6 +914,8 @@ async fn run_inner(
                 _=>{},
             },
             _ = ticker.tick() => {
+                // Read from the link, as a friend's connection can fail with no event (#699).
+                snapshot.admitting = match &session {Session::Host(lobby) => lobby.connecting(), Session::Join(_) => 0};
                 snapshot.latencies = if snapshot.reconnecting.is_some() || handover.old_lost {
                     [None; orqwa_net::state::MAX_RIDERS]
                 } else {

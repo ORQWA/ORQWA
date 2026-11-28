@@ -13,7 +13,9 @@ use tokio::task::JoinSet;
 use tokio::time::{Instant, interval, timeout, timeout_at};
 
 use crate::code::{Invite, Reply, RideId, RouteHash, valid_name};
-use crate::link::{Added, Connection, Ender, Ending, Host, HostEvent, Joiner, LinkError, Resume};
+use crate::link::{
+    Added, Connection, Ender, Ending, Host, HostEvent, Joiner, LinkError, Resume, Waiting,
+};
 use crate::state::{
     MAX_RIDERS, Membership, RiderId, RiderState, STATE_EVERY, StateError, StateInbox,
 };
@@ -377,6 +379,7 @@ pub struct HostLobby {
     tasks: JoinSet<()>,
     voice: Option<VoicePort>,
     ender: Ender,
+    waiting: Waiting,
 }
 impl HostLobby {
     /// Starts a lobby from an already-open transport. Metadata is validated before spawning.
@@ -413,6 +416,7 @@ impl HostLobby {
         }
         let invite = host.invite().clone();
         let ender = host.ender();
+        let waiting = host.waiting();
         let (root, epoch) = prepared.as_ref().map_or((invite.ride, 1), |prepared| {
             (
                 prepared.replacement.plan.context.root,
@@ -464,7 +468,14 @@ impl HostLobby {
             tasks,
             voice: Some(voice),
             ender,
+            waiting,
         })
+    }
+    /// Added replies whose riders have not connected yet. It drops once each connects or its
+    /// window runs out, whatever happens to the connection afterwards (#699).
+    #[must_use]
+    pub fn connecting(&self) -> u8 {
+        u8::try_from(self.waiting.count()).unwrap_or(u8::MAX)
     }
     /// The organizer's stable rider identity, independent of the hosting role.
     #[must_use]
