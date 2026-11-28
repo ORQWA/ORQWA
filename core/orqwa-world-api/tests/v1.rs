@@ -88,5 +88,5 @@ fn fields_and_kinds_a_later_api_adds_are_read_without_error() {
         "riders stay on their own bodies"
     );
     assert_eq!(resolved.trainer[0].kind, TrainerKind::Road);
-    assert_eq!(resolved.ui, []);
+    assert_eq!(resolved.ui, Vec::<orqwa_world_api::Panel>::new());
 }
