@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
-# Renders ride screenshots with software Vulkan (lavapipe) on a virtual display, so visuals can
-# be checked without a GPU. Runs inside the dev container; images go to screenshots/.
+# Renders ride screenshots on the GPU when the container has one, and with software Vulkan
+# (lavapipe) on a virtual display otherwise. Runs inside the dev container; images go to
+# screenshots/.
 # SCREENSHOT_SETTINGS_ONLY=1 captures settings without generating a course or sample rides.
 # SCREENSHOT_GRAPHICS_ONLY=1 captures Graphics alone without preparing a kept world.
 # SCREENSHOT_CALORIES_ONLY=1 captures the calorie HUD, optional profile inputs and workout.
@@ -13,9 +14,20 @@
 set -eu
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
+# Software Vulkan wants FXAA without MSAA or glow; a real GPU takes the ordinary settings and
+# renders on the host's display, because a virtual X server has no DRI3 to present through.
+if [ -e /dev/dri/renderD128 ] && [ -n "${DISPLAY:-}" ]; then
+    hardware=1
+    software="${ORQWA_RENDER_SOFTWARE:-0}"
+else
+    hardware=0
+    software="${ORQWA_RENDER_SOFTWARE:-1}"
+fi
 out="${SCREENSHOT_DIR:-$root/screenshots}"
 mkdir -p "$out"
-"$root/scripts/build-gdext.sh" debug >/dev/null
+# A release extension builds a world several times faster than a debug one; GDEXT_PROFILE=debug
+# is for worlds sealed with the development keys (ADR 0043).
+"$root/scripts/build-gdext.sh" "${GDEXT_PROFILE:-release}" >/dev/null
 # Weeks of made-up rides, so the history and the Analysis tab (R61) have something to show.
 if [ "${SCREENSHOT_ERRORS_ONLY:-}" != 1 ] && [ "${SCREENSHOT_SETTINGS_ONLY:-}" != 1 ] \
     && [ "${SCREENSHOT_GROUP_ONLY:-}" != 1 ] \
@@ -40,9 +52,19 @@ fi
 # Another window size, e.g. SCREENSHOT_SIZE=1024x640, to check that the layouts reflow (R94).
 size="${SCREENSHOT_SIZE:-1600x900}"
 # Software rendering is slow; a broken script would otherwise leave Godot running forever.
-output="$(SCREENSHOT_DIR="$out" ORQWA_RENDER_SOFTWARE=1 timeout 1800 xvfb-run -a -s "-screen 0 ${size}x24" \
-    godot --path "$root/app" --rendering-driver vulkan --audio-driver Dummy --resolution "$size" \
-    -s res://tests/screenshots.gd 2>&1)" || { echo "$output"; exit 1; }
+SCREENSHOT_DIR="$out"
+ORQWA_RENDER_SOFTWARE="$software"
+export SCREENSHOT_DIR ORQWA_RENDER_SOFTWARE
+if [ "$hardware" = 1 ]; then
+    output="$(timeout 1800 godot --path "$root/app" --rendering-driver vulkan \
+        --audio-driver Dummy --resolution "$size" -s res://tests/screenshots.gd 2>&1)" \
+        || { echo "$output"; exit 1; }
+else
+    output="$(timeout 1800 xvfb-run -a -s "-screen 0 ${size}x24" \
+        godot --path "$root/app" --rendering-driver vulkan --audio-driver Dummy \
+        --resolution "$size" -s res://tests/screenshots.gd 2>&1)" \
+        || { echo "$output"; exit 1; }
+fi
 echo "$output" | grep -E "saved|world generated|overlay window" || true
 if echo "$output" | grep -q "SCRIPT ERROR\|SHADER ERROR\|^ERROR:"; then
     echo "$output" | grep -A2 "SCRIPT ERROR\|SHADER ERROR\|^ERROR:" >&2

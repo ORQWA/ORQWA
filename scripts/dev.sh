@@ -31,11 +31,32 @@ if [ -t 0 ] && [ -t 1 ]; then
     tty_flags="-it"
 fi
 
+# The host's GPU and display, for hardware Vulkan: a render that takes minutes per frame on
+# software Vulkan takes seconds on a real one. A Vulkan surface needs the host's display,
+# because the virtual X server has no DRI3. ORQWA_NO_GPU=1 keeps both out, for a GPU the
+# container's drivers cannot use.
+gpu_flags=""
+if [ "${ORQWA_NO_GPU:-0}" != "1" ] && [ -d /dev/dri ]; then
+    gpu_flags="--device /dev/dri"
+    # Rootless Podman drops the caller's supplementary groups, and the render node is
+    # group-readable; keeping them lets the container open it as the host user does.
+    if docker info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -qx true; then
+        gpu_flags="$gpu_flags --group-add keep-groups"
+    fi
+    if [ -n "${DISPLAY:-}" ] && [ -d /tmp/.X11-unix ]; then
+        gpu_flags="$gpu_flags -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix"
+        if [ -n "${XAUTHORITY:-}" ] && [ -r "$XAUTHORITY" ]; then
+            gpu_flags="$gpu_flags -e XAUTHORITY=/run/host/xauthority"
+            gpu_flags="$gpu_flags -v $XAUTHORITY:/run/host/xauthority:ro"
+        fi
+    fi
+fi
+
 . "$root/scripts/give-back-files.sh"
 
 status=0
-# shellcheck disable=SC2086 # tty_flags is intentionally empty or a single flag
-docker run --rm $tty_flags \
+# shellcheck disable=SC2086 # tty_flags and gpu_flags are intentionally empty or single flags
+docker run --rm $tty_flags $gpu_flags \
     -e ORQWA_COMMIT="$commit" \
     -e ORQWA_BRANCH="$branch" \
     -v "$root:/workspaces/orqwa" \
