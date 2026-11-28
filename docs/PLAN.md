@@ -1321,6 +1321,23 @@ the format and riding it; the realistic Lake Biel world is built in a private re
 - [ ] Stage 3: an editor; `.oqc` courses as a starting point
 - **Exit:** a rider imports a world file and rides each of its routes offline, as authored
 
+### Phase 15 — World scripts (R302–R305, [ADR 0044](adr/0044-world-scripts.md))
+
+Worlds bring their own behaviour, group-ride permission and workouts without ORQWA changing for
+each world ([world-files.md](world-files.md#orqwa_script)).
+
+- [ ] ADR 0044 and the specification of `ORQWA_script`, `ORQWA_group` and `ORQWA_workouts`
+- [ ] Reading and checking the three extensions in `orqwa-storage`; skins and animations only
+  for script models
+- [ ] The documents' types with schema snapshots; the runtime (sandbox, limits, fallbacks) with
+  frozen golden modules; `orqwa-cli world-script-run`
+- [ ] Ride integration: bodies, trainer requests through the limits, records, `ride_state()`
+- [ ] Godot: script models, nodes, lines and clips; screen panels; camera hint; World action
+- [ ] Group rides on worlds that allow them: one host-run script, one group message
+- [ ] Bundled workouts in the library
+- **Exit:** a world's script runs on a released ORQWA, solo and in a group, without a change to
+  ORQWA for that world
+
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
 The project is named ORQWA (orca, torque and watt).
 - [x] Code identifiers: crates `orqwa-*`, `OrqwaApp` and the extension `orqwa_gd`, `ORQWA_*`

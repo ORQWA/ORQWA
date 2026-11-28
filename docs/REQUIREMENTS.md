@@ -844,3 +844,12 @@ residency even when generation finishes the whole course before riding.
 | ID | Requirement |
 |---|---|
 | R301 | Extends R86 and R276 (2026-11-27, #684): riders can assign **Camera round to the left**, **Camera round to the right**, **Camera nearer** and **Camera further away** to phone remote buttons. Each press works like the corresponding button on the ride's camera bar, including in first person and when the ride bar is folded. Camera controls act only while the ride shows a 3D world. Existing assignments are preserved. |
+
+## World scripts
+
+| ID | Requirement |
+|---|---|
+| R302 | Extends R299 (2026-11-28, [ADR 0044](adr/0044-world-scripts.md)): a world may bring a **script** (`ORQWA_script`) that decides, from the ride's state, how riders move, what their trainers are asked for, what the scene and screen show and what is recorded, through generic primitives that name no particular world. ORQWA keeps the physics, trainer control and drawing. A world whose script stops working is ridden as a plain world. |
+| R303 | Scripts have **no access beyond the ride**: no files, network, clock, devices or operating system, and no profile data beyond FTP, mass, name and slot, now or in later versions. Every trainer request is limited on the rider's own device (grade, power, resistance, how often), and pausing and stopping always win. |
+| R304 | **Scripts keep working for good**: every later ORQWA runs every released script as before. The interface is frozen, documents only gain optional fields, unknown values fall back safely, and frozen test modules hold each release to it. |
+| R305 | Amends R285: a world's routes can be chosen for a **group ride** when the signed world allows it (`ORQWA_group`), for at most the riders it names. Every rider needs the same world; the host runs its script for all. World files are still not exported. Worlds may bring **workouts** (`ORQWA_workouts`) that the library offers with them. |

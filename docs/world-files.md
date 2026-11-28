@@ -160,7 +160,149 @@ new format, the way glTF does:
   refused.
 - An ORQWA that does not know an extension ignores it, and shows the world without it. If the
   extension is required, ORQWA does not open the world and asks for an update instead.
-- This version of ORQWA knows no world extension yet. Each one ORQWA learns is specified here.
+- Each extension ORQWA knows is specified here: [`ORQWA_script`](#orqwa_script),
+  [`ORQWA_group`](#orqwa_group) and [`ORQWA_workouts`](#orqwa_workouts)
+  ([ADR 0044](adr/0044-world-scripts.md)).
+
+### `ORQWA_script`
+
+A WebAssembly module that runs while the world is ridden. It decides how riders move, what the
+trainer is asked for, what is shown in the scene and on screen, and what is recorded. ORQWA does
+the work, within its limits.
+
+```json
+"extensions": { "ORQWA_script": {
+  "file": "ext/ORQWA_script/world.wasm",
+  "api": 1,
+  "config": { },
+  "models": [ { "name": "figure", "file": "ext/ORQWA_script/figure.glb" } ]
+} }
+```
+
+| Field | |
+|---|---|
+| `file` | The module, under `ext/ORQWA_script/`, at most 4 MiB. |
+| `api` | The lowest API version the module needs, from 1. A higher one than ORQWA knows asks for an update. |
+| `config` | Optional: any JSON value, at most 1 MiB, handed to the module unchanged. |
+| `models` | Optional: the models the module may place, each a unique `name` (1–64 of `a–z 0–9 - _`) and a `.glb` `file` under `ext/ORQWA_script/`. These may have skins and animations, unlike other glTF in the world ([below](#gltf-content)). Cameras are still refused. |
+
+#### The module
+
+- WebAssembly 1.0 with mutable globals, sign extension, non-trapping float-to-int conversion,
+  bulk memory and multiple values. This set only grows.
+- It exports a memory `memory`, `alloc(len: i32) -> i32` and
+  `tick(ptr: i32, len: i32) -> i64`. ORQWA calls `alloc` for room for the input, writes the
+  input there as UTF-8 JSON and calls `tick`. The result holds the output's address in its low
+  32 bits and its length in its high 32 bits.
+- It may import only `orqwa_v1.log(ptr: i32, len: i32)`, which writes a UTF-8 line to ORQWA's
+  log. A module importing anything else is refused when the world is opened.
+- Per tick: a fixed fuel budget, memory up to 16 MiB, output and `state` up to 64 KiB each. A
+  trap, running out of fuel, or output that is not as described here stops the module for the
+  rest of the ride; the ride goes on as if the world had no script, and ORQWA says so.
+
+#### Input
+
+```json
+{ "api": 1, "features": ["body.driven", "body.scripted", "ui.grid"],
+  "dt_s": 0.1, "time_s": 412.3, "config": { },
+  "route": { "id": "loop", "length_m": 20480.0, "step_m": 10.0,
+             "grade": [0.012, 0.015], "elevation_m": [410.2, 410.4] },
+  "riders": [ { "slot": 0, "name": "Ana", "power_w": 231.0, "cadence_rpm": 88.0,
+                "mass_kg": 72.0, "ftp_w": 250.0, "connected": true, "body": "r0" } ],
+  "bodies": [ { "id": "r0", "distance_m": 1520.4, "speed_mps": 8.31 } ],
+  "actions": [ { "slot": 0, "count": 1 } ],
+  "state": null }
+```
+
+- `features` lists what this ORQWA offers, as `<primitive>.<kind>`. Modules check it, not
+  `api`, before using an addition.
+- `route` is sampled every `step_m` from 0, the way ORQWA rides it.
+- `slot` is a rider's stable place in the ride, from 0. A rider who leaves is no longer listed.
+- `actions` counts each rider's presses of **World action** since the last tick.
+- `state` is what the module returned in the previous tick's output, `null` at first.
+
+#### Output
+
+```json
+{ "bodies": [ { "id": "team", "kind": "driven", "riders": [0, 1],
+                "mass_kg": 120.0, "rolling": 1.5, "air": 1.0 } ],
+  "trainer": [ { "slot": 0, "kind": "power", "power_w": 300.0 } ],
+  "scene": { "nodes": [ { "id": "n1", "model": "figure", "anchor": { "body": "team" },
+                          "offset_m": [0.8, 0.0, 3.0], "rotation_deg": [0, 0, 0],
+                          "scale": 1.0, "visible": true,
+                          "clip": { "name": "run", "rate": 1.2 } } ],
+             "lines": [ { "from": { "node": "n1", "point": [0, 1.0, 0] },
+                          "to": { "node": "n2", "point": [0, 0.6, 0] } } ],
+             "riders": [ { "slot": 0, "shown": false } ],
+             "camera": { "anchor": { "body": "team" }, "back_m": 12.0, "up_m": 4.0 } },
+  "ui": [ { "id": "p1", "slot": "centre", "to": "all", "seconds": 5.0,
+            "items": [ { "kind": "text", "text": { "en": "Go!", "": "Go!" }, "emphasis": true },
+                       { "kind": "bar", "value": 0.4 } ] } ],
+  "record": { "values": { "score": 12.0 }, "marks": [ { "name": "split", "slot": 0 } ] },
+  "state": { } }
+```
+
+Every part is optional. What is not given stays as it would be without a script: each rider on
+a driven body of their own, the trainer on the road, ORQWA's rider shown, no panels.
+
+- **Bodies.** `kind` is `driven` (ORQWA's physics from the summed power of `riders`, carrying
+  their masses and `mass_kg` more; `rolling` and `air` scale rolling and air resistance) or
+  `scripted` (`speed_mps` set by the module). A rider is on at most one body; a body listed
+  once keeps going until it is no longer listed. Ids are 1–64 of `a–z 0–9 - _`.
+- **Trainer.** `kind` is `road`, `grade` (`grade`, a fraction), `power` (`power_w`) or
+  `resistance` (`percent`, 0–100). A structured workout's targets come before these.
+- **Scene.** `model` is a name from `models`, or `rider` for ORQWA's rider and bike. `anchor` is
+  `{"body": id}`, `{"slot": n}` or `{"route_m": d}`; offsets are right, up and forward from
+  there. `clip` plays the model's animation of that `name` at `rate` (1 = as authored) or holds
+  it at `phase` (0–1). `riders` shows or hides ORQWA's own rider per slot. The rider's camera
+  choice overrides `camera`.
+- **Screen.** `slot` is `top`, `side`, `centre` or `bottom`; `to` is `all` or a slot number;
+  `seconds` is how long it shows (omitted: until the next output names it). Items are `text`,
+  `value` (`value`, `unit` in SI, `decimals`), `bar` (`value` 0–1), `grid` (`rows` of cell
+  texts, optional `highlight` row) and `image` (a PNG or WebP under `ext/ORQWA_script/`). Text
+  is a map of language codes to strings, the empty key as the default, like country names.
+- **Record.** `values` are saved with the activity as they are last given; `marks` are saved at
+  the ride's time when given.
+- **Fallbacks.** Any body, trainer request, node, line, panel or item may carry `fallback`, an
+  element of the same kind used when ORQWA does not know its `kind`. Without one, an unknown
+  body leaves its riders on their own bodies, an unknown trainer request is the road, and an
+  unknown node, line, panel or item is left out. Unknown fields are ignored.
+
+#### Limits ORQWA applies
+
+On each rider's own device, whatever the module asks:
+
+| | |
+|---|---|
+| Grade | Within what ORQWA sends on a road, scaled by the rider's difficulty setting. |
+| Power | At most twice the rider's FTP, and what the trainer can do. |
+| Resistance | 0–100 % of the trainer's range. |
+| Changes | No more often than ORQWA sends them on a road. Pausing and stopping always win. |
+| Bodies | `mass_kg` 0–500, `rolling` and `air` 0.5–3, `speed_mps` 0–30. |
+
+These change only for safety, recorded in ADR 0044.
+
+### `ORQWA_group`
+
+```json
+"extensions": { "ORQWA_group": { "allowed": true, "max_riders": 8 } }
+```
+
+- `allowed`: whether the world's routes may be chosen for a group ride. Without this extension
+  they may not.
+- `max_riders`: optional, 2 to ORQWA's group limit, which it also defaults to.
+- Every rider in the group needs the same world: the same `id`, `version` and manifest. The host
+  runs `ORQWA_script` for everyone; the others show what it sends, through their own
+  [limits](#limits-orqwa-applies).
+
+### `ORQWA_workouts`
+
+```json
+"extensions": { "ORQWA_workouts": { "files": ["ext/ORQWA_workouts/intervals.zwo"] } }
+```
+
+- `files`: workout files under `ext/ORQWA_workouts/`, in formats ORQWA reads (`.zwo`, `.erg`,
+  `.mrc`, `.fit`), at most 1 MiB each. The library offers them with the world's routes.
 
 ### Sections and levels of detail
 
@@ -271,7 +413,8 @@ other files:
 - Images only an extension uses may be of any type. In the file, or named by `uri` as a shared
   texture or a file of a world extension under `ext/` (`../../ext/ORQWA_gpu_textures/wall.ktx2`).
   No other `uri`.
-- Static scenes: no `animations`, `skins` or `cameras`. Nodes form trees.
+- Static scenes: no `animations`, `skins` or `cameras`. Nodes form trees. The models of
+  [`ORQWA_script`](#orqwa_script) may have `animations` and `skins`, not `cameras`.
 - No sparse accessors.
 - ORQWA draws `KHR_texture_transform`, `KHR_materials_emissive_strength`,
   `KHR_materials_unlit`, `KHR_mesh_quantization`, `EXT_texture_webp` and
@@ -447,4 +590,5 @@ adding it to `core/orqwa-licence/revocations.json` (`{"keys": [key id], "worlds"
   ORQWA makes as it loads them: keep them as small as the view allows.
 - Rides on a world's route are saved and compared like rides on courses. Records and ghosts
   belong to the route's line: a new version of the world with the same line keeps them.
-- ORQWA offers no export of world files, and their routes cannot be chosen for group rides.
+- ORQWA offers no export of world files. Their routes can be chosen for group rides only when
+  the world allows it with [`ORQWA_group`](#orqwa_group).
