@@ -142,6 +142,8 @@ func _take_models() -> void:
 			continue
 		var scene: Node3D = document.generate_scene(state) as Node3D
 		if scene != null:
+			# A world's models colour themselves by vertex, as its sections do.
+			AuthoredMaterials.use_vertex_colours(scene)
 			_scenes[model] = scene
 
 
