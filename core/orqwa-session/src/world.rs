@@ -114,7 +114,9 @@ impl Request {
         let finite = |v: f64| v.is_finite().then_some(v);
         match request.kind {
             TrainerKind::Grade => finite(request.grade).map_or(Self::Road, |grade| {
-                Self::Grade(GradePercent((grade * 100.0).clamp(MIN_GRADE.0, MAX_GRADE.0)))
+                Self::Grade(GradePercent(
+                    (grade * 100.0).clamp(MIN_GRADE.0, MAX_GRADE.0),
+                ))
             }),
             TrainerKind::Power => match finite(request.power_w) {
                 Some(power) if ftp.0 > 0.0 => {
@@ -122,8 +124,9 @@ impl Request {
                 }
                 _ => Self::Road,
             },
-            TrainerKind::Resistance => finite(request.percent)
-                .map_or(Self::Road, |p| Self::Resistance(Percent(p.clamp(0.0, 100.0)))),
+            TrainerKind::Resistance => finite(request.percent).map_or(Self::Road, |p| {
+                Self::Resistance(Percent(p.clamp(0.0, 100.0)))
+            }),
             TrainerKind::Road | TrainerKind::Unknown => Self::Road,
         }
     }
@@ -317,7 +320,9 @@ impl WorldDriver {
             .trainer
             .iter()
             .find(|request| request.slot == 0)
-            .map_or(Request::Road, |request| Request::limited(request, self.rider.ftp));
+            .map_or(Request::Road, |request| {
+                Request::limited(request, self.rider.ftp)
+            });
         for (key, value) in &output.record.values {
             if value.is_finite() {
                 self.values.insert(key.clone(), *value);

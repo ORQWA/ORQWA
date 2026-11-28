@@ -161,11 +161,13 @@ async fn a_script_that_stops_leaves_a_plain_ride() {
         "loop",
         rider(),
     );
-    let mut ride =
-        Ride::new(flat(5000.0).await, RideConfig::default()).with_world_script(driver);
+    let mut ride = Ride::new(flat(5000.0).await, RideConfig::default()).with_world_script(driver);
     let controls = pedal(&mut ride, 200.0, 10);
     assert!(ride.world().unwrap().stopped().is_some());
-    assert!(matches!(controls.last(), Some(TrainerControl::Simulation(_))));
+    assert!(matches!(
+        controls.last(),
+        Some(TrainerControl::Simulation(_))
+    ));
     assert!(ride.state().distance.0 > Meters(10.0).0);
 }
 
