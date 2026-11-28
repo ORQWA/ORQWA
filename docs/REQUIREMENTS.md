@@ -844,3 +844,9 @@ residency even when generation finishes the whole course before riding.
 | ID | Requirement |
 |---|---|
 | R301 | Extends R86 and R276 (2026-11-27, #684): riders can assign **Camera round to the left**, **Camera round to the right**, **Camera nearer** and **Camera further away** to phone remote buttons. Each press works like the corresponding button on the ride's camera bar, including in first person and when the ride bar is folded. Camera controls act only while the ride shows a 3D world. Existing assignments are preserved. |
+
+## Street imagery from Mapillary
+
+| ID | Requirement |
+|---|---|
+| R307 | Extends R89 and R33 (2026-11-28, [ADR 0046](adr/0046-street-imagery-mapillary.md)): where a course is prepared with street imagery on, its world takes the **facts** the street-level photographs show — facade base colour, storeys, wall and roof material, ground-floor frontage and street furniture — while the photographs themselves, and any geometry or texture traced from them, are never stored in a course or world file. The source is Mapillary (CC BY-SA 4.0), off by default, with the rider's own token. The corridor is searched in bulk, each chosen image is downloaded once and cached, and facts reach each world chunk as it builds, so the first streets appear within seconds and a later preparation makes no requests. A world without the facts looks exactly as it does today, and no ride waits for the network (R3). The facts travel in an optional world extension naming their images, capture dates, licence and attribution; releases that do not know it ignore it (ADR 0042). |

@@ -304,7 +304,8 @@ Built in rideable steps:
 - **Exit:** ride a GoPro recording of a real climb on the KICKR, video in step with the effort
 
 ### ~~Phase 6 — Street imagery~~
-- [ ] ~~Google Street View (user key) + Mapillary with crossfades~~ — dropped 2026-10-15
+- [ ] ~~Google Street View (user key) + Mapillary with crossfades~~ — dropped 2026-10-15;
+  worlds take facts from Mapillary instead ([Phase 16](#phase-16--street-imagery-r307-adr-0046))
 
 ### Phase 7 — Extras
 - [x] Virtual gears + shift inputs (R59, R75: keyboard, Shimano Di2 and the Zwift Click):
@@ -1320,6 +1321,22 @@ the format and riding it; the realistic Lake Biel world is built in a private re
   the private repository's Lake Biel world is renamed to Twann – Chasseral (owner)
 - [ ] Stage 3: an editor; `.oqc` courses as a starting point
 - **Exit:** a rider imports a world file and rides each of its routes offline, as authored
+
+### Phase 16 — Street imagery (R307, [ADR 0046](adr/0046-street-imagery-mapillary.md))
+
+Realistic streets from photographs that are never shipped: Mapillary's images are CC BY-SA 4.0,
+so a world keeps only the facts they show. Off by default, the rider's own token, and no
+network in the ride path (R3).
+
+- [x] ADR 0046: Mapillary as the source, facts not pixels, the optional world extension
+- [ ] `StreetImagery` trait, the Mapillary metadata client and its cache; `orqwa-cli
+  imagery-scan` measuring coverage and requests per kilometre
+- [ ] Thumbnails, decoding and the fact extractor (the decoder crate agreed first)
+- [ ] Facades, storeys and street-level detail in the world; generator bump and render review
+- [ ] The setting, token, progress and offline fallback in the app
+- [ ] Course-file extension, attribution, the wiki's server list and usage guide
+- **Exit:** a rider prepares a course with imagery on and rides it offline with streets that
+  match the photographed ones; with imagery off, nothing changes.
 
 ### The name ORQWA (R102, [ADR 0026](adr/0026-the-name-orqwa.md))
 The project is named ORQWA (orca, torque and watt).
