@@ -375,6 +375,9 @@ pub struct Camera {
     pub back_m: f64,
     /// How far up, metres.
     pub up_m: f64,
+    /// How far above the anchor it looks, metres: the height of what it follows.
+    #[serde(default = "one")]
+    pub aim_up_m: f64,
 }
 
 kinds!(

@@ -238,7 +238,8 @@ the work, within its limits.
              "lines": [ { "from": { "node": "n1", "point": [0, 1.0, 0] },
                           "to": { "node": "n2", "point": [0, 0.6, 0] } } ],
              "riders": [ { "slot": 0, "shown": false } ],
-             "camera": { "anchor": { "body": "team" }, "back_m": 12.0, "up_m": 4.0 } },
+             "camera": { "anchor": { "body": "team" }, "back_m": 12.0, "up_m": 4.0,
+                         "aim_up_m": 1.5 } },
   "ui": [ { "id": "p1", "slot": "centre", "to": "all", "seconds": 5.0,
             "items": [ { "kind": "text", "text": { "en": "Go!", "": "Go!" }, "emphasis": true },
                        { "kind": "bar", "value": 0.4 } ] } ],
@@ -258,8 +259,9 @@ a driven body of their own, the trainer on the road, ORQWA's rider shown, no pan
 - **Scene.** `model` is a name from `models`, or `rider` for ORQWA's rider and bike. `anchor` is
   `{"body": id}`, `{"slot": n}` or `{"route_m": d}`; offsets are right, up and forward from
   there. `clip` plays the model's animation of that `name` at `rate` (1 = as authored) or holds
-  it at `phase` (0–1). `riders` shows or hides ORQWA's own rider per slot. The rider's camera
-  choice overrides `camera`.
+  it at `phase` (0–1). `riders` shows or hides ORQWA's own rider per slot. `camera`
+  stands `back_m` behind and `up_m` above its anchor, looking at `aim_up_m` (default 1) above
+  it, in the chase view; the rider's own camera choice comes first.
 - **Screen.** `slot` is `top`, `side`, `centre` or `bottom`; `to` is `all` or a slot number;
   `seconds` is how long it shows (omitted: until the next output names it). Items are `text`,
   `value` (`value`, `unit` in SI, `decimals`), `bar` (`value` 0–1), `grid` (`rows` of cell
