@@ -244,6 +244,33 @@ mod tests {
         assert_eq!(t.heart_rate, Some(BeatsPerMinute(142.0)));
     }
 
+    /// A real Cycplus R200 notification (2026-11-14): speed, cadence and power, no more-data bit.
+    #[test]
+    fn decodes_a_cycplus_r200_indoor_bike_data_notification() {
+        let data = [0x44, 0x00, 0x23, 0x08, 0x78, 0x00, 0x58, 0x00];
+
+        let t = parse_indoor_bike_data(&data).unwrap();
+
+        assert_close(t.speed.unwrap().as_kilometers_per_hour(), 20.83);
+        assert_eq!(t.cadence, Some(Rpm(60.0)));
+        assert_eq!(t.power, Some(Watts(88.0)));
+        assert_eq!(t.heart_rate, None);
+    }
+
+    /// The R200 accepts the three commands ORQWA's FTMS setup sends, as it answered them.
+    #[test]
+    fn decodes_the_cycplus_r200_control_handshake() {
+        for request in [0x00, 0x07, 0x11] {
+            assert_eq!(
+                parse_control_response(&[0x80, request, 0x01]),
+                Some(ControlResponse {
+                    request,
+                    result: ControlResult::Success
+                })
+            );
+        }
+    }
+
     #[test]
     fn skips_unused_fields_to_reach_power() {
         // Average speed, average cadence, distance, resistance precede power.

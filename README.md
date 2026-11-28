@@ -105,7 +105,8 @@ ORQWA is free and built in spare time. If you enjoy it, you can support it here:
 
 Everything runs in a dev container: setup, checks and builds are in
 [docs/development.md](docs/development.md). Conventions: [CLAUDE.md](CLAUDE.md); architecture
-decisions: [docs/adr/](docs/adr/); third-party assets: [docs/CREDITS.md](docs/CREDITS.md).
+decisions: [docs/adr/](docs/adr/); supported trainers: [docs/trainers.md](docs/trainers.md);
+third-party assets: [docs/CREDITS.md](docs/CREDITS.md).
 
 ## License
 
