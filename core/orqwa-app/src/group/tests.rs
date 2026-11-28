@@ -859,6 +859,11 @@ fn a_rider_reconnecting_keeps_the_start_and_an_organizer_change_waiting() {
     assert!(!riding.can_handover());
     riding.away[1] = false;
     assert!(riding.can_handover());
+    // R302, #699: a friend whose reply was added connects to this organizer only.
+    riding.admitting = 1;
+    assert!(!riding.can_handover());
+    riding.admitting = 0;
+    assert!(riding.can_handover());
 }
 
 #[track_caller]

@@ -844,3 +844,9 @@ residency even when generation finishes the whole course before riding.
 | ID | Requirement |
 |---|---|
 | R301 | Extends R86 and R276 (2026-11-27, #684): riders can assign **Camera round to the left**, **Camera round to the right**, **Camera nearer** and **Camera further away** to phone remote buttons. Each press works like the corresponding button on the ride's camera bar, including in first person and when the ride bar is folded. Camera controls act only while the ride shows a 3D world. Existing assignments are preserved. |
+
+## Organizer changes and friends still connecting
+
+| ID | Requirement |
+|---|---|
+| R302 | Refines R173 and R186 (2026-11-28, #699): while a friend whose reply the organizer added is still connecting, **Change organizer…** waits, as it does for a rider reconnecting. Their reply admits them only at the organizer who added it, so a change in the meantime would leave them connecting to an organizer that no longer exists until their reply ran out. Once they are in, or their reply ran out and the organizer read why, the organizer can be changed again. |

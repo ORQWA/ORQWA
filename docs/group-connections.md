@@ -32,6 +32,10 @@ that can still go wrong. The decisions behind it are in
 Not connected in time, the organizer reads *Couldn't reach Ben's computer* with *How to check*;
 the friend reads the reason in red beside **New reply** (#574).
 
+A reply binds the friend to the organizer who added it, so **Change organizer…** waits while an
+added friend is still connecting (R302, #699), as it waits for a friend reconnecting (R186):
+the new organizer would never admit them.
+
 ## Reconnecting
 
 A connection counts as lost after 30 s without packets (keep-alive every 10 s), or when a
