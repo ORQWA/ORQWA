@@ -42,7 +42,10 @@ A friend's ORQWA that stops for less than those 30 s (frozen, briefly asleep, ov
 keeps its connection (R303, #698). The organizer's controls from that time, five workout
 clocks and a latency report a second, then arrive together: the friend's reader waits for
 them to be handled and lets QUIC flow control hold back the rest, and the limit of 64 controls
-a second has room for a backlog of 8 a second for the full 30 s.
+a second has room for a backlog of 8 a second for the full 30 s. Before, a backlog of more
+than 16 controls ended the connection as a goodbye: a stalled friend was dropped, and a
+stalled fallback read it as the organizer leaving and took over at once with whoever stalled
+with it, splitting the group (#696).
 
 - The organizer **holds the seat for five minutes** (`RECONNECT_WINDOW`) and sends to the
   rider's last address every two seconds. The countdown waits while anyone is away.
