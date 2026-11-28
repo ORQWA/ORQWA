@@ -607,18 +607,18 @@ fn skins(gltf: &Map<String, Value>, accessors: usize, nodes: usize) -> Result<()
         for joint in joints {
             index(Some(joint), nodes, "a skin's joint")?;
         }
-        index(skin.get("inverseBindMatrices"), accessors, "a skin's matrices")?;
+        index(
+            skin.get("inverseBindMatrices"),
+            accessors,
+            "a skin's matrices",
+        )?;
         index(skin.get("skeleton"), nodes, "a skin's skeleton")?;
     }
     Ok(())
 }
 
 /// Animations whose channels move nodes by samplers of accessors, as glTF 2.0 defines them.
-fn animations(
-    gltf: &Map<String, Value>,
-    accessors: usize,
-    nodes: usize,
-) -> Result<(), WorldError> {
+fn animations(gltf: &Map<String, Value>, accessors: usize, nodes: usize) -> Result<(), WorldError> {
     for animation in array(gltf, "animations")? {
         let animation = object(animation, "animation")?;
         let samplers = array(animation, "samplers")?;
@@ -642,8 +642,12 @@ fn animations(
         }
         for channel in channels {
             let channel = object(channel, "animation channel")?;
-            index(channel.get("sampler"), samplers.len(), "an animation channel")?
-                .ok_or_else(|| invalid("an animation channel without a sampler"))?;
+            index(
+                channel.get("sampler"),
+                samplers.len(),
+                "an animation channel",
+            )?
+            .ok_or_else(|| invalid("an animation channel without a sampler"))?;
             let target = object(
                 channel.get("target").unwrap_or(&Value::Null),
                 "an animation channel's target",

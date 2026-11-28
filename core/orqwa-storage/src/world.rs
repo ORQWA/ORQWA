@@ -376,11 +376,8 @@ impl Part {
 }
 
 /// The world extensions this ORQWA knows; an optional one it does not know is ignored.
-pub const KNOWN_EXTENSIONS: &[&str] = &[
-    extensions::SCRIPT,
-    extensions::GROUP,
-    extensions::WORKOUTS,
-];
+pub const KNOWN_EXTENSIONS: &[&str] =
+    &[extensions::SCRIPT, extensions::GROUP, extensions::WORKOUTS];
 const MAX_EXTENSIONS: usize = 64;
 
 impl Description {

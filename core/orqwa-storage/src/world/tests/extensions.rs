@@ -92,7 +92,10 @@ fn a_world_without_them_has_no_script_group_ride_or_workouts() {
     assert_eq!(description.script().unwrap(), None);
     assert_eq!(description.group().unwrap(), None);
     assert_eq!(description.workouts().unwrap(), None);
-    assert_eq!(WorldFile::open(&path, &trust()).unwrap().module().unwrap(), None);
+    assert_eq!(
+        WorldFile::open(&path, &trust()).unwrap().module().unwrap(),
+        None
+    );
     std::fs::remove_file(path).unwrap();
 }
 
@@ -102,7 +105,11 @@ fn only_a_scripts_models_may_move() {
     let entries = with("sections/0/lod0.glb", figure(|_| {}));
     refused(&entries, "not allowed");
     refused(
-        &replaced(featured(|_| {}), MODEL, figure(|g| g["cameras"] = json!([{}]))),
+        &replaced(
+            featured(|_| {}),
+            MODEL,
+            figure(|g| g["cameras"] = json!([{}])),
+        ),
         "cameras are not allowed",
     );
     for (patch, because) in [
@@ -110,7 +117,11 @@ fn only_a_scripts_models_may_move() {
         (json!({"joints": []}), "a skin without joints"),
     ] {
         refused(
-            &replaced(featured(|_| {}), MODEL, figure(|g| g["skins"] = json!([patch]))),
+            &replaced(
+                featured(|_| {}),
+                MODEL,
+                figure(|g| g["skins"] = json!([patch])),
+            ),
             because,
         );
     }
@@ -175,7 +186,10 @@ fn a_script_for_a_newer_api_asks_for_an_update_only_if_required() {
     }));
     let description = validate(&path, &trust()).expect("ridden without the script");
     assert_eq!(description.script().unwrap(), None);
-    assert_eq!(WorldFile::open(&path, &trust()).unwrap().module().unwrap(), None);
+    assert_eq!(
+        WorldFile::open(&path, &trust()).unwrap().module().unwrap(),
+        None
+    );
     std::fs::remove_file(path).unwrap();
 }
 
@@ -198,7 +212,9 @@ fn a_world_allows_a_group_of_two_up_to_orqwas_limit() {
             "max_riders is 2 to 8",
         );
     }
-    let path = archive(&featured(|d| d["extensions"][GROUP] = json!({"allowed": false})));
+    let path = archive(&featured(|d| {
+        d["extensions"][GROUP] = json!({"allowed": false})
+    }));
     let group = validate(&path, &trust()).unwrap().group().unwrap().unwrap();
     assert!(!group.allowed);
     assert_eq!(group.max_riders(), MAX_GROUP_RIDERS);
@@ -237,7 +253,11 @@ fn a_folder_with_a_script_seals_each_file_once() {
         std::fs::write(path, bytes).unwrap();
     }
     // A file of the script's own, named by nothing in world.json, goes along too.
-    std::fs::write(folder.join("ext/ORQWA_script/badge.png"), b"\x89PNG\r\n\x1a\n").unwrap();
+    std::fs::write(
+        folder.join("ext/ORQWA_script/badge.png"),
+        b"\x89PNG\r\n\x1a\n",
+    )
+    .unwrap();
     let out = folder.with_extension("oqx");
     seal(&folder, &out, &sealer(), &trust()).expect("sealed");
     let world = WorldFile::open(&out, &trust()).unwrap();

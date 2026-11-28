@@ -150,8 +150,8 @@ impl Description {
         let Some(data) = self.extension_data(GROUP)? else {
             return Ok(None);
         };
-        let group = Group::deserialize(data)
-            .map_err(|e| invalid(format!("extension {GROUP}: {e}")))?;
+        let group =
+            Group::deserialize(data).map_err(|e| invalid(format!("extension {GROUP}: {e}")))?;
         if !(2..=MAX_GROUP_RIDERS).contains(&group.max_riders()) {
             return Err(invalid(format!(
                 "extension {GROUP}: max_riders is 2 to {MAX_GROUP_RIDERS}"
