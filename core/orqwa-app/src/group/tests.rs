@@ -442,6 +442,10 @@ fn late_workout_entry_is_explicit_and_records_only_the_riders_own_effort() {
 }
 
 fn start_shared_workout(host: &mut App, peer: &mut App) {
+    start_shared_workout_with(host, peer, options());
+}
+
+fn start_shared_workout_with(host: &mut App, peer: &mut App, organizer: ConnectOptions) {
     for app in [&mut *host, &mut *peer] {
         app.connect_trainer(TrainerChoice::Fake(FakeRider {
             power: Watts(180.0),
@@ -450,7 +454,7 @@ fn start_shared_workout(host: &mut App, peer: &mut App) {
         }))
         .unwrap();
     }
-    host.group_open(None, options()).unwrap();
+    host.group_open(None, organizer).unwrap();
     wait(host, peer, |host, _| !host.group().invite.is_empty());
     peer.group_open(Some(host.group().invite), options())
         .unwrap();
@@ -864,6 +868,32 @@ fn a_rider_reconnecting_keeps_the_start_and_an_organizer_change_waiting() {
     assert!(!riding.can_handover());
     riding.admitting = 0;
     assert!(riding.can_handover());
+}
+
+#[test]
+fn an_organizer_change_waits_while_an_added_friend_is_still_connecting() {
+    // R302, #699: the friend's reply admits them at this organizer only.
+    let (one, two, three) = (Directory::new(), Directory::new(), Directory::new());
+    let (mut host, mut peer, mut late) = (one.app(), two.app(), three.app());
+    let mut organizer = options();
+    organizer.window = Duration::from_secs(2);
+    start_shared_workout_with(&mut host, &mut peer, organizer);
+    wait(&mut host, &mut peer, |host, _| host.group().can_handover());
+    late.group_open(Some(host.group().invite), options())
+        .unwrap();
+    wait(&mut host, &mut late, |_, late| {
+        !late.group().reply.is_empty()
+    });
+    let reply = late.group().reply;
+    // Their computer goes away before connecting, as it may at any step of joining.
+    late.group_leave();
+    host.group_admit(&reply).unwrap();
+    wait(&mut host, &mut peer, |host, _| host.group().admitting == 1);
+    assert!(!host.group().can_handover());
+    assert!(host.group_handover(1).is_err(), "the change is refused too");
+    wait(&mut host, &mut peer, |host, _| {
+        host.group().admitting == 0 && host.group().can_handover()
+    });
 }
 
 #[track_caller]
