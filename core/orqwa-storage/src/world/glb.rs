@@ -1,5 +1,6 @@
 //! The rules a world's glTF binaries follow (`docs/world-files.md`, "glTF content"): glTF 2.0,
-//! static, with a short list of extensions, holding everything but the images it shares with
+//! static (except the models a world script places, which may be skinned and animated), with a
+//! short list of extensions, holding everything but the images it shares with
 //! the world's other files. Checked from the JSON chunk and the BIN chunk's length, without
 //! reading the binary data itself.
 
@@ -26,6 +27,28 @@ const MAX_JSON_BYTES: u64 = 64 * 1024 * 1024;
 const JSON: u32 = 0x4E4F_534A;
 const BIN: u32 = 0x004E_4942;
 
+/// Which rules a `.glb` follows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Rules {
+    /// Sections, assets and the horizon: no skins, animations or cameras.
+    Static,
+    /// A model a world script places (`ORQWA_script`): skins and animations allowed, still no
+    /// cameras.
+    Animated,
+}
+
+impl Rules {
+    /// [`Rules::Animated`] if `animated`, [`Rules::Static`] otherwise.
+    #[must_use]
+    pub fn of(animated: bool) -> Self {
+        if animated {
+            Self::Animated
+        } else {
+            Self::Static
+        }
+    }
+}
+
 /// A `.glb` as checked: how many of its bytes were read, and the images it takes from the
 /// world's shared textures, by `uri` as written, relative to the file.
 #[derive(Debug, Default)]
@@ -39,13 +62,25 @@ pub struct Checked {
     pub foreign: Vec<String>,
 }
 
-/// Checks a `.glb` of `length` bytes from `input`, reading its header and JSON. The BIN chunk's
-/// data is left for the caller to read past; the images it names outside itself for the caller
-/// to find among the world's textures.
+/// Checks a static `.glb` of `length` bytes from `input`, reading its header and JSON. The BIN
+/// chunk's data is left for the caller to read past; the images it names outside itself for
+/// the caller to find among the world's textures.
 ///
 /// # Errors
 /// [`WorldError::Invalid`] naming the rule broken.
 pub fn check_stream(input: &mut impl Read, length: u64) -> Result<Checked, WorldError> {
+    check_stream_with(input, length, Rules::Static)
+}
+
+/// [`check_stream`] by `rules`.
+///
+/// # Errors
+/// [`WorldError::Invalid`] naming the rule broken.
+pub fn check_stream_with(
+    input: &mut impl Read,
+    length: u64,
+    rules: Rules,
+) -> Result<Checked, WorldError> {
     let mut header = [0u8; 20];
     input
         .read_exact(&mut header)
@@ -80,7 +115,7 @@ pub fn check_stream(input: &mut impl Read, length: u64) -> Result<Checked, World
     }
     let gltf: Value =
         serde_json::from_slice(&json).map_err(|e| invalid(format!("glTF JSON: {e}")))?;
-    let (shared, foreign) = check(&gltf, bin)?;
+    let (shared, foreign) = check(&gltf, bin, rules)?;
     Ok(Checked {
         read,
         shared,
@@ -138,9 +173,13 @@ fn names(gltf: &Map<String, Value>, key: &str) -> Result<BTreeSet<String>, World
 }
 
 /// The checks on a parsed glTF with a BIN chunk of `bin` bytes, if any.
-fn check(gltf: &Value, bin: Option<u64>) -> Result<(Vec<String>, Vec<String>), WorldError> {
+fn check(
+    gltf: &Value,
+    bin: Option<u64>,
+    rules: Rules,
+) -> Result<(Vec<String>, Vec<String>), WorldError> {
     let gltf = object(gltf, "glTF")?;
-    let used = extensions(gltf)?;
+    let used = extensions(gltf, rules)?;
     let views = buffer_views(gltf, bin)?;
     let accessors = array(gltf, "accessors")?;
     for accessor in accessors {
@@ -159,7 +198,15 @@ fn check(gltf: &Value, bin: Option<u64>) -> Result<(Vec<String>, Vec<String>), W
         }
     }
     let meshes = meshes(gltf, accessors.len(), materials.len())?;
-    let nodes = nodes(gltf, meshes)?;
+    let skins = match rules {
+        Rules::Static => 0,
+        Rules::Animated => array(gltf, "skins")?.len(),
+    };
+    let nodes = nodes(gltf, meshes, skins)?;
+    if rules == Rules::Animated {
+        self::skins(gltf, accessors.len(), nodes)?;
+        animations(gltf, accessors.len(), nodes)?;
+    }
     let scenes = array(gltf, "scenes")?;
     for scene in scenes {
         for node in array(object(scene, "scene")?, "nodes")? {
@@ -170,8 +217,9 @@ fn check(gltf: &Value, bin: Option<u64>) -> Result<(Vec<String>, Vec<String>), W
     Ok((shared, foreign))
 }
 
-/// glTF 2.0 and static; extensions it requires are ones ORQWA knows. Returns those used.
-fn extensions(gltf: &Map<String, Value>) -> Result<BTreeSet<String>, WorldError> {
+/// glTF 2.0, static unless `rules` allow motion; extensions it requires are ones ORQWA knows.
+/// Returns those used.
+fn extensions(gltf: &Map<String, Value>, rules: Rules) -> Result<BTreeSet<String>, WorldError> {
     let asset = object(gltf.get("asset").unwrap_or(&Value::Null), "asset")?;
     if asset.get("version").and_then(Value::as_str) != Some("2.0")
         || asset
@@ -194,7 +242,11 @@ fn extensions(gltf: &Map<String, Value>) -> Result<BTreeSet<String>, WorldError>
     if let Some(unknown) = required.iter().find(|e| !ALLOWED.contains(&e.as_str())) {
         return Err(WorldError::NeedsExtension(unknown.clone()));
     }
-    for key in ["animations", "skins", "cameras"] {
+    let refused: &[&str] = match rules {
+        Rules::Static => &["animations", "skins", "cameras"],
+        Rules::Animated => &["cameras"],
+    };
+    for key in refused {
         if !array(gltf, key)?.is_empty() {
             return Err(invalid(format!("{key} are not allowed: worlds are static")));
         }
@@ -368,16 +420,18 @@ fn meshes(
     Ok(meshes.len())
 }
 
-/// Nodes without cameras or skins, forming trees; returns the number of nodes.
-fn nodes(gltf: &Map<String, Value>, meshes: usize) -> Result<usize, WorldError> {
+/// Nodes without cameras, and without skins unless there are `skins`, forming trees; returns
+/// the number of nodes.
+fn nodes(gltf: &Map<String, Value>, meshes: usize, skins: usize) -> Result<usize, WorldError> {
     let nodes = array(gltf, "nodes")?;
     let not_a_tree = || invalid("nodes do not form a tree");
     let mut parent = vec![None; nodes.len()];
     for (at, node) in nodes.iter().enumerate() {
         let node = object(node, "node")?;
-        if node.contains_key("camera") || node.contains_key("skin") {
+        if node.contains_key("camera") || (skins == 0 && node.contains_key("skin")) {
             return Err(invalid("nodes with cameras or skins are not allowed"));
         }
+        index(node.get("skin"), skins, "a node's skin")?;
         index(node.get("mesh"), meshes, "a node")?;
         for child in array(node, "children")? {
             let child =
@@ -538,6 +592,70 @@ fn terrain_layers(value: &Value, textures: usize) -> Result<(), WorldError> {
         || !in_unit(layers.get("strength"), 1.0)
     {
         return Err(refused());
+    }
+    Ok(())
+}
+
+/// Skins whose joints are nodes and whose matrices are accessors.
+fn skins(gltf: &Map<String, Value>, accessors: usize, nodes: usize) -> Result<(), WorldError> {
+    for skin in array(gltf, "skins")? {
+        let skin = object(skin, "skin")?;
+        let joints = array(skin, "joints")?;
+        if joints.is_empty() {
+            return Err(invalid("a skin without joints"));
+        }
+        for joint in joints {
+            index(Some(joint), nodes, "a skin's joint")?;
+        }
+        index(skin.get("inverseBindMatrices"), accessors, "a skin's matrices")?;
+        index(skin.get("skeleton"), nodes, "a skin's skeleton")?;
+    }
+    Ok(())
+}
+
+/// Animations whose channels move nodes by samplers of accessors, as glTF 2.0 defines them.
+fn animations(
+    gltf: &Map<String, Value>,
+    accessors: usize,
+    nodes: usize,
+) -> Result<(), WorldError> {
+    for animation in array(gltf, "animations")? {
+        let animation = object(animation, "animation")?;
+        let samplers = array(animation, "samplers")?;
+        let channels = array(animation, "channels")?;
+        if samplers.is_empty() || channels.is_empty() {
+            return Err(invalid("an animation without samplers or channels"));
+        }
+        for sampler in samplers {
+            let sampler = object(sampler, "animation sampler")?;
+            for key in ["input", "output"] {
+                index(sampler.get(key), accessors, "an animation sampler")?
+                    .ok_or_else(|| invalid(format!("an animation sampler without {key}")))?;
+            }
+            let interpolation = sampler.get("interpolation").map(Value::as_str);
+            if !matches!(
+                interpolation,
+                None | Some(Some("LINEAR" | "STEP" | "CUBICSPLINE"))
+            ) {
+                return Err(invalid("an animation sampler of an unknown interpolation"));
+            }
+        }
+        for channel in channels {
+            let channel = object(channel, "animation channel")?;
+            index(channel.get("sampler"), samplers.len(), "an animation channel")?
+                .ok_or_else(|| invalid("an animation channel without a sampler"))?;
+            let target = object(
+                channel.get("target").unwrap_or(&Value::Null),
+                "an animation channel's target",
+            )?;
+            index(target.get("node"), nodes, "an animation channel's target")?;
+            if !matches!(
+                target.get("path").and_then(Value::as_str),
+                Some("translation" | "rotation" | "scale" | "weights")
+            ) {
+                return Err(invalid("an animation channel of an unknown path"));
+            }
+        }
     }
     Ok(())
 }

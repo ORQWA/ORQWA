@@ -915,3 +915,5 @@ fn extensions_are_declared_as_gltf_declares_them() {
         "not a unique extension name",
     );
 }
+
+mod extensions;

@@ -10,6 +10,7 @@
 //! anything else is read, and each entry against its hash whenever it is read.
 
 mod archive;
+pub mod extensions;
 pub mod glb;
 pub mod instances;
 mod share;
@@ -352,12 +353,20 @@ enum Part {
     /// A file of an extension the world uses, under `ext/<extension>/`: read only by an ORQWA
     /// that knows the extension.
     Extension,
+    /// A world script's WebAssembly module (`ORQWA_script`).
+    Module,
+    /// A model a world script places: a `.glb` that may have skins and animations.
+    ScriptModel,
+    /// A workout that comes with the world (`ORQWA_workouts`).
+    Workout,
 }
 
 impl Part {
     fn limit(self) -> u64 {
         match self {
-            Self::Glb | Self::Instances | Self::Extension => MAX_PART_BYTES,
+            Self::Glb | Self::Instances | Self::Extension | Self::ScriptModel => MAX_PART_BYTES,
+            Self::Module => extensions::MAX_MODULE_BYTES,
+            Self::Workout => extensions::MAX_WORKOUT_BYTES,
             Self::Route => MAX_ROUTE_BYTES,
             Self::Sky => MAX_SKY_BYTES,
             Self::Preview => MAX_PREVIEW_BYTES,
@@ -367,7 +376,11 @@ impl Part {
 }
 
 /// The world extensions this ORQWA knows; an optional one it does not know is ignored.
-pub const KNOWN_EXTENSIONS: &[&str] = &[];
+pub const KNOWN_EXTENSIONS: &[&str] = &[
+    extensions::SCRIPT,
+    extensions::GROUP,
+    extensions::WORKOUTS,
+];
 const MAX_EXTENSIONS: usize = 64;
 
 impl Description {
@@ -471,6 +484,7 @@ impl Description {
                 .map_err(|e| prefixed(&format!("asset {}", asset.name), e))?;
         }
         self.check_files(&mut parts)?;
+        self.check_known_extensions(&mut parts)?;
         if self.routes.is_empty() || self.routes.len() > MAX_ROUTES {
             return Err(invalid("a world has 1 to 256 routes"));
         }
@@ -955,14 +969,12 @@ fn check(path: &Path, trust: Option<&Trust>) -> Result<Description, WorldError> 
         let at = |e| prefixed(&name, e);
         let part = if name == DESCRIPTION {
             None
+        } else if let Some(part) = parts.get(name.as_str()) {
+            Some(*part)
         } else if description.extension_file(&name) {
             Some(Part::Extension)
         } else {
-            Some(
-                *parts
-                    .get(name.as_str())
-                    .ok_or_else(|| invalid(format!("{name}: not named by world.json")))?,
-            )
+            return Err(invalid(format!("{name}: not named by world.json")));
         };
         let changed = || invalid(format!("{name}: does not match its signature"));
         // The signed size first: a changed part may declare far more, and nothing is parsed then.
@@ -978,8 +990,10 @@ fn check(path: &Path, trust: Option<&Trust>) -> Result<Description, WorldError> 
                         return Err(invalid(format!("{name}: larger than its limit")));
                     }
                     match part {
-                        Part::Glb => {
-                            let checked = glb::check_stream(&mut hashing, declared).map_err(at)?;
+                        Part::Glb | Part::ScriptModel => {
+                            let rules = glb::Rules::of(part == Part::ScriptModel);
+                            let checked = glb::check_stream_with(&mut hashing, declared, rules)
+                                .map_err(at)?;
                             shares_textures(&name, &checked, &description, |entry| {
                                 parts.get(entry) == Some(&Part::Texture)
                             })?;
@@ -1001,6 +1015,10 @@ fn check(path: &Path, trust: Option<&Trust>) -> Result<Description, WorldError> 
                         }
                         // Hashed, never read: the extension's to define.
                         Part::Extension => 0,
+                        // The runtime checks the rest of a module, and the workout parsers a
+                        // workout, when they are used.
+                        Part::Module => extensions::module_header(&mut hashing).map_err(at)?,
+                        Part::Workout => 0,
                     }
                 }
             })
@@ -1057,6 +1075,7 @@ fn image(input: &mut impl Read, png_only: bool) -> Result<u64, WorldError> {
 /// A part as the reader knows it: its limit and its signed hash.
 #[derive(Debug, Clone)]
 struct Known {
+    part: Part,
     limit: u64,
     signed: signing::Entry,
 }
@@ -1104,6 +1123,7 @@ impl WorldFile {
             parts.insert(
                 name.to_owned(),
                 Known {
+                    part,
                     limit: part.limit(),
                     signed,
                 },
@@ -1170,13 +1190,43 @@ impl WorldFile {
     /// # Errors
     /// [`WorldError`] if it cannot be read, or breaks the format.
     pub fn glb(&self, name: &str) -> Result<Vec<u8>, WorldError> {
+        let rules = glb::Rules::of(self.part(name) == Some(Part::ScriptModel));
         let bytes = self.read(name)?;
-        let checked = glb::check_stream(&mut bytes.as_slice(), bytes.len() as u64)
+        let checked = glb::check_stream_with(&mut bytes.as_slice(), bytes.len() as u64, rules)
             .map_err(|e| prefixed(name, e))?;
         shares_textures(name, &checked, &self.description, |entry| {
             self.textures.contains(entry)
         })?;
         Ok(bytes)
+    }
+
+    fn part(&self, name: &str) -> Option<Part> {
+        self.parts.get(name).map(|known| known.part)
+    }
+
+    /// The bytes of the world script's module, if the world has a script this ORQWA runs
+    /// (`ORQWA_script`). Only its header is checked here; the runtime checks the rest.
+    ///
+    /// # Errors
+    /// [`WorldError`] if it cannot be read, or is not a WebAssembly module.
+    pub fn module(&self) -> Result<Option<Vec<u8>>, WorldError> {
+        let Some(script) = self.description.script()? else {
+            return Ok(None);
+        };
+        let bytes = self.read(script.file)?;
+        extensions::module_header(&mut bytes.as_slice()).map_err(|e| prefixed(script.file, e))?;
+        Ok(Some(bytes))
+    }
+
+    /// The bytes of a workout the world brings (`ORQWA_workouts`), for the workout parsers.
+    ///
+    /// # Errors
+    /// [`WorldError`] if the world brings no such workout, or it cannot be read.
+    pub fn workout(&self, name: &str) -> Result<Vec<u8>, WorldError> {
+        if self.part(name) != Some(Part::Workout) {
+            return Err(invalid(format!("{name}: not one of the world's workouts")));
+        }
+        self.read(name)
     }
 
     /// The copies of assets an `instances` file places.
@@ -1296,15 +1346,23 @@ pub fn seal(
             .chain(
                 extension_files
                     .iter()
+                    .filter(|n| !parts.contains_key(n.as_str()))
                     .map(|n| (n.as_str(), Some(Part::Extension))),
             )
         {
             let mut input = io::BufReader::new(File::open(from.join(name))?);
             let options = match part {
                 Some(Part::Sky | Part::Preview | Part::Texture) => stored,
-                Some(Part::Glb | Part::Instances | Part::Route | Part::Extension) | None => {
-                    deflated
-                }
+                Some(
+                    Part::Glb
+                    | Part::Instances
+                    | Part::Route
+                    | Part::Extension
+                    | Part::Module
+                    | Part::ScriptModel
+                    | Part::Workout,
+                )
+                | None => deflated,
             };
             zip.start_file(name, options)?;
             let mut hashing = HashingWriter::new(&mut zip);
