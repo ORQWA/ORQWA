@@ -16,7 +16,10 @@ use crate::{Ride, RideConfig};
 /// A module answering every tick with `output`.
 fn answering(output: &Value) -> WorldScript {
     let text = output.to_string();
-    let escaped: String = text.bytes().map(|b| format!("\\{b:02x}")).collect();
+    let escaped = text.bytes().fold(String::new(), |mut out, b| {
+        let _ = write!(out, "\\{b:02x}");
+        out
+    });
     let wat = format!(
         r#"(module (memory (export "memory") 2)
              (data (i32.const 0) "{escaped}")
