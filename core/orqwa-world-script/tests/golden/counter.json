@@ -1,0 +1,257 @@
+{
+ "api": 1,
+ "ticks": [
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.1,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 1.0
+     }
+    },
+    "state": 1
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.2,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 2.0
+     }
+    },
+    "state": 2
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.3,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 3.0
+     }
+    },
+    "state": 3
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.4,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 4.0
+     }
+    },
+    "state": 4
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.5,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 5.0
+     }
+    },
+    "state": 5
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.6,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 6.0
+     }
+    },
+    "state": 6
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.7,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 7.0
+     }
+    },
+    "state": 7
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.8,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 8.0
+     }
+    },
+    "state": 8
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 0.9,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 9.0
+     }
+    },
+    "state": 9
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 1.0,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 10.0
+     }
+    },
+    "state": 10
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 1.1,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 11.0
+     }
+    },
+    "state": 11
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [],
+    "dt_s": 0.1,
+    "time_s": 1.2,
+    "config": null,
+    "riders": [],
+    "bodies": [],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "record": {
+     "values": {
+      "ticks": 12.0
+     }
+    },
+    "state": 12
+   }
+  }
+ ]
+}

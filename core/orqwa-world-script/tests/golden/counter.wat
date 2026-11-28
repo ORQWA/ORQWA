@@ -1,0 +1,43 @@
+;; A module counting its ticks into its results and state, logging each. Frozen: do not change.
+;; Output: {"record":{"values":{"ticks":N}},"state":N}
+(module
+  (import "orqwa_v1" "log" (func $log (param i32 i32)))
+  (memory (export "memory") 4)
+  (global $ticks (mut i32) (i32.const 0))
+  (data (i32.const 0) "{\"record\":{\"values\":{\"ticks\":")
+  (data (i32.const 100) "tick")
+  (func (export "alloc") (param i32) (result i32) (i32.const 65536))
+  ;; Writes `n` in decimal at `at`; returns the address after it.
+  (func $digits (param $n i32) (param $at i32) (result i32)
+    (local $len i32) (local $m i32) (local $i i32)
+    (local.set $m (local.get $n))
+    (local.set $len (i32.const 1))
+    (block $done (loop $count
+      (br_if $done (i32.lt_u (local.get $m) (i32.const 10)))
+      (local.set $m (i32.div_u (local.get $m) (i32.const 10)))
+      (local.set $len (i32.add (local.get $len) (i32.const 1)))
+      (br $count)))
+    (local.set $i (local.get $len))
+    (local.set $m (local.get $n))
+    (block $written (loop $write
+      (local.set $i (i32.sub (local.get $i) (i32.const 1)))
+      (i32.store8 (i32.add (local.get $at) (local.get $i))
+        (i32.add (i32.const 48) (i32.rem_u (local.get $m) (i32.const 10))))
+      (local.set $m (i32.div_u (local.get $m) (i32.const 10)))
+      (br_if $written (i32.eqz (local.get $i)))
+      (br $write)))
+    (i32.add (local.get $at) (local.get $len)))
+  (func (export "tick") (param i32 i32) (result i64)
+    (local $end i32)
+    (global.set $ticks (i32.add (global.get $ticks) (i32.const 1)))
+    (call $log (i32.const 100) (i32.const 4))
+    ;; After the 29-byte prefix: N}},"state":N}
+    (local.set $end (call $digits (global.get $ticks) (i32.const 29)))
+    (i32.store8 (local.get $end) (i32.const 125))
+    (i32.store8 (i32.add (local.get $end) (i32.const 1)) (i32.const 125))
+    (i32.store8 (i32.add (local.get $end) (i32.const 2)) (i32.const 44))
+    (i64.store (i32.add (local.get $end) (i32.const 3)) (i64.const 0x3a22657461747322))
+    (local.set $end (call $digits (global.get $ticks) (i32.add (local.get $end) (i32.const 11))))
+    (i32.store8 (local.get $end) (i32.const 125))
+    (i64.or (i64.const 0)
+      (i64.shl (i64.extend_i32_u (i32.add (local.get $end) (i32.const 1))) (i64.const 32)))))

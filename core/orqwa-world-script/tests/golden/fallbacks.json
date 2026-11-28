@@ -1,0 +1,208 @@
+{
+ "api": 1,
+ "ticks": [
+  {
+   "input": {
+    "api": 1,
+    "features": [
+     "body.driven"
+    ],
+    "dt_s": 0.0,
+    "time_s": 0.0,
+    "config": null,
+    "riders": [
+     {
+      "slot": 0,
+      "name": "Ana",
+      "power_w": 200.0,
+      "cadence_rpm": 90.0,
+      "mass_kg": 75.0,
+      "ftp_w": 250.0,
+      "connected": true,
+      "body": "r0"
+     }
+    ],
+    "bodies": [
+     {
+      "id": "r0",
+      "distance_m": 10.0,
+      "speed_mps": 8.0
+     }
+    ],
+    "actions": [],
+    "state": null,
+    "route": {
+     "id": "loop",
+     "length_m": 100.0,
+     "step_m": 10.0,
+     "grade": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "elevation_m": [
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0
+     ]
+    }
+   },
+   "output": {
+    "bodies": [
+     {
+      "id": "b",
+      "kind": "towed",
+      "riders": [
+       0
+      ],
+      "fallback": {
+       "id": "b",
+       "kind": "scripted",
+       "riders": [
+        0
+       ],
+       "speed_mps": 3.0
+      }
+     },
+     {
+      "id": "c",
+      "kind": "towed",
+      "riders": [
+       1
+      ]
+     }
+    ],
+    "trainer": [
+     {
+      "slot": 0,
+      "kind": "slope",
+      "fallback": {
+       "slot": 0,
+       "kind": "grade",
+       "grade": 0.02
+      }
+     },
+     {
+      "slot": 1,
+      "kind": "slope"
+     }
+    ],
+    "scene": {
+     "nodes": [
+      {
+       "id": "n",
+       "model": "figure",
+       "anchor": {
+        "lap": 2
+       },
+       "fallback": {
+        "id": "n",
+        "model": "figure",
+        "anchor": {
+         "route_m": 50.0
+        }
+       }
+      },
+      {
+       "id": "m",
+       "model": "figure",
+       "anchor": {}
+      }
+     ]
+    },
+    "ui": [
+     {
+      "id": "p",
+      "slot": "corner",
+      "items": [],
+      "fallback": {
+       "id": "p",
+       "slot": "top",
+       "items": [
+        {
+         "kind": "chart",
+         "fallback": {
+          "kind": "text",
+          "text": {
+           "": "chart"
+          }
+         }
+        },
+        {
+         "kind": "chart"
+        }
+       ]
+      }
+     }
+    ],
+    "future": {
+     "anything": true
+    }
+   },
+   "resolved": {
+    "bodies": [
+     {
+      "id": "b",
+      "kind": "scripted",
+      "riders": [
+       0
+      ],
+      "speed_mps": 3.0
+     }
+    ],
+    "trainer": [
+     {
+      "slot": 0,
+      "kind": "grade",
+      "grade": 0.02
+     },
+     {
+      "slot": 1,
+      "kind": "road"
+     }
+    ],
+    "scene": {
+     "nodes": [
+      {
+       "id": "n",
+       "model": "figure",
+       "anchor": {
+        "route_m": 50.0
+       }
+      }
+     ]
+    },
+    "ui": [
+     {
+      "id": "p",
+      "slot": "top",
+      "items": [
+       {
+        "kind": "text",
+        "text": {
+         "": "chart"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["orqwa-domain", "orqwa-terrain", "orqwa-video", "orqwa-osm", "orqwa-routes", "orqwa-physics", "orqwa-devices", "orqwa-storage", "orqwa-workouts", "orqwa-session", "orqwa-world", "orqwa-upload", "orqwa-remote", "orqwa-update", "orqwa-app", "orqwa-gd", "orqwa-cli", "orqwa-net", "orqwa-voice", "orqwa-licence"]
+members = ["orqwa-domain", "orqwa-terrain", "orqwa-video", "orqwa-osm", "orqwa-routes", "orqwa-physics", "orqwa-devices", "orqwa-storage", "orqwa-workouts", "orqwa-session", "orqwa-world", "orqwa-upload", "orqwa-remote", "orqwa-update", "orqwa-app", "orqwa-gd", "orqwa-cli", "orqwa-net", "orqwa-voice", "orqwa-licence", "orqwa-world-api", "orqwa-world-script"]
 
 [workspace.package]
 version = "0.7.0"
@@ -27,6 +27,8 @@ orqwa-remote = { path = "orqwa-remote" }
 orqwa-video = { path = "orqwa-video" }
 orqwa-workouts = { path = "orqwa-workouts" }
 orqwa-world = { path = "orqwa-world" }
+orqwa-world-api = { path = "orqwa-world-api" }
+orqwa-world-script = { path = "orqwa-world-script" }
 orqwa-voice = { path = "orqwa-voice" }
 anyhow = "1.0.104"
 # Signatures, encryption and hashes of world files (ADR 0043); already built for rustls.
@@ -76,6 +78,7 @@ thiserror = "2.0.21"
 tokio = "1.54.1"
 toml = "1.1.6"
 tracing = "0.1.44"
+wasmi = { version = "2.0.3", default-features = false, features = ["std", "stable", "validate", "auto-dispatch", "deterministic"] }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 zip = { version = "9.7.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 

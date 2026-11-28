@@ -1,0 +1,21 @@
+[
+ "body.driven",
+ "body.scripted",
+ "trainer.road",
+ "trainer.grade",
+ "trainer.power",
+ "trainer.resistance",
+ "scene.node",
+ "scene.line",
+ "scene.clip",
+ "scene.rider",
+ "scene.camera",
+ "ui.text",
+ "ui.value",
+ "ui.bar",
+ "ui.grid",
+ "ui.image",
+ "record.values",
+ "record.marks",
+ "input.actions"
+]

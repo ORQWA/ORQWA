@@ -1,0 +1,52 @@
+{
+ "api": 1,
+ "features": [
+  "body.driven"
+ ],
+ "dt_s": 0.1,
+ "time_s": 12.5,
+ "config": {
+  "laps": 3
+ },
+ "route": {
+  "id": "loop",
+  "length_m": 2000.0,
+  "step_m": 10.0,
+  "grade": [
+   0.01,
+   0.02
+  ],
+  "elevation_m": [
+   400.0,
+   400.2
+  ]
+ },
+ "riders": [
+  {
+   "slot": 0,
+   "name": "Ana",
+   "power_w": 231.0,
+   "cadence_rpm": 88.0,
+   "mass_kg": 72.0,
+   "ftp_w": 250.0,
+   "connected": true,
+   "body": "r0"
+  }
+ ],
+ "bodies": [
+  {
+   "id": "r0",
+   "distance_m": 1520.4,
+   "speed_mps": 8.31
+  }
+ ],
+ "actions": [
+  {
+   "slot": 0,
+   "count": 1
+  }
+ ],
+ "state": {
+  "phase": 2
+ }
+}

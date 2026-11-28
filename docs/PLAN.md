@@ -1329,9 +1329,10 @@ each world ([world-files.md](world-files.md#orqwa_script)).
 - [ ] ADR 0044 and the specification of `ORQWA_script`, `ORQWA_group` and `ORQWA_workouts`
 - [x] Reading and checking the three extensions in `orqwa-storage`; skins and animations only
   for script models
-- [ ] The documents' types with schema snapshots; the runtime (sandbox, limits, fallbacks) with
-  frozen golden modules; `orqwa-cli world-script-run`
-- [ ] Ride integration: bodies, trainer requests through the limits, records, `ride_state()`
+- [x] The documents' types with schema snapshots (`orqwa-world-api`); the runtime (sandbox,
+  limits, fallbacks) with frozen golden modules (`orqwa-world-script`, wasmi 2.0)
+- [ ] Ride integration: bodies, trainer requests through the limits, records, `ride_state()`;
+  `orqwa-cli world-script-run`
 - [ ] Godot: script models, nodes, lines and clips; screen panels; camera hint; World action
 - [ ] Group rides on worlds that allow them: one host-run script, one group message
 - [ ] Bundled workouts in the library

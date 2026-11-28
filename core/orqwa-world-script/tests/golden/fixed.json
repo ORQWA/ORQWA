@@ -1,0 +1,394 @@
+{
+ "api": 1,
+ "ticks": [
+  {
+   "input": {
+    "api": 1,
+    "features": [
+     "body.driven"
+    ],
+    "dt_s": 0.0,
+    "time_s": 0.0,
+    "config": null,
+    "riders": [
+     {
+      "slot": 0,
+      "name": "Ana",
+      "power_w": 200.0,
+      "cadence_rpm": 90.0,
+      "mass_kg": 75.0,
+      "ftp_w": 250.0,
+      "connected": true,
+      "body": "r0"
+     }
+    ],
+    "bodies": [
+     {
+      "id": "r0",
+      "distance_m": 10.0,
+      "speed_mps": 8.0
+     }
+    ],
+    "actions": [],
+    "state": null,
+    "route": {
+     "id": "loop",
+     "length_m": 100.0,
+     "step_m": 10.0,
+     "grade": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "elevation_m": [
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0,
+      400.0
+     ]
+    }
+   },
+   "output": {
+    "bodies": [
+     {
+      "id": "team",
+      "kind": "driven",
+      "riders": [
+       0,
+       1
+      ],
+      "mass_kg": 120.0,
+      "rolling": 1.5,
+      "air": 1.0
+     }
+    ],
+    "trainer": [
+     {
+      "slot": 0,
+      "kind": "power",
+      "power_w": 300.0
+     },
+     {
+      "slot": 1,
+      "kind": "grade",
+      "grade": 0.04
+     }
+    ],
+    "scene": {
+     "nodes": [
+      {
+       "id": "n1",
+       "model": "figure",
+       "anchor": {
+        "body": "team"
+       },
+       "offset_m": [
+        0.8,
+        0.0,
+        3.0
+       ],
+       "rotation_deg": [
+        0,
+        0,
+        0
+       ],
+       "scale": 1.0,
+       "visible": true,
+       "clip": {
+        "name": "run",
+        "rate": 1.2
+       }
+      }
+     ],
+     "lines": [
+      {
+       "from": {
+        "node": "n1",
+        "point": [
+         0,
+         1,
+         0
+        ]
+       },
+       "to": {
+        "node": "n1",
+        "point": [
+         0,
+         0.5,
+         1
+        ]
+       }
+      }
+     ],
+     "riders": [
+      {
+       "slot": 0,
+       "shown": false
+      }
+     ],
+     "camera": {
+      "anchor": {
+       "body": "team"
+      },
+      "back_m": 12.0,
+      "up_m": 4.0
+     }
+    },
+    "ui": [
+     {
+      "id": "p1",
+      "slot": "centre",
+      "to": "all",
+      "seconds": 5.0,
+      "items": [
+       {
+        "kind": "text",
+        "text": {
+         "en": "Go!",
+         "": "Go!"
+        },
+        "emphasis": true
+       },
+       {
+        "kind": "bar",
+        "value": 0.4
+       },
+       {
+        "kind": "value",
+        "value": 12.5,
+        "unit": "m/s",
+        "decimals": 1
+       },
+       {
+        "kind": "grid",
+        "rows": [
+         [
+          {
+           "": "1"
+          },
+          {
+           "": "Ana"
+          }
+         ]
+        ],
+        "highlight": 0
+       },
+       {
+        "kind": "image",
+        "image": "ext/ORQWA_script/badge.png"
+       }
+      ]
+     }
+    ],
+    "record": {
+     "values": {
+      "score": 12.0
+     },
+     "marks": [
+      {
+       "name": "split",
+       "slot": 0
+      }
+     ]
+    },
+    "state": {
+     "phase": "start"
+    }
+   }
+  },
+  {
+   "input": {
+    "api": 1,
+    "features": [
+     "body.driven"
+    ],
+    "dt_s": 0.1,
+    "time_s": 1.0,
+    "config": null,
+    "riders": [
+     {
+      "slot": 0,
+      "name": "Ana",
+      "power_w": 200.0,
+      "cadence_rpm": 90.0,
+      "mass_kg": 75.0,
+      "ftp_w": 250.0,
+      "connected": true,
+      "body": "r0"
+     }
+    ],
+    "bodies": [
+     {
+      "id": "r0",
+      "distance_m": 10.0,
+      "speed_mps": 8.0
+     }
+    ],
+    "actions": [],
+    "state": null
+   },
+   "output": {
+    "bodies": [
+     {
+      "id": "team",
+      "kind": "driven",
+      "riders": [
+       0,
+       1
+      ],
+      "mass_kg": 120.0,
+      "rolling": 1.5,
+      "air": 1.0
+     }
+    ],
+    "trainer": [
+     {
+      "slot": 0,
+      "kind": "power",
+      "power_w": 300.0
+     },
+     {
+      "slot": 1,
+      "kind": "grade",
+      "grade": 0.04
+     }
+    ],
+    "scene": {
+     "nodes": [
+      {
+       "id": "n1",
+       "model": "figure",
+       "anchor": {
+        "body": "team"
+       },
+       "offset_m": [
+        0.8,
+        0.0,
+        3.0
+       ],
+       "rotation_deg": [
+        0,
+        0,
+        0
+       ],
+       "scale": 1.0,
+       "visible": true,
+       "clip": {
+        "name": "run",
+        "rate": 1.2
+       }
+      }
+     ],
+     "lines": [
+      {
+       "from": {
+        "node": "n1",
+        "point": [
+         0,
+         1,
+         0
+        ]
+       },
+       "to": {
+        "node": "n1",
+        "point": [
+         0,
+         0.5,
+         1
+        ]
+       }
+      }
+     ],
+     "riders": [
+      {
+       "slot": 0,
+       "shown": false
+      }
+     ],
+     "camera": {
+      "anchor": {
+       "body": "team"
+      },
+      "back_m": 12.0,
+      "up_m": 4.0
+     }
+    },
+    "ui": [
+     {
+      "id": "p1",
+      "slot": "centre",
+      "to": "all",
+      "seconds": 5.0,
+      "items": [
+       {
+        "kind": "text",
+        "text": {
+         "en": "Go!",
+         "": "Go!"
+        },
+        "emphasis": true
+       },
+       {
+        "kind": "bar",
+        "value": 0.4
+       },
+       {
+        "kind": "value",
+        "value": 12.5,
+        "unit": "m/s",
+        "decimals": 1
+       },
+       {
+        "kind": "grid",
+        "rows": [
+         [
+          {
+           "": "1"
+          },
+          {
+           "": "Ana"
+          }
+         ]
+        ],
+        "highlight": 0
+       },
+       {
+        "kind": "image",
+        "image": "ext/ORQWA_script/badge.png"
+       }
+      ]
+     }
+    ],
+    "record": {
+     "values": {
+      "score": 12.0
+     },
+     "marks": [
+      {
+       "name": "split",
+       "slot": 0
+      }
+     ]
+    },
+    "state": {
+     "phase": "start"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,207 @@
+{
+ "bodies": [
+  {
+   "id": "team",
+   "kind": "driven",
+   "riders": [
+    0,
+    1
+   ],
+   "mass_kg": 120.0,
+   "rolling": 1.5,
+   "air": 0.9,
+   "speed_mps": 0.0,
+   "fallback": {
+    "id": "team",
+    "kind": "scripted",
+    "riders": [
+     0,
+     1
+    ],
+    "mass_kg": 0.0,
+    "rolling": 1.0,
+    "air": 1.0,
+    "speed_mps": 5.0
+   }
+  }
+ ],
+ "trainer": [
+  {
+   "slot": 0,
+   "kind": "power",
+   "grade": 0.0,
+   "power_w": 300.0,
+   "percent": 0.0,
+   "fallback": {
+    "slot": 0,
+    "kind": "resistance",
+    "grade": 0.0,
+    "power_w": 0.0,
+    "percent": 40.0
+   }
+  }
+ ],
+ "scene": {
+  "nodes": [
+   {
+    "id": "n1",
+    "model": "figure",
+    "anchor": {
+     "body": "team"
+    },
+    "offset_m": [
+     0.8,
+     0.0,
+     3.0
+    ],
+    "rotation_deg": [
+     0.0,
+     90.0,
+     0.0
+    ],
+    "scale": 1.0,
+    "visible": true,
+    "clip": {
+     "name": "run",
+     "rate": 1.2,
+     "phase": 0.5
+    },
+    "fallback": {
+     "id": "n1",
+     "model": "rider",
+     "anchor": {
+      "slot": 0
+     },
+     "offset_m": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "rotation_deg": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": 1.0,
+     "visible": true
+    }
+   }
+  ],
+  "lines": [
+   {
+    "from": {
+     "node": "n1",
+     "point": [
+      0.0,
+      1.0,
+      0.0
+     ]
+    },
+    "to": {
+     "node": "n1",
+     "point": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    "fallback": {
+     "from": {
+      "node": "n1",
+      "point": [
+       0.0,
+       0.0,
+       0.0
+      ]
+     },
+     "to": {
+      "node": "n1",
+      "point": [
+       0.0,
+       0.0,
+       1.0
+      ]
+     }
+    }
+   }
+  ],
+  "riders": [
+   {
+    "slot": 0,
+    "shown": false
+   }
+  ],
+  "camera": {
+   "anchor": {
+    "route_m": 100.0
+   },
+   "back_m": 12.0,
+   "up_m": 4.0
+  }
+ },
+ "ui": [
+  {
+   "id": "p1",
+   "slot": "centre",
+   "to": "all",
+   "seconds": 5.0,
+   "items": [
+    {
+     "kind": "grid",
+     "text": {
+      "en": "Standings",
+      "": "Standings"
+     },
+     "emphasis": true,
+     "value": 0.5,
+     "unit": "m",
+     "decimals": 1,
+     "rows": [
+      [
+       {
+        "": "1"
+       },
+       {
+        "": "Ana"
+       }
+      ]
+     ],
+     "highlight": 0,
+     "image": "ext/ORQWA_script/badge.png",
+     "fallback": {
+      "kind": "text",
+      "text": {
+       "": "-"
+      },
+      "emphasis": false,
+      "value": 0.0,
+      "unit": "",
+      "decimals": 0,
+      "rows": [],
+      "image": ""
+     }
+    }
+   ],
+   "fallback": {
+    "id": "p1",
+    "slot": "top",
+    "to": 3,
+    "items": []
+   }
+  }
+ ],
+ "record": {
+  "values": {
+   "score": 12.0
+  },
+  "marks": [
+   {
+    "name": "split",
+    "slot": 0
+   }
+  ]
+ },
+ "state": {
+  "phase": "start"
+ }
+}

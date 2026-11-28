@@ -189,14 +189,16 @@ the work, within its limits.
 #### The module
 
 - WebAssembly 1.0 with mutable globals, sign extension, non-trapping float-to-int conversion,
-  bulk memory and multiple values. This set only grows.
+  bulk memory, multiple values and reference types (which Rust's `wasm32-unknown-unknown`
+  target uses by default). One memory, no start function. This set only grows.
 - It exports a memory `memory`, `alloc(len: i32) -> i32` and
   `tick(ptr: i32, len: i32) -> i64`. ORQWA calls `alloc` for room for the input, writes the
   input there as UTF-8 JSON and calls `tick`. The result holds the output's address in its low
   32 bits and its length in its high 32 bits.
 - It may import only `orqwa_v1.log(ptr: i32, len: i32)`, which writes a UTF-8 line to ORQWA's
   log. A module importing anything else is refused when the world is opened.
-- Per tick: a fixed fuel budget, memory up to 16 MiB, output and `state` up to 64 KiB each. A
+- Per tick: a fixed fuel budget (about 20 million instructions), memory up to 16 MiB, and
+  output up to 64 KiB, `state` included. Log lines are kept to 16 per tick of 1 KiB each. A
   trap, running out of fuel, or output that is not as described here stops the module for the
   rest of the ride; the ride goes on as if the world had no script, and ORQWA says so.
 
@@ -216,7 +218,9 @@ the work, within its limits.
 
 - `features` lists what this ORQWA offers, as `<primitive>.<kind>`. Modules check it, not
   `api`, before using an addition.
-- `route` is sampled every `step_m` from 0, the way ORQWA rides it.
+- `route` is sampled every `step_m` from 0, the way ORQWA rides it. It comes with the first
+  tick, and again only if it changes; the module keeps what it needs. The first tick may also
+  use five times the usual fuel.
 - `slot` is a rider's stable place in the ride, from 0. A rider who leaves is no longer listed.
 - `actions` counts each rider's presses of **World action** since the last tick.
 - `state` is what the module returned in the previous tick's output, `null` at first.
