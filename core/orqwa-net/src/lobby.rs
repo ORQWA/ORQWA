@@ -1643,9 +1643,12 @@ fn ended(
     let Err(error) = result else {
         return;
     };
-    // Being removed or the group ending is told through the ending, not as an error (#700).
+    // Being removed or the group ending is told through the ending, and removing a rider
+    // closes their connection here: neither is an error (#700).
     if matches!(error, LobbyError::Lost | LobbyError::Link(LinkError::Lost))
-        && (connection.ended_normally() || connection.ending() != Ending::Lost)
+        && (connection.ended_normally()
+            || connection.closed_locally()
+            || connection.ending() != Ending::Lost)
     {
         tracing::info!(peer = peer.value(), operation, "group connection closed");
         return;

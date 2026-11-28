@@ -676,12 +676,15 @@ fn a_removed_friend_or_one_whose_organizer_ended_the_group_cannot_join_again() {
         wait(&mut host, &mut peer, |_, p| {
             p.group().phase == Phase::Riding
         });
+        let seat = usize::from(peer.group().me);
         if removed {
             host.group_remove(peer.group().me).unwrap();
         } else {
             host.group_leave();
         }
-        wait(&mut host, &mut peer, |_, p| p.group().phase == Phase::Ended);
+        wait(&mut host, &mut peer, |h, p| {
+            p.group().phase == Phase::Ended && (!removed || h.group().roster[seat].is_none())
+        });
         // #536: the friend reads why, and only a lost connection offers Join again.
         let ending = if removed {
             Ending::Removed
@@ -690,6 +693,9 @@ fn a_removed_friend_or_one_whose_organizer_ended_the_group_cannot_join_again() {
         };
         assert_eq!(peer.group().ending, ending);
         assert_eq!(peer.group().error, "", "the ending says it all (#700)");
+        if removed {
+            assert_eq!(host.group().error, "", "removing a rider is no error");
+        }
         assert!(!peer.group_can_rejoin());
         assert!(peer.group_rejoin().is_err());
         assert!(peer.ride.is_some(), "the ride goes on alone");
@@ -1296,6 +1302,10 @@ fn a_removed_fallback_is_told_they_were_removed_instead_of_taking_over() {
                 && app.group().phase == Phase::Riding
         })
     });
+    assert!(!ben.group().host, "the organizer is still there");
+    for app in [&host, &ben] {
+        assert_eq!(app.group().error, "", "removing a rider is no error");
+    }
     anna.group_leave();
     ben.group_leave();
     host.group_leave();
@@ -1306,9 +1316,10 @@ fn a_friend_removed_while_a_fallback_stands_by_reads_only_that_they_were_removed
     let directories = [Directory::new(), Directory::new(), Directory::new()];
     let [mut host, mut anna, mut ben] = directories.each_ref().map(Directory::app);
     ride_in_three_with_anna_standing_by(&mut host, &mut anna, &mut ben);
-    host.group_remove(ben.group().me).unwrap();
-    wait3([&mut host, &mut anna, &mut ben], |_, _, b| {
-        b.group().phase == Phase::Ended
+    let seat = ben.group().me;
+    host.group_remove(seat).unwrap();
+    wait3([&mut host, &mut anna, &mut ben], |h, _, b| {
+        b.group().phase == Phase::Ended && h.group().roster[usize::from(seat)].is_none()
     });
     // #700, R249: no error from the standby link the removal ends.
     assert_eq!(ben.group().ending, Ending::Removed);
@@ -1318,6 +1329,7 @@ fn a_friend_removed_while_a_fallback_stands_by_reads_only_that_they_were_removed
         !anna.group().host,
         "the fallback still only stands by, the organizer is still there"
     );
+    assert_eq!(host.group().error, "", "removing a rider is no error");
     ben.group_leave();
     anna.group_leave();
     host.group_leave();

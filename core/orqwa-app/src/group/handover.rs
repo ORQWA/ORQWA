@@ -891,6 +891,15 @@ impl Coordinator {
                 message: Message::Commit { epoch, proof },
                 ..
             })) => return self.commit(snapshot, &context, epoch, &proof),
+            // A standby nobody takes over from is background work, offered again later: its
+            // fallback leaving, removed for instance, is no error for the riders (#700).
+            Event::Link(Some(LobbyEvent::Left { .. } | LobbyEvent::HostLeft) | None)
+                if self.standby && !self.old_lost && !self.revealed =>
+            {
+                tracing::debug!("a fallback organizer's standby link ended");
+                self.fail(session, snapshot);
+                return Ok(None);
+            }
             Event::Link(Some(LobbyEvent::Left { .. } | LobbyEvent::HostLeft) | None) => {
                 return Err("A replacement connection ended before handover completed.".into());
             }
