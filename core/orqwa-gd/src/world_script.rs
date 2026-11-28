@@ -9,8 +9,8 @@ use orqwa_world_api::Anchor;
 /// `{answers, stopped, output, poses, camera, models}`: `answers` counts the script's answers,
 /// `output` is the last one as JSON (`docs/world-files.md`), `poses` one `{x, y, elevation_m,
 /// heading}` (or `null`, not placed) per `output.scene.nodes` entry, `camera` the hint's anchor
-/// pose with `back_m` and `up_m` (or `null`), `models` the script's model files by name;
-/// `stopped` says why the script stopped, empty while it runs. `null` without a script.
+/// pose with `back_m`, `up_m` and `aim_up_m` (or `null`), `models` the script's model files by
+/// name; `stopped` says why the script stopped, empty while it runs. `null` without a script.
 pub(super) fn state(app: &App, local: f64) -> Variant {
     let Some(driver) = app.world_script() else {
         return Variant::nil();
@@ -39,6 +39,7 @@ pub(super) fn state(app: &App, local: f64) -> Variant {
         let mut at = pose(&camera.anchor)?;
         at.set("back_m", camera.back_m);
         at.set("up_m", camera.up_m);
+        at.set("aim_up_m", camera.aim_up_m);
         Some(at)
     });
     let camera = camera

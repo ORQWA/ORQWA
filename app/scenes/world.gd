@@ -977,7 +977,7 @@ func _place_ghost(ghost: Variant, delta: float) -> void:
 
 
 ## Where a world's script would like the chase camera (R302): behind and above its anchor,
-## looking at it.
+## looking at what it follows there.
 static func _hinted_camera(hint: Dictionary) -> Transform3D:
 	var x: float = hint["x"]
 	var y: float = hint["y"]
@@ -985,9 +985,10 @@ static func _hinted_camera(hint: Dictionary) -> Transform3D:
 	var heading: float = hint["heading"]
 	var back: float = hint["back_m"]
 	var up: float = hint["up_m"]
+	var aim: float = hint.get("aim_up_m", 1.0)
 	var anchor: Vector3 = Vector3(x, elevation, -y)
 	var eye: Vector3 = anchor + Basis(Vector3.UP, -heading) * Vector3(0.0, up, back)
-	return Transform3D(Basis.IDENTITY, eye).looking_at(anchor + Vector3.UP, Vector3.UP)
+	return Transform3D(Basis.IDENTITY, eye).looking_at(anchor + Vector3.UP * aim, Vector3.UP)
 
 
 ## Eases a lean towards `target` over a moment, at once after a jump.
