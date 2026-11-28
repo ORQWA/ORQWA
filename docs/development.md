@@ -48,7 +48,7 @@ does the same.
 | Refresh the app's About notices and the CLI's packaged dependency/Opus licence file, after changing dependencies ([ADR 0018](adr/0018-about-and-notices.md)) | `scripts/notices.sh` |
 | Make the map detail of an OpenStreetMap region download and measure it ([ADR 0033](adr/0033-map-detail.md)) | `cargo run --release --manifest-path core/Cargo.toml -p orqwa-cli -- detail <region>-latest.osm.pbf <out>` |
 | Run the CLI with the fake trainer | `cargo run --manifest-path core/Cargo.toml -p orqwa-cli -- ride --fake` |
-| Measure how much Mapillary street imagery a route has, and what a scan costs (`MAPILLARY_TOKEN` from the environment) | `cargo run --manifest-path core/Cargo.toml -p orqwa-cli -- imagery-scan <route.gpx>` |
+| Measure how much Mapillary street imagery a route has, what a scan costs, and what the photographs say (`--facts`; `MAPILLARY_TOKEN` from the environment) | `cargo run --manifest-path core/Cargo.toml -p orqwa-cli -- imagery-scan <route.gpx> [--facts --facts-out facts.json]` |
 
 `scripts/check.sh` keeps every check in one container run. Godot smoke checks use the optimized
 Rust test profile, including debug assertions and overflow checks, so their GDExtension reuses

@@ -67,6 +67,8 @@ pub struct Located {
     pub offset: f64,
     /// Which side of the road it lies on, travelling from the first point.
     pub side: Side,
+    /// Which way the road runs there, in radians clockwise from north.
+    pub road_heading: f64,
 }
 
 /// The side of the road an image lies on.
@@ -105,7 +107,7 @@ pub fn cells(points: &[LatLon], width: f64) -> Vec<Cell> {
 /// metres, or `None` for an empty line.
 #[must_use]
 pub fn distance_to_route(points: &[LatLon], at: LatLon) -> Option<(f64, f64)> {
-    nearest(points, at).map(|(distance, along, _)| (distance, along))
+    nearest(points, at).map(|(distance, along, _, _)| (distance, along))
 }
 
 /// Places `images` against the route, nearest first.
@@ -114,7 +116,7 @@ pub fn locate(points: &[LatLon], images: &[StreetImage]) -> Vec<Located> {
     let mut located: Vec<Located> = images
         .iter()
         .filter_map(|image| {
-            let (offset, along, cross) = nearest(points, image.position)?;
+            let (offset, along, cross, road_heading) = nearest(points, image.position)?;
             Some(Located {
                 image: image.clone(),
                 along,
@@ -126,6 +128,7 @@ pub fn locate(points: &[LatLon], images: &[StreetImage]) -> Vec<Located> {
                 } else {
                     Side::Right
                 },
+                road_heading,
             })
         })
         .collect();
@@ -133,8 +136,9 @@ pub fn locate(points: &[LatLon], images: &[StreetImage]) -> Vec<Located> {
     located
 }
 
-/// How far `at` lies from the line, how far along it, and which side (positive is left).
-fn nearest(points: &[LatLon], at: LatLon) -> Option<(f64, f64, f64)> {
+/// How far `at` lies from the line, how far along it, which side (positive is left), and
+/// which way the line runs there (radians clockwise from north).
+fn nearest(points: &[LatLon], at: LatLon) -> Option<(f64, f64, f64, f64)> {
     let first = *points.first()?;
     let (lat0, lon0) = first;
     let east = METRES_PER_DEGREE * lat0.to_radians().cos();
@@ -143,10 +147,10 @@ fn nearest(points: &[LatLon], at: LatLon) -> Option<(f64, f64, f64)> {
 
     if points.len() == 1 {
         let (ax, ay) = to_xy(first);
-        return Some(((px - ax).hypot(py - ay), 0.0, 0.0));
+        return Some(((px - ax).hypot(py - ay), 0.0, 0.0, 0.0));
     }
 
-    let mut best: Option<(f64, f64, f64)> = None;
+    let mut best: Option<(f64, f64, f64, f64)> = None;
     let mut along = 0.0;
     for pair in points.windows(2) {
         let (ax, ay) = to_xy(pair[0]);
@@ -161,8 +165,8 @@ fn nearest(points: &[LatLon], at: LatLon) -> Option<(f64, f64, f64)> {
         let (cx, cy) = (ax + t * dx, ay + t * dy);
         let distance = (px - cx).hypot(py - cy);
         let cross = dx * (py - ay) - dy * (px - ax);
-        if best.is_none_or(|(closest, _, _)| distance < closest) {
-            best = Some((distance, along + t * length, cross));
+        if best.is_none_or(|(closest, _, _, _)| distance < closest) {
+            best = Some((distance, along + t * length, cross, dx.atan2(dy)));
         }
         along += length;
     }
@@ -210,6 +214,7 @@ mod tests {
             position: (lat, lon),
             heading: 0.0,
             captured_at: 0,
+            thumbnail: None,
         }
     }
 

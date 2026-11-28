@@ -1331,7 +1331,8 @@ network in the ride path (R3).
 - [x] ADR 0046: Mapillary as the source, facts not pixels, the optional world extension
 - [x] `StreetImagery` trait, the Mapillary metadata client and its cache; `orqwa-cli
   imagery-scan` measuring coverage and requests per kilometre
-- [ ] Thumbnails, decoding and the fact extractor (the decoder crate agreed first)
+- [x] Thumbnails (`zune-jpeg`), the fact extractor, candidate selection and the thumbnail and
+  fact caches; `imagery-scan --facts` measuring what the photographs say
 - [ ] Facades, storeys and street-level detail in the world; generator bump and render review
 - [ ] The setting, token, progress and offline fallback in the app
 - [ ] Course-file extension, attribution, the wiki's server list and usage guide

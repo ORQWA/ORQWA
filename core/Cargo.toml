@@ -42,6 +42,8 @@ opusic-c = "1.6.1"
 ffmpeg-next = { version = "9.0.0", default-features = false, features = ["codec", "format", "software-scaling", "static"] }
 # QR codes for pairing a phone with the remote (#228); no image output, Godot draws it.
 fast_qr = { version = "0.14.0", default-features = false }
+# JPEG thumbnails for the street-imagery facts (ADR 0046): pure Rust, MIT/Apache-2.0/Zlib.
+zune-jpeg = "0.5.15"
 # zlib through zlib-rs, as zip already has it: the blobs of OpenStreetMap's PBF files.
 flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs"] }
 embedded-io-adapters = { version = "0.7.0", features = ["std"] }

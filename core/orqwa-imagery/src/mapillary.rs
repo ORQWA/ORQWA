@@ -17,13 +17,13 @@ use serde::{Deserialize, Serialize};
 use crate::corridor::{self, Cell};
 
 /// Version of the cache layout: raised when what is kept or how it is named changes.
-pub const CACHE_VERSION: &str = "mapillary-metadata-v1";
+pub const CACHE_VERSION: &str = "mapillary-metadata-v2";
 
 /// Where the API lives.
 const ENDPOINT: &str = "https://graph.mapillary.com/images";
 
-/// What is asked for: enough to place an image and choose between them, nothing more.
-const FIELDS: &str = "id,geometry,compass_angle,captured_at";
+/// What is asked for: enough to place an image, choose between them and fetch the chosen one.
+const FIELDS: &str = "id,geometry,compass_angle,captured_at,thumb_1024_url";
 
 /// The most images one response may hold.
 const PAGE_LIMIT: usize = 2_000;
@@ -33,6 +33,10 @@ const MAX_PAGES: usize = 10;
 
 /// How long a cached cell is used before the source is asked again.
 const FRESH: Duration = Duration::from_hours(30 * 24);
+
+/// The most one thumbnail may be, in bytes. A reduced copy is a few hundred kilobytes; a larger
+/// body is not one, and is refused instead of buffered: the source is not trusted.
+const MAX_THUMBNAIL: usize = 4 << 20;
 
 /// Mapillary, cached under a directory.
 pub struct Mapillary {
@@ -190,7 +194,7 @@ impl Mapillary {
                     ));
                 }
                 429 => {
-                    return Err(ImageryError::Rejected(
+                    return Err(ImageryError::RateLimited(
                         "Mapillary's rate limit is reached: try again later".to_owned(),
                     ));
                 }
@@ -253,6 +257,66 @@ impl StreetImagery for Mapillary {
             Ok(images)
         })
     }
+
+    fn thumbnail<'a>(
+        &'a self,
+        image: &'a StreetImage,
+    ) -> BoxFuture<'a, Result<Vec<u8>, ImageryError>> {
+        Box::pin(async move {
+            let Some(url) = image.thumbnail.as_deref() else {
+                return Err(ImageryError::Unavailable(format!(
+                    "Mapillary has no reduced copy of image {}",
+                    image.id
+                )));
+            };
+            if !self.online {
+                return Err(ImageryError::Unavailable(format!(
+                    "image {} is not cached and the app is offline",
+                    image.id
+                )));
+            }
+            let Some(token) = self.token.as_deref() else {
+                return Err(ImageryError::Unavailable(
+                    "set MAPILLARY_TOKEN to a Mapillary access token".to_owned(),
+                ));
+            };
+            self.requests.fetch_add(1, Ordering::Relaxed);
+            let response = self
+                .client
+                .get(url)
+                .header("Authorization", format!("OAuth {token}"))
+                .send()
+                .await
+                .map_err(|error| ImageryError::Unavailable(describe(&error)))?;
+            let status = response.status();
+            if status.is_success() {
+                let mut response = response;
+                let mut bytes = Vec::new();
+                while let Some(chunk) = response
+                    .chunk()
+                    .await
+                    .map_err(|error| ImageryError::Unavailable(describe(&error)))?
+                {
+                    collect(&mut bytes, &chunk, &image.id)?;
+                }
+                return Ok(bytes);
+            }
+            let body = response.text().await.unwrap_or_default();
+            match status.as_u16() {
+                401 | 403 => Err(ImageryError::Unauthorized(
+                    "Mapillary turned the token down".to_owned(),
+                )),
+                429 => Err(ImageryError::RateLimited(
+                    "Mapillary's rate limit is reached: try again later".to_owned(),
+                )),
+                _ => Err(ImageryError::Rejected(format!(
+                    "Mapillary answered {status} for image {}: {}",
+                    image.id,
+                    snippet(&body)
+                ))),
+            }
+        })
+    }
 }
 
 /// A page of the images endpoint.
@@ -277,6 +341,8 @@ struct Raw {
     compass_angle: Option<f64>,
     /// Milliseconds since the Unix epoch.
     captured_at: Option<i64>,
+    /// A 1024-pixel-wide copy, for deriving facts from it.
+    thumb_1024_url: Option<String>,
 }
 
 /// A `GeoJSON` point.
@@ -294,6 +360,7 @@ impl From<Raw> for StreetImage {
             heading: raw.compass_angle.unwrap_or(0.0).to_radians(),
             // Mapillary gives milliseconds; StreetImage keeps seconds.
             captured_at: raw.captured_at.map_or(0, |millis| millis / 1000),
+            thumbnail: raw.thumb_1024_url,
         }
     }
 }
@@ -314,6 +381,9 @@ struct CachedImage {
     lon: f64,
     heading: f64,
     captured_at: i64,
+    /// Added after the first cache version; older files simply lack it.
+    #[serde(default)]
+    thumbnail: Option<String>,
 }
 
 impl From<&StreetImage> for CachedImage {
@@ -324,6 +394,7 @@ impl From<&StreetImage> for CachedImage {
             lon: image.position.1,
             heading: image.heading,
             captured_at: image.captured_at,
+            thumbnail: image.thumbnail.clone(),
         }
     }
 }
@@ -335,6 +406,7 @@ impl From<CachedImage> for StreetImage {
             position: (image.lat, image.lon),
             heading: image.heading,
             captured_at: image.captured_at,
+            thumbnail: image.thumbnail,
         }
     }
 }
@@ -399,6 +471,17 @@ fn describe(error: &dyn std::error::Error) -> String {
     text
 }
 
+/// Adds one body chunk, refusing a body over [`MAX_THUMBNAIL`] instead of buffering it.
+fn collect(bytes: &mut Vec<u8>, chunk: &[u8], id: &str) -> Result<(), ImageryError> {
+    if bytes.len().saturating_add(chunk.len()) > MAX_THUMBNAIL {
+        return Err(ImageryError::Rejected(format!(
+            "Mapillary's copy of image {id} is larger than {MAX_THUMBNAIL} bytes"
+        )));
+    }
+    bytes.extend_from_slice(chunk);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::{Read, Write};
@@ -416,6 +499,17 @@ mod tests {
         ));
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn a_thumbnail_larger_than_the_limit_is_refused() {
+        let mut bytes = vec![0; MAX_THUMBNAIL];
+        assert!(matches!(
+            collect(&mut bytes, &[0], "1"),
+            Err(ImageryError::Rejected(_))
+        ));
+        bytes.pop();
+        collect(&mut bytes, &[0], "1").unwrap();
     }
 
     /// A stand-in for Mapillary serving `responses` in order; `{base}` is replaced with its
@@ -480,7 +574,7 @@ mod tests {
             format!(r#","paging":{{"next":"{next}"}}"#)
         });
         format!(
-            r#"{{"data":[{{"id":"{id}","geometry":{{"type":"Point","coordinates":[7.0025,46.0025]}},"compass_angle":90.0,"captured_at":1700000000000}}]{paging}}}"#
+            r#"{{"data":[{{"id":"{id}","geometry":{{"type":"Point","coordinates":[7.0025,46.0025]}},"compass_angle":90.0,"captured_at":1700000000000,"thumb_1024_url":"{{base}}/thumb/{id}.jpg"}}]{paging}}}"#
         )
     }
 

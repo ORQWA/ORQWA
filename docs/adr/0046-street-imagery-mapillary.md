@@ -1,6 +1,6 @@
 # ADR 0046 — Street imagery from Mapillary
 
-- Status: proposed (step 2 of 6: the client and the scan)
+- Status: proposed (step 3 of 6: thumbnails, decoding and the fact extractor)
 - Date: 2026-11-28
 - Requirements: R307, R3, R33, R89, R101
 - Supersedes: the imagery source of R18 (dropped 2026-10-15), which stays dropped for Google
@@ -40,9 +40,11 @@ KartaView offers a similar corpus under the same licence if Mapillary proves too
   point. For each stretch of road and side, the newest image looking along the road is chosen;
   the rest of the metadata is discarded.
 - **Only chosen images are fetched, once, and only at thumbnail size.** Downloads are bounded
-  (six at a time), respect `429` with backoff, and are cached by image id, so rebuilding a
-  course costs no requests. The derived facts are cached beside the images by image id, so a
-  second preparation is a file read.
+  (six at a time, at most 4 MiB each), respect `429` with backoff, and are cached by image id,
+  so rebuilding a course costs no requests. The derived facts are cached beside the images by
+  image id, so a second preparation is a file read. A stretch keeps up to three candidates and
+  preparation tries them in order until one shows a wall; a stretch none of them shows keeps
+  the first picture's facts, which still describe the road.
 - **Facts stream into the world as its chunks build.** The world builder already fills chunks
   in order; hints for a chunk are derived while the next chunk's images download, so the first
   streets appear within seconds of the route being matched instead of after the whole corridor.
@@ -106,6 +108,33 @@ The Oberalp scan first stopped at the source's rate limit after nine cells and f
 next run; the cache kept what had arrived. Pacing across a long corridor belongs with the
 extractor, not the measurement.
 
+### What the photographs said
+
+`orqwa-cli imagery-scan <route> --facts` on the same courses, one image per 40 m stretch and
+side, decoded with `zune-jpeg` (pure Rust, no C dependency):
+
+| Course | Stretches | With a wall |
+|---|---:|---:|
+| Bielersee | 73 | 34 |
+| Gurtenstrasse | 11 | 2 |
+| Kirchenfeldbrücke | 8 | 7 |
+| London cycleway | 9 | 8 |
+
+On the Bielersee course the walls came out concrete 25, plaster 4, stone 2 and unknown 3; the
+ground floor showed a plain wall in 23 stretches, a garage door in 8 and an awning in 3, and
+was not visible in 39.
+
+The extractor reduces a picture to a 64 by 48 grid, finds the largest even, upright, solid
+region as the facade, and reads its colour, storeys and material from that region only. It
+keeps no pixel: the facts above are all that leaves. City streets and bridges yield a wall in
+most stretches; a country road yields one where houses stand close to it, which is the
+expected limit of a photograph looking along the road.
+
+The thumbnail and fact caches (`imagery-thumbnails-v1`, `imagery-facts-v5`) are keyed by image
+id, so a second run downloads and decodes nothing. Thumbnails are untrusted input: a body over
+4 MiB is refused before it is buffered, and the decoder refuses pictures over 2048 pixels on a
+side.
+
 ## Consequences
 
 - Street imagery costs nothing but the rider's token and a few thousand requests per course;
@@ -122,5 +151,5 @@ extractor, not the measurement.
 - Whether hint-derived worlds may be sold is the maintainer's call, on the reasoning above.
   Until it is made, the extension is written for every course and the paid-world pipeline
   (ADR 0043) does not seal a world that carries it.
-- How much of the corridors riders actually ride has imagery at usable resolution is unknown
-  until step 2 runs.
+- How much the facts improve the look, and whether the simple extractor is good enough on
+  streets where a facade is partly hidden, is what step 4's render review decides.

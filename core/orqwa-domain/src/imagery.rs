@@ -29,6 +29,9 @@ pub struct StreetImage {
     pub heading: f64,
     /// When it was taken, in seconds since the Unix epoch.
     pub captured_at: i64,
+    /// Where the source serves a reduced copy of it, if it does. Only the local cache keeps
+    /// this; it is never written to a course or world.
+    pub thumbnail: Option<String>,
 }
 
 /// Where imagery is wanted: the route and how far from it to look.
@@ -40,15 +43,108 @@ pub struct Corridor<'a> {
     pub width: f64,
 }
 
-/// Why street imagery could not be found.
+/// A colour as 8-bit red, green and blue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rgb {
+    /// Red.
+    pub red: u8,
+    /// Green.
+    pub green: u8,
+    /// Blue.
+    pub blue: u8,
+}
+
+/// What a wall is made of, as far as a photograph can tell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material {
+    /// Fired clay bricks.
+    Brick,
+    /// Render or plaster over masonry.
+    Plaster,
+    /// Fair-faced concrete.
+    Concrete,
+    /// Timber boards.
+    Wood,
+    /// Natural stone.
+    Stone,
+    /// Sheet metal or metal cladding.
+    Metal,
+    /// Clay roof tiles.
+    Tiles,
+    /// Slate roofing.
+    Slate,
+    /// Not enough to tell.
+    Unknown,
+}
+
+/// What a ground floor shows to the street.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Frontage {
+    /// A large shop window, usually framed.
+    ShopWindow,
+    /// An awning or canopy over the ground floor.
+    Awning,
+    /// A garage or workshop door.
+    Garage,
+    /// Plain wall or an ordinary entrance.
+    Wall,
+    /// Not enough to tell.
+    Unknown,
+}
+
+/// The wall a street shows: its base colour, how many storeys, and what it is made of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FacadeFacts {
+    /// The wall's base colour, quantised so that a second preparation gives the same value.
+    pub colour: Rgb,
+    /// Storeys visible above the ground floor, at least one.
+    pub storeys: u8,
+    /// What the wall is made of.
+    pub material: Material,
+}
+
+/// A roof visible above the wall.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RoofFacts {
+    /// The roof's colour, quantised like the wall's.
+    pub colour: Rgb,
+    /// What the roof is made of.
+    pub material: Material,
+}
+
+/// What one photograph says about the buildings beside the road (R307, [ADR 0046]).
+///
+/// This is all a world may keep: no image, crop, outline or texture is part of it. Missing
+/// parts mean the photograph did not show them, not that the place lacks them.
+///
+/// [ADR 0046]: ../../docs/adr/0046-street-imagery-mapillary.md
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StreetFacts {
+    /// The wall facing the road, if one was in view.
+    pub facade: Option<FacadeFacts>,
+    /// The roof above it, if one was in view.
+    pub roof: Option<RoofFacts>,
+    /// What the ground floor shows.
+    pub frontage: Frontage,
+    /// Whether a kerb separates road and wall.
+    pub kerb: bool,
+    /// Whether greenery (a hedge, a tree, a verge) stands at street level.
+    pub greenery: bool,
+}
+
+/// Why street imagery could not be found or used.
 #[derive(Debug)]
 pub enum ImageryError {
     /// The source is unreachable, offline, or was not given a token.
     Unavailable(String),
     /// The source turned the token down.
     Unauthorized(String),
+    /// The source asked us to slow down.
+    RateLimited(String),
     /// The source refused the request.
     Rejected(String),
+    /// An image could not be decoded.
+    Decode(String),
     /// The cache could not be read or written.
     Cache(std::io::Error),
 }
@@ -56,9 +152,11 @@ pub enum ImageryError {
 impl fmt::Display for ImageryError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unavailable(why) | Self::Unauthorized(why) | Self::Rejected(why) => {
-                f.write_str(why)
-            }
+            Self::Unavailable(why)
+            | Self::Unauthorized(why)
+            | Self::RateLimited(why)
+            | Self::Rejected(why)
+            | Self::Decode(why) => f.write_str(why),
             Self::Cache(error) => write!(f, "imagery cache: {error}"),
         }
     }
@@ -68,7 +166,11 @@ impl std::error::Error for ImageryError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Cache(error) => Some(error),
-            Self::Unavailable(_) | Self::Unauthorized(_) | Self::Rejected(_) => None,
+            Self::Unavailable(_)
+            | Self::Unauthorized(_)
+            | Self::RateLimited(_)
+            | Self::Rejected(_)
+            | Self::Decode(_) => None,
         }
     }
 }
@@ -96,4 +198,19 @@ pub trait StreetImagery: Send + Sync {
         corridor: Corridor<'a>,
         progress: &'a mut (dyn FnMut(usize, usize) + Send),
     ) -> BoxFuture<'a, Result<Vec<StreetImage>, ImageryError>>;
+
+    /// A reduced copy of `image`, for deriving facts from it. It is never stored in a world.
+    ///
+    /// A source that has no reduced copies leaves this unimplemented.
+    fn thumbnail<'a>(
+        &'a self,
+        image: &'a StreetImage,
+    ) -> BoxFuture<'a, Result<Vec<u8>, ImageryError>> {
+        let _ = image;
+        Box::pin(async {
+            Err(ImageryError::Unavailable(
+                "this source has no reduced copies of its images".to_owned(),
+            ))
+        })
+    }
 }

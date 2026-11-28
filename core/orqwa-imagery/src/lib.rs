@@ -6,7 +6,13 @@
 //! names no provider derives them. This crate is the provider side of that seam.
 
 mod corridor;
+mod facts;
 mod mapillary;
+mod prepare;
+mod select;
 
 pub use corridor::{CELL_DEGREES, Cell, Located, Side, cells, distance_to_route, locate};
+pub use facts::{Pixels, derive, frontage_name, material_name};
 pub use mapillary::{CACHE_VERSION, Mapillary};
+pub use prepare::{Derived, FACTS_CACHE, Prepared, THUMBNAIL_CACHE, prepare, thumbnail_path};
+pub use select::{Chosen, FrameSide, STRETCH, choose};
