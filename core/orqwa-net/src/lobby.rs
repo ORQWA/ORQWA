@@ -2190,7 +2190,9 @@ async fn client_actor(
     readers.spawn(async move {
         loop {
             let message = wire::read(&mut recv).await?;
-            messages.try_send(message).map_err(|_| LobbyError::Lost)?;
+            // After a stall the organizer's controls arrive all at once (#698): wait for the
+            // actor, and let the stream's flow control hold back the rest.
+            messages.send(message).await.map_err(|_| LobbyError::Lost)?;
         }
         #[allow(unreachable_code)]
         Ok::<(), LobbyError>(())
@@ -2216,7 +2218,7 @@ async fn client_actor(
     let mut told_rejoined = false;
     let mut requested = None;
     let mut count = 0_u8;
-    let mut control_period = Instant::now();
+    let mut app_controls = crate::traffic::ControlIngress::new(std::time::Instant::now());
     let mut ticker = interval(STATE_EVERY);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // A host may forward eight independent 5 Hz streams. Charge even unknown/stale packets.
@@ -2245,8 +2247,8 @@ async fn client_actor(
                     tracing::info!(peer = me.value(), enabled, "sent group voice listening change");
                 },
                 message = incoming.recv() => {
-                    if app_lobby && control_period.elapsed()>=Duration::from_secs(1) {count=0;control_period=Instant::now();}
-                    count = count.checked_add(1).filter(|n| *n <= 64).ok_or(LobbyError::Protocol)?;
+                    if app_lobby { app_controls.accept(std::time::Instant::now()).map_err(|_| LobbyError::Protocol)?; }
+                    else { count = count.checked_add(1).filter(|n| *n <= 64).ok_or(LobbyError::Protocol)?; }
                     match message.ok_or(LobbyError::Lost)? {
                         // Fresh, this lobby asks for entry again: it has no ride state to resume.
                         Message::Rejoined(was_entered) if !told_rejoined => {told_rejoined = true; rejoined = true; if resumed {entered = was_entered;}}
@@ -4275,5 +4277,110 @@ mod tests {
         .await;
         healthy.close().await;
         host.close().await;
+    }
+
+    /// #698, R303: a friend's ORQWA that stops for a while, frozen, briefly asleep or
+    /// overloaded, rides on over the same connection, though the organizer's controls from
+    /// all that time arrive at once. Anna runs on a runtime of her own, which a blocked thread
+    /// stops as a frozen process stops, while the organizer's runtime goes on.
+    #[tokio::test]
+    async fn a_friend_whose_computer_stalls_rides_on_over_the_same_connection() {
+        // Long enough for the organizer's workout clocks and latency reports to exceed both
+        // a channel's slots and a second's controls, short of the idle timeout.
+        const STALL: Duration = Duration::from_secs(15);
+        let path = directory("stalled");
+        let (mut host, selection) = workout_lobby(&path).await;
+        let invite = host.invite().clone();
+        let (reply_sender, reply) = std::sync::mpsc::channel();
+        let (admitted, admission) = std::sync::mpsc::channel();
+        let (seat_sender, seat) = std::sync::mpsc::channel();
+        let anna = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async move {
+                let joiner = Joiner::open("Rider", invite.clone(), invite.route, &options())
+                    .await
+                    .unwrap();
+                reply_sender.send(joiner.reply().clone()).unwrap();
+                tokio::task::spawn_blocking(move || admission.recv().unwrap())
+                    .await
+                    .unwrap();
+                let mut anna = JoinerLobby::join(joiner, rider("Anna")).await.unwrap();
+                seat_sender.send(anna.me()).unwrap();
+                client_event(&mut anna, |e| matches!(e, LobbyEvent::Selection(_))).await;
+                anna.ready(1, true).unwrap();
+                client_event(&mut anna, |e| matches!(e, LobbyEvent::Start { .. })).await;
+                tokio::time::sleep(Duration::from_millis(1100)).await;
+                std::thread::sleep(STALL);
+                let riding = RiderState {
+                    at: Duration::from_secs(1),
+                    distance: Meters(99.0),
+                    ..RiderState::default()
+                };
+                let mut endings = Vec::new();
+                let _ = timeout(Duration::from_secs(4), async {
+                    let mut every = interval(STATE_EVERY);
+                    loop {
+                        tokio::select! {
+                            _ = every.tick() => anna.send_state(riding).unwrap(),
+                            event = anna.next() => match event {
+                                Some(event @ (LobbyEvent::Failed { .. } | LobbyEvent::HostLeft
+                                    | LobbyEvent::Reconnecting { .. })) => endings.push(format!("{event:?}")),
+                                Some(_) => {}
+                                None => endings.push("no more events".into()),
+                            },
+                        }
+                    }
+                })
+                .await;
+                anna.close().await;
+                endings
+            })
+        });
+        let reply = tokio::task::spawn_blocking(move || reply.recv().unwrap())
+            .await
+            .unwrap();
+        host.admit(&reply).await.unwrap();
+        admitted.send(()).unwrap();
+        let anna_seat = tokio::task::spawn_blocking(move || seat.recv().unwrap())
+            .await
+            .unwrap();
+        host.select(SharedActivity {
+            selection,
+            course: None,
+            workout: Some(path.join("source.oqw")),
+        })
+        .await
+        .unwrap();
+        host.ready(1, true).await.unwrap();
+        all_ready(&mut host, vec![anna_seat]).await;
+        host.start(Duration::from_millis(1000)).await.unwrap();
+        // Her riding after the stall reaches the organizer, who never let her go.
+        let event = timeout(STALL + Duration::from_secs(5), async {
+            loop {
+                match host.next().await.expect("host event") {
+                    LobbyEvent::State { id, state }
+                        if id == anna_seat && state.distance == Meters(99.0) =>
+                    {
+                        return None;
+                    }
+                    event @ (LobbyEvent::Left { .. } | LobbyEvent::Away { .. }) => {
+                        return Some(event);
+                    }
+                    _ => {}
+                }
+            }
+        })
+        .await
+        .expect("her riding after the stall reaches the organizer");
+        assert!(event.is_none(), "{event:?}");
+        let endings = tokio::task::spawn_blocking(move || anna.join().unwrap())
+            .await
+            .unwrap();
+        assert!(endings.is_empty(), "{endings:?}");
+        host.close().await;
+        std::fs::remove_dir_all(path).unwrap();
     }
 }

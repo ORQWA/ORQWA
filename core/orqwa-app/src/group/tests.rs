@@ -3027,3 +3027,87 @@ fn late_course_entry_saves_only_ridden_distance_and_no_skipped_speed_records() {
     );
     assert!((samples.last().unwrap().distance.0 - (full_distance - entry.0)).abs() < 1.0);
 }
+
+/// Stops each app's runtime for `time`, as a frozen process stops: both its workers block, so
+/// nothing of the app runs, its connections included, while the operating system keeps the
+/// packets that arrive.
+fn stall(apps: &[&App], time: Duration) {
+    for app in apps {
+        let both = std::sync::Arc::new(std::sync::Barrier::new(2));
+        for _ in 0..2 {
+            let both = both.clone();
+            drop(app.runtime.spawn(async move {
+                both.wait();
+                std::thread::sleep(time);
+            }));
+        }
+    }
+}
+
+/// #696, R303: the fallback and a friend whose computers stall for ten seconds ride on with
+/// the organizer, who can still reach them, rather than splitting off as a second group.
+#[test]
+fn a_fallback_and_a_friend_whose_computers_stall_stay_with_the_organizer() {
+    ride_through_a_stall(true);
+}
+
+/// #696, R303: a fallback whose computer stalls alone takes nobody over either.
+#[test]
+fn a_fallback_whose_computer_stalls_stays_with_the_organizer() {
+    ride_through_a_stall(false);
+}
+
+/// The organizer, a fallback and Ben ride; the fallback's computer stalls for ten seconds,
+/// Ben's too if `with_ben`. Afterwards everyone rides on with the organizer.
+fn ride_through_a_stall(with_ben: bool) {
+    let directories = [Directory::new(), Directory::new(), Directory::new()];
+    let [mut host, mut anna, mut ben] = directories.each_ref().map(Directory::app);
+    ride_in_three(&mut host, &mut anna, &mut ben);
+    wait3([&mut host, &mut anna, &mut ben], |_, a, _| {
+        a.group().standby_offer
+    });
+    anna.group_handover_answer(true).unwrap();
+    let fallback = anna.group().me;
+    wait3([&mut host, &mut anna, &mut ben], |h, a, b| {
+        [h, a, b]
+            .iter()
+            .all(|app| app.group().fallback == Some(fallback))
+    });
+    let organizer = host.group().me;
+    let stalled = Duration::from_secs(10);
+    if with_ben {
+        stall(&[&anna, &ben], stalled);
+    } else {
+        stall(&[&anna], stalled);
+    }
+    let resumed = Instant::now() + stalled;
+    while Instant::now() < resumed {
+        host.update(Duration::from_millis(16));
+        if !with_ben {
+            ben.update(Duration::from_millis(16));
+        }
+        std::thread::sleep(Duration::from_millis(16));
+    }
+    // Long enough for a takeover, which a standing fallback starts at once.
+    let watched = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < watched {
+        for app in [&mut host, &mut anna, &mut ben] {
+            app.update(Duration::from_millis(16));
+        }
+        for app in [&anna, &ben] {
+            let group = app.group();
+            assert!(
+                !group.host && group.organizer == organizer && group.phase == Phase::Riding,
+                "{} host {} organizer {} error {:?}",
+                group.phase.key(),
+                group.host,
+                group.organizer,
+                group.error
+            );
+        }
+        assert_eq!(host.group().roster.iter().flatten().count(), 3);
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    anna.group_leave();
+    ben.group_leave();
+}
