@@ -262,7 +262,8 @@ async fn browse(
 }
 
 enum Prepared {
-    Host(SharedActivity),
+    // Boxed: a world's selection makes the shared activity much larger than a joiner's paths.
+    Host(Box<SharedActivity>),
     Join(Option<PathBuf>, Option<PathBuf>),
 }
 struct Audio {
@@ -570,7 +571,7 @@ async fn run_inner(
                         next_revision = next_revision.checked_add(1).ok_or("Activity revision exhausted.")?;
                         let revision = next_revision; let dir = temp.0.clone();
                         snapshot.phase = Phase::Downloading; snapshot.error.clear();snapshot.activity_failed=false; snapshot.prepared = false;
-                        jobs.spawn(async move {chosen(course,plan,dir,revision).await.map(Prepared::Host)}); Ok(())
+                        jobs.spawn(async move {chosen(course,plan,dir,revision).await.map(|shared|Prepared::Host(Box::new(shared)))}); Ok(())
                     }
                     Command::Assistance(rules) => change_rules(&session,snapshot,&mut next_revision,rules,jobs.is_empty()).await,
                     Command::Prepared(revision) => {if snapshot.selection.as_ref().is_some_and(|s|s.revision==revision) {snapshot.prepared = true; snapshot.phase = Phase::Ready; reported.report(&session,revision,Stage::Preparing,100);} Ok(())}
@@ -878,7 +879,7 @@ async fn run_inner(
                 match result {
                     Some(Ok(Ok(Prepared::Host(mut selected)))) => {
                         selected.selection.assistance=snapshot.assistance;
-                        if let Session::Host(l) = &session {l.select(selected.clone()).await.map_err(|e|e.to_string())?;}
+                        if let Session::Host(l) = &session {l.select((*selected).clone()).await.map_err(|e|e.to_string())?;}
                         snapshot.selection = Some(selected.selection); snapshot.course = selected.course; snapshot.workout = selected.workout;
                         snapshot.plan = load_plan(snapshot.workout.as_ref()).await?;
                         snapshot.ready.fill(false); snapshot.phase = Phase::Preparing;
@@ -1111,8 +1112,9 @@ async fn chosen(
 ) -> Result<SharedActivity, String> {
     let mut name = String::new();
     let mut world = None;
-    let (course_id, course_key) = if let Some(which) =
-        course.as_deref().and_then(crate::authored::WorldRoute::parse)
+    let (course_id, course_key) = if let Some(which) = course
+        .as_deref()
+        .and_then(crate::authored::WorldRoute::parse)
     {
         // A world is never sent: each rider rides their own copy, if the world allows (R305).
         let (route_name, reference) = world_route(which).await?;
@@ -1155,7 +1157,6 @@ async fn chosen(
         name.pop();
     }
     let selection = Selection {
-        world: None,
         revision,
         name,
         course: course_id,
@@ -1185,9 +1186,10 @@ async fn world_route(
             .group()
             .map_err(|e| e.to_string())?
             .is_some_and(|group| group.allowed);
-        let entry = description.route(&which.route).filter(|_| allowed).ok_or_else(|| {
-            crate::failure::Kind::WorldGroup.message().to_owned()
-        })?;
+        let entry = description
+            .route(&which.route)
+            .filter(|_| allowed)
+            .ok_or_else(|| crate::failure::Kind::WorldGroup.message().to_owned())?;
         Ok((
             entry.name.clone(),
             orqwa_net::activity::WorldRef {
@@ -1220,7 +1222,11 @@ fn own_world(data: &Path, world: &orqwa_net::activity::WorldRef) -> Option<PathB
                 description.id == world.world
                     && manifest == world.manifest
                     && description.route(&world.route).is_some()
-                    && description.group().ok().flatten().is_some_and(|g| g.allowed)
+                    && description
+                        .group()
+                        .ok()
+                        .flatten()
+                        .is_some_and(|g| g.allowed)
             },
         )
     })?;

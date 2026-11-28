@@ -1759,25 +1759,9 @@ impl App {
             let mut current = group.peers.current_at(now, elapsed, local_at);
             current[usize::from(snapshot.me)] = None;
             // A world's script sees the whole group, as every rider's ORQWA does (R305).
-            let mates = current
-                .iter()
-                .enumerate()
-                .filter_map(|(id, peer)| {
-                    let peer = peer.as_ref()?;
-                    let rider = snapshot.roster[id].as_ref()?;
-                    Some(orqwa_session::world::Mate {
-                        slot: u8::try_from(id).ok()?,
-                        name: rider.name.clone(),
-                        power: peer.power,
-                        cadence: peer.cadence.0,
-                        mass: rider.mass,
-                        ftp: rider.ftp,
-                        distance: peer.distance.0,
-                        speed: peer.speed,
-                    })
-                })
-                .collect();
-            active.ride.set_world_team(snapshot.me, mates);
+            active
+                .ride
+                .set_world_team(snapshot.me, world_mates(snapshot, &current));
             let request = orqwa_session::group::assistance_request(
                 &current,
                 state.distance,
@@ -1914,6 +1898,32 @@ impl App {
             })
             .collect()
     }
+}
+
+/// The group's other riders as a world's script sees them: from the roster and where the
+/// group shows them now.
+fn world_mates(
+    snapshot: &Snapshot,
+    current: &[Option<orqwa_session::group::Rider>; MAX_RIDERS],
+) -> Vec<orqwa_session::world::Mate> {
+    current
+        .iter()
+        .enumerate()
+        .filter_map(|(id, peer)| {
+            let peer = peer.as_ref()?;
+            let rider = snapshot.roster[id].as_ref()?;
+            Some(orqwa_session::world::Mate {
+                slot: u8::try_from(id).ok()?,
+                name: rider.name.clone(),
+                power: peer.power,
+                cadence: peer.cadence.0,
+                mass: rider.mass,
+                ftp: rider.ftp,
+                distance: peer.distance.0,
+                speed: peer.speed,
+            })
+        })
+        .collect()
 }
 
 fn blend(

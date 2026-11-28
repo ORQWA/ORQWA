@@ -240,7 +240,11 @@ async fn a_shared_body_moves_by_everyones_power_and_keeps_its_riders_together() 
     let driver = ride.world().unwrap();
     let load = driver.load(ride.state().distance.0).unwrap();
     assert_eq!(load.power, Watts(250.0));
-    assert!(ride.state().distance.0 > 30.0, "{:?}", ride.state().distance);
+    assert!(
+        ride.state().distance.0 > 30.0,
+        "{:?}",
+        ride.state().distance
+    );
     assert_eq!(driver.slot_distance(1, 0.0), Some(40.0));
     assert_eq!(driver.slot_distance(0, 7.0), Some(7.0));
 }
@@ -254,5 +258,8 @@ async fn in_a_group_the_script_answers_for_this_riders_slot() {
     let mut ride = ride_with(&output).await;
     ride.set_world_team(2, vec![mate(0, 0.0)]);
     pedal(&mut ride, 200.0, 2);
-    assert_eq!(ride.world().unwrap().request(), Request::Power(Watts(180.0)));
+    assert_eq!(
+        ride.world().unwrap().request(),
+        Request::Power(Watts(180.0))
+    );
 }

@@ -174,7 +174,10 @@ pub struct WorldRef {
 impl WorldRef {
     fn valid(&self) -> bool {
         self.world.len() == 36
-            && self.world.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-')
+            && self
+                .world
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() || b == b'-')
             && (1..=64).contains(&self.route.len())
             && self
                 .route
@@ -587,7 +590,10 @@ mod tests {
         let mut both = selection(1);
         both.world = Some(world.clone());
         assert!(both.encode().is_err());
-        for (id, route) in [("not-a-uuid", "valley-loop"), (world.world.as_str(), "Valley Loop")] {
+        for (id, route) in [
+            ("not-a-uuid", "valley-loop"),
+            (world.world.as_str(), "Valley Loop"),
+        ] {
             let mut bad = ride.clone();
             bad.world = Some(WorldRef {
                 world: id.into(),

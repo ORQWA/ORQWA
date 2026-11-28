@@ -1560,6 +1560,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::too_many_lines)] // one lobby's whole expiry, step by step
     async fn expiry_cancels_owned_preparation_without_restoring_stale_proposals() {
         let mut options = ConnectOptions::default();
         options.gather.policy.loopback = true;

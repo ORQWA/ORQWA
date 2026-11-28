@@ -373,11 +373,15 @@ impl WorldDriver {
                         speed_mps: mate.speed.0,
                     }),
             )
-            .chain(self.others.iter().map(|(id, &(distance, speed))| BodyState {
-                id: id.clone(),
-                distance_m: distance,
-                speed_mps: speed,
-            }))
+            .chain(
+                self.others
+                    .iter()
+                    .map(|(id, &(distance, speed))| BodyState {
+                        id: id.clone(),
+                        distance_m: distance,
+                        speed_mps: speed,
+                    }),
+            )
             .collect(),
             actions: (self.actions > 0)
                 .then_some(Action {

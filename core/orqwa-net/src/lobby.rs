@@ -71,8 +71,7 @@ pub struct Rider {
 }
 impl Rider {
     pub(crate) fn validate(&self) -> Result<(), LobbyError> {
-        let finite =
-            self.mass.0.is_finite() && self.weight.0.is_finite() && self.ftp.0.is_finite();
+        let finite = self.mass.0.is_finite() && self.weight.0.is_finite() && self.ftp.0.is_finite();
         if !valid_name(&self.name)
             || !finite
             || !(20.0..=300.0).contains(&self.mass.0)
