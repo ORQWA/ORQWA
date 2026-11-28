@@ -155,8 +155,9 @@ pub struct Ride {
     last_control: Option<(TrainerControl, Duration)>,
     /// The virtual gear (index from 0), with virtual gears.
     gear: usize,
-    /// The world's script, on a world that has one (R302).
-    world: Option<WorldDriver>,
+    /// The world's script, on a world that has one (R302); boxed, as most rides have none and
+    /// rides are moved into futures.
+    world: Option<Box<WorldDriver>>,
 }
 
 impl Ride {
@@ -209,7 +210,7 @@ impl Ride {
     /// trainer is asked for, within ORQWA's limits ([`world`]), until it stops.
     #[must_use]
     pub fn with_world_script(mut self, driver: WorldDriver) -> Self {
-        self.world = Some(driver);
+        self.world = Some(Box::new(driver));
         self.last_control = None;
         self
     }
@@ -217,7 +218,7 @@ impl Ride {
     /// The world's script, if the ride runs one.
     #[must_use]
     pub fn world(&self) -> Option<&WorldDriver> {
-        self.world.as_ref()
+        self.world.as_deref()
     }
 
     /// The rider pressed World action; the script hears of it on its next tick.
@@ -307,7 +308,7 @@ impl Ride {
 
         self.ask_world(dt);
         let grade = self.group_effect.grade(self.road_grade());
-        let movement = self.world.as_ref().map(WorldDriver::movement);
+        let movement = self.world.as_deref().map(WorldDriver::movement);
         let setup = movement
             .unwrap_or_default()
             .setup(self.group_effect.setup(self.config.setup));
@@ -636,7 +637,7 @@ impl Ride {
             TrainerControl::Resistance(Percent(0.0))
         } else if let Some(power) = self.workout.as_ref().and_then(WorkoutControl::power) {
             TrainerControl::TargetPower(power)
-        } else if let Some(control) = self.world.as_ref().and_then(|world| {
+        } else if let Some(control) = self.world.as_deref().and_then(|world| {
             world::control(
                 world.request(),
                 world.movement().setup(self.config.setup),
@@ -656,7 +657,7 @@ impl Ride {
             );
             let road = self
                 .world
-                .as_ref()
+                .as_deref()
                 .map(WorldDriver::movement)
                 .unwrap_or_default()
                 .setup(self.group_effect.setup(self.config.setup))
