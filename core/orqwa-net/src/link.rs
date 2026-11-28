@@ -549,8 +549,6 @@ impl Connection {
     }
 }
 
-/// Closes a host's endpoints telling every rider the organizer ended the group (#536):
-/// before its connections close one by one as their tasks stop, without a reason.
 /// Counts the added replies whose riders have not connected yet, for the lobby's owner.
 pub(crate) struct Waiting(Arc<Shared>);
 impl Waiting {
@@ -567,6 +565,8 @@ impl Waiting {
     }
 }
 
+/// Closes a host's endpoints telling every rider the organizer ended the group (#536):
+/// before its connections close one by one as their tasks stop, without a reason.
 pub(crate) struct Ender(Vec<Endpoint>);
 impl Ender {
     pub(crate) fn end(&self) {
