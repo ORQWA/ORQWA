@@ -56,7 +56,8 @@ You represent that:
   directed and reviewed it, and the tool's terms place no restriction on its output that
   conflicts with this Agreement.
 - If an employer or anyone else has rights to work You create, they have allowed You to make the
-  Contributions or waived those rights.
+  Contributions and to grant the licenses in this Agreement, including the Maintainer's right to add
+  permissions under section 2, or they have waived those rights.
 
 **Third-Party Material** is work that is not Your original creation, such as vendored code,
 models, textures, fonts or map data. If You submit it, name its source and license in the
