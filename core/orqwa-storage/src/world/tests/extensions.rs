@@ -213,7 +213,7 @@ fn a_world_allows_a_group_of_two_up_to_orqwas_limit() {
         );
     }
     let path = archive(&featured(|d| {
-        d["extensions"][GROUP] = json!({"allowed": false})
+        d["extensions"][GROUP] = json!({"allowed": false});
     }));
     let group = validate(&path, &trust()).unwrap().group().unwrap().unwrap();
     assert!(!group.allowed);

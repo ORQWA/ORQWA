@@ -1010,12 +1010,11 @@ fn check(path: &Path, trust: Option<&Trust>) -> Result<Description, WorldError> 
                         Part::Sky | Part::Preview | Part::Texture => {
                             image(&mut hashing, part == Part::Preview).map_err(at)?
                         }
-                        // Hashed, never read: the extension's to define.
-                        Part::Extension => 0,
-                        // The runtime checks the rest of a module, and the workout parsers a
-                        // workout, when they are used.
+                        // Hashed, never read here: an unknown extension's file is its own to
+                        // define, and the workout parsers read a workout when it is used.
+                        Part::Extension | Part::Workout => 0,
+                        // The runtime checks the rest of a module when it loads it.
                         Part::Module => extensions::module_header(&mut hashing).map_err(at)?,
-                        Part::Workout => 0,
                     }
                 }
             })

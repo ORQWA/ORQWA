@@ -1327,7 +1327,7 @@ Worlds bring their own behaviour, group-ride permission and workouts without ORQ
 each world ([world-files.md](world-files.md#orqwa_script)).
 
 - [ ] ADR 0044 and the specification of `ORQWA_script`, `ORQWA_group` and `ORQWA_workouts`
-- [ ] Reading and checking the three extensions in `orqwa-storage`; skins and animations only
+- [x] Reading and checking the three extensions in `orqwa-storage`; skins and animations only
   for script models
 - [ ] The documents' types with schema snapshots; the runtime (sandbox, limits, fallbacks) with
   frozen golden modules; `orqwa-cli world-script-run`
