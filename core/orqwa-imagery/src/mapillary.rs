@@ -275,6 +275,7 @@ struct Raw {
     id: String,
     geometry: Geometry,
     compass_angle: Option<f64>,
+    /// Milliseconds since the Unix epoch.
     captured_at: Option<i64>,
 }
 
@@ -291,7 +292,8 @@ impl From<Raw> for StreetImage {
             id: raw.id,
             position: (raw.geometry.coordinates[1], raw.geometry.coordinates[0]),
             heading: raw.compass_angle.unwrap_or(0.0).to_radians(),
-            captured_at: raw.captured_at.unwrap_or(0),
+            // Mapillary gives milliseconds; StreetImage keeps seconds.
+            captured_at: raw.captured_at.map_or(0, |millis| millis / 1000),
         }
     }
 }
@@ -478,7 +480,7 @@ mod tests {
             format!(r#","paging":{{"next":"{next}"}}"#)
         });
         format!(
-            r#"{{"data":[{{"id":"{id}","geometry":{{"type":"Point","coordinates":[7.0025,46.0025]}},"compass_angle":90.0,"captured_at":1700000000}}]{paging}}}"#
+            r#"{{"data":[{{"id":"{id}","geometry":{{"type":"Point","coordinates":[7.0025,46.0025]}},"compass_angle":90.0,"captured_at":1700000000000}}]{paging}}}"#
         )
     }
 
@@ -507,6 +509,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(images.len(), 2);
+        assert_eq!(
+            images[0].captured_at, 1_700_000_000,
+            "milliseconds become seconds"
+        );
         assert_eq!(mapillary.requests(), 2);
         assert_eq!(mapillary.paging(), 1);
         assert_eq!(mapillary.fetched_cells(), 1);
