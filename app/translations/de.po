@@ -3492,3 +3492,6 @@ msgstr "Kamera näher heranholen"
 
 msgid "Camera further away"
 msgstr "Kamera weiter weg bewegen"
+
+msgid "The world's script has stopped; the ride goes on without it."
+msgstr "Das Skript der Welt wurde angehalten; die Fahrt geht ohne es weiter."

@@ -112,6 +112,54 @@ impl Authored {
         lock(&self.asked).insert(name.to_owned())
     }
 
+    /// The world's script for a ride on its route, if it has one this ORQWA runs (R302). A
+    /// script that cannot be loaded leaves a plain ride, as one that stops does.
+    #[must_use]
+    pub fn script_driver(
+        &self,
+        rider: orqwa_session::world::WorldRider,
+    ) -> Option<orqwa_session::world::WorldDriver> {
+        let loaded = (|| {
+            let Some(script) = self.file.description().script().map_err(|e| e.to_string())? else {
+                return Ok(None);
+            };
+            let module = self.file.module().map_err(|e| e.to_string())?;
+            let Some(module) = module else {
+                return Ok(None);
+            };
+            let running = orqwa_world_script::WorldScript::load(&module, script.api)
+                .map_err(|e| e.to_string())?;
+            Ok::<_, String>(Some(orqwa_session::world::WorldDriver::new(
+                running,
+                script.config.clone(),
+                &self.route,
+                rider,
+            )))
+        })();
+        loaded
+            .inspect_err(|error| warn!(%error, "the world is ridden without its script"))
+            .ok()
+            .flatten()
+    }
+
+    /// The files of the models the world's script places, by the names it uses.
+    #[must_use]
+    pub fn script_models(&self) -> Vec<(String, String)> {
+        self.file
+            .description()
+            .script()
+            .ok()
+            .flatten()
+            .map(|script| {
+                script
+                    .models
+                    .iter()
+                    .map(|model| (model.name.to_owned(), model.file.to_owned()))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Reads the part `name`, for [`Authored::take`]: slow, run on a worker.
     pub(crate) fn read(&self, name: &str) {
         // The format names each kind of part by its extension (docs/world-files.md).
@@ -119,6 +167,7 @@ impl Authored {
         let part = match extension {
             Some("bin") => self.file.instances(name).map(Part::Instances),
             Some("glb") => self.file.glb(name).map(Part::Bytes),
+            _ if name.starts_with("ext/") => self.file.extension_image(name).map(Part::Bytes),
             _ => self.file.image(name).map(Part::Bytes),
         };
         lock(&self.parts).insert(name.to_owned(), part.map_err(|e| e.to_string()));

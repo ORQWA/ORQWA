@@ -216,6 +216,10 @@ pub struct WorldDriver {
     values: BTreeMap<String, f64>,
     marks: Vec<(Duration, Mark)>,
     stopped: Option<ScriptError>,
+    answers: u64,
+    /// Bodies carrying no local rider (a pacer, a marker): where they are and how fast they
+    /// go. A scripted one moves at its speed from the route's start; a driven one has no power.
+    others: BTreeMap<String, (f64, f64)>,
 }
 
 impl WorldDriver {
@@ -236,6 +240,8 @@ impl WorldDriver {
             values: BTreeMap::new(),
             marks: Vec::new(),
             stopped: None,
+            answers: 0,
+            others: BTreeMap::new(),
         }
     }
 
@@ -252,6 +258,10 @@ impl WorldDriver {
     /// Asks the script once `TICK` has passed since it was asked last; returns whether it was.
     pub(crate) fn update(&mut self, dt: Duration, now: Moment, route: Option<&Route>) -> bool {
         self.since += dt;
+        let end = route.map_or(f64::INFINITY, |route| route.length().0);
+        for (distance, speed) in self.others.values_mut() {
+            *distance = (*distance + *speed * dt.as_secs_f64()).min(end);
+        }
         if self.stopped.is_some() || self.since < TICK {
             return false;
         }
@@ -278,11 +288,17 @@ impl WorldDriver {
                 connected: now.power.is_some(),
                 body: self.body_id().to_owned(),
             }],
-            bodies: vec![BodyState {
+            bodies: std::iter::once(BodyState {
                 id: self.body_id().to_owned(),
                 distance_m: now.distance,
                 speed_mps: now.speed.0,
-            }],
+            })
+            .chain(self.others.iter().map(|(id, &(distance, speed))| BodyState {
+                id: id.clone(),
+                distance_m: distance,
+                speed_mps: speed,
+            }))
+            .collect(),
             actions: (self.actions > 0)
                 .then_some(Action {
                     slot: 0,
@@ -323,6 +339,20 @@ impl WorldDriver {
             .map_or(Request::Road, |request| {
                 Request::limited(request, self.rider.ftp)
             });
+        let others: BTreeMap<String, (f64, f64)> = output
+            .bodies
+            .iter()
+            .filter(|body| !body.riders.contains(&0))
+            .map(|body| {
+                let speed = match movement(body) {
+                    Movement::Scripted(speed) => speed.0,
+                    Movement::Driven { .. } => 0.0,
+                };
+                let distance = self.others.get(&body.id).map_or(0.0, |&(d, _)| d);
+                (body.id.clone(), (distance, speed))
+            })
+            .collect();
+        self.others = others;
         for (key, value) in &output.record.values {
             if value.is_finite() {
                 self.values.insert(key.clone(), *value);
@@ -331,6 +361,7 @@ impl WorldDriver {
         self.marks
             .extend(output.record.marks.iter().map(|mark| (at, mark.clone())));
         self.output = output.clone();
+        self.answers += 1;
     }
 
     fn stop(&mut self, error: ScriptError) {
@@ -339,6 +370,7 @@ impl WorldDriver {
         self.output = Output::default();
         self.movement = Movement::default();
         self.request = Request::Road;
+        self.others.clear();
     }
 
     /// How the rider moves now.
@@ -357,6 +389,22 @@ impl WorldDriver {
     #[must_use]
     pub fn output(&self) -> &Output {
         &self.output
+    }
+
+    /// How many answers the script has given: the scene and screen change only with a new one.
+    #[must_use]
+    pub fn answers(&self) -> u64 {
+        self.answers
+    }
+
+    /// Where a body is along the route, by its id: the local rider's own (at `local`) or one
+    /// carrying no local rider.
+    #[must_use]
+    pub fn body_distance(&self, id: &str, local: f64) -> Option<f64> {
+        if id == self.body_id() {
+            return Some(local);
+        }
+        self.others.get(id).map(|&(distance, _)| distance)
     }
 
     /// Why the script stopped, if it did.

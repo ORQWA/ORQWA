@@ -202,3 +202,17 @@ fn requests_that_are_not_numbers_are_the_road() {
         "no FTP, no power target"
     );
 }
+
+#[tokio::test]
+async fn a_body_without_the_rider_moves_on_its_own_from_the_start() {
+    let output = json!({"bodies": [
+        {"id": "pacer", "kind": "scripted", "riders": [], "speed_mps": 4.0}
+    ]});
+    let mut ride = ride_with(&output).await;
+    pedal(&mut ride, 200.0, 10);
+    let driver = ride.world().unwrap();
+    let pacer = driver.body_distance("pacer", 0.0).unwrap();
+    assert!((pacer - 39.6).abs() < 0.5, "{pacer}");
+    assert_eq!(driver.body_distance("own", 12.0), Some(12.0));
+    assert_eq!(driver.body_distance("nobody", 12.0), None);
+}

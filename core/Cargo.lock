@@ -2062,6 +2062,7 @@ dependencies = [
  "orqwa-voice",
  "orqwa-workouts",
  "orqwa-world",
+ "orqwa-world-script",
  "png",
  "serde_json",
  "thiserror 2.0.21",
@@ -2129,7 +2130,9 @@ dependencies = [
  "orqwa-session",
  "orqwa-workouts",
  "orqwa-world",
+ "orqwa-world-api",
  "rustls-platform-verifier",
+ "serde_json",
  "tracing",
 ]
 

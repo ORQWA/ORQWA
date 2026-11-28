@@ -1125,6 +1125,19 @@ impl WorldFile {
                 },
             );
         }
+        // The files of extensions the world uses are read only by what knows them.
+        for (name, signed) in manifest.entries {
+            if description.extension_file(&name) {
+                parts.insert(
+                    name,
+                    Known {
+                        part: Part::Extension,
+                        limit: MAX_PART_BYTES,
+                        signed,
+                    },
+                );
+            }
+        }
         let textures = description.textures.iter().cloned().collect();
         Ok(Self {
             path: path.to_owned(),
@@ -1212,6 +1225,20 @@ impl WorldFile {
         let bytes = self.read(script.file)?;
         extensions::module_header(&mut bytes.as_slice()).map_err(|e| prefixed(script.file, e))?;
         Ok(Some(bytes))
+    }
+
+    /// The bytes of an image under `ext/` that an extension the world uses shows, such as a
+    /// world script's screen images: PNG, JPEG or WebP.
+    ///
+    /// # Errors
+    /// [`WorldError`] if it is no such file, cannot be read, or is not an image.
+    pub fn extension_image(&self, name: &str) -> Result<Vec<u8>, WorldError> {
+        if self.part(name) != Some(Part::Extension) {
+            return Err(invalid(format!("{name}: not a file of the world's extensions")));
+        }
+        let bytes = self.read(name)?;
+        image(&mut bytes.as_slice(), false).map_err(|e| prefixed(name, e))?;
+        Ok(bytes)
     }
 
     /// The bytes of a workout the world brings (`ORQWA_workouts`), for the workout parsers.

@@ -3811,6 +3811,10 @@ msgstr ""
 msgid "The video and the route do not match."
 msgstr ""
 
+#: app/scenes/world_panels.gd
+msgid "The world's script has stopped; the ride goes on without it."
+msgstr ""
+
 #: app/ui/group_away_reply.gd
 msgid "They are reconnected automatically. If their network changed, paste the new reply %s sends you."
 msgstr ""

@@ -56,6 +56,7 @@ mod graphics;
 mod group;
 mod log;
 mod microphone_permission;
+mod world_script;
 
 struct OrqwaExtension;
 
@@ -3526,6 +3527,7 @@ impl OrqwaApp {
                 .to_variant()
             }),
             "workout" => &state.workout.as_ref().map_or_else(Variant::nil, workout_state),
+            "world" => &world_script::state(app, distance.0),
         };
         // A ride without a route (a workout on its own) has no place: the loaded route, if
         // any, is not the one ridden.
@@ -3584,6 +3586,14 @@ impl OrqwaApp {
             true,
         );
         dict
+    }
+
+    /// The rider pressed World action (R302): the world's script hears of it next tick.
+    #[func]
+    fn world_action(&mut self) {
+        if let Some(app) = self.app.as_mut() {
+            app.world_action();
+        }
     }
 
     /// Every metric the HUD can show: `[{id, caption, description, unit, decimals, kind, sample, zones,

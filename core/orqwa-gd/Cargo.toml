@@ -25,6 +25,8 @@ orqwa-routes.workspace = true
 orqwa-session.workspace = true
 orqwa-workouts.workspace = true
 orqwa-world.workspace = true
+orqwa-world-api.workspace = true
+serde_json.workspace = true
 godot.workspace = true
 tracing.workspace = true
 

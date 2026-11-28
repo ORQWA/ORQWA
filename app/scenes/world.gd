@@ -265,6 +265,7 @@ var _railways: MeshInstance3D
 var _ground_lods: GroundLods = GroundLods.new()
 ## A world file's world, when the course is one (R282); ORQWA's own world stays empty then.
 var _authored: AuthoredWorld
+var _world_script: WorldScriptScene
 
 @onready var _terrain: Node3D = $Terrain
 @onready var _road: MeshInstance3D = $Road
@@ -577,6 +578,9 @@ func _ready() -> void:
 	_authored = AuthoredWorld.new()
 	_authored.name = "Authored"
 	add_child(_authored)
+	_world_script = WorldScriptScene.new()
+	_world_script.name = "WorldScript"
+	add_child(_world_script)
 	_horizon_ground = MeshInstance3D.new()
 	_horizon_water = MeshInstance3D.new()
 	_railways = MeshInstance3D.new()
@@ -834,12 +838,18 @@ func _follow_ride(state: Dictionary, delta: float) -> void:
 		_motion.reset()
 	_rider.transform = Transform3D(yaw * pitch, position)
 	_place_ghost(state["ghost"], delta)
+	_world_script.show_world(state.get("world"), _orqwa)
+	_avatar.visible = _world_script.rider_shown()
 
 	if _free:
 		return
 	var target: Transform3D = _view.target(
 		_camera_mode, _rider.transform, delta if _placed else INF
 	)
+	var hint: Variant = _world_script.camera_hint()
+	if hint != null and _camera_mode == CameraMode.CHASE:
+		var where: Dictionary = hint
+		target = _hinted_camera(where)
 	# First person is fixed to the head; smoothing its position would trail behind the rider.
 	if _placed and _camera_mode != CameraMode.FIRST_PERSON:
 		var camera_weight: float = 1.0 - exp(-delta * CAMERA_SMOOTHING)
@@ -964,6 +974,20 @@ func _place_ghost(ghost: Variant, delta: float) -> void:
 	_ghost.transform = Transform3D(yaw * pitch * roll, Vector3(east, elevation, -north))
 	_ghost.animate(delta, 85.0 if speed_kmh > 1.0 else 0.0, speed_kmh)
 	_ghost.show()
+
+
+## Where a world's script would like the chase camera (R302): behind and above its anchor,
+## looking at it.
+static func _hinted_camera(hint: Dictionary) -> Transform3D:
+	var x: float = hint["x"]
+	var y: float = hint["y"]
+	var elevation: float = hint["elevation_m"]
+	var heading: float = hint["heading"]
+	var back: float = hint["back_m"]
+	var up: float = hint["up_m"]
+	var anchor: Vector3 = Vector3(x, elevation, -y)
+	var eye: Vector3 = anchor + Basis(Vector3.UP, -heading) * Vector3(0.0, up, back)
+	return Transform3D(Basis.IDENTITY, eye).looking_at(anchor + Vector3.UP, Vector3.UP)
 
 
 ## Eases a lean towards `target` over a moment, at once after a jump.

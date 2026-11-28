@@ -3713,6 +3713,20 @@ impl App {
             .continuation_undo
             .lock()
             .unwrap_or_else(PoisonError::into_inner) = None;
+        // A world's script runs in rides on its route (R302); in a group only as R305 allows.
+        let ride = match self.authored.as_ref() {
+            Some(authored) if ride.route().is_some() && self.group.is_none() => {
+                let rider = orqwa_session::world::WorldRider {
+                    name: self.profile.profile.name.clone(),
+                    ftp: self.profile.profile.ftp,
+                };
+                match authored.script_driver(rider) {
+                    Some(driver) => ride.with_world_script(driver),
+                    None => ride,
+                }
+            }
+            _ => ride,
+        };
         let solo_course = self.group.is_none()
             && self.course.is_some()
             && ride.route().is_some()
@@ -4617,6 +4631,30 @@ impl App {
     #[must_use]
     pub fn ride_state(&self) -> Option<RideState> {
         self.ride.as_ref().map(|active| active.ride.state())
+    }
+
+    /// The world's script running in the ride, if any (R302): what it shows and records.
+    #[must_use]
+    pub fn world_script(&self) -> Option<&orqwa_session::world::WorldDriver> {
+        self.ride.as_ref()?.ride.world()
+    }
+
+    /// The rider pressed World action (R302); the world's script hears of it on its next
+    /// tick. Without a script it does nothing.
+    pub fn world_action(&mut self) {
+        if let Some(active) = &mut self.ride {
+            active.ride.world_action();
+        }
+    }
+
+    /// The models the loaded world's script places, by the names it gives them, with their
+    /// files in the world.
+    #[must_use]
+    pub fn world_script_models(&self) -> Vec<(String, String)> {
+        self.authored
+            .as_ref()
+            .map(|authored| authored.script_models())
+            .unwrap_or_default()
     }
 
     /// The loaded route.
